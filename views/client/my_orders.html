@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transalca - Mis Pedidos</title>
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/public/css/styles.css">
+    <link rel="stylesheet" href="/public/css/chat_widget.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="navbarContainer"></div>
+    <div class="container py-4">
+        <h3 class="fw-bold mb-4"><i class="bi bi-bag-check me-2"></i>Mis Pedidos</h3>
+        <div id="ordersList"></div>
+    </div>
+    <div id="footerContainer"></div>
+    <div class="modal fade modal-custom" id="detailModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Detalle del Pedido</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="detailBody"></div></div></div></div>
+    <script src="/public/jquery/jquery.min.js"></script>
+    <script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
+    <script src="/public/js/admin_common.js"></script>
+    <script src="/public/js/client_common.js"></script>
+    <script src="/public/js/chat_widget.js"></script>
+    <script>
+    $(document).ready(function(){
+        $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
+        $.get('/api/orders/my-orders',function(r){
+            var html='';
+            if(!r.data||r.data.length===0){html='<div class="text-center py-5 text-muted"><i class="bi bi-bag-x fs-1"></i><p>No tienes pedidos aún</p><a href="/client/catalog" class="btn btn-primary-custom">Ir al Catálogo</a></div>';}
+            else{r.data.forEach(function(o){
+                var badge=o.estado==='aprobada'?'badge-approved':o.estado==='pendiente'?'badge-pending':'badge-rejected';
+                var icon=o.estado==='aprobada'?'bi-check-circle-fill text-success':o.estado==='pendiente'?'bi-clock-fill text-warning':'bi-x-circle-fill text-danger';
+                html+='<div class="card-custom mb-3"><div class="card-body"><div class="d-flex justify-content-between align-items-center"><div><h6 class="fw-bold mb-1">Pedido #'+o.id+'</h6><small class="text-muted">'+formatDate(o.fecha)+' | '+(o.metodo_pago||'')+'</small></div><div class="text-end"><span class="badge-status '+badge+'"><i class="bi '+icon+' me-1"></i>'+o.estado+'</span><h5 class="fw-bold mt-1" style="color:var(--highlight);">'+formatMoney(o.total)+'</h5></div></div><button class="btn btn-sm btn-outline-primary mt-2" onclick="viewOrder('+o.id+')"><i class="bi bi-eye me-1"></i>Ver Detalle</button></div></div>';
+            });}
+            $('#ordersList').html(html);
+        });
+    });
+    function viewOrder(id){
+        $.get('/api/orders/'+id,function(r){
+            var d=r.data;var html='<div class="mb-3"><strong>Estado:</strong> '+d.estado+' | <strong>Fecha:</strong> '+formatDate(d.fecha)+'</div><table class="table table-sm"><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>';
+            (d.detalles||[]).forEach(function(dt){html+='<tr><td>'+dt.nombre+'</td><td>'+dt.cantidad+'</td><td>'+formatMoney(dt.precio)+'</td><td>'+formatMoney(dt.cantidad*dt.precio)+'</td></tr>';});
+            html+='</tbody></table><h5 class="text-end">Total: '+formatMoney(d.total)+'</h5>';
+            $('#detailBody').html(html);new bootstrap.Modal($('#detailModal')).show();
+        });
+    }
+    </script>
+</body>
+</html>

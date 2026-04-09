@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitacora - Transalca C.A.</title>
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="mb-4"><h4 class="fw-bold mb-0">Bitacora del Sistema</h4></div>
+            <div class="filter-bar">
+                <input type="text" class="form-control" id="searchBit" placeholder="Buscar..." oninput="searchLogs()">
+                <input type="date" class="form-control" id="dateStart">
+                <input type="date" class="form-control" id="dateEnd">
+                <button class="btn btn-outline-orange btn-sm" onclick="filterByDate()"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+            </div>
+            <div class="card"><div class="card-body p-0"><table class="table mb-0"><thead><tr><th>Fecha</th><th>Usuario</th><th>Accion</th><th>Modulo</th><th>Detalle</th><th>IP</th></tr></thead><tbody id="bitBody"></tbody></table></div></div>
+        </div>
+    </div>
+</div>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/bitacora.js"></script>
+</body>
+</html>

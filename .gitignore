@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Uploaded assets (keep directory structure)
+public/assets/profile_pics/*
+!public/assets/profile_pics/default.png
+public/assets/comprobantes/*
+public/assets/images/*
+!public/assets/images/.gitkeep
+!public/assets/comprobantes/.gitkeep
+
+# Backups
+respaldos/*
+!respaldos/.gitkeep
+
+# Temp files
+tmp_hash.txt
+*.tmp
+*.log
+
+# Design reference files
+*.pdf
+
+# Local library copies (using CDN)
+public/bootstrap/
+public/jquery/
+public/sweetalert2/
+
+# API BCV separate project
+API BCV/

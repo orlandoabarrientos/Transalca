@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagos - Transalca C.A.</title>
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="mb-4"><h4 class="fw-bold mb-0">Comprobacion de Pagos</h4></div>
+            <ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabPending">Pendientes</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabAll">Todos</a></li></ul>
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="tabPending"><div class="card"><div class="card-body p-0"><table class="table mb-0"><thead><tr><th>ID</th><th>Orden</th><th>Comprobante</th><th>Metodo</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody id="pendingBody"></tbody></table></div></div></div>
+                <div class="tab-pane fade" id="tabAll"><div class="card"><div class="card-body p-0"><table class="table mb-0"><thead><tr><th>ID</th><th>Orden</th><th>Metodo</th><th>Estado</th><th>Fecha</th><th>Revisado por</th></tr></thead><tbody id="allBody"></tbody></table></div></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="compModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Comprobante de Pago</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-center" id="compImg"></div><div class="modal-footer"><button class="btn btn-danger" onclick="rejectPayment()"><i class="bi bi-x-lg me-1"></i>Rechazar</button><button class="btn btn-success" onclick="approvePayment()"><i class="bi bi-check-lg me-1"></i>Aprobar</button></div></div></div></div>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/payments.js"></script>
+</body>
+</html>

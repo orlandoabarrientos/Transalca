@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - Transalca C.A.</title>
+    <meta name="description" content="Registrate en Transalca C.A. para comprar repuestos y servicios automotrices">
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="auth-container">
+    <div class="auth-card" style="max-width:500px;">
+        <div class="brand-title">
+            <h2>TRANSALCA</h2>
+            <p>Crear cuenta nueva</p>
+        </div>
+        <form id="registerForm">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Nombre <span class="required">*</span></label>
+                    <input type="text" class="form-control" id="regNombre" name="regNombre" placeholder="Juan" required>
+                    <div class="invalid-feedback"></div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Apellido <span class="required">*</span></label>
+                    <input type="text" class="form-control" id="regApellido" name="regApellido" placeholder="Perez" required>
+                    <div class="invalid-feedback"></div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Cedula <span class="required">*</span></label>
+                <input type="text" class="form-control" id="regCedula" name="regCedula" placeholder="V-12345678" required>
+                <div class="invalid-feedback"></div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Correo Electronico <span class="required">*</span></label>
+                <input type="email" class="form-control" id="regEmail" name="regEmail" placeholder="correo@ejemplo.com" required>
+                <div class="invalid-feedback"></div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Contrasena <span class="required">*</span></label>
+                <input type="password" class="form-control" id="regPassword" name="regPassword" placeholder="••••••••" required>
+                <div class="invalid-feedback"></div>
+                <div class="password-strength mt-1"><div class="bar" id="passwordStrengthBar"></div></div>
+                <small class="form-text">Min 8 caracteres, 1 mayuscula, 1 minuscula, 1 numero, 1 especial (@$!%*?&#.)</small>
+            </div>
+            <div class="mb-4">
+                <label class="form-label">Confirmar Contrasena <span class="required">*</span></label>
+                <input type="password" class="form-control" id="regConfirmPassword" name="regConfirmPassword" placeholder="••••••••" required>
+                <div class="invalid-feedback"></div>
+            </div>
+            <button type="submit" class="btn-login mb-3">Crear Cuenta</button>
+            <p class="text-center" style="font-size:0.85rem;color:var(--text-secondary);">
+                ¿Ya tiene cuenta? <a href="/auth/login" style="color:var(--primary);font-weight:600;">Iniciar Sesion</a>
+            </p>
+        </form>
+    </div>
+</div>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/auth.js"></script>
+</body>
+</html>

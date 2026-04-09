@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes Tabulares - Transalca C.A.</title>
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+    <style>
+        .report-tabs { border-bottom: 2px solid var(--border-color); display: flex; gap: 1rem; margin-bottom: 1.5rem; overflow-x: auto; }
+        .report-tab { padding: 0.5rem 1rem; cursor: pointer; color: var(--text-muted); font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+        .report-tab:hover { color: var(--primary); }
+        .report-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    </style>
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        
+        <div class="content-area">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">Reportes Tabulares</h4>
+                <button class="btn btn-primary" onclick="openExportModal()"><i class="bi bi-download me-2"></i>Exportar Reporte</button>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form id="filterForm" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label text-muted small mb-1">Fecha Inicio</label>
+                            <input type="date" class="form-control form-control-sm" id="startDate" name="startDate">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-muted small mb-1">Fecha Fin</label>
+                            <input type="date" class="form-control form-control-sm" id="endDate" name="endDate">
+                        </div>
+                        <div class="col-md-3" id="statusFilterContainer" style="display:none;">
+                            <label class="form-label text-muted small mb-1">Estado</label>
+                            <select class="form-select form-select-sm" id="status" name="status">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-dark btn-sm w-100" onclick="loadReportData()"><i class="bi bi-funnel me-2"></i>Filtrar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="report-tabs" id="reportTabs">
+                <div class="report-tab active" data-report="sales" onclick="switchReport('sales', this)">Ventas y Órdenes</div>
+                <div class="report-tab" data-report="payments" onclick="switchReport('payments', this)">Flujo de Pagos</div>
+                <div class="report-tab" data-report="inventory" onclick="switchReport('inventory', this)">Kárdex Inventario</div>
+                <div class="report-tab" data-report="mechanics" onclick="switchReport('mechanics', this)">Desempeño Mecánicos</div>
+                <div class="report-tab" data-report="bitacora" onclick="switchReport('bitacora', this)">Auditoría de Bitácora</div>
+            </div>
+
+            <div class="card">
+                <div class="card-body p-0 table-responsive">
+                    <table class="table mb-0">
+                        <thead id="reportHead"></thead>
+                        <tbody id="reportBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Exportar Datos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <p class="text-muted small mb-3">Descargar el reporte actual aplicado a los filtros de fecha y estatus seleccionados.</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-danger text-start" onclick="triggerDownload('pdf')"><i class="bi bi-file-earmark-pdf-fill me-2"></i> Documento PDF</button>
+                    <button class="btn btn-success text-start" onclick="triggerDownload('excel')"><i class="bi bi-file-earmark-excel-fill me-2"></i> Hoja de Excel (.xlsx)</button>
+                    <button class="btn btn-secondary text-start" onclick="triggerDownload('csv')"><i class="bi bi-filetype-csv me-2"></i> Archivo CSV Plano</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/reports.js"></script>
+</body>
+</html>

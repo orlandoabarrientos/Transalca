@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Respaldos - Transalca C.A.</title>
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">Respaldos</h4>
+                <button class="btn btn-orange" onclick="createBackup()"><i class="bi bi-database-fill-down me-2"></i>Crear Respaldo</button>
+            </div>
+            <div class="card"><div class="card-body p-0"><table class="table mb-0"><thead><tr><th>Archivo</th><th>Tamano</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody id="backupBody"></tbody></table></div></div>
+        </div>
+    </div>
+</div>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/backup.js"></script>
+</body>
+</html>

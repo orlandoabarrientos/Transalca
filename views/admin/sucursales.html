@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sucursales - Transalca C.A.</title>
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">Sucursales</h4>
+                <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Nueva Sucursal</button>
+            </div>
+
+            
+            <div class="card">
+                <div class="card-body p-0">
+                    <table class="table mb-0" id="sucursalTable">
+                        <thead>
+                            <tr>
+                                <th class="col-id">ID</th>
+                                <th>Nombre</th>
+                                <th>Direccion</th>
+                                <th>Telefono</th>
+                                <th>Email</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sucursalBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="sucursalModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Nueva Sucursal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="sucursalForm">
+                    <input type="hidden" id="sucursalId">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre <span class="required">*</span></label>
+                        <input type="text" class="form-control" id="nombre" name="nombre" required>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Direccion</label>
+                        <input type="text" class="form-control" id="direccion" name="direccion">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Telefono</label>
+                        <input type="text" class="form-control" id="telefono" name="telefono">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email">
+                        <div class="invalid-feedback"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-orange" onclick="saveData()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script>
+$(document).ready(function() {
+    $('#sidebarContainer').load('/components/admin_sidebar.html', () => {
+        document.querySelector('[data-page="sucursales"]')?.classList.add('active');
+    });
+    $('#navbarContainer').load('/components/admin_navbar.html');
+    loadData();
+    Validator.setRules('sucursalForm', {
+        nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es requerido', minLengthMsg: 'Minimo 3 caracteres' },
+        email: { email: true }
+    });
+    Validator.setupRealtime('sucursalForm');
+});
+
+function loadData() {
+    apiCall('/api/sucursales/').then(res => {
+        const tbody = document.getElementById('sucursalBody');
+        tbody.innerHTML = '';
+        (res.data || []).forEach(s => {
+            tbody.innerHTML += `<tr class="fade-in-up">
+                <td class="col-id">${s.id}</td>
+                <td><strong>${s.nombre}</strong></td>
+                <td>${s.direccion || '-'}</td>
+                <td>${s.telefono || '-'}</td>
+                <td>${s.email || '-'}</td>
+                <td>${statusBadge(s.estado)}</td>
+                <td>
+                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${s.id})" title="Editar"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-icon btn-sm ${s.estado ? 'btn-warning' : 'btn-success'}" onclick="toggleEstado(${s.id})" title="${s.estado ? 'Desactivar' : 'Activar'}"><i class="bi bi-${s.estado ? 'pause' : 'play'}-fill"></i></button>
+                </td>
+            </tr>`;
+        });
+        if (!res.data?.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-building"></i><p>No hay sucursales registradas</p></div></td></tr>';
+        }
+    });
+}
+
+function openModal(id = null) {
+    Validator.clearForm('sucursalForm');
+    document.getElementById('sucursalId').value = id || '';
+    document.getElementById('modalTitle').textContent = id ? 'Editar Sucursal' : 'Nueva Sucursal';
+    new bootstrap.Modal(document.getElementById('sucursalModal')).show();
+}
+
+function editData(id) {
+    apiCall(`/api/sucursales/${id}`).then(res => {
+        const s = res.data;
+        document.getElementById('sucursalId').value = s.id;
+        document.getElementById('nombre').value = s.nombre;
+        document.getElementById('direccion').value = s.direccion || '';
+        document.getElementById('telefono').value = s.telefono || '';
+        document.getElementById('email').value = s.email || '';
+        document.getElementById('modalTitle').textContent = 'Editar Sucursal';
+        new bootstrap.Modal(document.getElementById('sucursalModal')).show();
+    });
+}
+
+function saveData() {
+    if (!Validator.validate('sucursalForm')) return showToast('Corrija los errores','warning');
+    const id = document.getElementById('sucursalId').value;
+    const data = { nombre: document.getElementById('nombre').value, direccion: document.getElementById('direccion').value, telefono: document.getElementById('telefono').value, email: document.getElementById('email').value };
+    const url = id ? `/api/sucursales/${id}` : '/api/sucursales/';
+    const method = id ? 'PUT' : 'POST';
+    apiCall(url, method, data).then(res => {
+        if (res.status === 'error') { Validator.showServerErrors('sucursalForm', res.errors); return showToast(res.message, 'error'); }
+        bootstrap.Modal.getInstance(document.getElementById('sucursalModal')).hide();
+        showToast(res.message);
+        loadData();
+    });
+}
+
+function toggleEstado(id) {
+    confirmAction('¿Cambiar estado de esta sucursal?', () => {
+        apiCall(`/api/sucursales/${id}/toggle`, 'PUT').then(res => { showToast(res.message); loadData(); });
+    });
+}
+</script>
+</body>
+</html>

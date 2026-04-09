@@ -1,0 +1,130 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transalca C.A. - Repuestos y Servicios Automotrices</title>
+    <meta name="description" content="Transalca C.A. - Tu aliado en repuestos, cauchos y servicios automotrices. Alineacion, rotacion, balanceo, lubricantes y mas.">
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+    <link href="/public/css/chat_widget.css" rel="stylesheet">
+</head>
+<body>
+<div id="navbarContainer"></div>
+
+
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-7">
+                <h1>Tu aliado en <span style="color:#FFF3E6;">repuestos</span> y servicios automotrices</h1>
+                <p class="mb-4">Cauchos, alineacion, rotacion, balanceo, lubricantes y mucho mas. Calidad garantizada en cada compra.</p>
+                <a href="/client/catalog" class="btn"><i class="bi bi-shop me-2"></i>Ver Catalogo</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="container">
+    
+    <div class="mb-5">
+        <h3 class="fw-bold mb-3">Categorias</h3>
+        <div class="row g-3" id="categoriesList"></div>
+    </div>
+
+    
+    <div class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="fw-bold mb-0">Productos Destacados</h3>
+            <a href="/client/catalog" class="btn btn-outline-orange btn-sm">Ver todos <i class="bi bi-arrow-right ms-1"></i></a>
+        </div>
+        <div class="row g-3" id="featuredProducts"></div>
+    </div>
+
+    
+    <div class="mb-5">
+        <h3 class="fw-bold mb-3">Nuestros Servicios</h3>
+        <div class="row g-3" id="servicesList"></div>
+    </div>
+
+    
+    <div class="mb-5">
+        <h3 class="fw-bold mb-3">Nuestras Sucursales</h3>
+        <div class="row g-3" id="branchesList"></div>
+    </div>
+</div>
+
+<footer class="text-center py-4" style="background:var(--bg-sidebar);color:var(--text-sidebar);">
+    <p class="mb-0">&copy; 2026 Transalca C.A. - Todos los derechos reservados</p>
+</footer>
+
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/client_common.js"></script>
+<script>
+$(document).ready(function() {
+    $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
+    loadHome();
+});
+
+async function loadHome() {
+    try {
+        const res = await fetch('/api/categories/active').then(r => r.json());
+        const el = document.getElementById('categoriesList');
+        (res.data || []).slice(0,6).forEach(c => {
+            el.innerHTML += `<div class="col-6 col-md-4 col-lg-2"><a href="/client/catalog?category=${c.id}" class="text-decoration-none"><div class="card text-center p-3" style="cursor:pointer;"><i class="bi bi-tag-fill" style="font-size:1.5rem;color:var(--primary);"></i><p class="fw-bold mt-2 mb-0" style="font-size:0.8rem;color:var(--text-primary);">${c.nombre}</p></div></a></div>`;
+        });
+    } catch(e) {}
+
+    try {
+        const res = await fetch('/api/products/active').then(r => r.json());
+        const el = document.getElementById('featuredProducts');
+        (res.data || []).slice(0,8).forEach(p => {
+            const img = p.imagen ? `<img src="/public/assets/images/${p.imagen}" alt="${p.nombre}">` : `<div class="no-image"><i class="bi bi-image"></i><span>Sin imagen</span></div>`;
+            el.innerHTML += `<div class="col-6 col-md-4 col-lg-3"><div class="product-card">
+                <div class="product-img">${img}</div>
+                <div class="product-info">
+                    <div class="product-category">${p.categoria_nombre || ''}</div>
+                    <div class="product-name">${p.nombre}</div>
+                    <div class="product-price">$${formatCurrency(p.precio)}</div>
+                    ${p.sucursal_nombre ? `<div class="product-branch"><i class="bi bi-geo-alt"></i>${p.sucursal_nombre}</div>` : ''}
+                </div>
+                <button class="btn-add-cart" onclick="addToCart(${p.id})"><i class="bi bi-cart-plus me-1"></i>Agregar al Carrito</button>
+            </div></div>`;
+        });
+        if (!res.data?.length) el.innerHTML = '<div class="col-12"><div class="empty-state"><i class="bi bi-box-seam"></i><p>Proximamente productos disponibles</p></div></div>';
+    } catch(e) {}
+
+    try {
+        const res = await fetch('/api/services/active').then(r => r.json());
+        const el = document.getElementById('servicesList');
+        const icons = { alineacion: 'bi-rulers', rotacion: 'bi-arrow-repeat', balanceo: 'bi-speedometer', cambio_aceite: 'bi-droplet-fill', general: 'bi-wrench-adjustable' };
+        (res.data || []).slice(0,6).forEach(s => {
+            el.innerHTML += `<div class="col-6 col-md-4 col-lg-3"><div class="card p-3 text-center" style="cursor:pointer;" onclick="addToCart(${s.id},'servicio')">
+                <i class="bi ${icons[s.tipo] || 'bi-wrench'}" style="font-size:2rem;color:var(--primary);"></i>
+                <h6 class="fw-bold mt-2 mb-1">${s.nombre}</h6>
+                <p class="text-muted mb-1" style="font-size:0.75rem;">${s.descripcion?.substring(0,60) || ''}</p>
+                <span class="fw-bold" style="color:var(--primary);">$${formatCurrency(s.precio)}</span>
+                ${s.sucursal_nombre ? `<small class="d-block text-muted mt-1"><i class="bi bi-geo-alt"></i> ${s.sucursal_nombre}</small>` : ''}
+            </div></div>`;
+        });
+    } catch(e) {}
+
+    try {
+        const res = await fetch('/api/sucursales/active').then(r => r.json());
+        const el = document.getElementById('branchesList');
+        (res.data || []).forEach(s => {
+            el.innerHTML += `<div class="col-md-4"><div class="card p-3">
+                <h6 class="fw-bold mb-1"><i class="bi bi-building me-2" style="color:var(--primary);"></i>${s.nombre}</h6>
+                <p class="text-muted mb-0" style="font-size:0.8rem;"><i class="bi bi-geo-alt me-1"></i>${s.direccion || ''}</p>
+                ${s.telefono ? `<p class="text-muted mb-0" style="font-size:0.8rem;"><i class="bi bi-telephone me-1"></i>${s.telefono}</p>` : ''}
+            </div></div>`;
+        });
+    } catch(e) {}
+}
+</script>
+<script src="/public/js/chat_widget.js"></script>
+</body>
+</html>

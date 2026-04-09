@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuarios - Transalca C.A.</title>
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">Usuarios</h4>
+                <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Nuevo Usuario</button>
+            </div>
+            <div class="filter-bar">
+                <label class="form-label mb-0 fw-bold" style="font-size:0.8rem;">Tipo:</label>
+                <select class="form-select" id="filterTipo" onchange="loadData()">
+                    <option value="">Todos</option><option value="empleado">Empleados</option><option value="cliente">Clientes</option>
+                </select>
+            </div>
+            <div class="card">
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <thead><tr><th class="col-id">ID</th><th>Nombre</th><th>Cedula</th><th>Email</th><th>Tipo</th><th>Roles</th><th>Estado</th><th>Acciones</th></tr></thead>
+                        <tbody id="userBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="modalTitle">Nuevo Usuario</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="userId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label class="form-label">Nombre <span class="required">*</span></label><input type="text" class="form-control" id="nombre" name="nombre"><div class="invalid-feedback"></div></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Apellido <span class="required">*</span></label><input type="text" class="form-control" id="apellido" name="apellido"><div class="invalid-feedback"></div></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label class="form-label">Cedula <span class="required">*</span></label><input type="text" class="form-control" id="cedula" name="cedula"><div class="invalid-feedback"></div></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Email <span class="required">*</span></label><input type="email" class="form-control" id="email" name="email"><div class="invalid-feedback"></div></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label class="form-label">Telefono</label><input type="text" class="form-control" id="telefono" name="telefono"></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Tipo</label><select class="form-select" id="tipo" name="tipo"><option value="cliente">Cliente</option><option value="empleado">Empleado</option></select></div>
+                    </div>
+                    <div class="mb-3"><label class="form-label">Direccion</label><input type="text" class="form-control" id="direccion" name="direccion"></div>
+                    <div class="row" id="passwordRow">
+                        <div class="col-md-6 mb-3"><label class="form-label">Contrasena <span class="required">*</span></label><input type="password" class="form-control" id="password" name="password"><div class="invalid-feedback"></div><div class="password-strength mt-1"><div class="bar" id="passwordStrengthBar"></div></div><small class="form-text">Min 8, 1 mayuscula, 1 minuscula, 1 numero, 1 especial</small></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Rol</label><select class="form-select" id="rol_id" name="rol_id"><option value="">Sin rol</option></select></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-orange" onclick="saveData()">Guardar</button></div>
+        </div>
+    </div>
+</div>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/users.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codigos QR - Transalca C.A.</title>
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">Codigos QR</h4>
+                <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Nuevo QR</button>
+            </div>
+            <div class="card"><div class="card-body p-0"><table class="table mb-0"><thead><tr><th class="col-id">ID</th><th>Tipo</th><th>Contenido</th><th>Usuario</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody id="qrBody"></tbody></table></div></div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="qrModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title" id="modalTitle">Nuevo QR</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body"><form id="qrForm"><input type="hidden" id="qrId">
+        <div class="mb-3"><label class="form-label">Tipo <span class="required">*</span></label><select class="form-select" id="tipo" name="tipo"><option value="info">Informacion</option><option value="promocion">Promocion</option><option value="servicio">Servicio</option></select><div class="invalid-feedback"></div></div>
+        <div class="mb-3"><label class="form-label">Contenido <span class="required">*</span></label><textarea class="form-control" id="contenido" name="contenido" rows="3"></textarea><div class="invalid-feedback"></div></div>
+        <div class="mb-3"><label class="form-label">Utilidad</label><input type="text" class="form-control" id="utilidad" name="utilidad"></div>
+    </form></div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-orange" onclick="saveData()">Guardar</button></div>
+</div></div></div>
+
+
+<div class="modal fade" id="viewQrModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Codigo QR Generado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="qrImagePreview" src="" alt="Codigo QR" class="img-fluid rounded shadow-sm mb-3">
+                <p class="text-muted small mb-0" id="qrScanLabel">Para descargar, clic derecho -> Guardar imagen...</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/qr.js"></script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Transalca C.A.</title>
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="mb-4">
+                <h4 class="fw-bold mb-1">Dashboard</h4>
+                <p class="text-muted mb-0" style="font-size:0.85rem;">Resumen general del sistema</p>
+            </div>
+
+            
+            <div class="row g-3 mb-4">
+                <div class="col-sm-6 col-lg-3">
+                    <div class="stat-card">
+                        <div class="stat-icon orange"><i class="bi bi-box-seam-fill"></i></div>
+                        <div>
+                            <div class="stat-value" id="totalProducts">0</div>
+                            <div class="stat-label">Productos</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <div class="stat-card">
+                        <div class="stat-icon green"><i class="bi bi-cart-check-fill"></i></div>
+                        <div>
+                            <div class="stat-value" id="totalOrders">0</div>
+                            <div class="stat-label">Ordenes</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <div class="stat-card">
+                        <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
+                        <div>
+                            <div class="stat-value" id="totalClients">0</div>
+                            <div class="stat-label">Clientes</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <div class="stat-card">
+                        <div class="stat-icon red"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                        <div>
+                            <div class="stat-value" id="pendingPayments">0</div>
+                            <div class="stat-label">Pagos Pendientes</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-clock-history me-2"></i>Ordenes Recientes</span>
+                            <a href="/admin/orders" class="btn btn-sm btn-outline-orange">Ver todas</a>
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table mb-0">
+                                <thead>
+                                    <tr><th>ID</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Fecha</th></tr>
+                                </thead>
+                                <tbody id="recentOrders">
+                                    <tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-cart"></i><p>Sin ordenes recientes</p></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header"><span><i class="bi bi-lightning-fill me-2"></i>Acciones Rapidas</span></div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <a href="/admin/products" class="btn btn-outline-orange"><i class="bi bi-box-seam me-2"></i>Gestionar Productos</a>
+                                <a href="/admin/inventory" class="btn btn-outline-orange"><i class="bi bi-archive me-2"></i>Inventario</a>
+                                <a href="/admin/payments" class="btn btn-outline-orange"><i class="bi bi-credit-card me-2"></i>Ver Pagos Pendientes</a>
+                                <a href="/admin/sucursales" class="btn btn-outline-orange"><i class="bi bi-building me-2"></i>Sucursales</a>
+                                <a href="/admin/reports" class="btn btn-outline-orange"><i class="bi bi-graph-up me-2"></i>Reportes</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card mt-3">
+                        <div class="card-header"><span><i class="bi bi-building me-2"></i>Sucursales Activas</span></div>
+                        <div class="card-body" id="branchList">
+                            <p class="text-muted text-center">Cargando...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script>
+$(document).ready(function() {
+    $('#sidebarContainer').load('/components/admin_sidebar.html', () => {
+        document.querySelector('[data-page="dashboard"]')?.classList.add('active');
+    });
+    $('#navbarContainer').load('/components/admin_navbar.html');
+    loadDashboard();
+});
+
+async function loadDashboard() {
+    try {
+        const res = await apiCall('/api/reports/dashboard');
+        if (res.data) {
+            document.getElementById('totalProducts').textContent = res.data.total_products || 0;
+            document.getElementById('totalOrders').textContent = res.data.total_orders || 0;
+            document.getElementById('totalClients').textContent = res.data.total_clients || 0;
+            document.getElementById('pendingPayments').textContent = res.data.pending_payments || 0;
+        }
+    } catch(e) {}
+
+    try {
+        const res = await apiCall('/api/reports/recent-orders?limit=5');
+        const tbody = document.getElementById('recentOrders');
+        if (res.data?.length) {
+            tbody.innerHTML = '';
+            res.data.forEach(o => {
+                const badge = o.estado === 'aprobado' ? 'badge-active' : o.estado === 'pendiente' ? 'badge-pending' : 'badge-inactive';
+                tbody.innerHTML += `<tr><td>#${o.id}</td><td>${o.cliente_nombre || 'N/A'}</td><td>$${formatCurrency(o.total)}</td><td><span class="badge-status ${badge}">${o.estado}</span></td><td>${formatDate(o.fecha)}</td></tr>`;
+            });
+        }
+    } catch(e) {}
+
+    try {
+        const res = await apiCall('/api/sucursales/active');
+        const list = document.getElementById('branchList');
+        if (res.data?.length) {
+            list.innerHTML = '';
+            res.data.forEach(s => {
+                list.innerHTML += `<div class="d-flex align-items-center gap-2 mb-2 p-2 rounded" style="background:var(--primary-soft);">
+                    <i class="bi bi-geo-alt-fill" style="color:var(--primary);"></i>
+                    <div><strong style="font-size:0.85rem;">${s.nombre}</strong><br><small class="text-muted">${s.direccion || ''}</small></div>
+                </div>`;
+            });
+        } else {
+            list.innerHTML = '<p class="text-muted text-center mb-0">No hay sucursales activas</p>';
+        }
+    } catch(e) {}
+}
+</script>
+</body>
+</html>

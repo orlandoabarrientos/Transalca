@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar Contrasena - Transalca C.A.</title>
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="brand-title">
+            <h2>TRANSALCA</h2>
+            <p>Recuperar contrasena</p>
+        </div>
+        <form id="recoverForm">
+            <div class="mb-4">
+                <label class="form-label">Correo Electronico <span class="required">*</span></label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                    <input type="email" class="form-control" id="recoverEmail" name="recoverEmail" placeholder="correo@ejemplo.com" required>
+                </div>
+                <div class="invalid-feedback"></div>
+                <small class="form-text">Ingrese el correo asociado a su cuenta</small>
+            </div>
+            <button type="submit" class="btn-login mb-3">Enviar enlace de recuperacion</button>
+            <p class="text-center" style="font-size:0.85rem;color:var(--text-secondary);">
+                <a href="/auth/login" style="color:var(--primary);font-weight:600;"><i class="bi bi-arrow-left me-1"></i>Volver al inicio de sesion</a>
+            </p>
+        </form>
+    </div>
+</div>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/auth.js"></script>
+</body>
+</html>

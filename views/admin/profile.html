@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil - Transalca C.A.</title>
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="mb-4"><h4 class="fw-bold mb-0">Mi Perfil</h4></div>
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <div class="profile-photo-container"><img src="/public/assets/profile_pics/default.png" id="profilePhoto" alt="Foto"></div>
+                            <h5 class="fw-bold" id="profileName">-</h5>
+                            <p class="text-muted" id="profileEmail">-</p>
+                            <form id="photoForm" enctype="multipart/form-data">
+                                <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="uploadPhoto()">
+                                <button type="button" class="btn btn-outline-orange btn-sm" onclick="document.getElementById('photoInput').click()"><i class="bi bi-camera me-1"></i>Cambiar Foto</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-8">
+                    <div class="card mb-3">
+                        <div class="card-header"><span>Informacion Personal</span></div>
+                        <div class="card-body">
+                            <form id="profileForm">
+                                <div class="row"><div class="col-md-6 mb-3"><label class="form-label">Nombre</label><input type="text" class="form-control" id="nombre" name="nombre"><div class="invalid-feedback"></div></div><div class="col-md-6 mb-3"><label class="form-label">Apellido</label><input type="text" class="form-control" id="apellido" name="apellido"><div class="invalid-feedback"></div></div></div>
+                                <div class="row"><div class="col-md-6 mb-3"><label class="form-label">Telefono</label><input type="text" class="form-control" id="telefono" name="telefono"></div><div class="col-md-6 mb-3"><label class="form-label">Direccion</label><input type="text" class="form-control" id="direccion" name="direccion"></div></div>
+                                <button type="button" class="btn btn-orange" onclick="saveProfile()">Guardar Cambios</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><span>Cambiar Contrasena</span></div>
+                        <div class="card-body">
+                            <form id="passwordForm">
+                                <div class="mb-3"><label class="form-label">Contrasena Actual</label><input type="password" class="form-control" id="old_password" name="old_password"><div class="invalid-feedback"></div></div>
+                                <div class="mb-3"><label class="form-label">Nueva Contrasena</label><input type="password" class="form-control" id="new_password" name="new_password"><div class="invalid-feedback"></div><div class="password-strength mt-1"><div class="bar" id="passwordStrengthBar"></div></div><small class="form-text">Min 8, 1 mayuscula, 1 minuscula, 1 numero, 1 especial</small></div>
+                                <div class="mb-3"><label class="form-label">Confirmar Nueva</label><input type="password" class="form-control" id="confirm_password" name="confirm_password"><div class="invalid-feedback"></div></div>
+                                <button type="button" class="btn btn-orange" onclick="changePassword()">Cambiar Contrasena</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/profile.js"></script>
+</body>
+</html>

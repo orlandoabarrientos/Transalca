@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Promociones - Transalca C.A.</title>
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">Promociones y Fidelizacion</h4>
+                <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Nueva Promocion</button>
+            </div>
+            <ul class="nav nav-tabs mb-3"><li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabPromos">Promociones</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabCards">Tarjetas</a></li></ul>
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="tabPromos"><div class="card"><div class="card-body p-0"><table class="table mb-0"><thead><tr><th class="col-id">ID</th><th>Nombre</th><th>Tipo</th><th>Puntos</th><th>Recompensa</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="promoBody"></tbody></table></div></div></div>
+                <div class="tab-pane fade" id="tabCards"><div class="card"><div class="card-body p-0"><table class="table mb-0"><thead><tr><th>ID</th><th>Cliente</th><th>Promocion</th><th>Puntos</th><th>Canjeada</th><th>Acciones</th></tr></thead><tbody id="cardsBody"></tbody></table></div></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="promoModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title" id="modalTitle">Nueva Promocion</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body"><form id="promoForm"><input type="hidden" id="promoId">
+        <div class="mb-3"><label class="form-label">Nombre <span class="required">*</span></label><input type="text" class="form-control" id="nombre" name="nombre"><div class="invalid-feedback"></div></div>
+        <div class="mb-3"><label class="form-label">Descripcion</label><textarea class="form-control" id="descripcion" name="descripcion" rows="2"></textarea></div>
+        <div class="row"><div class="col-md-6 mb-3"><label class="form-label">Tipo <span class="required">*</span></label><select class="form-select" id="tipo" name="tipo"><option value="puntos">Puntos</option><option value="descuento">Descuento</option><option value="servicio">Servicio Gratis</option></select><div class="invalid-feedback"></div></div><div class="col-md-6 mb-3"><label class="form-label">Puntos Requeridos</label><input type="number" class="form-control" id="puntos_requeridos" name="puntos_requeridos" min="1" value="5"><div class="invalid-feedback"></div></div></div>
+        <div class="mb-3"><label class="form-label">Recompensa</label><input type="text" class="form-control" id="recompensa" name="recompensa" placeholder="Ej: Alineacion gratis"></div>
+    </form></div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-orange" onclick="saveData()">Guardar</button></div>
+</div></div></div>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/promotions.js"></script>
+</body>
+</html>
