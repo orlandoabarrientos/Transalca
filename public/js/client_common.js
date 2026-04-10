@@ -1,4 +1,4 @@
-﻿
+
 let currentUser = null;
 
 function showToast(message, type = 'success') {
@@ -42,6 +42,11 @@ function updateNavForUser() {
     if (photo) photo.src = `/public/assets/profile_pics/${currentUser.foto || 'default.png'}`;
     document.querySelectorAll('.auth-required').forEach(el => el.style.display = '');
     document.querySelectorAll('.guest-only').forEach(el => el.style.display = 'none');
+    
+    const adminBtn = document.getElementById('navAdminBtn');
+    if (adminBtn) {
+        adminBtn.style.display = (currentUser.tipo === 'empleado' || currentUser.tipo === 'admin') ? '' : 'none';
+    }
 }
 
 function updateNavForGuest() {
@@ -93,12 +98,14 @@ function formatCurrency(amount) {
 
 document.addEventListener('DOMContentLoaded', () => {
     checkSession();
-    const logoutEl = document.getElementById('clientLogout');
-    if (logoutEl) {
-        logoutEl.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
-            window.location.href = '/client/home';
-        });
+});
+
+// Event Delegation for dynamically loaded elements
+document.body.addEventListener('click', async (e) => {
+    const logoutTarget = e.target.closest('#clientLogout');
+    if (logoutTarget) {
+        e.preventDefault();
+        await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
+        window.location.href = '/client/home';
     }
 });

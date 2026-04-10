@@ -1,4 +1,4 @@
-﻿
+
 function showToast(message, type = 'success') {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -111,15 +111,78 @@ const Validator = {
         }
     },
 
+    validateField(formId, field) {
+        const rules = this.rules[formId];
+        if (!rules || !rules[field]) return true;
+        const fieldRules = rules[field];
+        const el = document.getElementById(field);
+        if (!el) return true;
+        
+        const value = el.value.trim();
+        let error = '';
+
+        if (fieldRules.required && !value) {
+            error = fieldRules.requiredMsg || 'Este campo es requerido';
+        } else if (fieldRules.minLength && value.length < fieldRules.minLength) {
+            error = fieldRules.minLengthMsg || `Minimo ${fieldRules.minLength} caracteres`;
+        } else if (fieldRules.maxLength && value.length > fieldRules.maxLength) {
+            error = fieldRules.maxLengthMsg || `Maximo ${fieldRules.maxLength} caracteres`;
+        } else if (fieldRules.pattern && !fieldRules.pattern.test(value)) {
+            error = fieldRules.patternMsg || 'Formato invalido';
+        } else if (fieldRules.min !== undefined && parseFloat(value) < fieldRules.min) {
+            error = fieldRules.minMsg || `El valor minimo es ${fieldRules.min}`;
+        } else if (fieldRules.email && value && !/^[^@]+@[^@]+\.[^@]+$/.test(value)) {
+            error = 'Ingrese un correo valido';
+        } else if (fieldRules.match) {
+            const matchEl = document.getElementById(fieldRules.match);
+            if (matchEl && value !== matchEl.value) {
+                error = fieldRules.matchMsg || 'Los campos no coinciden';
+            }
+        } else if (fieldRules.custom && !fieldRules.custom(value)) {
+            error = fieldRules.customMsg || 'Valor invalido';
+        }
+
+        if (error) {
+            el.classList.add('is-invalid');
+            el.classList.remove('is-valid');
+            let feedback = el.nextElementSibling;
+            while (feedback && !feedback.classList.contains('invalid-feedback')) {
+                feedback = feedback.nextElementSibling;
+            }
+            if (!feedback) {
+                feedback = document.createElement('div');
+                feedback.className = 'invalid-feedback';
+                el.parentNode.appendChild(feedback);
+            }
+            feedback.textContent = error;
+            feedback.style.display = 'block';
+            return false;
+        } else if (value) {
+            el.classList.add('is-valid');
+            el.classList.remove('is-invalid');
+            const fb = el.parentNode.querySelector('.invalid-feedback');
+            if (fb) fb.style.display = 'none';
+        } else {
+            el.classList.remove('is-invalid', 'is-valid');
+        }
+        return true;
+    },
+
     setupRealtime(formId) {
         const form = document.getElementById(formId);
         if (!form) return;
         form.querySelectorAll('input, select, textarea').forEach(el => {
-            el.addEventListener('input', () => {
-                el.classList.remove('is-invalid');
-                const fb = el.parentNode.querySelector('.invalid-feedback');
-                if (fb) fb.style.display = 'none';
-            });
+            if (el.id) {
+                el.addEventListener('input', () => {
+                    Validator.validateField(formId, el.id);
+                });
+            } else {
+                el.addEventListener('input', () => {
+                    el.classList.remove('is-invalid');
+                    const fb = el.parentNode.querySelector('.invalid-feedback');
+                    if (fb) fb.style.display = 'none';
+                });
+            }
         });
     }
 };
@@ -238,14 +301,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggle && sidebar) {
         toggle.addEventListener('click', () => sidebar.classList.toggle('show'));
     }
-    const logoutBtns = document.querySelectorAll('#btnLogout, #navLogout');
-    logoutBtns.forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
-            window.location.href = '/auth/login';
-        });
-    });
+});
+
+// Event Delegation for dynamically loaded auth elements
+document.body.addEventListener('click', async (e) => {
+    const logoutTarget = e.target.closest('#btnLogout, #navLogout');
+    if (logoutTarget) {
+        e.preventDefault();
+        await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
+        window.location.href = '/auth/login';
+    }
 });
 
 async function loadNavSession() {

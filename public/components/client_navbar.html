@@ -1,4 +1,4 @@
-﻿<nav class="client-navbar">
+<nav class="client-navbar">
     <div class="container d-flex justify-content-between align-items-center">
         <a href="/client/home" class="text-decoration-none">
             <h4 class="mb-0 fw-bold" style="color: var(--primary);">TRANSALCA <span style="color: var(--primary-dark);">C.A.</span></h4>
@@ -20,6 +20,9 @@
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="cartBadge" style="display:none;">0</span>
             </a>
             <a href="/client/my_loyalty" class="btn btn-sm btn-outline-orange auth-required" style="display:none;"><i class="bi bi-gift-fill"></i></a>
+            
+            <a href="/admin/dashboard" class="btn btn-sm btn-dark" id="navAdminBtn" style="display:none;" title="Panel de Administración"><i class="bi bi-shield-lock-fill"></i></a>
+            
             <div class="dropdown auth-required" style="display:none;">
                 <button class="btn btn-sm" data-bs-toggle="dropdown">
                     <img src="/public/assets/profile_pics/default.png" alt="Perfil" id="clientNavPhoto" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--primary-soft);">

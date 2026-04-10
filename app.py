@@ -98,7 +98,9 @@ def serve_component(filename):
 
 @app.errorhandler(404)
 def not_found(e):
-    return jsonify({"status": "error", "message": "Ruta no encontrada"}), 404
+    if request.path.startswith('/api/') or request.path.startswith('/auth/'):
+        return jsonify({"status": "error", "message": "Ruta no encontrada"}), 404
+    return redirect('/client/home')
 
 
 @app.errorhandler(500)
