@@ -50,10 +50,5 @@ tmp_hash.txt
 # Design reference files
 *.pdf
 
-# Local library copies (using CDN)
-public/bootstrap/
-public/jquery/
-public/sweetalert2/
-
 # API BCV separate project
 API BCV/

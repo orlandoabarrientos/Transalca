@@ -31,7 +31,7 @@ function switchReport(type, el) {
     } else if (type === 'bitacora') {
         statusContainer.style.display = 'block';
         $('#statusFilterContainer label').text('Modulo');
-        ['AUTH','USUARIOS','PRODUCTOS','INVENTARIO','VENTAS','SERVICIOS'].forEach(s => statusSelect.innerHTML += `<option value="${s}">${s}</option>`);
+        [['AUTH','AUTH'],['USUARIOS','USUARIOS'],['PRODUCTOS','PRODUCTOS'],['INVENTARIO','GESTIONAR STOCK DE PRODUCTOS'],['VENTAS','VENTAS'],['SERVICIOS','SERVICIOS']].forEach(s => statusSelect.innerHTML += `<option value="${s[0]}">${s[1]}</option>`);
     } else {
         statusContainer.style.display = 'none';
         $('#statusFilterContainer label').text('Estado');

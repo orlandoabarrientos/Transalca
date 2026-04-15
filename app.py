@@ -73,6 +73,9 @@ def admin_page(page):
 
 @app.route('/client/<page>')
 def client_page(page):
+    if page == 'qr_scan':
+        if 'user_id' not in session or session.get('user_tipo') != 'cliente':
+            return redirect('/client/home')
     try:
         return send_from_directory('views/client', f'{page}.html')
     except Exception:
@@ -94,6 +97,11 @@ def serve_public(filename):
 @app.route('/components/<path:filename>')
 def serve_component(filename):
     return send_from_directory('public/components', filename)
+
+
+@app.route('/componente_ia/<path:filename>')
+def serve_componente_ia(filename):
+    return send_from_directory('componente_ia', filename)
 
 
 @app.errorhandler(404)

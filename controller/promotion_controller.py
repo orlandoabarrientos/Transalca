@@ -119,20 +119,20 @@ def assign_card():
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         data = request.get_json()
-        if not data.get('cliente_id') or not data.get('promocion_id'):
+        if not data.get('cliente_cedula') or not data.get('promocion_id'):
             return jsonify({"status": "error", "message": "Datos incompletos"}), 400
-        card_id = model.assign_card_to_client(data['cliente_id'], data['promocion_id'])
+        card_id = model.assign_card_to_client(data['cliente_cedula'], data['promocion_id'])
         bitacora.log_action(session['user_id'], 'CREAR', 'PROMOCIONES',
-            f"Tarjeta asignada al cliente ID: {data['cliente_id']}", request.remote_addr)
+            f"Tarjeta asignada al cliente: {data['cliente_cedula']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Tarjeta asignada", "id": card_id})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@promotion_bp.route('/cards/client/<int:cliente_id>', methods=['GET'])
-def client_cards(cliente_id):
+@promotion_bp.route('/cards/client/<path:cliente_cedula>', methods=['GET'])
+def client_cards(cliente_cedula):
     try:
-        return jsonify({"status": "success", "data": model.get_client_cards(cliente_id)})
+        return jsonify({"status": "success", "data": model.get_client_cards(cliente_cedula)})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -140,9 +140,9 @@ def client_cards(cliente_id):
 @promotion_bp.route('/cards/my', methods=['GET'])
 def my_cards():
     try:
-        if 'user_id' not in session:
+        if 'user_cedula' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        return jsonify({"status": "success", "data": model.get_client_cards(session['user_id'])})
+        return jsonify({"status": "success", "data": model.get_client_cards(session['user_cedula'])})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

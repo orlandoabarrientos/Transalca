@@ -7,60 +7,60 @@ class ProductModel(Connection):
 
     def get_all(self):
         return self.fetch_all("transalca",
-            "SELECT p.*, c.nombre as categoria_nombre, m.nombre as marca_nombre, s.nombre as sucursal_nombre, COALESCE(i.stock,0) as stock FROM productos p LEFT JOIN categorias c ON p.categoria_id = c.id LEFT JOIN marcas m ON p.marca_id = m.id LEFT JOIN sucursales s ON p.sucursal_id = s.id LEFT JOIN inventario i ON p.id = i.producto_id ORDER BY p.nombre")
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, s.nombre as sucursal_nombre, COALESCE(SUM(i.stock),0) as stock FROM productos p LEFT JOIN sucursales s ON p.sucursal_id = s.id LEFT JOIN inventario i ON p.codigo = i.producto_codigo GROUP BY p.codigo ORDER BY p.nombre")
 
     def get_active(self):
         return self.fetch_all("transalca",
-            "SELECT p.*, c.nombre as categoria_nombre, m.nombre as marca_nombre, s.nombre as sucursal_nombre, COALESCE(i.stock,0) as stock FROM productos p LEFT JOIN categorias c ON p.categoria_id = c.id LEFT JOIN marcas m ON p.marca_id = m.id LEFT JOIN sucursales s ON p.sucursal_id = s.id LEFT JOIN inventario i ON p.id = i.producto_id WHERE p.estado = 1 ORDER BY p.nombre")
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, s.nombre as sucursal_nombre, COALESCE(SUM(i.stock),0) as stock FROM productos p LEFT JOIN sucursales s ON p.sucursal_id = s.id LEFT JOIN inventario i ON p.codigo = i.producto_codigo WHERE p.estado = 1 GROUP BY p.codigo ORDER BY p.nombre")
 
     def get_by_estado(self, estado):
         return self.fetch_all("transalca",
-            "SELECT p.*, c.nombre as categoria_nombre, m.nombre as marca_nombre, s.nombre as sucursal_nombre, COALESCE(i.stock,0) as stock FROM productos p LEFT JOIN categorias c ON p.categoria_id = c.id LEFT JOIN marcas m ON p.marca_id = m.id LEFT JOIN sucursales s ON p.sucursal_id = s.id LEFT JOIN inventario i ON p.id = i.producto_id WHERE p.estado = %s ORDER BY p.nombre", (estado,))
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, s.nombre as sucursal_nombre, COALESCE(SUM(i.stock),0) as stock FROM productos p LEFT JOIN sucursales s ON p.sucursal_id = s.id LEFT JOIN inventario i ON p.codigo = i.producto_codigo WHERE p.estado = %s GROUP BY p.codigo ORDER BY p.nombre", (estado,))
 
-    def get_by_id(self, pid):
+    def get_by_codigo(self, codigo):
         return self.fetch_one("transalca",
-            "SELECT p.*, c.nombre as categoria_nombre, m.nombre as marca_nombre, s.nombre as sucursal_nombre FROM productos p LEFT JOIN categorias c ON p.categoria_id = c.id LEFT JOIN marcas m ON p.marca_id = m.id LEFT JOIN sucursales s ON p.sucursal_id = s.id WHERE p.id = %s", (pid,))
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, s.nombre as sucursal_nombre FROM productos p LEFT JOIN sucursales s ON p.sucursal_id = s.id WHERE p.codigo = %s", (codigo,))
 
-    def get_by_category(self, cid):
+    def get_by_category(self, categoria_nombre):
         return self.fetch_all("transalca",
-            "SELECT p.*, c.nombre as categoria_nombre, m.nombre as marca_nombre, COALESCE(i.stock,0) as stock FROM productos p LEFT JOIN categorias c ON p.categoria_id = c.id LEFT JOIN marcas m ON p.marca_id = m.id LEFT JOIN inventario i ON p.id = i.producto_id WHERE p.categoria_id = %s AND p.estado = 1 ORDER BY p.nombre", (cid,))
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, COALESCE(SUM(i.stock),0) as stock FROM productos p LEFT JOIN inventario i ON p.codigo = i.producto_codigo WHERE p.categoria = %s AND p.estado = 1 GROUP BY p.codigo ORDER BY p.nombre", (categoria_nombre,))
 
-    def get_by_brand(self, bid):
+    def get_by_brand(self, marca_nombre):
         return self.fetch_all("transalca",
-            "SELECT p.*, c.nombre as categoria_nombre, m.nombre as marca_nombre, COALESCE(i.stock,0) as stock FROM productos p LEFT JOIN categorias c ON p.categoria_id = c.id LEFT JOIN marcas m ON p.marca_id = m.id LEFT JOIN inventario i ON p.id = i.producto_id WHERE p.marca_id = %s AND p.estado = 1 ORDER BY p.nombre", (bid,))
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, COALESCE(SUM(i.stock),0) as stock FROM productos p LEFT JOIN inventario i ON p.codigo = i.producto_codigo WHERE p.marca = %s AND p.estado = 1 GROUP BY p.codigo ORDER BY p.nombre", (marca_nombre,))
 
     def get_by_sucursal(self, sid):
         return self.fetch_all("transalca",
-            "SELECT p.*, c.nombre as categoria_nombre, m.nombre as marca_nombre, COALESCE(i.stock,0) as stock FROM productos p LEFT JOIN categorias c ON p.categoria_id = c.id LEFT JOIN marcas m ON p.marca_id = m.id LEFT JOIN inventario i ON p.id = i.producto_id WHERE p.sucursal_id = %s AND p.estado = 1 ORDER BY p.nombre", (sid,))
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, COALESCE(SUM(i.stock),0) as stock FROM productos p LEFT JOIN inventario i ON p.codigo = i.producto_codigo WHERE p.sucursal_id = %s AND p.estado = 1 GROUP BY p.codigo ORDER BY p.nombre", (sid,))
 
     def search(self, q):
         q = f"%{q}%"
         return self.fetch_all("transalca",
-            "SELECT p.*, c.nombre as categoria_nombre, m.nombre as marca_nombre, COALESCE(i.stock,0) as stock FROM productos p LEFT JOIN categorias c ON p.categoria_id = c.id LEFT JOIN marcas m ON p.marca_id = m.id LEFT JOIN inventario i ON p.id = i.producto_id WHERE (p.nombre LIKE %s OR p.codigo LIKE %s OR p.descripcion LIKE %s) AND p.estado = 1 ORDER BY p.nombre", (q, q, q))
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, COALESCE(SUM(i.stock),0) as stock FROM productos p LEFT JOIN inventario i ON p.codigo = i.producto_codigo WHERE (p.nombre LIKE %s OR p.codigo LIKE %s OR p.descripcion LIKE %s) AND p.estado = 1 GROUP BY p.codigo ORDER BY p.nombre", (q, q, q))
 
     def create(self, data):
         return self.insert("transalca",
-            "INSERT INTO productos (codigo, nombre, descripcion, precio, categoria_id, marca_id, sucursal_id) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            "INSERT INTO productos (codigo, nombre, descripcion, precio, categoria, marca, sucursal_id) VALUES (%s, %s, %s, %s, %s, %s, %s)",
             (data['codigo'].strip(), data['nombre'].strip(), data.get('descripcion', '').strip(),
-             float(data['precio']), data.get('categoria_id') or None, data.get('marca_id') or None,
+             float(data['precio']), data.get('categoria') or None, data.get('marca') or None,
              data.get('sucursal_id') or None))
 
-    def update_product(self, pid, data):
+    def update_product(self, old_codigo, data):
         return self.update("transalca",
-            "UPDATE productos SET codigo = %s, nombre = %s, descripcion = %s, precio = %s, categoria_id = %s, marca_id = %s, sucursal_id = %s WHERE id = %s",
+            "UPDATE productos SET codigo = %s, nombre = %s, descripcion = %s, precio = %s, categoria = %s, marca = %s, sucursal_id = %s WHERE codigo = %s",
             (data['codigo'].strip(), data['nombre'].strip(), data.get('descripcion', '').strip(),
-             float(data['precio']), data.get('categoria_id') or None, data.get('marca_id') or None,
-             data.get('sucursal_id') or None, pid))
+             float(data['precio']), data.get('categoria') or None, data.get('marca') or None,
+             data.get('sucursal_id') or None, old_codigo))
 
-    def soft_delete(self, pid):
-        return self.update("transalca", "UPDATE productos SET estado = 0 WHERE id = %s", (pid,))
+    def soft_delete(self, codigo):
+        return self.update("transalca", "UPDATE productos SET estado = 0 WHERE codigo = %s", (codigo,))
 
-    def toggle_estado(self, pid):
-        return self.update("transalca", "UPDATE productos SET estado = IF(estado=1,0,1) WHERE id = %s", (pid,))
+    def toggle_estado(self, codigo):
+        return self.update("transalca", "UPDATE productos SET estado = IF(estado=1,0,1) WHERE codigo = %s", (codigo,))
 
-    def codigo_exists(self, codigo, exclude_id=None):
-        if exclude_id:
-            result = self.fetch_one("transalca", "SELECT id FROM productos WHERE codigo = %s AND id != %s", (codigo, exclude_id))
+    def codigo_exists(self, codigo, exclude_codigo=None):
+        if exclude_codigo:
+            result = self.fetch_one("transalca", "SELECT codigo FROM productos WHERE codigo = %s AND codigo != %s", (codigo, exclude_codigo))
         else:
-            result = self.fetch_one("transalca", "SELECT id FROM productos WHERE codigo = %s", (codigo,))
+            result = self.fetch_one("transalca", "SELECT codigo FROM productos WHERE codigo = %s", (codigo,))
         return result is not None

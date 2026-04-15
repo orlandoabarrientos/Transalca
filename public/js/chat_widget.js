@@ -2,7 +2,8 @@
 (function() {
     'use strict';
 
-    const WEBHOOK_URL = ''; // Set your n8n webhook URL here
+    const ASSISTANT_API_URL = window.TRANSALCA_ASSISTANT_API_URL || '';
+    const WEBHOOK_URL = window.TRANSALCA_ASSISTANT_WEBHOOK_URL || '';
     const BOT_NAME = 'Asistente Transalca';
     const WELCOME_MSG = '¡Hola! Soy el asistente de Transalca C.A. Cuéntame qué necesitas y te ayudo. Si quieres hablar con una persona real, me dices y te paso el número.';
     const SUGGESTIONS = [
@@ -18,9 +19,18 @@
     let messages = [];
 
     function generateSessionId() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
         let id = '';
-        for (let i = 0; i < 20; i++) {
-            id += Math.floor(Math.random() * 10).toString();
+        if (window.crypto && window.crypto.getRandomValues) {
+            const arr = new Uint32Array(20);
+            window.crypto.getRandomValues(arr);
+            for (let i = 0; i < 20; i++) {
+                id += chars.charAt(arr[i] % chars.length);
+            }
+            return id;
+        }
+        for (let i = 0; i < 20; i += 1) {
+            id += chars.charAt(Math.floor(Math.random() * chars.length));
         }
         return id;
     }
@@ -30,12 +40,13 @@
         btn.id = 'chatToggleBtn';
         btn.className = 'chat-toggle-btn';
         btn.innerHTML = '<i class="bi bi-chat-dots-fill"></i><span class="badge-dot"></span>';
-        btn.onclick = toggleChat;
+        btn.onclick = function(e) { e.stopPropagation(); toggleChat(); };
         document.body.appendChild(btn);
 
         const panel = document.createElement('div');
         panel.id = 'chatPanel';
         panel.className = 'chat-panel';
+        panel.onclick = function(e) { e.stopPropagation(); };
         panel.innerHTML = `
             <div class="chat-header">
                 <div class="chat-header-info">
@@ -60,6 +71,16 @@
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 window.TransalcaChat.send();
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (isOpen) {
+                const panel = document.getElementById('chatPanel');
+                const btn = document.getElementById('chatToggleBtn');
+                if (panel && btn && !panel.contains(e.target) && !btn.contains(e.target)) {
+                    closeChat();
+                }
             }
         });
 
@@ -107,7 +128,6 @@
         document.getElementById('chatPanel').classList.remove('open');
         document.getElementById('chatToggleBtn').classList.remove('active');
         document.getElementById('chatToggleBtn').innerHTML = '<i class="bi bi-chat-dots-fill"></i><span class="badge-dot"></span>';
-        sessionId = null;
     }
 
     function sendMessage(text) {
@@ -116,10 +136,8 @@
 
         addUserMessage(msg);
         document.getElementById('chatInput').value = '';
-
         showTyping();
-
-        sendToWebhook(msg);
+        sendToAssistant(msg);
     }
 
     function addUserMessage(text) {
@@ -171,10 +189,48 @@
         if (el) el.remove();
     }
 
+    async function sendToAssistant(message) {
+        if (ASSISTANT_API_URL) {
+            try {
+                const response = await fetch(ASSISTANT_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        id_aleatorio: sessionId,
+                        mensaje: message,
+                        expected_response: 'json',
+                        timestamp: new Date().toISOString(),
+                        source: 'transalca_chat'
+                    })
+                });
+
+                hideTyping();
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const botReply = data.respuesta || data.message || data.output || data.text || 'Recibido. Un asesor te contactará pronto.';
+                    addBotMessage(botReply);
+                } else {
+                    addBotMessage('Disculpa, hubo un problema al procesar tu solicitud. Intenta de nuevo o llámanos al +58 424-5026456.');
+                }
+                return;
+            } catch (error) {
+                hideTyping();
+                addBotMessage('No se pudo conectar con el asistente. Por favor intenta más tarde o contáctanos directamente al +58 424-5026456.');
+                return;
+            }
+        }
+
+        await sendToWebhook(message);
+    }
+
     async function sendToWebhook(message) {
         const payload = {
-            sessionId: sessionId,
-            message: message,
+            session_id: sessionId,
+            id_aleatorio: sessionId,
+            mensaje: message,
+            expected_response: 'json',
             timestamp: new Date().toISOString(),
             source: 'transalca_chat'
         };
@@ -198,7 +254,7 @@
 
             if (response.ok) {
                 const data = await response.json();
-                const botReply = data.message || data.output || data.text || 'Recibido. Un asesor te contactará pronto.';
+                const botReply = data.respuesta || data.message || data.output || data.text || 'Recibido. Un asesor te contactará pronto.';
                 addBotMessage(botReply);
             } else {
                 addBotMessage('Disculpa, hubo un problema al procesar tu solicitud. Intenta de nuevo o llámanos al +58 424-5026456.');

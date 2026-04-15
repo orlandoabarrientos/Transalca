@@ -8,13 +8,13 @@ class QRModel(Connection):
 
     def create_qr(self, data):
         return self.insert("transalca",
-            "INSERT INTO qr_codes (usuario_id, tipo, contenido, utilidad) VALUES (%s, %s, %s, %s)",
-            (data['usuario_id'], data.get('tipo', 'info'), data.get('contenido', ''), data.get('utilidad', '')))
+            "INSERT INTO qr_codes (usuario_cedula, tipo, contenido, utilidad) VALUES (%s, %s, %s, %s)",
+            (data['usuario_cedula'], data.get('tipo', 'info'), data.get('contenido', ''), data.get('utilidad', '')))
 
-    def get_user_qrs(self, usuario_id):
+    def get_user_qrs(self, usuario_cedula):
         return self.fetch_all("transalca",
-            "SELECT * FROM qr_codes WHERE usuario_id = %s AND estado = 1 ORDER BY created_at DESC",
-            (usuario_id,))
+            "SELECT * FROM qr_codes WHERE usuario_cedula = %s AND estado = 1 ORDER BY created_at DESC",
+            (usuario_cedula,))
 
     def get_by_id(self, qr_id):
         return self.fetch_one("transalca", "SELECT * FROM qr_codes WHERE id = %s", (qr_id,))
@@ -36,7 +36,7 @@ class QRModel(Connection):
         if not qr:
             return None
         user = self.fetch_one("mantenimiento",
-            "SELECT nombre, apellido, cedula, email, telefono FROM usuarios WHERE id = %s", (qr['usuario_id'],))
+            "SELECT nombre, apellido, cedula, email, telefono FROM usuarios WHERE cedula = %s", (qr['usuario_cedula'],))
         result = {"qr": qr, "usuario": user}
         if qr['tipo'] == 'promocion':
             try:
@@ -53,7 +53,7 @@ class QRModel(Connection):
                 order = self.fetch_one("transalca", "SELECT * FROM ordenes_venta WHERE id = %s", (content.get('orden_id'),))
                 if order:
                     order['detalles'] = self.fetch_all("transalca",
-                        "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre ELSE s.nombre END as item_nombre FROM detalle_orden_venta d LEFT JOIN productos p ON d.producto_id = p.id LEFT JOIN servicios s ON d.servicio_id = s.id WHERE d.orden_id = %s",
+                        "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre ELSE s.nombre END as item_nombre FROM detalle_orden_venta d LEFT JOIN productos p ON d.producto_codigo = p.codigo LEFT JOIN servicios s ON d.servicio_id = s.id WHERE d.orden_id = %s",
                         (order['id'],))
                 result['orden'] = order
             except (json.JSONDecodeError, TypeError):
@@ -64,6 +64,6 @@ class QRModel(Connection):
         qrs = self.fetch_all("transalca", "SELECT * FROM qr_codes WHERE estado = 1 ORDER BY created_at DESC")
         for qr in qrs:
             user = self.fetch_one("mantenimiento",
-                "SELECT nombre, apellido FROM usuarios WHERE id = %s", (qr['usuario_id'],))
+                "SELECT nombre, apellido FROM usuarios WHERE cedula = %s", (qr['usuario_cedula'],))
             qr['usuario_nombre'] = f"{user['nombre']} {user['apellido']}" if user else 'N/A'
         return qrs

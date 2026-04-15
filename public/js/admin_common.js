@@ -328,7 +328,7 @@ async function loadNavSession() {
                 const page = window.location.pathname.split('/').pop();
                 const titles = {
                     dashboard: 'Dashboard', products: 'Productos', categories: 'Categorias',
-                    brands: 'Marcas', suppliers: 'Proveedores', inventory: 'Inventario',
+                    brands: 'Marcas', suppliers: 'Proveedores', inventory: 'Gestionar Stock de Productos',
                     services: 'Servicios', mechanics: 'Mecanicos', orders: 'Ordenes de Venta',
                     payments: 'Comprobacion de Pagos', promotions: 'Promociones',
                     users: 'Usuarios', roles: 'Roles y Permisos', qr: 'Codigos QR',

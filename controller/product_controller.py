@@ -28,10 +28,10 @@ def get_active():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@product_bp.route('/<int:pid>', methods=['GET'])
-def get_one(pid):
+@product_bp.route('/detail/<path:codigo>', methods=['GET'])
+def get_one(codigo):
     try:
-        product = model.get_by_id(pid)
+        product = model.get_by_codigo(codigo)
         if product:
             return jsonify({"status": "success", "data": product})
         return jsonify({"status": "error", "message": "Producto no encontrado"}), 404
@@ -39,18 +39,18 @@ def get_one(pid):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@product_bp.route('/category/<int:cid>', methods=['GET'])
-def get_by_category(cid):
+@product_bp.route('/category/<path:categoria>', methods=['GET'])
+def get_by_category(categoria):
     try:
-        return jsonify({"status": "success", "data": model.get_by_category(cid)})
+        return jsonify({"status": "success", "data": model.get_by_category(categoria)})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@product_bp.route('/brand/<int:bid>', methods=['GET'])
-def get_by_brand(bid):
+@product_bp.route('/brand/<path:marca>', methods=['GET'])
+def get_by_brand(marca):
     try:
-        return jsonify({"status": "success", "data": model.get_by_brand(bid)})
+        return jsonify({"status": "success", "data": model.get_by_brand(marca)})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -93,20 +93,21 @@ def create():
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         if model.codigo_exists(data['codigo'].strip()):
             return jsonify({"status": "error", "message": "El codigo ya existe", "errors": {"codigo": "El codigo ya existe"}}), 400
-        pid = model.create(data)
+        model.create(data)
         bitacora.log_action(session['user_id'], 'CREAR', 'PRODUCTOS',
             f"Producto creado: {data['nombre']}", request.remote_addr)
-        return jsonify({"status": "success", "message": "Producto creado", "id": pid})
+        return jsonify({"status": "success", "message": "Producto creado", "codigo": data['codigo'].strip()})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@product_bp.route('/<int:pid>', methods=['PUT'])
-def update(pid):
+@product_bp.route('/update', methods=['PUT'])
+def update():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         data = request.get_json()
+        old_codigo = data.get('old_codigo', '')
         errors = {}
         if not data.get('codigo') or len(data['codigo'].strip()) < 2:
             errors['codigo'] = 'El codigo es requerido'
@@ -118,39 +119,46 @@ def update(pid):
                 errors['precio'] = 'El precio debe ser mayor a 0'
         except (ValueError, TypeError):
             errors['precio'] = 'Precio invalido'
+        if not old_codigo:
+            errors['old_codigo'] = 'Identificador de producto requerido'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        if model.codigo_exists(data['codigo'].strip(), pid):
+        new_codigo = data['codigo'].strip()
+        if new_codigo != old_codigo and model.codigo_exists(new_codigo):
             return jsonify({"status": "error", "message": "El codigo ya existe", "errors": {"codigo": "El codigo ya existe"}}), 400
-        model.update_product(pid, data)
+        model.update_product(old_codigo, data)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'PRODUCTOS',
-            f"Producto modificado ID: {pid}", request.remote_addr)
+            f"Producto modificado: {old_codigo}", request.remote_addr)
         return jsonify({"status": "success", "message": "Producto actualizado"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@product_bp.route('/<int:pid>', methods=['DELETE'])
-def delete(pid):
+@product_bp.route('/delete', methods=['DELETE'])
+def delete():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        model.soft_delete(pid)
+        data = request.get_json()
+        codigo = data.get('codigo', '')
+        model.soft_delete(codigo)
         bitacora.log_action(session['user_id'], 'ELIMINAR', 'PRODUCTOS',
-            f"Producto desactivado ID: {pid}", request.remote_addr)
+            f"Producto desactivado: {codigo}", request.remote_addr)
         return jsonify({"status": "success", "message": "Producto desactivado"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@product_bp.route('/<int:pid>/toggle', methods=['PUT'])
-def toggle(pid):
+@product_bp.route('/toggle', methods=['PUT'])
+def toggle():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        model.toggle_estado(pid)
+        data = request.get_json()
+        codigo = data.get('codigo', '')
+        model.toggle_estado(codigo)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'PRODUCTOS',
-            f"Estado producto cambiado ID: {pid}", request.remote_addr)
+            f"Estado producto cambiado: {codigo}", request.remote_addr)
         return jsonify({"status": "success", "message": "Estado actualizado"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

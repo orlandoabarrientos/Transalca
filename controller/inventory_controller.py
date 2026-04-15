@@ -36,8 +36,8 @@ def update_stock():
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         data = request.get_json()
         errors = {}
-        if not data.get('producto_id'):
-            errors['producto_id'] = 'Debe seleccionar un producto'
+        if not data.get('producto_codigo'):
+            errors['producto_codigo'] = 'Debe seleccionar un producto'
         try:
             stock = int(data.get('stock', -1))
             if stock < 0:
@@ -46,9 +46,9 @@ def update_stock():
             errors['stock'] = 'Stock invalido'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        model.update_stock(data['producto_id'], stock, data.get('sucursal_id'))
+        model.update_stock(data['producto_codigo'], stock, data.get('sucursal_id'))
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'INVENTARIO',
-            f"Stock actualizado producto ID: {data['producto_id']}", request.remote_addr)
+            f"Stock actualizado producto: {data['producto_codigo']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Stock actualizado"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -77,16 +77,16 @@ def get_purchase_order(order_id):
 @inventory_bp.route('/purchase-orders', methods=['POST'])
 def create_purchase_order():
     try:
-        if 'user_id' not in session:
+        if 'user_cedula' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         data = request.get_json()
         errors = {}
-        if not data.get('proveedor_id'):
-            errors['proveedor_id'] = 'Debe seleccionar un proveedor'
+        if not data.get('proveedor_rif'):
+            errors['proveedor_rif'] = 'Debe seleccionar un proveedor'
         if not data.get('detalles') or len(data['detalles']) == 0:
             errors['detalles'] = 'Debe agregar al menos un producto'
         for i, det in enumerate(data.get('detalles', [])):
-            if not det.get('producto_id'):
+            if not det.get('producto_codigo'):
                 errors[f'producto_{i}'] = 'Producto requerido'
             if not det.get('cantidad') or int(det.get('cantidad', 0)) <= 0:
                 errors[f'cantidad_{i}'] = 'Cantidad debe ser mayor a 0'
@@ -95,8 +95,8 @@ def create_purchase_order():
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         order_data = {
-            'proveedor_id': data['proveedor_id'],
-            'usuario_id': session['user_id'],
+            'proveedor_rif': data['proveedor_rif'],
+            'usuario_cedula': session['user_cedula'],
             'sucursal_id': data.get('sucursal_id'),
             'total': data.get('total', 0),
             'observaciones': data.get('observaciones', '')

@@ -20,9 +20,11 @@ def get_all():
 @qr_bp.route('/my', methods=['GET'])
 def my_qrs():
     try:
-        if 'user_id' not in session:
+        if 'user_cedula' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        return jsonify({"status": "success", "data": model.get_user_qrs(session['user_id'])})
+        if session.get('user_tipo') != 'cliente':
+            return jsonify({"status": "error", "message": "Solo clientes"}), 403
+        return jsonify({"status": "success", "data": model.get_user_qrs(session['user_cedula'])})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -51,7 +53,7 @@ def create():
             errors['contenido'] = 'El contenido es requerido (min 3 caracteres)'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        data['usuario_id'] = session['user_id']
+        data['usuario_cedula'] = session['user_cedula']
         qr_id = model.create_qr(data)
         bitacora.log_action(session['user_id'], 'CREAR', 'QR',
             f"QR creado ID: {qr_id}", request.remote_addr)
@@ -90,6 +92,10 @@ def delete(qr_id):
 @qr_bp.route('/scan/<int:qr_id>', methods=['GET'])
 def scan(qr_id):
     try:
+        if 'user_cedula' not in session:
+            return jsonify({"status": "error", "message": "No autorizado"}), 401
+        if session.get('user_tipo') != 'cliente':
+            return jsonify({"status": "error", "message": "Solo clientes"}), 403
         data = model.get_qr_data(qr_id)
         if data:
             return jsonify({"status": "success", "data": data})

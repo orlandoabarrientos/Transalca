@@ -88,7 +88,7 @@ def export_reports():
             data = model.get_inventory_kardex(start_date, end_date)
             headers = ["ID", "Producto", "Código", "Motivo", "Tipo Obra", "Fecha", "Cantidad"]
             rows = [[d['id'], d['producto'], d['codigo'], d['motivo'], d['tipo'], d['fecha'], d['cantidad']] for d in data]
-            title = "Kárdex de Inventario"
+            title = "Kárdex de Gestionar Stock de Productos"
         elif report_type == 'mechanics':
             data = model.get_mechanics_performance(start_date, end_date)
             headers = ["Mecánico", "Servicios Asignados", "Completados", "Ingreso Generado"]

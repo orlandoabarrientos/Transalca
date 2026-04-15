@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -8,11 +8,10 @@
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/public/css/styles.css" rel="stylesheet">
-    <link href="/public/css/chat_widget.css" rel="stylesheet">
+    <link href="/componente_ia/chat_widget.css" rel="stylesheet">
 </head>
 <body>
 <div id="navbarContainer"></div>
-
 
 <section class="hero-section">
     <div class="container">
@@ -27,13 +26,11 @@
 </section>
 
 <div class="container">
-    
     <div class="mb-5">
         <h3 class="fw-bold mb-3">Categorias</h3>
         <div class="row g-3" id="categoriesList"></div>
     </div>
 
-    
     <div class="mb-5">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h3 class="fw-bold mb-0">Productos Destacados</h3>
@@ -42,13 +39,11 @@
         <div class="row g-3" id="featuredProducts"></div>
     </div>
 
-    
     <div class="mb-5">
         <h3 class="fw-bold mb-3">Nuestros Servicios</h3>
         <div class="row g-3" id="servicesList"></div>
     </div>
 
-    
     <div class="mb-5">
         <h3 class="fw-bold mb-3">Nuestras Sucursales</h3>
         <div class="row g-3" id="branchesList"></div>
@@ -74,7 +69,7 @@ async function loadHome() {
         const res = await fetch('/api/categories/active').then(r => r.json());
         const el = document.getElementById('categoriesList');
         (res.data || []).slice(0,6).forEach(c => {
-            el.innerHTML += `<div class="col-6 col-md-4 col-lg-2"><a href="/client/catalog?category=${c.id}" class="text-decoration-none"><div class="card text-center p-3" style="cursor:pointer;"><i class="bi bi-tag-fill" style="font-size:1.5rem;color:var(--primary);"></i><p class="fw-bold mt-2 mb-0" style="font-size:0.8rem;color:var(--text-primary);">${c.nombre}</p></div></a></div>`;
+            el.innerHTML += `<div class="col-6 col-md-4 col-lg-2"><a href="/client/catalog?category=${encodeURIComponent(c.nombre)}" class="text-decoration-none"><div class="card text-center p-3" style="cursor:pointer;"><i class="bi bi-tag-fill" style="font-size:1.5rem;color:var(--primary);"></i><p class="fw-bold mt-2 mb-0" style="font-size:0.8rem;color:var(--text-primary);">${c.nombre}</p></div></a></div>`;
         });
     } catch(e) {}
 
@@ -91,7 +86,7 @@ async function loadHome() {
                     <div class="product-price">$${formatCurrency(p.precio)}</div>
                     ${p.sucursal_nombre ? `<div class="product-branch"><i class="bi bi-geo-alt"></i>${p.sucursal_nombre}</div>` : ''}
                 </div>
-                <button class="btn-add-cart" onclick="addToCart(${p.id})"><i class="bi bi-cart-plus me-1"></i>Agregar al Carrito</button>
+                <button class="btn-add-cart" onclick="addToCart('${p.codigo}')"><i class="bi bi-cart-plus me-1"></i>Agregar al Carrito</button>
             </div></div>`;
         });
         if (!res.data?.length) el.innerHTML = '<div class="col-12"><div class="empty-state"><i class="bi bi-box-seam"></i><p>Proximamente productos disponibles</p></div></div>';
@@ -125,6 +120,6 @@ async function loadHome() {
     } catch(e) {}
 }
 </script>
-<script src="/public/js/chat_widget.js"></script>
+<script src="/componente_ia/chat_widget.js"></script>
 </body>
 </html>

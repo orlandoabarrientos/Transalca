@@ -26,10 +26,10 @@ def get_active():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@supplier_bp.route('/<int:supplier_id>', methods=['GET'])
-def get_one(supplier_id):
+@supplier_bp.route('/<path:rif>', methods=['GET'])
+def get_one(rif):
     try:
-        supplier = model.get_by_id(supplier_id)
+        supplier = model.get_by_rif(rif)
         if supplier:
             return jsonify({"status": "success", "data": supplier})
         return jsonify({"status": "error", "message": "Proveedor no encontrado"}), 404
@@ -56,60 +56,68 @@ def create():
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         if model.rif_exists(data['rif'].strip()):
             return jsonify({"status": "error", "message": "El RIF ya esta registrado", "errors": {"rif": "El RIF ya esta registrado"}}), 400
-        supplier_id = model.create(data)
+        model.create(data)
         bitacora.log_action(session['user_id'], 'CREAR', 'PROVEEDORES',
             f"Proveedor creado: {data['nombre']}", request.remote_addr)
-        return jsonify({"status": "success", "message": "Proveedor creado", "id": supplier_id})
+        return jsonify({"status": "success", "message": "Proveedor creado", "rif": data['rif'].strip()})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@supplier_bp.route('/<int:supplier_id>', methods=['PUT'])
-def update(supplier_id):
+@supplier_bp.route('/update', methods=['PUT'])
+def update():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         data = request.get_json()
         errors = {}
+        old_rif = data.get('old_rif', '')
         if not data.get('nombre') or len(data['nombre'].strip()) < 3:
             errors['nombre'] = 'El nombre debe tener al menos 3 caracteres'
         if not data.get('rif') or not re.match(r'^[JGVEP]-\d{8}-\d$', data['rif'].strip()):
             errors['rif'] = 'RIF invalido. Formato: J-12345678-9'
         if data.get('email') and not re.match(r'^[^@]+@[^@]+\.[^@]+$', data['email']):
             errors['email'] = 'Email invalido'
+        if not old_rif:
+            errors['old_rif'] = 'Identificador de proveedor requerido'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        if model.rif_exists(data['rif'].strip(), supplier_id):
+        new_rif = data['rif'].strip()
+        if new_rif != old_rif and model.rif_exists(new_rif):
             return jsonify({"status": "error", "message": "El RIF ya esta registrado", "errors": {"rif": "El RIF ya esta registrado"}}), 400
-        model.update_supplier(supplier_id, data)
+        model.update_supplier(old_rif, data)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'PROVEEDORES',
-            f"Proveedor modificado ID: {supplier_id}", request.remote_addr)
+            f"Proveedor modificado: {old_rif}", request.remote_addr)
         return jsonify({"status": "success", "message": "Proveedor actualizado"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@supplier_bp.route('/<int:supplier_id>', methods=['DELETE'])
-def delete(supplier_id):
+@supplier_bp.route('/delete', methods=['DELETE'])
+def delete():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        model.soft_delete(supplier_id)
+        data = request.get_json()
+        rif = data.get('rif', '')
+        model.soft_delete(rif)
         bitacora.log_action(session['user_id'], 'ELIMINAR', 'PROVEEDORES',
-            f"Proveedor desactivado ID: {supplier_id}", request.remote_addr)
+            f"Proveedor desactivado: {rif}", request.remote_addr)
         return jsonify({"status": "success", "message": "Proveedor desactivado"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@supplier_bp.route('/<int:supplier_id>/toggle', methods=['PUT'])
-def toggle(supplier_id):
+@supplier_bp.route('/toggle', methods=['PUT'])
+def toggle():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        model.toggle_estado(supplier_id)
+        data = request.get_json()
+        rif = data.get('rif', '')
+        model.toggle_estado(rif)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'PROVEEDORES',
-            f"Estado proveedor cambiado ID: {supplier_id}", request.remote_addr)
+            f"Estado proveedor cambiado: {rif}", request.remote_addr)
         return jsonify({"status": "success", "message": "Estado actualizado"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

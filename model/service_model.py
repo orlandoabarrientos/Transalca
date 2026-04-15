@@ -37,13 +37,18 @@ class ServiceModel(Connection):
         return self.update("transalca", "UPDATE servicios SET estado = 0 WHERE id = %s", (sid,))
 
     def get_assignments(self):
-        return self.fetch_all("transalca",
+        assignments = self.fetch_all("transalca",
             "SELECT sm.*, s.nombre as servicio_nombre, s.precio FROM servicio_mecanico sm INNER JOIN servicios s ON sm.servicio_id = s.id ORDER BY sm.fecha DESC")
+        for a in assignments:
+            mec = self.fetch_one("transalca",
+                "SELECT nombre, apellido FROM mecanicos WHERE cedula = %s", (a['mecanico_cedula'],))
+            a['mecanico_nombre'] = f"{mec['nombre']} {mec['apellido']}" if mec else 'N/A'
+        return assignments
 
     def assign_mechanic(self, data):
         return self.insert("transalca",
-            "INSERT INTO servicio_mecanico (servicio_id, mecanico_id, orden_venta_id, observaciones) VALUES (%s, %s, %s, %s)",
-            (data['servicio_id'], data['mecanico_id'], data.get('orden_venta_id'), data.get('observaciones', '')))
+            "INSERT INTO servicio_mecanico (servicio_id, mecanico_cedula, orden_venta_id, observaciones) VALUES (%s, %s, %s, %s)",
+            (data['servicio_id'], data['mecanico_cedula'], data.get('orden_venta_id'), data.get('observaciones', '')))
 
     def update_assignment_status(self, aid, estado):
         return self.update("transalca",

@@ -31,6 +31,9 @@
                 <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-lock"></i></span>
                     <input type="password" class="form-control" id="loginPassword" name="loginPassword" placeholder="••••••••" required>
+                    <button class="btn btn-outline-secondary" type="button" id="togglePassword" tabindex="-1" style="border-color:var(--border-color);">
+                        <i class="bi bi-eye"></i>
+                    </button>
                 </div>
                 <div class="invalid-feedback"></div>
             </div>
@@ -53,5 +56,20 @@
 <script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
 <script src="/public/js/admin_common.js"></script>
 <script src="/public/js/auth.js"></script>
+<script>
+document.getElementById('togglePassword').addEventListener('click', function() {
+    const input = document.getElementById('loginPassword');
+    const icon = this.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
+    }
+});
+</script>
 </body>
 </html>

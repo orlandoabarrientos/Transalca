@@ -41,20 +41,20 @@ class PromotionModel(Connection):
     def soft_delete(self, promo_id):
         return self.delete_promotion(promo_id)
 
-    def assign_card_to_client(self, cliente_id, promocion_id):
+    def assign_card_to_client(self, cliente_cedula, promocion_id):
         existing = self.fetch_one("transalca",
-            "SELECT id FROM tarjeta_fidelidad WHERE cliente_id = %s AND promocion_id = %s AND canjeada = 0",
-            (cliente_id, promocion_id))
+            "SELECT id FROM tarjeta_fidelidad WHERE cliente_cedula = %s AND promocion_id = %s AND canjeada = 0",
+            (cliente_cedula, promocion_id))
         if existing:
             return existing['id']
         return self.insert("transalca",
-            "INSERT INTO tarjeta_fidelidad (cliente_id, promocion_id) VALUES (%s, %s)",
-            (cliente_id, promocion_id))
+            "INSERT INTO tarjeta_fidelidad (cliente_cedula, promocion_id) VALUES (%s, %s)",
+            (cliente_cedula, promocion_id))
 
-    def get_client_cards(self, cliente_id):
+    def get_client_cards(self, cliente_cedula):
         cards = self.fetch_all("transalca",
-            "SELECT tf.*, p.nombre as promo_nombre, p.descripcion as promo_descripcion, p.puntos_requeridos, p.recompensa, p.imagen_tarjeta, p.tipo FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id WHERE tf.cliente_id = %s ORDER BY tf.fecha_creacion DESC",
-            (cliente_id,))
+            "SELECT tf.*, p.nombre as promo_nombre, p.descripcion as promo_descripcion, p.puntos_requeridos, p.recompensa, p.imagen_tarjeta, p.tipo FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id WHERE tf.cliente_cedula = %s ORDER BY tf.fecha_creacion DESC",
+            (cliente_cedula,))
         return cards
 
     def add_point(self, tarjeta_id, descripcion=''):
@@ -83,10 +83,10 @@ class PromotionModel(Connection):
             "SELECT tf.*, p.nombre as promo_nombre, p.puntos_requeridos, p.recompensa FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id ORDER BY tf.fecha_creacion DESC")
         for card in cards:
             client = self.fetch_one("mantenimiento",
-                "SELECT nombre, apellido, cedula FROM usuarios WHERE id = %s", (card['cliente_id'],))
+                "SELECT nombre, apellido, cedula FROM usuarios WHERE cedula = %s", (card['cliente_cedula'],))
             if client:
                 card['cliente_nombre'] = f"{client['nombre']} {client['apellido']}"
-                card['cliente_cedula'] = client['cedula']
+                card['cliente_cedula_display'] = client['cedula']
         return cards
 
     def get_card_by_id(self, card_id):
@@ -95,7 +95,7 @@ class PromotionModel(Connection):
             (card_id,))
         if card:
             client = self.fetch_one("mantenimiento",
-                "SELECT nombre, apellido, cedula, email, telefono FROM usuarios WHERE id = %s", (card['cliente_id'],))
+                "SELECT nombre, apellido, cedula, email, telefono FROM usuarios WHERE cedula = %s", (card['cliente_cedula'],))
             if client:
                 card.update(client)
         return card

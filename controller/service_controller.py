@@ -122,8 +122,8 @@ def assign():
         errors = {}
         if not data.get('servicio_id'):
             errors['servicio_id'] = 'Debe seleccionar un servicio'
-        if not data.get('mecanico_id'):
-            errors['mecanico_id'] = 'Debe seleccionar un mecanico'
+        if not data.get('mecanico_cedula'):
+            errors['mecanico_cedula'] = 'Debe seleccionar un mecanico'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         aid = model.assign_mechanic(data)

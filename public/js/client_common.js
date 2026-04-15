@@ -42,11 +42,13 @@ function updateNavForUser() {
     if (photo) photo.src = `/public/assets/profile_pics/${currentUser.foto || 'default.png'}`;
     document.querySelectorAll('.auth-required').forEach(el => el.style.display = '');
     document.querySelectorAll('.guest-only').forEach(el => el.style.display = 'none');
-    
     const adminBtn = document.getElementById('navAdminBtn');
     if (adminBtn) {
         adminBtn.style.display = (currentUser.tipo === 'empleado' || currentUser.tipo === 'admin') ? '' : 'none';
     }
+    document.querySelectorAll('.client-only-qr').forEach(el => {
+        el.style.display = (currentUser.tipo === 'cliente') ? '' : 'none';
+    });
 }
 
 function updateNavForGuest() {
@@ -100,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
     checkSession();
 });
 
-// Event Delegation for dynamically loaded elements
 document.body.addEventListener('click', async (e) => {
     const logoutTarget = e.target.closest('#clientLogout');
     if (logoutTarget) {

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +8,7 @@
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/public/css/styles.css" rel="stylesheet">
-    <link href="/public/css/chat_widget.css" rel="stylesheet">
+    <link href="/componente_ia/chat_widget.css" rel="stylesheet">
 </head>
 <body>
 <div id="navbarContainer"></div>
@@ -68,7 +68,7 @@ async function loadCatalog() {
     try {
         const cats = await fetch('/api/categories/active').then(r => r.json());
         const sel = document.getElementById('filterCategory');
-        (cats.data||[]).forEach(c => sel.innerHTML += `<option value="${c.id}">${c.nombre}</option>`);
+        (cats.data||[]).forEach(c => sel.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`);
     } catch(e) {}
     try {
         const branches = await fetch('/api/sucursales/active').then(r => r.json());
@@ -115,7 +115,7 @@ function filterProducts() {
 
     let filtered = allProducts.filter(p => {
         if (q && !p.nombre.toLowerCase().includes(q) && !(p.codigo||'').toLowerCase().includes(q)) return false;
-        if (cat && p.categoria_id != cat) return false;
+        if (cat && p.categoria != cat) return false;
         if (branch && p.sucursal_id && p.sucursal_id != branch) return false;
         return true;
     });
@@ -147,7 +147,7 @@ function renderProducts(products) {
                 <div class="product-price">$${formatCurrency(p.precio)}</div>
                 ${p.sucursal_nombre ? `<div class="product-branch"><i class="bi bi-geo-alt"></i>${p.sucursal_nombre}</div>` : ''}
             </div>
-            <button class="btn-add-cart" onclick="addToCart(${p.id})"><i class="bi bi-cart-plus me-1"></i>Agregar</button>
+            <button class="btn-add-cart" onclick="addToCart('${p.codigo}')"><i class="bi bi-cart-plus me-1"></i>Agregar</button>
         </div></div>`;
     });
     if (!products.length) grid.innerHTML = '<div class="col-12"><div class="empty-state"><i class="bi bi-search"></i><p>No se encontraron productos</p></div></div>';
@@ -168,6 +168,6 @@ function renderServices(services) {
     if (!services.length) grid.innerHTML = '<div class="col-12"><div class="empty-state"><i class="bi bi-wrench"></i><p>No se encontraron servicios</p></div></div>';
 }
 </script>
-<script src="/public/js/chat_widget.js"></script>
+<script src="/componente_ia/chat_widget.js"></script>
 </body>
 </html>

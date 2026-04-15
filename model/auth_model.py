@@ -81,3 +81,38 @@ class AuthModel(Connection):
         return self.fetch_all("mantenimiento",
             "SELECT r.* FROM roles r INNER JOIN usuario_rol ur ON r.id = ur.rol_id WHERE ur.usuario_id = %s",
             (user_id,))
+
+    def sync_to_transalca(self, user):
+        """Sync user from db_mantenimiento to the appropriate db_transalca table."""
+        try:
+            if user['tipo'] == 'cliente':
+                existing = self.fetch_one("transalca",
+                    "SELECT cedula FROM clientes WHERE cedula = %s", (user['cedula'],))
+                if not existing:
+                    self.insert("transalca",
+                        "INSERT INTO clientes (cedula, nombre, apellido, telefono, email, direccion) VALUES (%s, %s, %s, %s, %s, %s)",
+                        (user['cedula'], user['nombre'], user['apellido'],
+                         user.get('telefono', ''), user['email'], user.get('direccion', '')))
+            else:
+                existing = self.fetch_one("transalca",
+                    "SELECT cedula FROM usuarios WHERE cedula = %s", (user['cedula'],))
+                if not existing:
+                    self.insert("transalca",
+                        "INSERT INTO usuarios (cedula, nombre, apellido, email, password_hash) VALUES (%s, %s, %s, %s, %s)",
+                        (user['cedula'], user['nombre'], user['apellido'],
+                         user['email'], user['password_hash']))
+        except Exception:
+            pass  # Non-critical: sync failure shouldn't block login
+
+    def sync_client_to_transalca(self, data):
+        """Create client record in db_transalca.clientes after registration."""
+        try:
+            existing = self.fetch_one("transalca",
+                "SELECT cedula FROM clientes WHERE cedula = %s", (data['cedula'],))
+            if not existing:
+                self.insert("transalca",
+                    "INSERT INTO clientes (cedula, nombre, apellido, telefono, email, direccion) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (data['cedula'], data['nombre'], data['apellido'],
+                     data.get('telefono', ''), data['email'], data.get('direccion', '')))
+        except Exception:
+            pass

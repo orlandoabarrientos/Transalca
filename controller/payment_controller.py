@@ -38,9 +38,9 @@ def get_one(comp_id):
 @payment_bp.route('/<int:comp_id>/approve', methods=['POST'])
 def approve(comp_id):
     try:
-        if 'user_id' not in session:
+        if 'user_cedula' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        result = model.approve(comp_id, session['user_id'])
+        result = model.approve(comp_id, session['user_cedula'])
         if result:
             bitacora.log_action(session['user_id'], 'MODIFICAR', 'PAGOS',
                 f"Pago aprobado comprobante ID: {comp_id}", request.remote_addr)
@@ -55,10 +55,10 @@ def approve(comp_id):
 @payment_bp.route('/<int:comp_id>/reject', methods=['POST'])
 def reject(comp_id):
     try:
-        if 'user_id' not in session:
+        if 'user_cedula' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         data = request.get_json() or {}
-        result = model.reject(comp_id, session['user_id'], data.get('observaciones', ''))
+        result = model.reject(comp_id, session['user_cedula'], data.get('observaciones', ''))
         if result:
             bitacora.log_action(session['user_id'], 'MODIFICAR', 'PAGOS',
                 f"Pago rechazado comprobante ID: {comp_id}", request.remote_addr)

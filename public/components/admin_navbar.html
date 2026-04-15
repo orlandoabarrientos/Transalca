@@ -1,18 +1,15 @@
-﻿<nav class="top-navbar">
+<nav class="top-navbar">
     <div class="d-flex align-items-center gap-3">
         <button class="btn d-md-none" id="toggleSidebar"><i class="bi bi-list fs-4"></i></button>
         <h5 class="page-title mb-0" id="pageTitle">Dashboard</h5>
     </div>
     <div class="d-flex align-items-center gap-3">
-        
         <div class="d-none d-lg-flex align-items-center gap-2" id="adminRatesBar" style="font-size:0.68rem;font-weight:600;">
             <span style="background:var(--primary-soft);padding:3px 10px;border-radius:12px;color:var(--primary-dark);">
                 <i class="bi bi-bank me-1"></i>BCV: <span id="rateBcvAdmin">--</span> Bs
             </span>
-            <span style="background:#FFF7ED;padding:3px 10px;border-radius:12px;color:#B45309;">
-                <i class="bi bi-currency-exchange me-1"></i>Binance: <span id="rateBinanceAdmin">--</span> Bs
-            </span>
         </div>
+        <a href="/client/home" class="btn btn-sm btn-outline-success" target="_blank" title="Ver Tienda"><i class="bi bi-shop me-1"></i>Ver Tienda</a>
         <div class="user-info">
             <span class="d-none d-md-inline" id="navUserName"></span>
             <img src="/public/assets/profile_pics/default.png" alt="Perfil" id="navUserPhoto">
@@ -34,11 +31,8 @@
         const data = await res.json();
         if (data.status === 'success' && data.data) {
             const bcv = data.data.bcv?.usd || 0;
-            const binance = data.data.binance?.usdt_ves || 0;
             const bcvEl = document.getElementById('rateBcvAdmin');
-            const binEl = document.getElementById('rateBinanceAdmin');
             if (bcvEl) bcvEl.textContent = bcv > 0 ? bcv.toFixed(2) : 'N/D';
-            if (binEl) binEl.textContent = binance > 0 ? binance.toFixed(2) : 'N/D';
         }
     } catch(e) {}
 })();

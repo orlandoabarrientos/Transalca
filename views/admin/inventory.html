@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventario - Transalca C.A.</title>
+    <title>Gestionar Stock de Productos - Transalca C.A.</title>
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/public/css/styles.css" rel="stylesheet">
@@ -15,7 +15,7 @@
         <div id="navbarContainer"></div>
         <div class="content-area">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="fw-bold mb-0">Inventario</h4>
+                <h4 class="fw-bold mb-0">Gestionar Stock de Productos</h4>
                 <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Nueva Orden de Compra</button>
             </div>
             
@@ -49,7 +49,7 @@
                         <div class="card-body p-0">
                             <table class="table mb-0">
                                 <thead>
-                                    <tr><th>ID</th><th>Proveedor</th><th>Sucursal</th><th>Producto</th><th>Cantidad</th><th>Total</th><th>Fecha</th><th>Estado</th></tr>
+                                    <tr><th>ID</th><th>Proveedor</th><th>Sucursal</th><th>Solicitante</th><th>Total</th><th>Fecha</th><th>Estado</th></tr>
                                 </thead>
                                 <tbody id="orderBody"></tbody>
                             </table>
@@ -71,7 +71,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Proveedor <span class="required">*</span></label>
-                            <select class="form-select" id="proveedor_id" name="proveedor_id"><option value="">Seleccione</option></select>
+                            <select class="form-select" id="proveedor_rif" name="proveedor_rif"><option value="">Seleccione</option></select>
                             <div class="invalid-feedback"></div>
                         </div>
                         <div class="col-md-6 mb-3">
@@ -83,7 +83,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Producto <span class="required">*</span></label>
-                            <select class="form-select" id="producto_id" name="producto_id"><option value="">Seleccione</option></select>
+                            <select class="form-select" id="producto_codigo" name="producto_codigo"><option value="">Seleccione</option></select>
                             <div class="invalid-feedback"></div>
                         </div>
                         <div class="col-md-3 mb-3">

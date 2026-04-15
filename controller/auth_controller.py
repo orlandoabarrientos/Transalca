@@ -42,6 +42,7 @@ def do_login():
         if not user['estado']:
             return jsonify({"status": "error", "message": "Usuario inactivo. Contacte al administrador"}), 403
         session['user_id'] = user['id']
+        session['user_cedula'] = user['cedula']
         session['user_nombre'] = user['nombre']
         session['user_apellido'] = user['apellido']
         session['user_email'] = user['email']
@@ -53,6 +54,8 @@ def do_login():
         session['roles'] = [r['nombre'] for r in roles]
         redirect_url = '/admin/dashboard' if user['tipo'] == 'empleado' else '/client/home'
         bitacora.log_action(user['id'], 'LOGIN', 'AUTH', f"Inicio de sesion: {user['email']}", request.remote_addr)
+        # Sync user to db_transalca (clientes or usuarios table)
+        model.sync_to_transalca(user)
         return jsonify({"status": "success", "redirect": redirect_url, "user": {"nombre": user['nombre'], "tipo": user['tipo']}})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -83,6 +86,8 @@ def do_register():
             return jsonify({"status": "error", "message": "La cedula ya esta registrada", "errors": {"cedula": "La cedula ya esta registrada"}}), 400
         user_id = model.register(data)
         if user_id:
+            # Sync new client to db_transalca.clientes
+            model.sync_client_to_transalca(data)
             return jsonify({"status": "success", "message": "Registro exitoso. Ahora puede iniciar sesion"})
         return jsonify({"status": "error", "message": "Error al registrar"}), 500
     except Exception as e:
@@ -135,6 +140,7 @@ def get_session():
             "status": "success",
             "user": {
                 "id": session['user_id'],
+                "cedula": session.get('user_cedula', ''),
                 "nombre": session['user_nombre'],
                 "apellido": session.get('user_apellido', ''),
                 "email": session['user_email'],

@@ -21,7 +21,7 @@
             <div class="card">
                 <div class="card-body p-0">
                     <table class="table mb-0">
-                        <thead><tr><th class="col-id">ID</th><th>Nombre</th><th>Descripcion</th><th>Productos</th><th>Estado</th><th>Acciones</th></tr></thead>
+                        <thead><tr><th>Nombre</th><th>Descripcion</th><th>Productos</th><th>Estado</th><th>Acciones</th></tr></thead>
                         <tbody id="categoryBody"></tbody>
                     </table>
                 </div>
@@ -35,7 +35,7 @@
             <div class="modal-header"><h5 class="modal-title" id="modalTitle">Nueva Categoria</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <form id="categoryForm">
-                    <input type="hidden" id="categoryId">
+                    <input type="hidden" id="categoryOldNombre">
                     <div class="mb-3"><label class="form-label">Nombre <span class="required">*</span></label><input type="text" class="form-control" id="nombre" name="nombre"><div class="invalid-feedback"></div></div>
                     <div class="mb-3"><label class="form-label">Descripcion</label><textarea class="form-control" id="descripcion" name="descripcion" rows="2"></textarea></div>
                 </form>
