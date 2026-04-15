@@ -53,6 +53,9 @@ def do_login():
         roles = model.get_user_roles(user['id'])
         session['roles'] = [r['nombre'] for r in roles]
         redirect_url = '/admin/dashboard' if user['tipo'] == 'empleado' else '/client/home'
+        requested_next = (data.get('next') or '').strip()
+        if requested_next.startswith('/') and not requested_next.startswith('//'):
+            redirect_url = requested_next
         bitacora.log_action(user['id'], 'LOGIN', 'AUTH', f"Inicio de sesion: {user['email']}", request.remote_addr)
         # Sync user to db_transalca (clientes or usuarios table)
         model.sync_to_transalca(user)

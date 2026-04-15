@@ -1,9 +1,10 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reportes EstadÃ­sticos - Transalca C.A.</title>
+    
+    <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/public/css/styles.css" rel="stylesheet">
@@ -26,19 +27,19 @@
         
         <div class="content-area">
             <div class="mb-4">
-                <h4 class="fw-bold mb-1">MÃ©tricas de Rendimiento</h4>
-                <p class="text-muted small">VisualizaciÃ³n en vivo del estado del negocio.</p>
+                <h4 class="fw-bold mb-1">Métricas de Rendimiento</h4>
+                <p class="text-muted small">Visualización en vivo del estado del negocio.</p>
             </div>
             
             <div class="filter-ribbon">
                 <i class="bi bi-funnel-fill fs-5" style="color:var(--primary);"></i>
-                <span class="fw-bold" style="color:var(--primary-dark);">Filtro RÃ¡pido Visual:</span>
+                <span class="fw-bold" style="color:var(--primary-dark);">Filtro Rápido Visual:</span>
                 <div style="width: 250px;">
                     <select class="form-select form-select-sm" id="timelineFilter" onchange="loadStats()">
-                        <option value="7">Ãšltimos 7 DÃ­as</option>
-                        <option value="30" selected>Ãšltimos 30 DÃ­as</option>
-                        <option value="90">Ãšltimos 3 Meses</option>
-                        <option value="365">Este AÃ±o</option>
+                        <option value="7">Últimos 7 Días</option>
+                        <option value="30" selected>Últimos 30 Días</option>
+                        <option value="90">Últimos 3 Meses</option>
+                        <option value="365">Este Año</option>
                     </select>
                 </div>
                 <div style="margin-left: auto;">
@@ -51,7 +52,7 @@
                 <div class="col-lg-8">
                     <div class="chart-card">
                         <div class="chart-header">
-                            <h3 class="chart-title"><i class="bi bi-graph-up-arrow me-2" style="color:var(--primary);"></i>EvoluciÃ³n de Ingresos</h3>
+                            <h3 class="chart-title"><i class="bi bi-graph-up-arrow me-2" style="color:var(--primary);"></i>Evolución de Ingresos</h3>
                         </div>
                         <div class="chart-container">
                             <canvas id="revenueChart"></canvas>
@@ -61,7 +62,7 @@
                 <div class="col-lg-4">
                     <div class="chart-card">
                         <div class="chart-header">
-                            <h3 class="chart-title"><i class="bi bi-pie-chart-fill me-2" style="color:var(--orange);"></i>Estado de Ã“rdenes</h3>
+                            <h3 class="chart-title"><i class="bi bi-pie-chart-fill me-2" style="color:var(--orange);"></i>Estado de Órdenes</h3>
                         </div>
                         <div class="chart-container">
                             <canvas id="statusChart"></canvas>
@@ -85,7 +86,7 @@
                 <div class="col-lg-6">
                     <div class="chart-card">
                         <div class="chart-header">
-                            <h3 class="chart-title"><i class="bi bi-wallet2 me-2" style="color: #6366F1;"></i>DistribuciÃ³n de Pagos</h3>
+                            <h3 class="chart-title"><i class="bi bi-wallet2 me-2" style="color: #6366F1;"></i>Distribución de Pagos</h3>
                         </div>
                         <div class="chart-container">
                             <canvas id="paymentsChart"></canvas>

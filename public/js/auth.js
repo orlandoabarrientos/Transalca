@@ -1,4 +1,4 @@
-$(document).ready(function() {
+$(document).ready(function () {
     const page = window.location.pathname.split('/').pop();
     if (page === 'login') setupLogin();
     else if (page === 'register') setupRegister();
@@ -11,13 +11,15 @@ function setupLogin() {
         loginPassword: { required: true, requiredMsg: 'La contrasena es requerida' }
     });
     Validator.setupRealtime('loginForm');
-    
-    document.getElementById('loginForm')?.addEventListener('submit', async function(e) {
+
+    document.getElementById('loginForm')?.addEventListener('submit', async function (e) {
         e.preventDefault();
         if (!Validator.validate('loginForm')) return;
+        const nextTarget = new URLSearchParams(window.location.search).get('next') || '';
         const data = {
             email: document.getElementById('loginEmail').value,
-            password: document.getElementById('loginPassword').value
+            password: document.getElementById('loginPassword').value,
+            next: nextTarget
         };
         try {
             const res = await apiCall('/auth/do_login', 'POST', data);
@@ -27,7 +29,8 @@ function setupLogin() {
                 return;
             }
             showToast('Bienvenido!', 'success');
-            setTimeout(() => window.location.href = res.redirect, 500);
+            const safeRedirect = (res.redirect && res.redirect.startsWith('/') && !res.redirect.startsWith('//')) ? res.redirect : '/client/home';
+            setTimeout(() => window.location.href = safeRedirect, 500);
         } catch (e) {
             showToast('Error al iniciar sesion', 'error');
         }
@@ -47,7 +50,7 @@ function setupRegister() {
     Validator.setupRealtime('registerForm');
     updatePasswordStrength('regPassword', 'passwordStrengthBar');
 
-    document.getElementById('registerForm')?.addEventListener('submit', async function(e) {
+    document.getElementById('registerForm')?.addEventListener('submit', async function (e) {
         e.preventDefault();
         if (!Validator.validate('registerForm')) return;
         const data = {
@@ -79,7 +82,7 @@ function setupRecover() {
     });
     Validator.setupRealtime('recoverForm');
 
-    document.getElementById('recoverForm')?.addEventListener('submit', async function(e) {
+    document.getElementById('recoverForm')?.addEventListener('submit', async function (e) {
         e.preventDefault();
         if (!Validator.validate('recoverForm')) return;
         try {

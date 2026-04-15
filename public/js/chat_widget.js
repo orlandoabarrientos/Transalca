@@ -1,5 +1,5 @@
 
-(function() {
+(function () {
     'use strict';
 
     const ASSISTANT_API_URL = window.TRANSALCA_ASSISTANT_API_URL || '';
@@ -40,13 +40,13 @@
         btn.id = 'chatToggleBtn';
         btn.className = 'chat-toggle-btn';
         btn.innerHTML = '<i class="bi bi-chat-dots-fill"></i><span class="badge-dot"></span>';
-        btn.onclick = function(e) { e.stopPropagation(); toggleChat(); };
+        btn.onclick = function (e) { e.stopPropagation(); toggleChat(); };
         document.body.appendChild(btn);
 
         const panel = document.createElement('div');
         panel.id = 'chatPanel';
         panel.className = 'chat-panel';
-        panel.onclick = function(e) { e.stopPropagation(); };
+        panel.onclick = function (e) { e.stopPropagation(); };
         panel.innerHTML = `
             <div class="chat-header">
                 <div class="chat-header-info">
@@ -67,14 +67,14 @@
         `;
         document.body.appendChild(panel);
 
-        document.getElementById('chatInput').addEventListener('keydown', function(e) {
+        document.getElementById('chatInput').addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 window.TransalcaChat.send();
             }
         });
 
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             if (isOpen) {
                 const panel = document.getElementById('chatPanel');
                 const btn = document.getElementById('chatToggleBtn');
@@ -275,7 +275,7 @@
     }
 
     window.TransalcaChat = {
-        send: function() {
+        send: function () {
             const input = document.getElementById('chatInput');
             sendMessage(input?.value);
         },

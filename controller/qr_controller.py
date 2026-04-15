@@ -45,11 +45,15 @@ def create():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        data = request.get_json()
+        data = request.get_json() or {}
         errors = {}
         if not data.get('tipo'):
             errors['tipo'] = 'Seleccione un tipo de QR'
-        if not data.get('contenido') or len(data.get('contenido', '').strip()) < 3:
+        utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
+        if utilidad_tipo:
+            if utilidad_tipo in ('promocion', 'validar_pago', 'mesa') and not str(data.get('referencia_id') or '').strip():
+                errors['referencia_id'] = 'Seleccione una referencia para esta utilidad'
+        elif not data.get('contenido') or len(data.get('contenido', '').strip()) < 3:
             errors['contenido'] = 'El contenido es requerido (min 3 caracteres)'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
@@ -67,7 +71,15 @@ def update(qr_id):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        data = request.get_json()
+        data = request.get_json() or {}
+        errors = {}
+        utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
+        if utilidad_tipo and utilidad_tipo in ('promocion', 'validar_pago', 'mesa') and not str(data.get('referencia_id') or '').strip():
+            errors['referencia_id'] = 'Seleccione una referencia para esta utilidad'
+        elif not utilidad_tipo and (not data.get('contenido') or len(data.get('contenido', '').strip()) < 3):
+            errors['contenido'] = 'El contenido es requerido (min 3 caracteres)'
+        if errors:
+            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         model.update_qr(qr_id, data)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'QR',
             f"QR modificado ID: {qr_id}", request.remote_addr)
@@ -94,8 +106,6 @@ def scan(qr_id):
     try:
         if 'user_cedula' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        if session.get('user_tipo') != 'cliente':
-            return jsonify({"status": "error", "message": "Solo clientes"}), 403
         data = model.get_qr_data(qr_id)
         if data:
             return jsonify({"status": "success", "data": data})
@@ -123,7 +133,7 @@ def generate_image(qr_id):
         )
         
         
-        contenido = request.host_url.rstrip('/') + f"/client/qr_scan?id={qr_id}"
+        contenido = request.host_url.rstrip('/') + f"/scanner?qr={qr_id}"
         
         qr.add_data(contenido)
         qr.make(fit=True)

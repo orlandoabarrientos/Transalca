@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transalca - Mi Perfil</title>
+    
+    <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
@@ -11,35 +13,63 @@
     <link rel="stylesheet" href="/componente_ia/chat_widget.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div id="navbarContainer"></div>
     <div class="container py-4">
         <h3 class="fw-bold mb-4">Mi Perfil</h3>
         <div class="row g-4">
             <div class="col-md-4">
-                <div class="card-custom text-center"><div class="card-body py-5">
-                    <img src="/public/assets/profile_pics/default.png" id="profilePhoto" class="rounded-circle mb-3" style="width:130px;height:130px;object-fit:cover;border:4px solid var(--highlight);">
-                    <h5 id="profileName" class="fw-bold"></h5>
-                    <p id="profileEmail" class="text-muted"></p>
-                    <form id="photoForm" enctype="multipart/form-data"><input type="file" id="photoInput" accept="image/*" style="display:none"><button type="button" class="btn btn-sm btn-primary-custom" onclick="$('#photoInput').click()"><i class="bi bi-camera me-1"></i>Cambiar Foto</button></form>
-                </div></div>
+                <div class="card-custom text-center">
+                    <div class="card-body py-5">
+                        <img src="/public/assets/profile_pics/default.png" id="profilePhoto" class="rounded-circle mb-3"
+                            style="width:130px;height:130px;object-fit:cover;border:4px solid var(--highlight);">
+                        <h5 id="profileName" class="fw-bold"></h5>
+                        <p id="profileEmail" class="text-muted"></p>
+                        <form id="photoForm" enctype="multipart/form-data"><input type="file" id="photoInput"
+                                accept="image/*" style="display:none"><button type="button"
+                                class="btn btn-sm btn-primary-custom" onclick="$('#photoInput').click()"><i
+                                    class="bi bi-camera me-1"></i>Cambiar Foto</button></form>
+                    </div>
+                </div>
             </div>
             <div class="col-md-8">
-                <div class="card-custom mb-4"><div class="card-header"><span>Información Personal</span></div><div class="card-body">
-                    <form id="profileForm">
-                        <div class="row mb-3"><div class="col-6"><label class="form-label">Nombre</label><input type="text" class="form-control" id="fNombre"></div><div class="col-6"><label class="form-label">Apellido</label><input type="text" class="form-control" id="fApellido"></div></div>
-                        <div class="mb-3"><label class="form-label">Teléfono</label><input type="text" class="form-control" id="fTelefono"></div>
-                        <div class="mb-3"><label class="form-label">Dirección</label><textarea class="form-control" id="fDireccion" rows="2"></textarea></div>
-                        <button type="submit" class="btn btn-success-custom"><i class="bi bi-check-circle me-2"></i>Guardar</button>
-                    </form>
-                </div></div>
-                <div class="card-custom"><div class="card-header"><span>Cambiar Contraseña</span></div><div class="card-body">
-                    <form id="passwordForm">
-                        <div class="mb-3"><label class="form-label">Contraseña Actual</label><input type="password" class="form-control" id="fOldPass" required></div>
-                        <div class="row mb-3"><div class="col-6"><label class="form-label">Nueva Contraseña</label><input type="password" class="form-control" id="fNewPass" required></div><div class="col-6"><label class="form-label">Confirmar</label><input type="password" class="form-control" id="fConfirmPass" required></div></div>
-                        <button type="submit" class="btn btn-primary-custom"><i class="bi bi-key me-2"></i>Cambiar</button>
-                    </form>
-                </div></div>
+                <div class="card-custom mb-4">
+                    <div class="card-header"><span>Información Personal</span></div>
+                    <div class="card-body">
+                        <form id="profileForm">
+                            <div class="row mb-3">
+                                <div class="col-6"><label class="form-label">Nombre</label><input type="text"
+                                        class="form-control" id="fNombre"></div>
+                                <div class="col-6"><label class="form-label">Apellido</label><input type="text"
+                                        class="form-control" id="fApellido"></div>
+                            </div>
+                            <div class="mb-3"><label class="form-label">Teléfono</label><input type="text"
+                                    class="form-control" id="fTelefono"></div>
+                            <div class="mb-3"><label class="form-label">Dirección</label><textarea class="form-control"
+                                    id="fDireccion" rows="2"></textarea></div>
+                            <button type="submit" class="btn btn-success-custom"><i
+                                    class="bi bi-check-circle me-2"></i>Guardar</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-custom">
+                    <div class="card-header"><span>Cambiar Contraseña</span></div>
+                    <div class="card-body">
+                        <form id="passwordForm">
+                            <div class="mb-3"><label class="form-label">Contraseña Actual</label><input type="password"
+                                    class="form-control" id="fOldPass" required></div>
+                            <div class="row mb-3">
+                                <div class="col-6"><label class="form-label">Nueva Contraseña</label><input
+                                        type="password" class="form-control" id="fNewPass" required></div>
+                                <div class="col-6"><label class="form-label">Confirmar</label><input type="password"
+                                        class="form-control" id="fConfirmPass" required></div>
+                            </div>
+                            <button type="submit" class="btn btn-primary-custom"><i
+                                    class="bi bi-key me-2"></i>Cambiar</button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -51,14 +81,15 @@
     <script src="/public/js/client_common.js"></script>
     <script src="/componente_ia/chat_widget.js"></script>
     <script>
-    $(document).ready(function(){
-        $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
-        $('#footerContainer').load('/components/client_footer.html');
-        $.get('/api/profile/',function(r){var p=r.data;$('#fNombre').val(p.nombre);$('#fApellido').val(p.apellido);$('#fTelefono').val(p.telefono);$('#fDireccion').val(p.direccion);$('#profileName').text(p.nombre+' '+p.apellido);$('#profileEmail').text(p.email);if(p.foto_perfil&&p.foto_perfil!=='default.png')$('#profilePhoto').attr('src','/public/assets/profile_pics/'+p.foto_perfil);});
-        $('#profileForm').on('submit',function(e){e.preventDefault();$.ajax({url:'/api/profile/',type:'PUT',contentType:'application/json',data:JSON.stringify({nombre:$('#fNombre').val(),apellido:$('#fApellido').val(),telefono:$('#fTelefono').val(),direccion:$('#fDireccion').val()}),success:function(r){showSuccess(r.message);}});});
-        $('#passwordForm').on('submit',function(e){e.preventDefault();if($('#fNewPass').val()!==$('#fConfirmPass').val()){showError('Las contraseñas no coinciden');return;}$.ajax({url:'/api/profile/password',type:'PUT',contentType:'application/json',data:JSON.stringify({old_password:$('#fOldPass').val(),new_password:$('#fNewPass').val()}),success:function(r){showSuccess(r.message);$('#passwordForm')[0].reset();},error:function(x){showError(x.responseJSON?x.responseJSON.message:'Error');}});});
-        $('#photoInput').on('change',function(){var fd=new FormData();fd.append('photo',this.files[0]);$.ajax({url:'/api/profile/photo',type:'POST',data:fd,processData:false,contentType:false,success:function(r){showSuccess(r.message);$('#profilePhoto').attr('src','/public/assets/profile_pics/'+r.filename);}});});
-    });
+        $(document).ready(function () {
+            $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
+            $('#footerContainer').load('/components/client_footer.html');
+            $.get('/api/profile/', function (r) { var p = r.data; $('#fNombre').val(p.nombre); $('#fApellido').val(p.apellido); $('#fTelefono').val(p.telefono); $('#fDireccion').val(p.direccion); $('#profileName').text(p.nombre + ' ' + p.apellido); $('#profileEmail').text(p.email); if (p.foto_perfil && p.foto_perfil !== 'default.png') $('#profilePhoto').attr('src', '/public/assets/profile_pics/' + p.foto_perfil); });
+            $('#profileForm').on('submit', function (e) { e.preventDefault(); $.ajax({ url: '/api/profile/', type: 'PUT', contentType: 'application/json', data: JSON.stringify({ nombre: $('#fNombre').val(), apellido: $('#fApellido').val(), telefono: $('#fTelefono').val(), direccion: $('#fDireccion').val() }), success: function (r) { showSuccess(r.message); } }); });
+            $('#passwordForm').on('submit', function (e) { e.preventDefault(); if ($('#fNewPass').val() !== $('#fConfirmPass').val()) { showError('Las contraseñas no coinciden'); return; } $.ajax({ url: '/api/profile/password', type: 'PUT', contentType: 'application/json', data: JSON.stringify({ old_password: $('#fOldPass').val(), new_password: $('#fNewPass').val() }), success: function (r) { showSuccess(r.message); $('#passwordForm')[0].reset(); }, error: function (x) { showError(x.responseJSON ? x.responseJSON.message : 'Error'); } }); });
+            $('#photoInput').on('change', function () { var fd = new FormData(); fd.append('photo', this.files[0]); $.ajax({ url: '/api/profile/photo', type: 'POST', data: fd, processData: false, contentType: false, success: function (r) { showSuccess(r.message); $('#profilePhoto').attr('src', '/public/assets/profile_pics/' + r.filename); } }); });
+        });
     </script>
 </body>
+
 </html>

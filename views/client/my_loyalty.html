@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transalca - Mi Fidelización</title>
+    
+    <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
@@ -11,7 +13,12 @@
     <link rel="stylesheet" href="/componente_ia/chat_widget.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        .loyalty-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px; }
+        .loyalty-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 24px;
+        }
+
         .fidelity-card {
             border-radius: 20px;
             padding: 28px;
@@ -22,73 +29,162 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
             transition: transform 0.3s, box-shadow 0.3s;
         }
-        .fidelity-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
+
+        .fidelity-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+        }
+
         .fidelity-card::before {
             content: '';
             position: absolute;
-            top: -40px; right: -40px;
-            width: 140px; height: 140px;
+            top: -40px;
+            right: -40px;
+            width: 140px;
+            height: 140px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.08);
+            background: rgba(255, 255, 255, 0.08);
         }
+
         .fidelity-card::after {
             content: '';
             position: absolute;
-            bottom: -30px; left: -30px;
-            width: 100px; height: 100px;
+            bottom: -30px;
+            left: -30px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.06);
+            background: rgba(255, 255, 255, 0.06);
         }
-        .fidelity-card .card-top { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1; }
-        .fidelity-card .promo-name { font-size: 1.15rem; font-weight: 800; letter-spacing: 0.5px; }
-        .fidelity-card .brand-label { font-size: 0.65rem; opacity: 0.7; text-transform: uppercase; letter-spacing: 2px; margin-top: 2px; }
-        .fidelity-card .card-icon { font-size: 2.2rem; opacity: 0.9; }
-        .progress-section { position: relative; z-index: 1; margin: 20px 0 10px; }
-        .progress-label { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 8px; opacity: 0.85; }
+
+        .fidelity-card .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            position: relative;
+            z-index: 1;
+        }
+
+        .fidelity-card .promo-name {
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        .fidelity-card .brand-label {
+            font-size: 0.65rem;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 2px;
+        }
+
+        .fidelity-card .card-icon {
+            font-size: 2.2rem;
+            opacity: 0.9;
+        }
+
+        .progress-section {
+            position: relative;
+            z-index: 1;
+            margin: 20px 0 10px;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            margin-bottom: 8px;
+            opacity: 0.85;
+        }
+
         .progress-track {
-            background: rgba(255,255,255,0.15);
+            background: rgba(255, 255, 255, 0.15);
             border-radius: 12px;
             height: 14px;
             overflow: hidden;
             position: relative;
         }
+
         .progress-fill {
             height: 100%;
             border-radius: 12px;
-            background: linear-gradient(90deg, rgba(255,255,255,0.5), rgba(255,255,255,0.9));
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.9));
             transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
         }
+
         .progress-fill::after {
             content: '';
             position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
             animation: shimmer 2s infinite;
         }
-        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-        .stamps-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; position: relative; z-index: 1; }
+
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        .stamps-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
         .stamp {
-            width: 34px; height: 34px;
+            width: 34px;
+            height: 34px;
             border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 0.85rem;
-            border: 2px solid rgba(255,255,255,0.3);
-            background: rgba(255,255,255,0.08);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.08);
             transition: all 0.3s;
         }
+
         .stamp.filled {
-            background: rgba(255,255,255,0.95);
+            background: rgba(255, 255, 255, 0.95);
             color: #0f3460;
-            border-color: rgba(255,255,255,0.95);
+            border-color: rgba(255, 255, 255, 0.95);
             font-weight: 700;
         }
-        .stamp.filled i { color: #0f3460; }
-        .card-bottom { display: flex; justify-content: space-between; align-items: flex-end; position: relative; z-index: 1; margin-top: 16px; }
-        .reward-info { font-size: 0.78rem; opacity: 0.9; }
+
+        .stamp.filled i {
+            color: #0f3460;
+        }
+
+        .card-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            position: relative;
+            z-index: 1;
+            margin-top: 16px;
+        }
+
+        .reward-info {
+            font-size: 0.78rem;
+            opacity: 0.9;
+        }
+
         .status-pill {
             padding: 4px 14px;
             border-radius: 20px;
@@ -97,19 +193,44 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        .status-active { background: rgba(255,255,255,0.2); color: #fff; }
-        .status-redeemed { background: rgba(255,255,255,0.95); color: #059669; }
-        .grad-active { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%); }
-        .grad-redeemed { background: linear-gradient(135deg, #059669 0%, #34d399 100%); }
-        .grad-promo1 { background: linear-gradient(135deg, #e94560 0%, #0f3460 100%); }
-        .grad-promo2 { background: linear-gradient(135deg, #6c3483 0%, #2874a6 100%); }
-        .grad-promo3 { background: linear-gradient(135deg, #d35400 0%, #e67e22 100%); }
+
+        .status-active {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        .status-redeemed {
+            background: rgba(255, 255, 255, 0.95);
+            color: #059669;
+        }
+
+        .grad-active {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+        }
+
+        .grad-redeemed {
+            background: linear-gradient(135deg, #059669 0%, #34d399 100%);
+        }
+
+        .grad-promo1 {
+            background: linear-gradient(135deg, #e94560 0%, #0f3460 100%);
+        }
+
+        .grad-promo2 {
+            background: linear-gradient(135deg, #6c3483 0%, #2874a6 100%);
+        }
+
+        .grad-promo3 {
+            background: linear-gradient(135deg, #d35400 0%, #e67e22 100%);
+        }
     </style>
 </head>
+
 <body>
     <div id="navbarContainer"></div>
     <div class="container py-4">
-        <h3 class="fw-bold mb-2"><i class="bi bi-gift-fill me-2" style="color:var(--highlight);"></i>Mi Programa de Fidelización</h3>
+        <h3 class="fw-bold mb-2"><i class="bi bi-gift-fill me-2" style="color:var(--highlight);"></i>Mi Programa de
+            Fidelización</h3>
         <p class="text-muted mb-4">Acumula puntos con tus compras y canjea recompensas exclusivas.</p>
         <div class="loyalty-grid" id="myCards"></div>
         <div id="noCards" class="text-center py-5" style="display:none;">
@@ -126,42 +247,43 @@
     <script src="/public/js/client_common.js"></script>
     <script src="/componente_ia/chat_widget.js"></script>
     <script>
-    const gradients = ['grad-promo1','grad-promo2','grad-promo3'];
-    $(document).ready(function(){
-        $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
-        $('#footerContainer').load('/components/client_footer.html');
-        $.get('/api/promotions/cards/my',function(r){
-            if(!r.data||r.data.length===0){$('#noCards').show();return;}
-            var html='';
-            r.data.forEach(function(card, idx){
-                var pct = Math.min(100, Math.round((card.puntos_actuales / card.puntos_requeridos) * 100));
-                var gradClass = card.canjeada ? 'grad-redeemed' : gradients[idx % gradients.length];
-                var icon = card.canjeada ? 'bi-trophy-fill' : 'bi-gem';
-                var statusClass = card.canjeada ? 'status-redeemed' : 'status-active';
-                var statusText = card.canjeada ? '✓ CANJEADA' : 'ACTIVA';
-                var stamps = '';
-                for(var i=0;i<card.puntos_requeridos;i++){
-                    stamps += '<div class="stamp '+(i<card.puntos_actuales?'filled':'')+'"><i class="bi '+(i<card.puntos_actuales?'bi-check-lg':'bi-circle')+'" style="font-size:0.7rem;"></i></div>';
-                }
-                html += '<div class="fidelity-card '+gradClass+'">' +
-                    '<div class="card-top">' +
-                        '<div><div class="promo-name">'+card.promocion_nombre+'</div><div class="brand-label">TRANSALCA C.A.</div></div>' +
-                        '<i class="bi '+icon+' card-icon"></i>' +
-                    '</div>' +
-                    '<div class="progress-section">' +
-                        '<div class="progress-label"><span>Progreso</span><span>'+card.puntos_actuales+' / '+card.puntos_requeridos+' puntos</span></div>' +
-                        '<div class="progress-track"><div class="progress-fill" style="width:'+pct+'%;"></div></div>' +
-                        '<div class="stamps-row">'+stamps+'</div>' +
-                    '</div>' +
-                    '<div class="card-bottom">' +
-                        '<div class="reward-info">🎁 '+card.recompensa+'</div>' +
-                        '<span class="status-pill '+statusClass+'">'+statusText+'</span>' +
-                    '</div>' +
-                '</div>';
+        const gradients = ['grad-promo1', 'grad-promo2', 'grad-promo3'];
+        $(document).ready(function () {
+            $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
+            $('#footerContainer').load('/components/client_footer.html');
+            $.get('/api/promotions/cards/my', function (r) {
+                if (!r.data || r.data.length === 0) { $('#noCards').show(); return; }
+                var html = '';
+                r.data.forEach(function (card, idx) {
+                    var pct = Math.min(100, Math.round((card.puntos_actuales / card.puntos_requeridos) * 100));
+                    var gradClass = card.canjeada ? 'grad-redeemed' : gradients[idx % gradients.length];
+                    var icon = card.canjeada ? 'bi-trophy-fill' : 'bi-gem';
+                    var statusClass = card.canjeada ? 'status-redeemed' : 'status-active';
+                    var statusText = card.canjeada ? '✓ CANJEADA' : 'ACTIVA';
+                    var stamps = '';
+                    for (var i = 0; i < card.puntos_requeridos; i++) {
+                        stamps += '<div class="stamp ' + (i < card.puntos_actuales ? 'filled' : '') + '"><i class="bi ' + (i < card.puntos_actuales ? 'bi-check-lg' : 'bi-circle') + '" style="font-size:0.7rem;"></i></div>';
+                    }
+                    html += '<div class="fidelity-card ' + gradClass + '">' +
+                        '<div class="card-top">' +
+                        '<div><div class="promo-name">' + card.promocion_nombre + '</div><div class="brand-label">TRANSALCA C.A.</div></div>' +
+                        '<i class="bi ' + icon + ' card-icon"></i>' +
+                        '</div>' +
+                        '<div class="progress-section">' +
+                        '<div class="progress-label"><span>Progreso</span><span>' + card.puntos_actuales + ' / ' + card.puntos_requeridos + ' puntos</span></div>' +
+                        '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%;"></div></div>' +
+                        '<div class="stamps-row">' + stamps + '</div>' +
+                        '</div>' +
+                        '<div class="card-bottom">' +
+                        '<div class="reward-info">🎁 ' + card.recompensa + '</div>' +
+                        '<span class="status-pill ' + statusClass + '">' + statusText + '</span>' +
+                        '</div>' +
+                        '</div>';
+                });
+                $('#myCards').html(html);
             });
-            $('#myCards').html(html);
         });
-    });
     </script>
 </body>
+
 </html>

@@ -2,7 +2,7 @@ let assignmentModal;
 let mechanicModal;
 let mechanicsCache = [];
 
-$(document).ready(function() {
+$(document).ready(function () {
     $('#sidebarContainer').load('/components/admin_sidebar.html', () => {
         document.querySelector('[data-page="service_mechanics"]')?.classList.add('active');
     });

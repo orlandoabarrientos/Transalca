@@ -1,103 +1,31 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transalca - Escanear QR</title>
+    
+    <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
-    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/public/css/styles.css">
-    <link rel="stylesheet" href="/componente_ia/chat_widget.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
 </head>
+
 <body>
-    <div id="navbarContainer"></div>
-    <div class="container py-4" id="qrContent" style="display:none;">
-        <h3 class="fw-bold mb-4"><i class="bi bi-qr-code-scan me-2"></i>Escanear Código QR</h3>
-        <div class="row g-4">
-            <div class="col-md-6">
-                <div class="card-custom">
-                    <div class="card-header"><span>Ingresar Código QR</span></div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label">Ingresa el ID del QR o escanea con tu cámara</label>
-                            <div class="input-group">
-                                <input type="number" class="form-control" id="qrInput" placeholder="ID del QR">
-                                <button class="btn btn-primary-custom" onclick="scanQR()"><i class="bi bi-search me-1"></i>Buscar</button>
-                            </div>
-                        </div>
-                        <div id="myQRs" class="mt-4">
-                            <h6 class="fw-bold">Mis QR's</h6>
-                            <div id="qrList"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card-custom" id="qrResult" style="display:none;">
-                    <div class="card-header"><span>Resultado del QR</span></div>
-                    <div class="card-body" id="qrResultBody"></div>
-                </div>
-            </div>
-        </div>
+    <div class="container py-5 text-center">
+        <h5 class="fw-bold mb-2">Redirigiendo al modulo Escaner...</h5>
+        <p class="text-muted mb-0">Si no redirige automaticamente, use el boton.</p>
+        <a id="manualRedirect" href="/scanner" class="btn btn-orange mt-3">Abrir Escaner</a>
     </div>
-    <div id="qrDenied" class="container py-5 text-center" style="display:none;">
-        <i class="bi bi-shield-exclamation fs-1 text-danger"></i>
-        <h4 class="mt-3">Acceso Restringido</h4>
-        <p class="text-muted">Esta sección solo está disponible para clientes registrados.</p>
-        <a href="/client/home" class="btn btn-primary-custom">Volver al Inicio</a>
-    </div>
-    <div id="footerContainer"></div>
-    <script src="/public/jquery/jquery.min.js"></script>
-    <script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
-    <script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
-    <script src="/public/js/admin_common.js"></script>
-    <script src="/public/js/client_common.js"></script>
-    <script src="/componente_ia/chat_widget.js"></script>
     <script>
-    $(document).ready(async function(){
-        $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
-        $('#footerContainer').load('/components/client_footer.html');
-        try {
-            const res = await fetch('/auth/session', { credentials: 'same-origin' });
-            const data = await res.json();
-            if (data.status === 'success' && data.user.tipo === 'cliente') {
-                $('#qrContent').show();
-                loadMyQRs();
-            } else {
-                $('#qrDenied').show();
-            }
-        } catch(e) {
-            $('#qrDenied').show();
-        }
-    });
-    function loadMyQRs(){
-        $.get('/api/qr/my',function(r){
-            var html='';
-            (r.data||[]).forEach(function(q){
-                html+='<div class="border rounded p-2 mb-2 d-flex justify-content-between align-items-center"><div><i class="bi bi-qr-code me-2"></i><strong>QR #'+q.id+'</strong> <small class="text-muted">('+q.tipo+')</small></div><button class="btn btn-sm btn-outline-primary" onclick="scanQR('+q.id+')"><i class="bi bi-eye"></i></button></div>';
-            });
-            $('#qrList').html(html||'<p class="text-muted">No tienes QR asignados</p>');
-        });
-    }
-    function scanQR(id){
-        if(!id) id=$('#qrInput').val();
-        if(!id){showToast('Ingresa un ID de QR','warning');return;}
-        $.get('/api/qr/scan/'+id,function(r){
-            var d=r.data;
-            var html='<div class="mb-3"><span class="badge bg-primary fs-6">'+d.tipo+'</span></div>';
-            if(d.tipo==='promocion'){
-                html+='<h5>'+d.nombre+'</h5><p>'+d.descripcion+'</p><p><strong>Recompensa:</strong> '+d.recompensa+'</p>';
-            } else if(d.tipo==='servicio'){
-                html+='<h5>'+d.nombre+'</h5><p>'+d.descripcion+'</p><p><strong>Precio:</strong> $'+parseFloat(d.precio).toFixed(2)+'</p>';
-            } else {
-                html+='<pre class="bg-light p-3 rounded">'+JSON.stringify(d,null,2)+'</pre>';
-            }
-            $('#qrResultBody').html(html);
-            $('#qrResult').show();
-        }).fail(function(){showToast('QR no encontrado','error');});
-    }
+        (function () {
+            var params = new URLSearchParams(window.location.search);
+            var id = params.get('id') || '';
+            var target = '/scanner' + (id ? ('?qr=' + encodeURIComponent(id)) : '');
+            var link = document.getElementById('manualRedirect');
+            if (link) link.href = target;
+            window.location.replace(target);
+        })();
     </script>
 </body>
+
 </html>

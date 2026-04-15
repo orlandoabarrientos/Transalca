@@ -1,3 +1,4 @@
+import json
 from model.connection import Connection
 
 
@@ -129,6 +130,15 @@ class OrderModel(Connection):
                 cursor.execute(
                     "INSERT INTO comprobantes_pago (orden_venta_id, imagen_url) VALUES (%s, %s)",
                     (order_id, comprobante_url))
+
+            try:
+                qr_payload = json.dumps({"kind": "factura", "orden_id": order_id})
+                cursor.execute(
+                    "INSERT INTO qr_codes (usuario_cedula, tipo, contenido, utilidad, referencia_id) VALUES (%s, 'pago', %s, 'factura', %s)",
+                    (cliente_cedula, qr_payload, order_id))
+            except Exception:
+                pass
+
             cursor.execute("DELETE FROM carrito WHERE cliente_cedula = %s", (cliente_cedula,))
             conn.commit()
             return order_id

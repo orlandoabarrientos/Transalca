@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transalca - Mi Carrito</title>
+    
+    <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
@@ -11,6 +13,7 @@
     <link rel="stylesheet" href="/componente_ia/chat_widget.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div id="navbarContainer"></div>
     <div class="container py-4">
@@ -25,9 +28,11 @@
                 <div class="card-custom" style="position:sticky;top:80px;">
                     <div class="card-header"><span>Resumen del Pedido</span></div>
                     <div class="card-body">
-                        <div class="d-flex justify-content-between mb-2"><span>Subtotal:</span><span id="subtotal">$0.00</span></div>
+                        <div class="d-flex justify-content-between mb-2"><span>Subtotal:</span><span
+                                id="subtotal">$0.00</span></div>
                         <hr>
-                        <div class="d-flex justify-content-between mb-3"><strong>Total:</strong><strong id="total" class="fs-4" style="color:var(--highlight);">$0.00</strong></div>
+                        <div class="d-flex justify-content-between mb-3"><strong>Total:</strong><strong id="total"
+                                class="fs-4" style="color:var(--highlight);">$0.00</strong></div>
                         <form id="checkoutForm" enctype="multipart/form-data">
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Método de Pago</label>
@@ -60,46 +65,48 @@
     <script src="/public/js/client_common.js"></script>
     <script src="/componente_ia/chat_widget.js"></script>
     <script>
-    $(document).ready(function(){
-        $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
-        $('#footerContainer').load('/components/client_footer.html');
-        loadCart();
-        $('#checkoutForm').on('submit',function(e){
-            e.preventDefault();
-            var fd=new FormData();
-            fd.append('metodo_pago',$('#metodoPago').val());
-            if($('#comprobante')[0].files[0]) fd.append('comprobante',$('#comprobante')[0].files[0]);
-            $('#btnCheckout').prop('disabled',true).html('<span class="spinner-border spinner-border-sm me-2"></span>Procesando...');
-            $.ajax({url:'/api/orders/checkout',type:'POST',data:fd,processData:false,contentType:false,
-                success:function(r){
-                    Swal.fire({icon:'success',title:'¡Pedido realizado!',html:'<p>Tu orden <strong>#'+r.id+'</strong> ha sido creada.</p><p>Revisaremos tu comprobante de pago y te notificaremos por correo.</p>',confirmButtonColor:'#e94560'}).then(function(){window.location.href='/client/my_orders';});
-                },
-                error:function(x){$('#btnCheckout').prop('disabled',false).html('<i class="bi bi-bag-check-fill me-2"></i>Finalizar Compra');showToast(x.responseJSON?x.responseJSON.message:'Error al procesar','error');}
+        $(document).ready(function () {
+            $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
+            $('#footerContainer').load('/components/client_footer.html');
+            loadCart();
+            $('#checkoutForm').on('submit', function (e) {
+                e.preventDefault();
+                var fd = new FormData();
+                fd.append('metodo_pago', $('#metodoPago').val());
+                if ($('#comprobante')[0].files[0]) fd.append('comprobante', $('#comprobante')[0].files[0]);
+                $('#btnCheckout').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Procesando...');
+                $.ajax({
+                    url: '/api/orders/checkout', type: 'POST', data: fd, processData: false, contentType: false,
+                    success: function (r) {
+                        Swal.fire({ icon: 'success', title: '¡Pedido realizado!', html: '<p>Tu orden <strong>#' + r.id + '</strong> ha sido creada.</p><p>Revisaremos tu comprobante de pago y te notificaremos por correo.</p>', confirmButtonColor: '#e94560' }).then(function () { window.location.href = '/client/my_orders'; });
+                    },
+                    error: function (x) { $('#btnCheckout').prop('disabled', false).html('<i class="bi bi-bag-check-fill me-2"></i>Finalizar Compra'); showToast(x.responseJSON ? x.responseJSON.message : 'Error al procesar', 'error'); }
+                });
             });
         });
-    });
-    function loadCart(){
-        $.get('/api/orders/cart',function(r){
-            var html='';var total=0;
-            if(!r.data||r.data.length===0){
-                html='<div class="text-center py-5"><i class="bi bi-cart-x fs-1 text-muted"></i><p class="text-muted mt-2">Tu carrito está vacío</p><a href="/client/catalog" class="btn btn-primary-custom">Ver Catálogo</a></div>';
-                $('#btnCheckout').prop('disabled',true);
-            } else {
-                r.data.forEach(function(item){
-                    var subtotal=item.precio*item.cantidad;total+=subtotal;
-                    html+='<div class="d-flex justify-content-between align-items-center py-3 border-bottom"><div class="d-flex align-items-center gap-3"><img src="/public/assets/images/'+(item.imagen||'no-image.png')+'" style="width:60px;height:60px;object-fit:cover;border-radius:8px;" onerror="this.src=\'/public/assets/images/no-image.png\'"><div><h6 class="mb-0 fw-bold">'+item.item_nombre+'</h6><small class="text-muted">'+item.tipo+'</small></div></div><div class="d-flex align-items-center gap-3"><div class="input-group input-group-sm" style="width:120px;"><button class="btn btn-outline-secondary" onclick="updateQty('+item.id+','+(item.cantidad-1)+')">-</button><input type="text" class="form-control text-center" value="'+item.cantidad+'" readonly><button class="btn btn-outline-secondary" onclick="updateQty('+item.id+','+(item.cantidad+1)+')">+</button></div><span class="fw-bold">$'+subtotal.toFixed(2)+'</span><button class="btn btn-sm btn-outline-danger" onclick="removeItem('+item.id+')"><i class="bi bi-trash"></i></button></div></div>';
-                });
-            }
-            $('#cartItems').html(html);
-            $('#subtotal').text('$'+total.toFixed(2));
-            $('#total').text('$'+total.toFixed(2));
-        });
-    }
-    function updateQty(cartId,qty){
-        if(qty<1){removeItem(cartId);return;}
-        $.ajax({url:'/api/orders/cart/'+cartId+'/update',type:'PUT',contentType:'application/json',data:JSON.stringify({cantidad:qty}),success:function(){loadCart();updateCartBadge();}});
-    }
-    function removeItem(cartId){$.ajax({url:'/api/orders/cart/'+cartId+'/remove',type:'DELETE',success:function(){loadCart();updateCartBadge();}});}
+        function loadCart() {
+            $.get('/api/orders/cart', function (r) {
+                var html = ''; var total = 0;
+                if (!r.data || r.data.length === 0) {
+                    html = '<div class="text-center py-5"><i class="bi bi-cart-x fs-1 text-muted"></i><p class="text-muted mt-2">Tu carrito está vacío</p><a href="/client/catalog" class="btn btn-primary-custom">Ver Catálogo</a></div>';
+                    $('#btnCheckout').prop('disabled', true);
+                } else {
+                    r.data.forEach(function (item) {
+                        var subtotal = item.precio * item.cantidad; total += subtotal;
+                        html += '<div class="d-flex justify-content-between align-items-center py-3 border-bottom"><div class="d-flex align-items-center gap-3"><img src="/public/assets/images/' + (item.imagen || 'no-image.png') + '" style="width:60px;height:60px;object-fit:cover;border-radius:8px;" onerror="this.src=\'/public/assets/images/no-image.png\'"><div><h6 class="mb-0 fw-bold">' + item.item_nombre + '</h6><small class="text-muted">' + item.tipo + '</small></div></div><div class="d-flex align-items-center gap-3"><div class="input-group input-group-sm" style="width:120px;"><button class="btn btn-outline-secondary" onclick="updateQty(' + item.id + ',' + (item.cantidad - 1) + ')">-</button><input type="text" class="form-control text-center" value="' + item.cantidad + '" readonly><button class="btn btn-outline-secondary" onclick="updateQty(' + item.id + ',' + (item.cantidad + 1) + ')">+</button></div><span class="fw-bold">$' + subtotal.toFixed(2) + '</span><button class="btn btn-sm btn-outline-danger" onclick="removeItem(' + item.id + ')"><i class="bi bi-trash"></i></button></div></div>';
+                    });
+                }
+                $('#cartItems').html(html);
+                $('#subtotal').text('$' + total.toFixed(2));
+                $('#total').text('$' + total.toFixed(2));
+            });
+        }
+        function updateQty(cartId, qty) {
+            if (qty < 1) { removeItem(cartId); return; }
+            $.ajax({ url: '/api/orders/cart/' + cartId + '/update', type: 'PUT', contentType: 'application/json', data: JSON.stringify({ cantidad: qty }), success: function () { loadCart(); updateCartBadge(); } });
+        }
+        function removeItem(cartId) { $.ajax({ url: '/api/orders/cart/' + cartId + '/remove', type: 'DELETE', success: function () { loadCart(); updateCartBadge(); } }); }
     </script>
 </body>
+
 </html>

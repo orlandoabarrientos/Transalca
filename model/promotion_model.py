@@ -80,7 +80,7 @@ class PromotionModel(Connection):
 
     def get_all_cards(self):
         cards = self.fetch_all("transalca",
-            "SELECT tf.*, p.nombre as promo_nombre, p.puntos_requeridos, p.recompensa FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id ORDER BY tf.fecha_creacion DESC")
+            "SELECT tf.*, p.nombre as promo_nombre, p.descripcion as promo_descripcion, p.puntos_requeridos, p.recompensa, p.imagen_tarjeta, p.tipo FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id ORDER BY tf.fecha_creacion DESC")
         for card in cards:
             client = self.fetch_one("mantenimiento",
                 "SELECT nombre, apellido, cedula FROM usuarios WHERE cedula = %s", (card['cliente_cedula'],))

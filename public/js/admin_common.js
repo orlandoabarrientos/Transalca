@@ -18,7 +18,7 @@ function showToast(message, type = 'success') {
 
 const Validator = {
     rules: {},
-    
+
     setRules(formId, rules) {
         this.rules[formId] = rules;
     },
@@ -35,7 +35,7 @@ const Validator = {
             if (!el) continue;
             const value = el.value.trim();
             let error = '';
-            
+
             if (fieldRules.required && !value) {
                 error = fieldRules.requiredMsg || 'Este campo es requerido';
             } else if (fieldRules.minLength && value.length < fieldRules.minLength) {
@@ -117,7 +117,7 @@ const Validator = {
         const fieldRules = rules[field];
         const el = document.getElementById(field);
         if (!el) return true;
-        
+
         const value = el.value.trim();
         let error = '';
 
@@ -252,7 +252,7 @@ async function saveWithValidation(formId, url, method, successMsg, callback) {
         }
         showToast(successMsg || res.message, 'success');
         if (callback) callback(res);
-    } catch (e) {  }
+    } catch (e) { }
 }
 
 async function loadSucursales(selectId, includeAll = true) {
@@ -264,7 +264,7 @@ async function loadSucursales(selectId, includeAll = true) {
         (res.data || []).forEach(s => {
             select.innerHTML += `<option value="${s.id}">${s.nombre}</option>`;
         });
-    } catch (e) {  }
+    } catch (e) { }
 }
 
 function confirmAction(message, callback) {
@@ -338,5 +338,5 @@ async function loadNavSession() {
                 titleEl.textContent = titles[page] || 'Panel de Administracion';
             }
         }
-    } catch (e) {  }
+    } catch (e) { }
 }

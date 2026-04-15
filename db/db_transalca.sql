@@ -354,6 +354,7 @@ CREATE TABLE historial_puntos (
 -- ============================================================
 
 -- qr_codes: MANTIENE id — sin clave natural
+-- contenido puede guardar JSON con utilidad, referencia_id, assigned_at y expires_at
 CREATE TABLE qr_codes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     usuario_cedula VARCHAR(20) NOT NULL,

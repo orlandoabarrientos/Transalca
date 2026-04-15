@@ -22,6 +22,7 @@ from controller.promotion_controller import promotion_bp
 from controller.payment_controller import payment_bp
 from controller.order_controller import order_bp
 from controller.qr_controller import qr_bp
+from controller.scanner_controller import scanner_bp
 from controller.report_controller import report_bp
 from controller.sucursal_controller import sucursal_bp
 from controller.rates_controller import rates_bp
@@ -48,6 +49,7 @@ app.register_blueprint(promotion_bp, url_prefix='/api/promotions')
 app.register_blueprint(payment_bp, url_prefix='/api/payments')
 app.register_blueprint(order_bp, url_prefix='/api/orders')
 app.register_blueprint(qr_bp, url_prefix='/api/qr')
+app.register_blueprint(scanner_bp, url_prefix='/api/scanner')
 app.register_blueprint(report_bp, url_prefix='/api/reports')
 app.register_blueprint(sucursal_bp, url_prefix='/api/sucursales')
 app.register_blueprint(rates_bp, url_prefix='/api/rates')
@@ -73,13 +75,19 @@ def admin_page(page):
 
 @app.route('/client/<page>')
 def client_page(page):
-    if page == 'qr_scan':
-        if 'user_id' not in session or session.get('user_tipo') != 'cliente':
-            return redirect('/client/home')
     try:
         return send_from_directory('views/client', f'{page}.html')
     except Exception:
         return redirect('/client/home')
+
+
+@app.route('/scanner')
+def scanner_page():
+    if 'user_id' not in session:
+        next_path = request.full_path if request.query_string else request.path
+        next_path = next_path.rstrip('?')
+        return redirect(url_for('auth.login_page', next=next_path))
+    return send_from_directory('views/client', 'scanner.html')
 
 
 @app.route('/auth/<page>')
