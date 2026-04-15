@@ -35,6 +35,19 @@ class OrderModel(Connection):
             ))
         return True
 
+    def supports_unassigned_service_records(self):
+        column = self.fetch_one("transalca", "SHOW COLUMNS FROM servicio_mecanico LIKE 'mecanico_cedula'")
+        if not column:
+            return False
+        if column.get('Null') == 'YES':
+            return True
+        try:
+            self.update("transalca", "ALTER TABLE servicio_mecanico MODIFY mecanico_cedula VARCHAR(20) NULL")
+        except Exception:
+            return False
+        column = self.fetch_one("transalca", "SHOW COLUMNS FROM servicio_mecanico LIKE 'mecanico_cedula'")
+        return bool(column and column.get('Null') == 'YES')
+
     def get_cart(self, cliente_cedula):
         items = self.fetch_all("transalca",
             "SELECT c.*, CASE WHEN c.tipo = 'producto' THEN p.nombre ELSE s.nombre END as item_nombre, CASE WHEN c.tipo = 'producto' THEN p.precio ELSE s.precio END as precio, CASE WHEN c.tipo = 'producto' THEN p.imagen ELSE 'default_service.png' END as imagen FROM carrito c LEFT JOIN productos p ON c.producto_codigo = p.codigo LEFT JOIN servicios s ON c.servicio_id = s.id WHERE c.cliente_cedula = %s",
@@ -84,6 +97,11 @@ class OrderModel(Connection):
         cart_items = self.get_cart(cliente_cedula)
         if not cart_items:
             return None
+
+        allow_unassigned_services = True
+        if any(item['tipo'] == 'servicio' for item in cart_items):
+            allow_unassigned_services = self.supports_unassigned_service_records()
+
         conn = self.con_transalca()
         try:
             conn.begin()
@@ -103,6 +121,10 @@ class OrderModel(Connection):
                     cursor.execute(
                         "INSERT INTO detalle_orden_venta (orden_id, servicio_id, tipo, cantidad, precio_unitario, subtotal) VALUES (%s, %s, 'servicio', 1, %s, %s)",
                         (order_id, item['servicio_id'], item['precio'], item['precio']))
+                    if allow_unassigned_services:
+                        cursor.execute(
+                            "INSERT INTO servicio_mecanico (servicio_id, mecanico_cedula, orden_venta_id, observaciones) VALUES (%s, %s, %s, %s)",
+                            (item['servicio_id'], None, order_id, 'Pendiente de asignacion de mecanico'))
             if comprobante_url:
                 cursor.execute(
                     "INSERT INTO comprobantes_pago (orden_venta_id, imagen_url) VALUES (%s, %s)",

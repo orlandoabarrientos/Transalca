@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-labelledby="title desc">
+  <title id="title">Logo Transalca</title>
+  <desc id="desc">Emblema circular naranja con iniciales TA</desc>
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF8A00"/>
+      <stop offset="100%" stop-color="#D45700"/>
+    </linearGradient>
+  </defs>
+  <rect width="240" height="240" rx="48" fill="#FFF4E8"/>
+  <circle cx="120" cy="120" r="95" fill="url(#grad)"/>
+  <circle cx="120" cy="120" r="72" fill="#FFFFFF" fill-opacity="0.18"/>
+  <path d="M62 84h116v18h-48v74h-20v-74h-48z" fill="#FFFFFF"/>
+  <path d="M86 162h68v16h-68z" fill="#FFFFFF"/>
+  <path d="M74 56h92l8 16H66z" fill="#FFFFFF" fill-opacity="0.88"/>
+</svg>

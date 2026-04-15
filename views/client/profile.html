@@ -53,6 +53,7 @@
     <script>
     $(document).ready(function(){
         $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
+        $('#footerContainer').load('/components/client_footer.html');
         $.get('/api/profile/',function(r){var p=r.data;$('#fNombre').val(p.nombre);$('#fApellido').val(p.apellido);$('#fTelefono').val(p.telefono);$('#fDireccion').val(p.direccion);$('#profileName').text(p.nombre+' '+p.apellido);$('#profileEmail').text(p.email);if(p.foto_perfil&&p.foto_perfil!=='default.png')$('#profilePhoto').attr('src','/public/assets/profile_pics/'+p.foto_perfil);});
         $('#profileForm').on('submit',function(e){e.preventDefault();$.ajax({url:'/api/profile/',type:'PUT',contentType:'application/json',data:JSON.stringify({nombre:$('#fNombre').val(),apellido:$('#fApellido').val(),telefono:$('#fTelefono').val(),direccion:$('#fDireccion').val()}),success:function(r){showSuccess(r.message);}});});
         $('#passwordForm').on('submit',function(e){e.preventDefault();if($('#fNewPass').val()!==$('#fConfirmPass').val()){showError('Las contraseñas no coinciden');return;}$.ajax({url:'/api/profile/password',type:'PUT',contentType:'application/json',data:JSON.stringify({old_password:$('#fOldPass').val(),new_password:$('#fNewPass').val()}),success:function(r){showSuccess(r.message);$('#passwordForm')[0].reset();},error:function(x){showError(x.responseJSON?x.responseJSON.message:'Error');}});});

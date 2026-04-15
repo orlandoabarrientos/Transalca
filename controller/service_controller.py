@@ -122,14 +122,30 @@ def assign():
         errors = {}
         if not data.get('servicio_id'):
             errors['servicio_id'] = 'Debe seleccionar un servicio'
-        if not data.get('mecanico_cedula'):
-            errors['mecanico_cedula'] = 'Debe seleccionar un mecanico'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         aid = model.assign_mechanic(data)
+        message = 'Servicio registrado sin mecanico' if not (data.get('mecanico_cedula') or '').strip() else 'Mecanico asignado'
         bitacora.log_action(session['user_id'], 'CREAR', 'SERVICIOS',
-            f"Mecanico asignado a servicio", request.remote_addr)
-        return jsonify({"status": "success", "message": "Mecanico asignado", "id": aid})
+            f"Registro servicio mecanico ID: {aid}", request.remote_addr)
+        return jsonify({"status": "success", "message": message, "id": aid})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@service_bp.route('/assignment/<int:aid>/mechanic', methods=['PUT'])
+def update_assignment_mechanic(aid):
+    try:
+        if 'user_id' not in session:
+            return jsonify({"status": "error", "message": "No autorizado"}), 401
+        data = request.get_json()
+        mecanico_cedula = (data.get('mecanico_cedula') or '').strip()
+        if not mecanico_cedula:
+            return jsonify({"status": "error", "message": "Debe seleccionar un mecanico"}), 400
+        model.assign_mechanic_to_assignment(aid, mecanico_cedula)
+        bitacora.log_action(session['user_id'], 'MODIFICAR', 'SERVICIOS',
+            f"Mecanico actualizado en asignacion ID: {aid}", request.remote_addr)
+        return jsonify({"status": "success", "message": "Mecanico asignado correctamente"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

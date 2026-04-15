@@ -62,6 +62,7 @@
     <script>
     $(document).ready(function(){
         $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
+        $('#footerContainer').load('/components/client_footer.html');
         loadCart();
         $('#checkoutForm').on('submit',function(e){
             e.preventDefault();

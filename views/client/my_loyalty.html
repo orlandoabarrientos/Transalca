@@ -129,6 +129,7 @@
     const gradients = ['grad-promo1','grad-promo2','grad-promo3'];
     $(document).ready(function(){
         $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
+        $('#footerContainer').load('/components/client_footer.html');
         $.get('/api/promotions/cards/my',function(r){
             if(!r.data||r.data.length===0){$('#noCards').show();return;}
             var html='';

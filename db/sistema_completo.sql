@@ -306,7 +306,7 @@ CREATE TABLE mecanicos (
 CREATE TABLE servicio_mecanico (
     id INT AUTO_INCREMENT PRIMARY KEY,
     servicio_id INT NOT NULL,
-    mecanico_id INT NOT NULL,
+    mecanico_id INT,
     orden_venta_id INT,
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     estado ENUM('asignado', 'en_proceso', 'completado', 'cancelado') DEFAULT 'asignado',

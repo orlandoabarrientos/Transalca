@@ -1,35 +1,53 @@
-<nav class="client-navbar">
-    <div class="container d-flex justify-content-between align-items-center">
-        <a href="/client/home" class="text-decoration-none">
-            <h4 class="mb-0 fw-bold" style="color: var(--primary);">TRANSALCA <span style="color: var(--primary-dark);">C.A.</span></h4>
-        </a>
-        <div class="d-flex align-items-center gap-3">
-            <div class="d-none d-md-flex align-items-center gap-2" id="ratesBar" style="font-size:0.7rem;font-weight:600;">
-                <span style="background:var(--primary-soft);padding:4px 10px;border-radius:12px;color:var(--primary-dark);">
-                    <i class="bi bi-bank me-1"></i>BCV: <span id="rateBcvClient">--</span> Bs
-                </span>
-            </div>
-            <a href="/client/catalog" class="btn btn-sm btn-outline-orange"><i class="bi bi-grid-3x3-gap-fill me-1"></i> Catalogo</a>
-            <a href="/client/cart" class="btn btn-sm btn-orange auth-required" style="display:none;position:relative;">
-                <i class="bi bi-cart3"></i>
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="cartBadge" style="display:none;">0</span>
+<nav class="client-navbar-wrap">
+    <div class="navbar navbar-expand-lg client-navbar">
+        <div class="container">
+            <a href="/client/home" class="client-brand">
+                <img src="/public/assets/icons/transalca-logo.svg" alt="Transalca" class="client-brand-logo">
+                <div>
+                    <strong>TRANSALCA C.A.</strong>
+                    <small>Repuestos y servicio automotriz</small>
+                </div>
             </a>
-            <a href="/client/my_loyalty" class="btn btn-sm btn-outline-orange auth-required" style="display:none;"><i class="bi bi-gift-fill"></i></a>
-            <a href="/admin/dashboard" class="btn btn-sm btn-dark" id="navAdminBtn" style="display:none;" title="Panel de Administración"><i class="bi bi-shield-lock-fill"></i></a>
-            <div class="dropdown auth-required" style="display:none;">
-                <button class="btn btn-sm" data-bs-toggle="dropdown">
-                    <img src="/public/assets/profile_pics/default.png" alt="Perfil" id="clientNavPhoto" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--primary-soft);">
+
+            <div class="d-flex align-items-center gap-2 order-lg-3">
+                <div class="d-none d-xl-flex align-items-center" id="ratesBar">
+                    <span class="client-rate-pill">
+                        <i class="bi bi-bank me-1"></i>BCV: <span id="rateBcvClient">--</span> Bs
+                    </span>
+                </div>
+                <a href="/client/cart" class="btn btn-sm btn-orange auth-required position-relative" style="display:none;">
+                    <i class="bi bi-cart3 me-1"></i>Carrito
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="cartBadge" style="display:none;">0</span>
+                </a>
+                <a href="/admin/dashboard" class="btn btn-sm btn-dark" id="navAdminBtn" style="display:none;" title="Panel de Administracion"><i class="bi bi-shield-lock-fill"></i></a>
+                <div class="dropdown auth-required" style="display:none;">
+                    <button class="btn btn-sm client-profile-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                        <img src="/public/assets/profile_pics/default.png" alt="Perfil" id="clientNavPhoto" class="client-profile-photo">
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/client/profile"><i class="bi bi-person-circle me-2"></i>Mi Perfil</a></li>
+                        <li><a class="dropdown-item" href="/client/my_orders"><i class="bi bi-bag-check me-2"></i>Mis Pedidos</a></li>
+                        <li><a class="dropdown-item" href="/client/my_loyalty"><i class="bi bi-gift me-2"></i>Mi Fidelizacion</a></li>
+                        <li><a class="dropdown-item client-only-qr" href="/client/qr_scan"><i class="bi bi-qr-code me-2"></i>Escanear QR</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="clientLogout"><i class="bi bi-box-arrow-left me-2"></i>Cerrar Sesion</a></li>
+                    </ul>
+                </div>
+                <a href="/auth/login" class="btn btn-sm btn-orange guest-only"><i class="bi bi-person-fill me-1"></i>Iniciar Sesion</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#clientNavCollapse" aria-controls="clientNavCollapse" aria-expanded="false" aria-label="Abrir menu">
+                    <i class="bi bi-list"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="/client/profile"><i class="bi bi-person-circle me-2"></i>Mi Perfil</a></li>
-                    <li><a class="dropdown-item" href="/client/my_orders"><i class="bi bi-bag-check me-2"></i>Mis Pedidos</a></li>
-                    <li><a class="dropdown-item" href="/client/my_loyalty"><i class="bi bi-gift me-2"></i>Mi Fidelizacion</a></li>
-                    <li><a class="dropdown-item client-only-qr" href="/client/qr_scan"><i class="bi bi-qr-code me-2"></i>Escanear QR</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" id="clientLogout"><i class="bi bi-box-arrow-left me-2"></i>Cerrar Sesion</a></li>
+            </div>
+
+            <div class="collapse navbar-collapse order-lg-2" id="clientNavCollapse">
+                <ul class="navbar-nav mx-lg-auto client-nav-links">
+                    <li class="nav-item"><a class="nav-link" href="/client/home"><i class="bi bi-house-door me-1"></i>Inicio</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/client/catalog"><i class="bi bi-grid-3x3-gap-fill me-1"></i>Catalogo</a></li>
+                    <li class="nav-item auth-required" style="display:none;"><a class="nav-link" href="/client/my_orders"><i class="bi bi-bag-check me-1"></i>Pedidos</a></li>
+                    <li class="nav-item auth-required" style="display:none;"><a class="nav-link" href="/client/my_loyalty"><i class="bi bi-gift me-1"></i>Fidelizacion</a></li>
+                    <li class="nav-item auth-required client-only-qr" style="display:none;"><a class="nav-link" href="/client/qr_scan"><i class="bi bi-qr-code me-1"></i>Escanear QR</a></li>
                 </ul>
             </div>
-            <a href="/auth/login" class="btn btn-sm btn-orange guest-only"><i class="bi bi-person-fill me-1"></i> Iniciar Sesion</a>
         </div>
     </div>
 </nav>

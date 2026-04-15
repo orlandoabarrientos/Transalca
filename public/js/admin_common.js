@@ -329,7 +329,7 @@ async function loadNavSession() {
                 const titles = {
                     dashboard: 'Dashboard', products: 'Productos', categories: 'Categorias',
                     brands: 'Marcas', suppliers: 'Proveedores', inventory: 'Gestionar Stock de Productos',
-                    services: 'Servicios', mechanics: 'Mecanicos', orders: 'Ordenes de Venta',
+                    services: 'Servicios', service_mechanics: 'Servicio Mecanico', mechanics: 'Mecanicos', orders: 'Ordenes de Venta',
                     payments: 'Comprobacion de Pagos', promotions: 'Promociones',
                     users: 'Usuarios', roles: 'Roles y Permisos', qr: 'Codigos QR',
                     reports: 'Reportes', bitacora: 'Bitacora', backup: 'Respaldos',

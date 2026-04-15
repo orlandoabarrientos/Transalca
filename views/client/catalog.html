@@ -47,9 +47,7 @@
     </div>
 </div>
 
-<footer class="text-center py-4 mt-5" style="background:var(--bg-sidebar);color:var(--text-sidebar);">
-    <p class="mb-0">&copy; 2026 Transalca C.A. - Todos los derechos reservados</p>
-</footer>
+<div id="footerContainer"></div>
 
 <script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
 <script src="/public/jquery/jquery.min.js"></script>
@@ -61,6 +59,7 @@ let allServices = [];
 
 $(document).ready(function() {
     $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
+    $('#footerContainer').load('/components/client_footer.html');
     loadCatalog();
 });
 

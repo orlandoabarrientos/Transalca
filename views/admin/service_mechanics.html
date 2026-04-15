@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servicio Mecanico - Transalca C.A.</title>
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">Servicio Mecanico</h4>
+                <button class="btn btn-orange" onclick="openAssignmentModal()"><i class="bi bi-plus-lg me-2"></i>Nuevo Registro</button>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body d-flex flex-wrap gap-4 align-items-center">
+                    <div>
+                        <h6 class="mb-1">Modulo operativo de taller</h6>
+                        <small class="text-muted">Registra servicios con o sin mecanico y asigna luego cuando corresponda.</small>
+                    </div>
+                    <div class="ms-auto d-flex gap-3">
+                        <div class="text-center">
+                            <div class="fw-bold" id="statTotal">0</div>
+                            <small class="text-muted">Registros</small>
+                        </div>
+                        <div class="text-center">
+                            <div class="fw-bold" id="statNoAssigned">0</div>
+                            <small class="text-muted">Sin mecanico</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th class="col-id">ID</th>
+                                <th>Servicio</th>
+                                <th>Orden</th>
+                                <th>Mecanico</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                                <th>Observaciones</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assignmentBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="assignmentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="assignmentModalTitle">Nuevo Registro Servicio Mecanico</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="assignmentForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Servicio <span class="required">*</span></label>
+                            <select class="form-select" id="servicio_id" name="servicio_id"></select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Mecanico (opcional)</label>
+                            <select class="form-select" id="mecanico_cedula" name="mecanico_cedula"></select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Orden de venta</label>
+                            <input type="number" class="form-control" id="orden_venta_id" name="orden_venta_id" min="1" placeholder="Ej: 120">
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">Observaciones</label>
+                            <input type="text" class="form-control" id="observaciones" name="observaciones" maxlength="255" placeholder="Detalle del servicio o nota de recepcion">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-orange" onclick="saveAssignment()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="mechanicAssignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Asignar Mecanico</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="assignmentIdForMechanic">
+                <div class="mb-3">
+                    <label class="form-label">Mecanico <span class="required">*</span></label>
+                    <select class="form-select" id="assignment_mechanic_cedula"></select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-orange" onclick="saveMechanicAssignment()">Asignar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/service_mechanics.js"></script>
+</body>
+</html>

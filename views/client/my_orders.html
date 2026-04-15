@@ -28,6 +28,7 @@
     <script>
     $(document).ready(function(){
         $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
+        $('#footerContainer').load('/components/client_footer.html');
         $.get('/api/orders/my-orders',function(r){
             var html='';
             if(!r.data||r.data.length===0){html='<div class="text-center py-5 text-muted"><i class="bi bi-bag-x fs-1"></i><p>No tienes pedidos aún</p><a href="/client/catalog" class="btn btn-primary-custom">Ir al Catálogo</a></div>';}

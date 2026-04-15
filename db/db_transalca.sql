@@ -295,7 +295,7 @@ CREATE TABLE detalle_orden_venta (
 CREATE TABLE servicio_mecanico (
     id INT AUTO_INCREMENT PRIMARY KEY,
     servicio_id INT NOT NULL,
-    mecanico_cedula VARCHAR(20) NOT NULL,
+    mecanico_cedula VARCHAR(20),
     orden_venta_id INT,
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     estado VARCHAR(30) NOT NULL DEFAULT 'asignado',
