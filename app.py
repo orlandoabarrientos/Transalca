@@ -27,6 +27,8 @@ from controller.report_controller import report_bp
 from controller.sucursal_controller import sucursal_bp
 from controller.rates_controller import rates_bp
 from controller.stats_controller import stats_bp
+from controller.service_mechanic_controller import service_mechanic_bp
+from controller.tasa_cambio_controller import tasa_bp
 
 app = Flask(__name__, static_folder='public', template_folder='views')
 app.secret_key = SECRET_KEY
@@ -54,6 +56,8 @@ app.register_blueprint(report_bp, url_prefix='/api/reports')
 app.register_blueprint(sucursal_bp, url_prefix='/api/sucursales')
 app.register_blueprint(rates_bp, url_prefix='/api/rates')
 app.register_blueprint(stats_bp, url_prefix='/api/stats')
+app.register_blueprint(service_mechanic_bp, url_prefix='/api/service-mechanics')
+app.register_blueprint(tasa_bp, url_prefix='/api/tasas')
 
 
 @app.route('/')

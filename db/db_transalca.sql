@@ -384,6 +384,22 @@ CREATE TABLE carrito (
     FOREIGN KEY (tipo) REFERENCES cat_tipos_item(nombre) ON UPDATE CASCADE
 );
 
+-- tasas_cambio: registro diario de tasa USD/Bs
+CREATE TABLE tasas_cambio (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    fecha DATE NOT NULL,
+    monto DECIMAL(12,4) NOT NULL,
+    fuente VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_tasa_fecha (fecha)
+);
+
+-- ============================================================
+-- INDICES
+-- ============================================================
+
+CREATE INDEX idx_ordenes_venta_cliente ON ordenes_venta (cliente_cedula);
+
 -- ============================================================
 -- TRIGGERS Y FUNCIONES
 -- Actualizados para usar claves naturales

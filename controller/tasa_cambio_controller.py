@@ -1,0 +1,119 @@
+from flask import Blueprint, request, jsonify, session
+from model.tasa_cambio_model import TasaCambioModel
+from model.bitacora_model import BitacoraModel
+
+tasa_bp = Blueprint('tasas', __name__)
+model = TasaCambioModel()
+bitacora = BitacoraModel()
+
+
+@tasa_bp.route('/', methods=['GET'])
+def get_all():
+    try:
+        limit = request.args.get('limit', 30, type=int)
+        return jsonify({"status": "success", "data": model.get_all(limit)})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@tasa_bp.route('/today', methods=['GET'])
+def get_today():
+    try:
+        tasa = model.get_today()
+        if tasa:
+            return jsonify({"status": "success", "data": tasa})
+        return jsonify({"status": "error", "message": "No hay tasa registrada hoy"}), 404
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@tasa_bp.route('/latest', methods=['GET'])
+def get_latest():
+    try:
+        tasa = model.get_latest()
+        if tasa:
+            return jsonify({"status": "success", "data": tasa})
+        return jsonify({"status": "error", "message": "No hay tasas registradas"}), 404
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@tasa_bp.route('/', methods=['POST'])
+def create():
+    try:
+        if 'user_id' not in session:
+            return jsonify({"status": "error", "message": "No autorizado"}), 401
+        data = request.get_json()
+        errors = {}
+        if not data.get('fecha'):
+            errors['fecha'] = 'Fecha requerida'
+        try:
+            monto = float(data.get('monto', 0))
+            if monto <= 0:
+                errors['monto'] = 'El monto debe ser mayor a 0'
+        except (ValueError, TypeError):
+            errors['monto'] = 'Monto invalido'
+        if not data.get('fuente') or len(data['fuente'].strip()) < 2:
+            errors['fuente'] = 'Fuente requerida'
+        if errors:
+            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
+        tasa_id = model.create(data)
+        bitacora.log_action(session['user_id'], 'CREAR', 'TASAS_CAMBIO',
+            f"Tasa registrada: {data['monto']} Bs - {data['fuente']}", request.remote_addr)
+        return jsonify({"status": "success", "message": "Tasa registrada", "id": tasa_id})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@tasa_bp.route('/<int:tasa_id>', methods=['PUT'])
+def update(tasa_id):
+    try:
+        if 'user_id' not in session:
+            return jsonify({"status": "error", "message": "No autorizado"}), 401
+        data = request.get_json()
+        errors = {}
+        try:
+            monto = float(data.get('monto', 0))
+            if monto <= 0:
+                errors['monto'] = 'El monto debe ser mayor a 0'
+        except (ValueError, TypeError):
+            errors['monto'] = 'Monto invalido'
+        if not data.get('fuente') or len(data['fuente'].strip()) < 2:
+            errors['fuente'] = 'Fuente requerida'
+        if errors:
+            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
+        model.update_tasa(tasa_id, data)
+        bitacora.log_action(session['user_id'], 'MODIFICAR', 'TASAS_CAMBIO',
+            f"Tasa modificada ID: {tasa_id}", request.remote_addr)
+        return jsonify({"status": "success", "message": "Tasa actualizada"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@tasa_bp.route('/<int:tasa_id>', methods=['DELETE'])
+def delete(tasa_id):
+    try:
+        if 'user_id' not in session:
+            return jsonify({"status": "error", "message": "No autorizado"}), 401
+        model.delete_tasa(tasa_id)
+        bitacora.log_action(session['user_id'], 'ELIMINAR', 'TASAS_CAMBIO',
+            f"Tasa eliminada ID: {tasa_id}", request.remote_addr)
+        return jsonify({"status": "success", "message": "Tasa eliminada"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@tasa_bp.route('/sync-scraping', methods=['POST'])
+def sync_scraping():
+    try:
+        from services.bcv_scraper import get_bcv_rates
+        bcv = get_bcv_rates(verify=False)
+        monto = bcv.get('usd', 0)
+        if monto <= 0:
+            return jsonify({"status": "error", "message": "No se pudo obtener tasa BCV"}), 502
+        result = model.register_from_scraping(monto)
+        if result is None:
+            return jsonify({"status": "success", "message": "Ya existe tasa registrada hoy", "skipped": True})
+        return jsonify({"status": "success", "message": f"Tasa BCV registrada: {monto} Bs", "id": result})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500

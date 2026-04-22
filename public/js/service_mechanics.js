@@ -47,7 +47,7 @@ async function loadMechanics() {
 
 async function loadAssignments() {
     try {
-        const res = await apiCall('/api/services/assignments');
+        const res = await apiCall('/api/service-mechanics/');
         const assignments = res.data || [];
         const tbody = document.getElementById('assignmentBody');
         tbody.innerHTML = '';
@@ -117,7 +117,7 @@ async function saveAssignment() {
     };
 
     try {
-        const res = await apiCall('/api/services/assign', 'POST', data);
+        const res = await apiCall('/api/service-mechanics/', 'POST', data);
         assignmentModal.hide();
         showToast(res.message || 'Registro creado', 'success');
         loadAssignments();
@@ -140,7 +140,7 @@ async function saveMechanicAssignment() {
     }
 
     try {
-        const res = await apiCall(`/api/services/assignment/${assignmentId}/mechanic`, 'PUT', {
+        const res = await apiCall(`/api/service-mechanics/${assignmentId}/mechanic`, 'PUT', {
             mecanico_cedula: mecanicoCedula
         });
         mechanicModal.hide();
@@ -151,7 +151,7 @@ async function saveMechanicAssignment() {
 
 async function updateAssignmentStatus(assignmentId, estado) {
     try {
-        const res = await apiCall(`/api/services/assignment/${assignmentId}/status`, 'PUT', { estado });
+        const res = await apiCall(`/api/service-mechanics/${assignmentId}/status`, 'PUT', { estado });
         showToast(res.message || 'Estado actualizado', 'success');
     } catch (e) {
         loadAssignments();
