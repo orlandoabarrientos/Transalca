@@ -44,7 +44,7 @@ function updateNavForUser() {
     document.querySelectorAll('.guest-only').forEach(el => el.style.display = 'none');
     const adminBtn = document.getElementById('navAdminBtn');
     if (adminBtn) {
-        adminBtn.style.display = (currentUser.tipo === 'empleado' || currentUser.tipo === 'admin') ? '' : 'none';
+        adminBtn.style.display = (['empleado', 'admin', 'vendedor', 'mecanico', 'soporte'].includes(currentUser.tipo)) ? '' : 'none';
     }
     document.querySelectorAll('.client-only-qr').forEach(el => {
         el.style.display = (currentUser.tipo === 'cliente') ? '' : 'none';
@@ -99,8 +99,39 @@ function formatCurrency(amount) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    checkSession();
+    checkSession().then(loggedIn => {
+        if (loggedIn) loadClientNotifications();
+    });
 });
+
+async function loadClientNotifications() {
+    try {
+        const res = await fetch('/api/notifications/', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.status !== 'success') return;
+        const list = data.data || [];
+        const unread = list.filter(n => !n.leida).length;
+        const badge = document.getElementById('clientNotifBadge');
+        if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? '' : 'none'; }
+        const container = document.getElementById('clientNotifList');
+        if (!container) return;
+        if (list.length === 0) { container.innerHTML = '<div class="text-center text-muted py-3" style="font-size:0.8rem;">Sin notificaciones</div>'; return; }
+        container.innerHTML = list.slice(0, 8).map(n => {
+            const bg = n.leida ? '' : 'background:rgba(0,0,0,0.03);';
+            return `<div class="px-3 py-2 border-bottom" style="font-size:0.8rem;cursor:pointer;${bg}" onclick="markReadClient(${n.id})"><div style="font-weight:${n.leida?'400':'600'};">${n.titulo || n.mensaje}</div><div class="text-muted" style="font-size:0.7rem;">${n.mensaje ? n.mensaje.substring(0,60) : ''}</div></div>`;
+        }).join('');
+    } catch(e) {}
+}
+
+async function markReadClient(id) {
+    try { await fetch(`/api/notifications/${id}/read`, { method: 'PUT', credentials: 'same-origin' }); loadClientNotifications(); } catch(e) {}
+}
+
+async function markAllReadClient() {
+    try { await fetch('/api/notifications/read-all', { method: 'PUT', credentials: 'same-origin' }); loadClientNotifications(); } catch(e) {}
+}
+
+setInterval(() => { if (currentUser) loadClientNotifications(); }, 30000);
 
 document.body.addEventListener('click', async (e) => {
     const logoutTarget = e.target.closest('#clientLogout');

@@ -7,6 +7,10 @@ class QRModel(Connection):
     def __init__(self):
         super().__init__()
 
+    def _columns(self):
+        rows = self.fetch_all("transalca", "SHOW COLUMNS FROM qr_codes")
+        return {r['Field'] for r in rows}
+
     def _parse_content(self, content):
         if not content:
             return {}
@@ -17,6 +21,35 @@ class QRModel(Connection):
             return parsed if isinstance(parsed, dict) else {}
         except Exception:
             return {}
+
+    def _reference_id(self, data):
+        referencia_id = data.get('referencia_id')
+        if referencia_id in ('', None):
+            return None
+        try:
+            return int(referencia_id)
+        except Exception as exc:
+            raise ValueError('Referencia invalida') from exc
+
+    def _reference_fields(self, data):
+        referencia_id = self._reference_id(data)
+        utility_type = (data.get('utilidad_tipo') or data.get('utilidad') or '').strip().lower()
+        tipo = (data.get('tipo') or 'info').strip().lower()
+        fields = {
+            'referencia_id': referencia_id,
+            'promocion_id': None,
+            'servicio_id': None,
+            'orden_venta_id': None
+        }
+        if not referencia_id:
+            return fields
+        if utility_type == 'promocion' or tipo == 'promocion' or utility_type.startswith('mesa'):
+            fields['promocion_id'] = referencia_id
+        elif utility_type in ('factura', 'validar_pago', 'pago') or tipo == 'pago':
+            fields['orden_venta_id'] = referencia_id
+        elif utility_type == 'servicio' or tipo == 'servicio':
+            fields['servicio_id'] = referencia_id
+        return fields
 
     def _build_content(self, data, existing_content=None):
         utility_type = (data.get('utilidad_tipo') or '').strip().lower()
@@ -33,15 +66,7 @@ class QRModel(Connection):
         except Exception:
             ttl_minutos = 10
 
-        referencia_id = data.get('referencia_id')
-        if referencia_id in ('', None):
-            referencia_id = None
-        else:
-            try:
-                referencia_id = int(referencia_id)
-            except Exception as exc:
-                raise ValueError('Referencia invalida') from exc
-
+        referencia_id = self._reference_id(data)
         now = datetime.now()
         payload.update({
             'kind': utility_type,
@@ -59,9 +84,15 @@ class QRModel(Connection):
         utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
         utilidad = utilidad_tipo or (data.get('utilidad') or '').strip()
         contenido = self._build_content(data)
+        fields = self._reference_fields(data)
+        columns = self._columns()
+        extra = [k for k in ('referencia_id', 'promocion_id', 'servicio_id', 'orden_venta_id') if k in columns]
+        names = ['usuario_cedula', 'tipo', 'contenido', 'utilidad'] + extra
+        values = [data['usuario_cedula'], data.get('tipo', 'info'), contenido, utilidad] + [fields[k] for k in extra]
+        placeholders = ", ".join(["%s"] * len(names))
         return self.insert("transalca",
-            "INSERT INTO qr_codes (usuario_cedula, tipo, contenido, utilidad) VALUES (%s, %s, %s, %s)",
-            (data['usuario_cedula'], data.get('tipo', 'info'), contenido, utilidad))
+            f"INSERT INTO qr_codes ({', '.join(names)}) VALUES ({placeholders})",
+            tuple(values))
 
     def get_user_qrs(self, usuario_cedula):
         return self.fetch_all("transalca",
@@ -84,9 +115,14 @@ class QRModel(Connection):
         contenido = self._build_content(data, existing.get('contenido') if existing else None)
         utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
         utilidad = utilidad_tipo or (data.get('utilidad') or '').strip()
+        fields = self._reference_fields(data)
+        columns = self._columns()
+        extra = [k for k in ('referencia_id', 'promocion_id', 'servicio_id', 'orden_venta_id') if k in columns]
+        set_sql = ["tipo = %s", "contenido = %s", "utilidad = %s"] + [f"{k} = %s" for k in extra]
+        values = [data.get('tipo', 'info'), contenido, utilidad] + [fields[k] for k in extra] + [qr_id]
         return self.update("transalca",
-            "UPDATE qr_codes SET tipo = %s, contenido = %s, utilidad = %s WHERE id = %s",
-            (data.get('tipo', 'info'), contenido, utilidad, qr_id))
+            f"UPDATE qr_codes SET {', '.join(set_sql)} WHERE id = %s",
+            tuple(values))
 
     def delete_qr(self, qr_id):
         return self.update("transalca",

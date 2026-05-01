@@ -53,10 +53,25 @@ function changePassword() {
 function uploadPhoto() {
     const input = document.getElementById('photoInput');
     if (!input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = function(e) { document.getElementById('profilePhoto').src = e.target.result; };
+    reader.readAsDataURL(input.files[0]);
     const fd = new FormData();
     fd.append('photo', input.files[0]);
     fetch('/api/profile/photo', { method: 'POST', body: fd, credentials: 'same-origin' }).then(r => r.json()).then(res => {
-        if (res.status === 'success') { showToast('Foto actualizada'); loadProfile(); }
-        else showToast(res.message, 'error');
+        if (res.status === 'success') {
+            showToast('Foto actualizada');
+            const ts = '?t=' + Date.now();
+            const src = '/public/assets/profile_pics/' + res.filename + ts;
+            document.getElementById('profilePhoto').src = src;
+            const navPhoto = document.getElementById('navUserPhoto');
+            if (navPhoto) navPhoto.src = src;
+        } else {
+            showToast(res.message, 'error');
+            loadProfile();
+        }
+    }).catch(() => {
+        showToast('Error al subir foto', 'error');
+        loadProfile();
     });
 }

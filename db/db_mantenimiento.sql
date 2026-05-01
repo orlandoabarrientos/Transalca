@@ -15,10 +15,10 @@ CREATE TABLE usuarios (
     apellido VARCHAR(100) NOT NULL,
     cedula VARCHAR(20) UNIQUE NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
-    telefono VARCHAR(20),
+    telefono VARCHAR(20) NOT NULL,
     direccion TEXT,
     password_hash VARCHAR(255) NOT NULL,
-    tipo ENUM('cliente', 'empleado') NOT NULL DEFAULT 'cliente',
+    tipo VARCHAR(20) NOT NULL DEFAULT 'cliente',
     foto_perfil VARCHAR(255) DEFAULT 'default.png',
     estado TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -107,7 +107,7 @@ CREATE PROCEDURE sp_crear_usuario(
     IN p_telefono VARCHAR(20),
     IN p_direccion TEXT,
     IN p_password VARCHAR(255),
-    IN p_tipo ENUM('cliente', 'empleado')
+    IN p_tipo VARCHAR(20)
 )
 BEGIN
     INSERT INTO usuarios (nombre, apellido, cedula, email, telefono, direccion, password_hash, tipo)

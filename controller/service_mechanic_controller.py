@@ -1,10 +1,12 @@
 from flask import Blueprint, request, jsonify, session
 from model.service_mechanic_model import ServiceMechanicModel
 from model.bitacora_model import BitacoraModel
+from model.commission_model import CommissionModel
 
 service_mechanic_bp = Blueprint('service_mechanics', __name__)
 model = ServiceMechanicModel()
 bitacora = BitacoraModel()
+commission_model = CommissionModel()
 
 
 @service_mechanic_bp.route('/', methods=['GET'])
@@ -70,6 +72,12 @@ def update_status(aid):
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         data = request.get_json()
         model.update_status(aid, data['estado'])
-        return jsonify({"status": "success", "message": "Estado actualizado"})
+        commission_id = None
+        if data.get('estado') == 'completado':
+            commission_id = commission_model.create_from_service(aid)
+        response = {"status": "success", "message": "Estado actualizado"}
+        if commission_id:
+            response["commission_id"] = commission_id
+        return jsonify(response)
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

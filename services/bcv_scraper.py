@@ -7,7 +7,10 @@ import re
 from typing import Dict
 
 import requests
-from bs4 import BeautifulSoup
+try:
+    from bs4 import BeautifulSoup
+except ModuleNotFoundError:
+    BeautifulSoup = None
 
 BCV_URL = "https://www.bcv.org.ve"
 _CURRENCY_KEYWORDS = {
@@ -98,6 +101,8 @@ def _fallback_by_index(soup: BeautifulSoup, rates: Dict[str, float]) -> None:
 
 def get_bcv_rates(targets=None, timeout=10, verify=False) -> Dict[str, float]:
     """Fetch exchange rates from BCV website."""
+    if BeautifulSoup is None:
+        raise ScraperError("Dependencia faltante: instale beautifulsoup4 (bs4)")
     try:
         response = requests.get(BCV_URL, timeout=timeout, verify=verify)
         response.raise_for_status()

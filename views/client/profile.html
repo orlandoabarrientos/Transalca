@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
@@ -13,7 +11,6 @@
     <link rel="stylesheet" href="/componente_ia/chat_widget.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
-
 <body>
     <div id="navbarContainer"></div>
     <div class="container py-4">
@@ -26,70 +23,188 @@
                             style="width:130px;height:130px;object-fit:cover;border:4px solid var(--highlight);">
                         <h5 id="profileName" class="fw-bold"></h5>
                         <p id="profileEmail" class="text-muted"></p>
-                        <form id="photoForm" enctype="multipart/form-data"><input type="file" id="photoInput"
-                                accept="image/*" style="display:none"><button type="button"
-                                class="btn btn-sm btn-primary-custom" onclick="$('#photoInput').click()"><i
-                                    class="bi bi-camera me-1"></i>Cambiar Foto</button></form>
+                        <form id="photoForm" enctype="multipart/form-data">
+                            <input type="file" id="photoInput" accept="image/*" class="d-none">
+                            <button type="button" class="btn btn-sm btn-primary-custom" id="btnChangePhoto">
+                                <i class="bi bi-camera me-1"></i>Cambiar Foto
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
             <div class="col-md-8">
                 <div class="card-custom mb-4">
-                    <div class="card-header"><span>Información Personal</span></div>
+                    <div class="card-header"><span>Informacion Personal</span></div>
                     <div class="card-body">
                         <form id="profileForm">
                             <div class="row mb-3">
-                                <div class="col-6"><label class="form-label">Nombre</label><input type="text"
-                                        class="form-control" id="fNombre"></div>
-                                <div class="col-6"><label class="form-label">Apellido</label><input type="text"
-                                        class="form-control" id="fApellido"></div>
+                                <div class="col-6">
+                                    <label class="form-label">Nombre</label>
+                                    <input type="text" class="form-control" id="fNombre">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">Apellido</label>
+                                    <input type="text" class="form-control" id="fApellido">
+                                </div>
                             </div>
-                            <div class="mb-3"><label class="form-label">Teléfono</label><input type="text"
-                                    class="form-control" id="fTelefono"></div>
-                            <div class="mb-3"><label class="form-label">Dirección</label><textarea class="form-control"
-                                    id="fDireccion" rows="2"></textarea></div>
-                            <button type="submit" class="btn btn-success-custom"><i
-                                    class="bi bi-check-circle me-2"></i>Guardar</button>
+                            <div class="mb-3">
+                                <label class="form-label">Telefono</label>
+                                <input type="text" class="form-control" id="fTelefono">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Direccion</label>
+                                <textarea class="form-control" id="fDireccion" rows="2"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-success-custom">
+                                <i class="bi bi-check-circle me-2"></i>Guardar
+                            </button>
                         </form>
                     </div>
                 </div>
-                <div class="card-custom">
-                    <div class="card-header"><span>Cambiar Contraseña</span></div>
+
+                <div class="card-custom mb-4">
+                    <div class="card-header"><span>Cambiar Contrasena</span></div>
                     <div class="card-body">
                         <form id="passwordForm">
-                            <div class="mb-3"><label class="form-label">Contraseña Actual</label><input type="password"
-                                    class="form-control" id="fOldPass" required></div>
-                            <div class="row mb-3">
-                                <div class="col-6"><label class="form-label">Nueva Contraseña</label><input
-                                        type="password" class="form-control" id="fNewPass" required></div>
-                                <div class="col-6"><label class="form-label">Confirmar</label><input type="password"
-                                        class="form-control" id="fConfirmPass" required></div>
+                            <div class="mb-3">
+                                <label class="form-label">Contrasena Actual</label>
+                                <input type="password" class="form-control" id="fOldPass" required>
                             </div>
-                            <button type="submit" class="btn btn-primary-custom"><i
-                                    class="bi bi-key me-2"></i>Cambiar</button>
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <label class="form-label">Nueva Contrasena</label>
+                                    <input type="password" class="form-control" id="fNewPass" required>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">Confirmar</label>
+                                    <input type="password" class="form-control" id="fConfirmPass" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary-custom">
+                                <i class="bi bi-key me-2"></i>Cambiar
+                            </button>
                         </form>
+                    </div>
+                </div>
+
+                <div class="card-custom">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Mis Vehiculos</span>
+                        <button type="button" class="btn btn-sm btn-orange" id="btnAddVehicle">
+                            <i class="bi bi-plus-circle me-1"></i>Agregar Vehiculo
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Placa</th>
+                                        <th>Marca</th>
+                                        <th>Modelo</th>
+                                        <th>Ano</th>
+                                        <th>Km</th>
+                                        <th>Titulo</th>
+                                        <th style="width:130px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="vehiclesProfileBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-3">Cargando...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
     <div id="footerContainer"></div>
+
+    <div class="modal fade" id="vehicleModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="vehicleModalTitle">Agregar Vehiculo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="vehicleForm">
+                        <input type="hidden" id="editVehicleId">
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Marca <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="vMarca" required>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Modelo <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="vModelo" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-4 mb-3">
+                                <label class="form-label">Ano</label>
+                                <input type="number" class="form-control" id="vAnio" min="1900" max="2100">
+                            </div>
+                            <div class="col-4 mb-3">
+                                <label class="form-label">Placa</label>
+                                <input type="text" class="form-control" id="vPlaca">
+                            </div>
+                            <div class="col-4 mb-3">
+                                <label class="form-label">Color</label>
+                                <input type="text" class="form-control" id="vColor">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Tipo vehiculo</label>
+                                <input type="text" class="form-control" id="vTipo">
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Combustible</label>
+                                <select class="form-select" id="vCombustible">
+                                    <option value="gasolina">Gasolina</option>
+                                    <option value="gasoil">Gasoil</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                                <span class="text-danger small d-none" id="vCombustibleError">Select alterado: valor no permitido</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Kilometraje actual</label>
+                            <input type="number" class="form-control" id="vKm" min="0" value="0">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label d-block">Titulo del vehiculo</label>
+                            <input type="file" id="vCarnetFile" accept="image/*" capture="environment" class="d-none">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="btnVehicleCarnet">
+                                <i class="bi bi-upc-scan me-1"></i>Escanear/Subir titulo
+                            </button>
+                            <span class="small text-muted ms-2" id="vCarnetFileName">No seleccionado</span>
+                            <div class="mt-2">
+                                <img id="vCarnetPreview" src="" alt="Preview titulo"
+                                    style="display:none;width:100%;max-height:170px;object-fit:contain;border:1px solid #ddd;border-radius:8px;padding:4px;">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-orange" id="btnSaveVehicle">Guardar Vehiculo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="/public/jquery/jquery.min.js"></script>
     <script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
     <script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
     <script src="/public/js/admin_common.js"></script>
     <script src="/public/js/client_common.js"></script>
+    <script src="/public/js/constants.js"></script>
+    <script src="/public/js/client_profile.js"></script>
     <script src="/componente_ia/chat_widget.js"></script>
-    <script>
-        $(document).ready(function () {
-            $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
-            $('#footerContainer').load('/components/client_footer.html');
-            $.get('/api/profile/', function (r) { var p = r.data; $('#fNombre').val(p.nombre); $('#fApellido').val(p.apellido); $('#fTelefono').val(p.telefono); $('#fDireccion').val(p.direccion); $('#profileName').text(p.nombre + ' ' + p.apellido); $('#profileEmail').text(p.email); if (p.foto_perfil && p.foto_perfil !== 'default.png') $('#profilePhoto').attr('src', '/public/assets/profile_pics/' + p.foto_perfil); });
-            $('#profileForm').on('submit', function (e) { e.preventDefault(); $.ajax({ url: '/api/profile/', type: 'PUT', contentType: 'application/json', data: JSON.stringify({ nombre: $('#fNombre').val(), apellido: $('#fApellido').val(), telefono: $('#fTelefono').val(), direccion: $('#fDireccion').val() }), success: function (r) { showSuccess(r.message); } }); });
-            $('#passwordForm').on('submit', function (e) { e.preventDefault(); if ($('#fNewPass').val() !== $('#fConfirmPass').val()) { showError('Las contraseñas no coinciden'); return; } $.ajax({ url: '/api/profile/password', type: 'PUT', contentType: 'application/json', data: JSON.stringify({ old_password: $('#fOldPass').val(), new_password: $('#fNewPass').val() }), success: function (r) { showSuccess(r.message); $('#passwordForm')[0].reset(); }, error: function (x) { showError(x.responseJSON ? x.responseJSON.message : 'Error'); } }); });
-            $('#photoInput').on('change', function () { var fd = new FormData(); fd.append('photo', this.files[0]); $.ajax({ url: '/api/profile/photo', type: 'POST', data: fd, processData: false, contentType: false, success: function (r) { showSuccess(r.message); $('#profilePhoto').attr('src', '/public/assets/profile_pics/' + r.filename); } }); });
-        });
-    </script>
 </body>
-
 </html>

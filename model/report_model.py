@@ -10,7 +10,7 @@ class ReportModel(Connection):
         total_products = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM productos WHERE estado = 1")
         total_categories = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM categorias WHERE estado = 1")
         total_clients = self.fetch_one("mantenimiento", "SELECT COUNT(*) as total FROM usuarios WHERE tipo = 'cliente' AND estado = 1")
-        total_employees = self.fetch_one("mantenimiento", "SELECT COUNT(*) as total FROM usuarios WHERE tipo = 'empleado' AND estado = 1")
+        total_employees = self.fetch_one("mantenimiento", "SELECT COUNT(*) as total FROM usuarios WHERE tipo IN ('admin','vendedor','mecanico','soporte','empleado') AND estado = 1")
         pending_payments = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM comprobantes_pago WHERE estado = 'pendiente'")
         total_sales = self.fetch_one("transalca", "SELECT COALESCE(SUM(total), 0) as total FROM ordenes_venta WHERE estado = 'aprobada'")
         total_orders = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM ordenes_venta WHERE estado != 'cancelada'")

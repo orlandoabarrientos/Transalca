@@ -59,5 +59,8 @@ class RoleModel(Connection):
             'usuarios', 'roles', 'productos', 'categorias', 'marcas',
             'proveedores', 'mecanicos', 'inventario', 'servicios',
             'promociones', 'ordenes', 'pagos', 'bitacora', 'reportes',
-            'respaldos', 'qr', 'sucursales'
+            'respaldos', 'qr', 'sucursales',
+            'vehiculos', 'comisiones', 'tickets', 'notificaciones',
+            'mantenimiento', 'tasas_avanzadas', 'cotizaciones', 'filtros',
+            'combustible'
         ]

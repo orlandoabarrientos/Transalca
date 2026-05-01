@@ -50,5 +50,6 @@ tmp_hash.txt
 # Design reference files
 *.pdf
 
-# API BCV separate project
-API BCV/
+.agents/
+.codex/
+skills-lock.json

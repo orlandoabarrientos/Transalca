@@ -21,6 +21,19 @@
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
                         id="cartBadge" style="display:none;">0</span>
                 </a>
+                <div class="dropdown auth-required" style="display:none;">
+                    <button class="btn btn-sm position-relative" data-bs-toggle="dropdown" title="Notificaciones">
+                        <i class="bi bi-bell-fill" style="font-size:1.1rem;"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="clientNotifBadge" style="display:none;font-size:0.6rem;">0</span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end p-0" style="width:320px;max-height:360px;overflow-y:auto;">
+                        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                            <strong style="font-size:0.85rem;">Notificaciones</strong>
+                            <button class="btn btn-sm btn-link text-decoration-none p-0" onclick="markAllReadClient()" style="font-size:0.75rem;">Marcar todas</button>
+                        </div>
+                        <div id="clientNotifList"><div class="text-center text-muted py-3" style="font-size:0.8rem;">Sin notificaciones</div></div>
+                    </div>
+                </div>
                 <a href="/admin/dashboard" class="btn btn-sm btn-dark" id="navAdminBtn" style="display:none;"
                     title="Panel de Administracion"><i class="bi bi-shield-lock-fill"></i></a>
                 <div class="dropdown auth-required" style="display:none;">
@@ -35,6 +48,7 @@
                                 Pedidos</a></li>
                         <li><a class="dropdown-item" href="/client/my_loyalty"><i class="bi bi-gift me-2"></i>Mi
                                 Fidelizacion</a></li>
+                        <li><a class="dropdown-item" href="/client/help"><i class="bi bi-life-preserver me-2"></i>Ayuda</a></li>
                         <li><a class="dropdown-item" href="/scanner"><i class="bi bi-upc-scan me-2"></i>Escaner</a></li>
                         <li>
                             <hr class="dropdown-divider">
@@ -62,6 +76,7 @@
                             href="/client/my_orders"><i class="bi bi-bag-check me-1"></i>Pedidos</a></li>
                     <li class="nav-item auth-required" style="display:none;"><a class="nav-link"
                             href="/client/my_loyalty"><i class="bi bi-gift me-1"></i>Fidelizacion</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/client/help"><i class="bi bi-life-preserver me-1"></i>Ayuda</a></li>
                     <li class="nav-item auth-required" style="display:none;"><a class="nav-link" href="/scanner"><i
                                 class="bi bi-upc-scan me-1"></i>Escaner</a></li>
                 </ul>

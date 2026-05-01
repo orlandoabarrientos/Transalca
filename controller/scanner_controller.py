@@ -11,7 +11,7 @@ bitacora = BitacoraModel()
 
 
 def _is_employee():
-    return session.get('user_tipo') in ['empleado', 'admin']
+    return session.get('user_tipo') in ['empleado', 'admin', 'vendedor', 'mecanico', 'soporte']
 
 
 @scanner_bp.route('/scan', methods=['POST'])

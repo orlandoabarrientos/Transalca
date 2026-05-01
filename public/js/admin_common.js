@@ -303,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Event Delegation for dynamically loaded auth elements
 document.body.addEventListener('click', async (e) => {
     const logoutTarget = e.target.closest('#btnLogout, #navLogout');
     if (logoutTarget) {
@@ -327,13 +326,15 @@ async function loadNavSession() {
             if (titleEl) {
                 const page = window.location.pathname.split('/').pop();
                 const titles = {
-                    dashboard: 'Dashboard', products: 'Productos', categories: 'Categorias',
+                    dashboard: 'Dashboard', clients: 'Clientes', products: 'Productos', categories: 'Categorias',
                     brands: 'Marcas', suppliers: 'Proveedores', inventory: 'Gestionar Stock de Productos',
                     services: 'Servicios', service_mechanics: 'Servicio Mecanico', mechanics: 'Mecanicos', orders: 'Ordenes de Venta',
+                    tickets: 'Tickets de Soporte',
                     payments: 'Comprobacion de Pagos', promotions: 'Promociones',
                     users: 'Usuarios', roles: 'Roles y Permisos', qr: 'Codigos QR',
-                    reports: 'Reportes', bitacora: 'Bitacora', backup: 'Respaldos',
-                    profile: 'Mi Perfil', sucursales: 'Sucursales'
+                    reports: 'Reportes', report_stats: 'Estadisticas', tasas: 'Tasa de Cambio',
+                    bitacora: 'Bitacora', backup: 'Respaldos',
+                    profile: 'Mi Perfil', sucursales: 'Sucursales', guide: 'Guia'
                 };
                 titleEl.textContent = titles[page] || 'Panel de Administracion';
             }

@@ -42,7 +42,7 @@ $(document).ready(async function () {
 });
 
 function isEmployee() {
-    return scannerUser && (scannerUser.tipo === 'empleado' || scannerUser.tipo === 'admin');
+    return scannerUser && ['empleado', 'admin', 'vendedor', 'mecanico', 'soporte'].includes(scannerUser.tipo);
 }
 
 function bindScannerEvents() {

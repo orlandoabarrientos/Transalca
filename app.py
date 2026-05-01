@@ -29,6 +29,16 @@ from controller.rates_controller import rates_bp
 from controller.stats_controller import stats_bp
 from controller.service_mechanic_controller import service_mechanic_bp
 from controller.tasa_cambio_controller import tasa_bp
+from controller.vehicle_controller import vehicle_bp
+from controller.notification_controller import notification_bp
+from controller.ticket_controller import ticket_bp
+from controller.commission_controller import commission_bp
+from controller.maintenance_controller import maintenance_bp
+from controller.pricing_controller import pricing_bp
+from controller.client_controller import client_bp
+from controller.fuel_controller import fuel_bp
+from controller.vehicle_log_controller import vehicle_log_bp
+from services.bcv_sync_service import start_bcv_auto_sync_scheduler
 
 app = Flask(__name__, static_folder='public', template_folder='views')
 app.secret_key = SECRET_KEY
@@ -58,6 +68,15 @@ app.register_blueprint(rates_bp, url_prefix='/api/rates')
 app.register_blueprint(stats_bp, url_prefix='/api/stats')
 app.register_blueprint(service_mechanic_bp, url_prefix='/api/service-mechanics')
 app.register_blueprint(tasa_bp, url_prefix='/api/tasas')
+app.register_blueprint(vehicle_bp, url_prefix='/api/vehicles')
+app.register_blueprint(notification_bp, url_prefix='/api/notifications')
+app.register_blueprint(ticket_bp, url_prefix='/api/tickets')
+app.register_blueprint(commission_bp, url_prefix='/api/commissions')
+app.register_blueprint(maintenance_bp, url_prefix='/api/maintenance')
+app.register_blueprint(pricing_bp, url_prefix='/api/pricing')
+app.register_blueprint(client_bp, url_prefix='/api/clients')
+app.register_blueprint(fuel_bp, url_prefix='/api/fuel')
+app.register_blueprint(vehicle_log_bp, url_prefix='/api/vehicle-log')
 
 
 @app.route('/')
@@ -101,11 +120,6 @@ def auth_page(page):
     return redirect('/auth/login')
 
 
-@app.route('/public/<path:filename>')
-def serve_public(filename):
-    return send_from_directory('public', filename)
-
-
 @app.route('/components/<path:filename>')
 def serve_component(filename):
     return send_from_directory('public/components', filename)
@@ -129,9 +143,12 @@ def server_error(e):
 
 
 if __name__ == '__main__':
+    debug_mode = True
     os.makedirs('public/assets/profile_pics', exist_ok=True)
     os.makedirs('public/assets/images', exist_ok=True)
     os.makedirs('public/assets/icons', exist_ok=True)
     os.makedirs('public/assets/comprobantes', exist_ok=True)
     os.makedirs('respaldos', exist_ok=True)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not debug_mode:
+        start_bcv_auto_sync_scheduler()
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)

@@ -9,6 +9,19 @@
                 <i class="bi bi-bank me-1"></i>BCV: <span id="rateBcvAdmin">--</span> Bs
             </span>
         </div>
+        <div class="dropdown">
+            <button class="btn btn-sm position-relative" data-bs-toggle="dropdown" id="bellBtn" title="Notificaciones">
+                <i class="bi bi-bell-fill" style="font-size:1.15rem;color:var(--text-secondary);"></i>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifBadge" style="display:none;font-size:0.6rem;">0</span>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end p-0" style="width:340px;max-height:380px;overflow-y:auto;" id="notifDropdown">
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom" style="background:var(--bg-card);">
+                    <strong style="font-size:0.85rem;">Notificaciones</strong>
+                    <button class="btn btn-sm btn-link text-decoration-none p-0" onclick="markAllRead()" style="font-size:0.75rem;">Marcar todas</button>
+                </div>
+                <div id="notifList"><div class="text-center text-muted py-3" style="font-size:0.8rem;">Sin notificaciones</div></div>
+            </div>
+        </div>
         <a href="/client/home" class="btn btn-sm btn-outline-success" target="_blank" title="Ver Tienda"><i class="bi bi-shop me-1"></i>Ver Tienda</a>
         <div class="user-info">
             <span class="d-none d-md-inline" id="navUserName"></span>
@@ -40,4 +53,42 @@
 if (typeof loadNavSession === 'function') {
     loadNavSession();
 }
+
+async function loadNotifications() {
+    try {
+        const res = await fetch('/api/notifications/', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.status !== 'success') return;
+        const list = data.data || [];
+        const unread = list.filter(n => !n.leida).length;
+        const badge = document.getElementById('notifBadge');
+        if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? '' : 'none'; }
+        const container = document.getElementById('notifList');
+        if (!container) return;
+        if (list.length === 0) { container.innerHTML = '<div class="text-center text-muted py-3" style="font-size:0.8rem;">Sin notificaciones</div>'; return; }
+        container.innerHTML = list.slice(0, 8).map(n => {
+            const icons = { mantenimiento:'bi-wrench', aceite:'bi-droplet', ticket:'bi-ticket', promocion:'bi-gift', sistema:'bi-gear', combustible:'bi-fuel-pump', filtro:'bi-filter', refrigerante:'bi-snow', caucho:'bi-circle' };
+            const icon = icons[n.tipo] || 'bi-bell';
+            const bg = n.leida ? '' : 'background:rgba(var(--bs-primary-rgb),0.05);';
+            return `<div class="px-3 py-2 border-bottom" style="font-size:0.8rem;cursor:pointer;${bg}" onclick="markRead(${n.id})"><div class="d-flex gap-2"><i class="bi ${icon}" style="color:var(--primary);font-size:0.95rem;margin-top:2px;"></i><div><div style="font-weight:${n.leida?'400':'600'};">${n.titulo || n.mensaje}</div><div class="text-muted" style="font-size:0.7rem;">${n.mensaje ? n.mensaje.substring(0,60) : ''}</div><div class="text-muted" style="font-size:0.65rem;">${n.created_at || ''}</div></div></div></div>`;
+        }).join('');
+    } catch(e) {}
+}
+
+async function markRead(id) {
+    try {
+        await fetch(`/api/notifications/${id}/read`, { method: 'PUT', credentials: 'same-origin' });
+        loadNotifications();
+    } catch(e) {}
+}
+
+async function markAllRead() {
+    try {
+        await fetch('/api/notifications/read-all', { method: 'PUT', credentials: 'same-origin' });
+        loadNotifications();
+    } catch(e) {}
+}
+
+loadNotifications();
+setInterval(loadNotifications, 30000);
 </script>

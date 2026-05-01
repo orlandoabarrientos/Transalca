@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/public/img/logo.png">
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/public/css/styles.css">
+    <link rel="stylesheet" href="/componente_ia/chat_widget.css">
+</head>
+<body>
+    <div id="navbarContainer"></div>
+
+    <div class="container py-4">
+        <h3 class="fw-bold mb-3">Centro de Ayuda</h3>
+        <p class="text-muted mb-4">Aqui puede consultar como usar el sistema, comprar y reportar cualquier problema.</p>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-8">
+                <div class="card-custom mb-3">
+                    <div class="card-header"><span>Como Comprar en la Tienda</span></div>
+                    <div class="card-body">
+                        <ol class="mb-0">
+                            <li>Ingrese a <strong>Catalogo</strong> y busque productos o servicios.</li>
+                            <li>Use filtros por categoria, marca o nombre.</li>
+                            <li>Agregue al carrito y revise cantidades.</li>
+                            <li>Cargue comprobante de pago y confirme su orden.</li>
+                            <li>Revise el estado de su pedido en <strong>Mis Pedidos</strong>.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="card-custom mb-3">
+                    <div class="card-header"><span>Como Usar su Cuenta</span></div>
+                    <div class="card-body">
+                        <ol class="mb-0">
+                            <li>Actualice su perfil y telefono en <strong>Mi Perfil</strong>.</li>
+                            <li>Registre sus vehiculos para recibir soporte y mantenimiento.</li>
+                            <li>Revise notificaciones desde la campana superior.</li>
+                            <li>Use el escaner para acciones de QR cuando aplique.</li>
+                            <li>Consulte fidelizacion y beneficios en <strong>Mi Fidelizacion</strong>.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="card-custom">
+                    <div class="card-header"><span>Preguntas Frecuentes</span></div>
+                    <div class="card-body">
+                        <div class="accordion" id="faqAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                        Como reviso si mi pago fue validado?
+                                    </button>
+                                </h2>
+                                <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">Ingrese a Mis Pedidos y abra el detalle de la orden para ver el estado del pago.</div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                        Puedo editar mis datos personales?
+                                    </button>
+                                </h2>
+                                <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">Si. En Mi Perfil puede actualizar nombre, apellido, telefono, direccion y foto.</div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                        Donde veo mis vehiculos y servicios?
+                                    </button>
+                                </h2>
+                                <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">En Mi Perfil estan sus vehiculos. Los servicios e historial se reflejan en su cuenta y soporte.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card-custom mb-3">
+                    <div class="card-header"><span>Accesos Rapidos</span></div>
+                    <div class="card-body d-grid gap-2">
+                        <a href="/client/catalog" class="btn btn-outline-primary"><i class="bi bi-grid-3x3-gap me-1"></i>Catalogo</a>
+                        <a href="/client/my_orders" class="btn btn-outline-primary"><i class="bi bi-bag-check me-1"></i>Mis Pedidos</a>
+                        <a href="/client/profile" class="btn btn-outline-primary"><i class="bi bi-person-circle me-1"></i>Mi Perfil</a>
+                        <a href="/scanner" class="btn btn-outline-primary"><i class="bi bi-upc-scan me-1"></i>Escaner</a>
+                    </div>
+                </div>
+                <div class="card-custom">
+                    <div class="card-header"><span>Soporte</span></div>
+                    <div class="card-body">
+                        <p class="mb-0 text-muted">Si no encuentra solucion en la guia, puede abrir un ticket para que el equipo de soporte le responda.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-custom">
+            <div class="card-header"><span>Hablar con uno de nuestros agentes</span></div>
+            <div class="card-body">
+                <div id="guestHelpBox" class="alert alert-warning mb-3" style="display:none;">
+                    Debe iniciar sesion como cliente para abrir tickets y chatear con soporte.
+                </div>
+
+                <div id="clientHelpApp" style="display:none;">
+                    <div class="row g-3">
+                        <div class="col-lg-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0">Mis Conversaciones</h6>
+                                <button type="button" id="ticketRefreshBtn" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                            </div>
+                            <div id="helpTicketsList" class="list-group small"></div>
+                        </div>
+
+                        <div class="col-lg-8">
+                            <div class="border rounded p-3 mb-3" id="helpTicketDetail">
+                                <p class="text-muted mb-0">Seleccione un ticket para ver el chat.</p>
+                            </div>
+
+                            <form id="replyForm" class="mb-3" style="display:none;">
+                                <label class="form-label">Responder en el chat</label>
+                                <div class="input-group">
+                                    <textarea class="form-control" id="replyMessage" rows="2" placeholder="Escriba su mensaje..." required></textarea>
+                                    <button class="btn btn-primary" type="submit" id="replyBtn">Enviar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h6 class="mb-3">Reportar un problema</h6>
+                    <form id="newTicketForm">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label">Asunto</label>
+                                <input type="text" id="newTicketSubject" class="form-control" maxlength="300" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Prioridad</label>
+                                <select id="newTicketPriority" class="form-select">
+                                    <option value="baja">Baja</option>
+                                    <option value="media" selected>Media</option>
+                                    <option value="alta">Alta</option>
+                                    <option value="critica">Critica</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Vehiculo (opcional)</label>
+                                <select id="newTicketVehicle" class="form-select">
+                                    <option value="">Sin vehiculo especifico</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Descripcion del problema</label>
+                                <textarea id="newTicketDescription" class="form-control" rows="3" required></textarea>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-orange">
+                                    <i class="bi bi-send me-1"></i>Enviar a Soporte
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="footerContainer"></div>
+
+    <script src="/public/jquery/jquery.min.js"></script>
+    <script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
+    <script src="/public/js/admin_common.js"></script>
+    <script src="/public/js/client_common.js"></script>
+    <script src="/public/js/constants.js"></script>
+    <script src="/public/js/client_help.js"></script>
+    <script src="/componente_ia/chat_widget.js"></script>
+</body>
+</html>

@@ -1,15 +1,24 @@
 from flask import Blueprint, request, jsonify, session
 from model.tasa_cambio_model import TasaCambioModel
 from model.bitacora_model import BitacoraModel
+from services.bcv_sync_service import sync_bcv_rate_if_needed
 
 tasa_bp = Blueprint('tasas', __name__)
 model = TasaCambioModel()
 bitacora = BitacoraModel()
 
 
+def _ensure_bcv_auto_sync():
+    try:
+        sync_bcv_rate_if_needed(force=False)
+    except Exception:
+        return
+
+
 @tasa_bp.route('/', methods=['GET'])
 def get_all():
     try:
+        _ensure_bcv_auto_sync()
         limit = request.args.get('limit', 30, type=int)
         return jsonify({"status": "success", "data": model.get_all(limit)})
     except Exception as e:
@@ -19,6 +28,7 @@ def get_all():
 @tasa_bp.route('/today', methods=['GET'])
 def get_today():
     try:
+        _ensure_bcv_auto_sync()
         tasa = model.get_today()
         if tasa:
             return jsonify({"status": "success", "data": tasa})
@@ -30,6 +40,7 @@ def get_today():
 @tasa_bp.route('/latest', methods=['GET'])
 def get_latest():
     try:
+        _ensure_bcv_auto_sync()
         tasa = model.get_latest()
         if tasa:
             return jsonify({"status": "success", "data": tasa})
@@ -106,14 +117,21 @@ def delete(tasa_id):
 @tasa_bp.route('/sync-scraping', methods=['POST'])
 def sync_scraping():
     try:
-        from services.bcv_scraper import get_bcv_rates
-        bcv = get_bcv_rates(verify=False)
-        monto = bcv.get('usd', 0)
-        if monto <= 0:
-            return jsonify({"status": "error", "message": "No se pudo obtener tasa BCV"}), 502
-        result = model.register_from_scraping(monto)
-        if result is None:
-            return jsonify({"status": "success", "message": "Ya existe tasa registrada hoy", "skipped": True})
-        return jsonify({"status": "success", "message": f"Tasa BCV registrada: {monto} Bs", "id": result})
+        result = sync_bcv_rate_if_needed(force=True)
+        if not result.get('synced'):
+            return jsonify({
+                "status": "error",
+                "message": "No se pudo sincronizar BCV",
+                "reason": result.get('reason')
+            }), 502
+        action = "actualizada" if result.get('action') == 'updated' else "registrada"
+        monto = result.get('monto')
+        monto_text = f"{float(monto):.2f}" if monto is not None else "--"
+        return jsonify({
+            "status": "success",
+            "message": f"Tasa BCV {action}: {monto_text} Bs",
+            "id": result.get('id'),
+            "action": result.get('action')
+        })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

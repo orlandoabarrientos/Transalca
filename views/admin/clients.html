@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/public/img/logo.png">
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="row g-3 mb-4">
+                <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:var(--primary-soft);color:var(--primary);"><i class="bi bi-people-fill"></i></div><div><div class="stat-value" id="totalClients">0</div><div class="stat-label">Total Clientes</div></div></div></div>
+                <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#dcfce7;color:#16a34a;"><i class="bi bi-person-check-fill"></i></div><div><div class="stat-value" id="activeClients">0</div><div class="stat-label">Activos</div></div></div></div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                        <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Buscar por nombre, cedula, email..." style="width:280px;">
+                        <select class="form-select form-select-sm" id="filterEstado" style="width:140px;">
+                            <option value="">Todos</option>
+                            <option value="1">Activos</option>
+                            <option value="0">Inactivos</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-sm btn-orange" onclick="showCreateModal()"><i class="bi bi-plus-circle me-1"></i>Nuevo Cliente</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Cédula</th>
+                                    <th>Nombre</th>
+                                    <th>Teléfono</th>
+                                    <th>Email</th>
+                                    <th>Vehículos</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientsTableBody">
+                                <tr><td colspan="7" class="text-center py-4 text-muted">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4" id="detailPanel" style="display:none;">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-person-circle me-2"></i>Detalle del Cliente</span>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="hideDetail()"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-2"><strong>Cédula:</strong> <span id="detCedula"></span></div>
+                        <div class="col-md-3"><strong>Nombre:</strong> <span id="detNombre"></span></div>
+                        <div class="col-md-2"><strong>Teléfono:</strong> <span id="detTelefono"></span></div>
+                        <div class="col-md-3"><strong>Email:</strong> <span id="detEmail"></span></div>
+                        <div class="col-md-2"><strong>Dirección:</strong> <span id="detDireccion"></span></div>
+                    </div>
+
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabVehiculos"><i class="bi bi-car-front me-1"></i>Vehículos</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabServicios"><i class="bi bi-wrench me-1"></i>Servicios</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabTickets"><i class="bi bi-ticket me-1"></i>Tickets</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabOrdenes"><i class="bi bi-cart me-1"></i>Órdenes</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabNotificaciones"><i class="bi bi-bell me-1"></i>Notificaciones</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabBitacora"><i class="bi bi-journal-text me-1"></i>Bitácora</a></li>
+                    </ul>
+                    <div class="tab-content p-3 border border-top-0 rounded-bottom">
+                        <div class="tab-pane fade show active" id="tabVehiculos">
+                            <div class="d-flex justify-content-between mb-2">
+                                <h6 class="mb-0">Vehículos del cliente</h6>
+                                <button class="btn btn-sm btn-orange" onclick="showVehicleModal()"><i class="bi bi-plus me-1"></i>Agregar Vehículo</button>
+                            </div>
+                            <div id="vehiclesList"></div>
+                        </div>
+                        <div class="tab-pane fade" id="tabServicios">
+                            <div id="servicesList"></div>
+                        </div>
+                        <div class="tab-pane fade" id="tabTickets">
+                            <div id="ticketsList"></div>
+                        </div>
+                        <div class="tab-pane fade" id="tabOrdenes">
+                            <div id="ordersList"></div>
+                        </div>
+                        <div class="tab-pane fade" id="tabNotificaciones">
+                            <div id="notificationsList"></div>
+                        </div>
+                        <div class="tab-pane fade" id="tabBitacora">
+                            <div id="bitacoraList"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="clientModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="clientModalTitle">Nuevo Cliente</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <form id="clientForm">
+                    <input type="hidden" id="editCedula">
+                    <div class="mb-3"><label class="form-label">Cédula <span class="text-danger">*</span></label><input type="text" class="form-control" id="fCedula" name="cedula" placeholder="V-12345678" required></div>
+                    <div class="row">
+                        <div class="col-6 mb-3"><label class="form-label">Nombre <span class="text-danger">*</span></label><input type="text" class="form-control" id="fNombre" name="nombre" required></div>
+                        <div class="col-6 mb-3"><label class="form-label">Apellido <span class="text-danger">*</span></label><input type="text" class="form-control" id="fApellido" name="apellido" required></div>
+                    </div>
+                    <div class="mb-3"><label class="form-label">Teléfono <span class="text-danger">*</span></label><input type="text" class="form-control" id="fTelefono" name="telefono" placeholder="0424-1234567" required></div>
+                    <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" id="fEmail" name="email" placeholder="correo@ejemplo.com"></div>
+                    <div class="mb-3"><label class="form-label">Dirección</label><textarea class="form-control" id="fDireccion" name="direccion" rows="2"></textarea></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-orange" onclick="saveClient()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="vehicleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="vehicleModalTitle">Agregar Vehículo</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <form id="vehicleForm">
+                    <input type="hidden" id="editVehicleId">
+                    <div class="row">
+                        <div class="col-6 mb-3"><label class="form-label">Marca <span class="text-danger">*</span></label><input type="text" class="form-control" id="vMarca" name="marca" required></div>
+                        <div class="col-6 mb-3"><label class="form-label">Modelo <span class="text-danger">*</span></label><input type="text" class="form-control" id="vModelo" name="modelo" required></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-4 mb-3"><label class="form-label">Año</label><input type="number" class="form-control" id="vAnio" name="anio" min="1980" max="2030"></div>
+                        <div class="col-4 mb-3"><label class="form-label">Placa</label><input type="text" class="form-control" id="vPlaca" name="placa" placeholder="ABC123"></div>
+                        <div class="col-4 mb-3"><label class="form-label">Color</label><input type="text" class="form-control" id="vColor" name="color"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3"><label class="form-label">Tipo vehículo</label><input type="text" class="form-control" id="vTipo" name="tipo_vehiculo" placeholder="Sedan, SUV..."></div>
+                        <div class="col-6 mb-3"><label class="form-label">Combustible</label>
+                            <select class="form-select" id="vCombustible" name="tipo_combustible">
+                                <option value="gasolina">Gasolina</option>
+                                <option value="gasoil">Gasoil</option>
+                                <option value="otro">Otro</option>
+                            </select>
+                            <div class="invalid-feedback" id="vCombustibleFeedback"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3"><label class="form-label">Kilometraje actual</label><input type="number" class="form-control" id="vKm" name="kilometraje_actual" min="0" value="0"></div>
+                    <div class="mb-2">
+                        <label class="form-label d-block">Titulo del vehiculo</label>
+                        <input type="file" id="vCarnetFile" accept="image/*" capture="environment" class="d-none">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnVehicleCarnet">
+                            <i class="bi bi-upc-scan me-1"></i>Escanear/Subir titulo
+                        </button>
+                        <span class="small text-muted ms-2" id="vCarnetFileName">No seleccionado</span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-orange" onclick="saveVehicle()">Guardar Vehículo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/constants.js"></script>
+<script src="/public/js/clients.js"></script>
+</body>
+</html>

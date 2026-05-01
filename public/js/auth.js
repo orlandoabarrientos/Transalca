@@ -39,10 +39,12 @@ function setupLogin() {
 
 function setupRegister() {
     const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$/;
+    const PHONE_REGEX = /^[0-9+\-\s()]{7,20}$/;
     Validator.setRules('registerForm', {
         regNombre: { required: true, minLength: 2, requiredMsg: 'Nombre requerido' },
         regApellido: { required: true, minLength: 2, requiredMsg: 'Apellido requerido' },
         regCedula: { required: true, minLength: 5, requiredMsg: 'Cedula requerida', minLengthMsg: 'Minimo 5 caracteres' },
+        regTelefono: { required: true, pattern: PHONE_REGEX, requiredMsg: 'Telefono requerido', patternMsg: 'Telefono invalido' },
         regEmail: { required: true, email: true, requiredMsg: 'Correo requerido' },
         regPassword: { required: true, pattern: PASSWORD_REGEX, requiredMsg: 'Contrasena requerida', patternMsg: 'Min 8 caracteres, 1 mayuscula, 1 minuscula, 1 numero, 1 especial' },
         regConfirmPassword: { required: true, match: 'regPassword', requiredMsg: 'Confirme la contrasena', matchMsg: 'Las contrasenas no coinciden' }
@@ -57,6 +59,7 @@ function setupRegister() {
             nombre: document.getElementById('regNombre').value,
             apellido: document.getElementById('regApellido').value,
             cedula: document.getElementById('regCedula').value,
+            telefono: document.getElementById('regTelefono').value,
             email: document.getElementById('regEmail').value,
             password: document.getElementById('regPassword').value,
             confirm_password: document.getElementById('regConfirmPassword').value

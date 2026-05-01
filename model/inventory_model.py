@@ -30,7 +30,6 @@ class InventoryModel(Connection):
                 return self.insert("transalca",
                     "INSERT INTO inventario (producto_codigo, sucursal_id, stock) VALUES (%s, %s, %s)",
                     (producto_codigo, sucursal_id, stock))
-        # Without sucursal_id, update all entries for this product
         return self.update("transalca",
             "UPDATE inventario SET stock = %s WHERE producto_codigo = %s", (stock, producto_codigo))
 

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/public/img/logo.png">
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="mb-4">
+                <h4 class="fw-bold mb-1">Guia del Administrador</h4>
+                <p class="text-muted mb-0">Flujo recomendado para operar el sistema de forma ordenada.</p>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header"><span>Flujo Diario Recomendado</span></div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li>Revise notificaciones, tickets abiertos y pagos pendientes.</li>
+                        <li>Valide inventario critico y reposicion por sucursal.</li>
+                        <li>Gestione clientes y vehiculos desde el modulo Clientes.</li>
+                        <li>Confirme ordenes, servicios mecanicos y estados de trabajo.</li>
+                        <li>Cierre el dia revisando reportes y registrando respaldo.</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header"><span>Como Hacer Cada Tarea</span></div>
+                        <div class="card-body">
+                            <div class="accordion" id="guideAccordion">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#guideClientes">
+                                            Clientes y vehiculos
+                                        </button>
+                                    </h2>
+                                    <div id="guideClientes" class="accordion-collapse collapse show" data-bs-parent="#guideAccordion">
+                                        <div class="accordion-body">
+                                            Entre en <strong>Clientes</strong>, busque por nombre o cedula, abra el detalle y gestione vehiculos, servicios y tickets desde la misma ficha.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#guideCatalogo">
+                                            Catalogo, productos y stock
+                                        </button>
+                                    </h2>
+                                    <div id="guideCatalogo" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+                                        <div class="accordion-body">
+                                            Use <strong>Productos</strong>, <strong>Categorias</strong>, <strong>Marcas</strong> y <strong>Gestionar Stock</strong>. Mantenga precios, costo y existencia actualizados por sucursal.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#guideServicios">
+                                            Servicios mecanicos y comisiones
+                                        </button>
+                                    </h2>
+                                    <div id="guideServicios" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+                                        <div class="accordion-body">
+                                            Configure servicios en <strong>Servicios</strong>, asigne trabajos en <strong>Servicio Mecanico</strong> y supervise mecanicos y comisiones desde sus modulos.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#guideVentas">
+                                            Ordenes, pagos y promociones
+                                        </button>
+                                    </h2>
+                                    <div id="guideVentas" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+                                        <div class="accordion-body">
+                                            Revise <strong>Ordenes</strong>, valide comprobantes en <strong>Pagos</strong> y gestione campañas en <strong>Promociones</strong>.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#guideSoporte">
+                                            Soporte, reportes y respaldo
+                                        </button>
+                                    </h2>
+                                    <div id="guideSoporte" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+                                        <div class="accordion-body">
+                                            Atienda conversaciones en <strong>Tickets Soporte</strong>, analice datos en <strong>Reportes/Estadisticas</strong> y ejecute respaldos periodicos en <strong>Respaldos</strong>.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card mb-3">
+                        <div class="card-header"><span>Accesos Rapidos</span></div>
+                        <div class="card-body d-grid gap-2">
+                            <a href="/admin/clients" class="btn btn-outline-orange"><i class="bi bi-people me-1"></i>Clientes</a>
+                            <a href="/admin/orders" class="btn btn-outline-orange"><i class="bi bi-cart-check me-1"></i>Ordenes</a>
+                            <a href="/admin/payments" class="btn btn-outline-orange"><i class="bi bi-credit-card me-1"></i>Pagos</a>
+                            <a href="/admin/tickets" class="btn btn-outline-orange"><i class="bi bi-chat-dots me-1"></i>Tickets</a>
+                            <a href="/admin/reports" class="btn btn-outline-orange"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Reportes</a>
+                            <a href="/admin/backup" class="btn btn-outline-orange"><i class="bi bi-database-down me-1"></i>Respaldos</a>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><span>Buenas Practicas</span></div>
+                        <div class="card-body">
+                            <ul class="mb-0">
+                                <li>Valide datos del cliente antes de guardar.</li>
+                                <li>No cierre tickets sin respuesta final al cliente.</li>
+                                <li>Mantenga estados de orden y servicio sincronizados.</li>
+                                <li>Revise bitacora para auditoria interna.</li>
+                                <li>Ejecute respaldo antes de cambios masivos.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/admin_guide.js"></script>
+</body>
+</html>

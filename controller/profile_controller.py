@@ -1,9 +1,10 @@
 from flask import Blueprint, request, jsonify, session
 from model.profile_model import ProfileModel
 from model.bitacora_model import BitacoraModel
+from config.constants import PHONE_REGEX
 import os
 import re
-from werkzeug.utils import secure_filename
+import time
 
 profile_bp = Blueprint('profile', __name__)
 model = ProfileModel()
@@ -36,6 +37,10 @@ def update_profile():
             errors['nombre'] = 'El nombre debe tener al menos 2 caracteres'
         if not data.get('apellido') or len(data['apellido'].strip()) < 2:
             errors['apellido'] = 'El apellido debe tener al menos 2 caracteres'
+        current = model.get_profile(session['user_id'])
+        if current and current.get('tipo') == 'cliente':
+            if not data.get('telefono') or not re.match(PHONE_REGEX, data.get('telefono', '').strip()):
+                errors['telefono'] = 'Ingrese un telefono valido'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         model.update_profile(session['user_id'], data)
@@ -101,11 +106,26 @@ def update_photo():
         ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
         if ext not in allowed:
             return jsonify({"status": "error", "message": "Solo se permiten imagenes (png, jpg, jpeg, gif, webp)"}), 400
-        filename = f"user_{session['user_id']}_{secure_filename(file.filename)}"
+        profile = model.get_profile(session['user_id'])
+        filename = f"user_{session['user_id']}_{int(time.time())}.{ext}"
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        file.save(os.path.join(UPLOAD_FOLDER, filename))
-        model.update_photo(session['user_id'], filename)
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(filepath)
+        try:
+            model.update_photo(session['user_id'], filename)
+        except Exception:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            raise
         session['user_foto'] = filename
+        old_photo = profile.get('foto_perfil') if profile else None
+        if old_photo and old_photo != 'default.png' and old_photo != filename:
+            old_path = os.path.join(UPLOAD_FOLDER, old_photo)
+            if os.path.exists(old_path):
+                try:
+                    os.remove(old_path)
+                except OSError:
+                    pass
         return jsonify({"status": "success", "message": "Foto actualizada", "filename": filename})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
