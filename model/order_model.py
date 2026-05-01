@@ -17,11 +17,6 @@ class OrderModel(Connection):
             (cliente_cedula,))
 
         if not user:
-            user = self.fetch_one("transalca",
-                "SELECT cedula, nombre, apellido, email FROM usuarios WHERE cedula = %s",
-                (cliente_cedula,))
-
-        if not user:
             return False
 
         self.insert("transalca",
@@ -48,6 +43,10 @@ class OrderModel(Connection):
             return False
         column = self.fetch_one("transalca", "SHOW COLUMNS FROM servicio_mecanico LIKE 'mecanico_cedula'")
         return bool(column and column.get('Null') == 'YES')
+
+    def supports_qr_order_relation(self):
+        column = self.fetch_one("transalca", "SHOW COLUMNS FROM qr_codes LIKE 'orden_venta_id'")
+        return bool(column)
 
     def get_cart(self, cliente_cedula):
         items = self.fetch_all("transalca",
@@ -102,6 +101,7 @@ class OrderModel(Connection):
         allow_unassigned_services = True
         if any(item['tipo'] == 'servicio' for item in cart_items):
             allow_unassigned_services = self.supports_unassigned_service_records()
+        qr_has_order_relation = self.supports_qr_order_relation()
 
         conn = self.con_transalca()
         try:
@@ -133,9 +133,14 @@ class OrderModel(Connection):
 
             try:
                 qr_payload = json.dumps({"kind": "factura", "orden_id": order_id})
-                cursor.execute(
-                    "INSERT INTO qr_codes (usuario_cedula, tipo, contenido, utilidad, referencia_id) VALUES (%s, 'pago', %s, 'factura', %s)",
-                    (cliente_cedula, qr_payload, order_id))
+                if qr_has_order_relation:
+                    cursor.execute(
+                        "INSERT INTO qr_codes (usuario_cedula, tipo, contenido, utilidad, referencia_id, orden_venta_id) VALUES (%s, 'pago', %s, 'factura', %s, %s)",
+                        (cliente_cedula, qr_payload, order_id, order_id))
+                else:
+                    cursor.execute(
+                        "INSERT INTO qr_codes (usuario_cedula, tipo, contenido, utilidad, referencia_id) VALUES (%s, 'pago', %s, 'factura', %s)",
+                        (cliente_cedula, qr_payload, order_id))
             except Exception:
                 pass
 

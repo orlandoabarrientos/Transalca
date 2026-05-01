@@ -9,6 +9,10 @@ class ScannerModel(Connection):
     def __init__(self):
         super().__init__()
 
+    def _qr_columns(self):
+        rows = self.fetch_all("transalca", "SHOW COLUMNS FROM qr_codes")
+        return {r['Field'] for r in rows}
+
     def _parse_content(self, content):
         if not content:
             return {}
@@ -157,7 +161,7 @@ class ScannerModel(Connection):
         if profile:
             return profile
         return self.fetch_one("transalca",
-            "SELECT cedula, nombre, apellido, email FROM usuarios WHERE cedula = %s", (cliente_cedula,))
+            "SELECT cedula, nombre, apellido, email, telefono FROM clientes WHERE cedula = %s", (cliente_cedula,))
 
     def get_order_full(self, order_id):
         order = self.fetch_one("transalca", "SELECT * FROM ordenes_venta WHERE id = %s", (order_id,))
@@ -183,19 +187,34 @@ class ScannerModel(Connection):
         if not order:
             return None
 
-        existing = self.fetch_one("transalca",
-            "SELECT * FROM qr_codes WHERE referencia_id = %s AND utilidad = 'factura' AND estado = 1 ORDER BY id DESC LIMIT 1",
-            (order_id,))
+        columns = self._qr_columns()
+        if "orden_venta_id" in columns:
+            existing = self.fetch_one("transalca",
+                "SELECT * FROM qr_codes WHERE (orden_venta_id = %s OR referencia_id = %s) AND utilidad = 'factura' AND estado = 1 ORDER BY id DESC LIMIT 1",
+                (order_id, order_id))
+        else:
+            existing = self.fetch_one("transalca",
+                "SELECT * FROM qr_codes WHERE referencia_id = %s AND utilidad = 'factura' AND estado = 1 ORDER BY id DESC LIMIT 1",
+                (order_id,))
         if existing:
             return existing
 
         payload = json.dumps({"kind": "factura", "orden_id": order_id})
 
         try:
-            qr_id = self.insert("transalca",
-                "INSERT INTO qr_codes (usuario_cedula, tipo, contenido, utilidad, referencia_id) VALUES (%s, 'pago', %s, 'factura', %s)",
-                (order['cliente_cedula'], payload, order_id))
+            if "orden_venta_id" in columns:
+                qr_id = self.insert("transalca",
+                    "INSERT INTO qr_codes (usuario_cedula, tipo, contenido, utilidad, referencia_id, orden_venta_id) VALUES (%s, 'pago', %s, 'factura', %s, %s)",
+                    (order['cliente_cedula'], payload, order_id, order_id))
+            else:
+                qr_id = self.insert("transalca",
+                    "INSERT INTO qr_codes (usuario_cedula, tipo, contenido, utilidad, referencia_id) VALUES (%s, 'pago', %s, 'factura', %s)",
+                    (order['cliente_cedula'], payload, order_id))
         except Exception:
+            if "orden_venta_id" in columns:
+                return self.fetch_one("transalca",
+                    "SELECT * FROM qr_codes WHERE (orden_venta_id = %s OR referencia_id = %s) AND utilidad = 'factura' AND estado = 1 ORDER BY id DESC LIMIT 1",
+                    (order_id, order_id))
             return self.fetch_one("transalca",
                 "SELECT * FROM qr_codes WHERE referencia_id = %s AND utilidad = 'factura' AND estado = 1 ORDER BY id DESC LIMIT 1",
                 (order_id,))
@@ -207,8 +226,12 @@ class ScannerModel(Connection):
             "SELECT id, nombre, puntos_requeridos, recompensa FROM promociones WHERE estado = 1 AND (fecha_fin IS NULL OR fecha_fin >= CURDATE()) ORDER BY nombre")
 
     def get_table_qrs(self):
-        rows = self.fetch_all("transalca",
-            "SELECT q.*, p.nombre as promocion_nombre FROM qr_codes q LEFT JOIN promociones p ON q.referencia_id = p.id WHERE q.estado = 1 AND q.utilidad LIKE 'mesa:%%' ORDER BY q.created_at DESC")
+        if "promocion_id" in self._qr_columns():
+            rows = self.fetch_all("transalca",
+                "SELECT q.*, p.nombre as promocion_nombre FROM qr_codes q LEFT JOIN promociones p ON COALESCE(q.promocion_id, q.referencia_id) = p.id WHERE q.estado = 1 AND q.utilidad LIKE 'mesa:%%' ORDER BY q.created_at DESC")
+        else:
+            rows = self.fetch_all("transalca",
+                "SELECT q.*, p.nombre as promocion_nombre FROM qr_codes q LEFT JOIN promociones p ON q.referencia_id = p.id WHERE q.estado = 1 AND q.utilidad LIKE 'mesa:%%' ORDER BY q.created_at DESC")
 
         for row in rows:
             content = self._parse_content(row.get('contenido'))
@@ -264,9 +287,14 @@ class ScannerModel(Connection):
         content['accion'] = action
         content['promocion_id'] = promo_id
 
-        self.update("transalca",
-            "UPDATE qr_codes SET contenido = %s, referencia_id = %s WHERE id = %s",
-            (json.dumps(content), promo_id, qr_id))
+        if "promocion_id" in self._qr_columns():
+            self.update("transalca",
+                "UPDATE qr_codes SET contenido = %s, referencia_id = %s, promocion_id = %s WHERE id = %s",
+                (json.dumps(content), promo_id, promo_id, qr_id))
+        else:
+            self.update("transalca",
+                "UPDATE qr_codes SET contenido = %s, referencia_id = %s WHERE id = %s",
+                (json.dumps(content), promo_id, qr_id))
 
         return self.get_active_qr_by_id(qr_id)
 

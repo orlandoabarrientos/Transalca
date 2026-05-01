@@ -20,17 +20,20 @@ class UserModel(Connection):
 
     def create(self, data):
         password_hash = generate_password_hash(data['password'])
-        return self.insert("mantenimiento",
+        tipo = 'cliente' if data.get('tipo') == 'cliente' else 'empleado'
+        user_id = self.insert("mantenimiento",
             "INSERT INTO usuarios (nombre, apellido, cedula, email, telefono, direccion, password_hash, tipo, foto_perfil) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (data['nombre'].strip(), data['apellido'].strip(), data['cedula'].strip(), data['email'].strip(),
              data.get('telefono', '').strip(), data.get('direccion', '').strip(), password_hash,
-             data.get('tipo', 'cliente'), data.get('foto_perfil', 'default.png')))
+             tipo, data.get('foto_perfil', 'default.png')))
+        return user_id
 
     def update_info(self, user_id, data):
+        tipo = 'cliente' if data.get('tipo') == 'cliente' else 'empleado'
         return self.update("mantenimiento",
             "UPDATE usuarios SET nombre = %s, apellido = %s, cedula = %s, email = %s, telefono = %s, direccion = %s, tipo = %s WHERE id = %s",
             (data['nombre'].strip(), data['apellido'].strip(), data.get('cedula', '').strip(), data.get('email', '').strip(),
-             data.get('telefono', '').strip(), data.get('direccion', '').strip(), data.get('tipo', 'cliente'), user_id))
+             data.get('telefono', '').strip(), data.get('direccion', '').strip(), tipo, user_id))
 
     def update_status(self, user_id, estado):
         return self.update("mantenimiento",
@@ -61,6 +64,10 @@ class UserModel(Connection):
     def assign_role(self, user_id, rol_id):
         existing = self.fetch_one("mantenimiento",
             "SELECT id FROM usuario_rol WHERE usuario_id = %s AND rol_id = %s", (user_id, rol_id))
+        role = self.fetch_one("mantenimiento", "SELECT nombre FROM roles WHERE id = %s", (rol_id,))
+        if role:
+            tipo = 'cliente' if role['nombre'] == 'Cliente' else 'empleado'
+            self.update("mantenimiento", "UPDATE usuarios SET tipo = %s WHERE id = %s", (tipo, user_id))
         if not existing:
             return self.insert("mantenimiento",
                 "INSERT INTO usuario_rol (usuario_id, rol_id) VALUES (%s, %s)", (user_id, rol_id))

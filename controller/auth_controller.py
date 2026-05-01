@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, session, send_from_directory
 from model.auth_model import AuthModel
 from model.bitacora_model import BitacoraModel
+from config.constants import PHONE_REGEX
 import re
 
 auth_bp = Blueprint('auth', __name__)
@@ -52,13 +53,11 @@ def do_login():
         session['permisos'] = {p['modulo']: {'crear': p['crear'], 'leer': p['leer'], 'actualizar': p['actualizar'], 'eliminar': p['eliminar']} for p in permissions}
         roles = model.get_user_roles(user['id'])
         session['roles'] = [r['nombre'] for r in roles]
-        redirect_url = '/admin/dashboard' if user['tipo'] == 'empleado' else '/client/home'
+        redirect_url = '/client/home' if user['tipo'] == 'cliente' else '/admin/dashboard'
         requested_next = (data.get('next') or '').strip()
         if requested_next.startswith('/') and not requested_next.startswith('//'):
             redirect_url = requested_next
         bitacora.log_action(user['id'], 'LOGIN', 'AUTH', f"Inicio de sesion: {user['email']}", request.remote_addr)
-        # Sync user to db_transalca (clientes or usuarios table)
-        model.sync_to_transalca(user)
         return jsonify({"status": "success", "redirect": redirect_url, "user": {"nombre": user['nombre'], "tipo": user['tipo']}})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -75,6 +74,8 @@ def do_register():
             errors['apellido'] = 'El apellido debe tener al menos 2 caracteres'
         if not data.get('cedula') or len(data['cedula'].strip()) < 5:
             errors['cedula'] = 'La cedula debe tener al menos 5 caracteres'
+        if not data.get('telefono') or not re.match(PHONE_REGEX, data.get('telefono', '').strip()):
+            errors['telefono'] = 'Ingrese un telefono valido'
         if not data.get('email') or not re.match(r'^[^@]+@[^@]+\.[^@]+$', data.get('email', '')):
             errors['email'] = 'Ingrese un correo valido'
         if not data.get('password') or not re.match(PASSWORD_REGEX, data.get('password', '')):
@@ -89,10 +90,10 @@ def do_register():
             return jsonify({"status": "error", "message": "La cedula ya esta registrada", "errors": {"cedula": "La cedula ya esta registrada"}}), 400
         user_id = model.register(data)
         if user_id:
-            # Sync new client to db_transalca.clientes
-            model.sync_client_to_transalca(data)
             return jsonify({"status": "success", "message": "Registro exitoso. Ahora puede iniciar sesion"})
         return jsonify({"status": "error", "message": "Error al registrar"}), 500
+    except ValueError as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
