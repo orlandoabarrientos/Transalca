@@ -1,4 +1,68 @@
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function normalizeSystemMessage(message) {
+    const text = String(message || '').trim();
+    if (!text) return 'Operacion procesada.';
+    const lower = text.charAt(0).toUpperCase() + text.slice(1);
+    return lower.endsWith('.') || lower.endsWith('?') || lower.endsWith('!') ? lower : `${lower}.`;
+}
+
+function splitDocumentValue(value, defaultPrefix = 'V') {
+    const raw = String(value || '').toUpperCase().replace(/\./g, '').trim();
+    const compact = raw.replace(/[^A-Z0-9]/g, '');
+    if (!compact) return { prefix: defaultPrefix, number: '' };
+    if (/^[A-Z]/.test(compact)) {
+        return { prefix: compact[0], number: compact.slice(1) };
+    }
+    return { prefix: defaultPrefix, number: compact.replace(/\D/g, '') };
+}
+
+function splitRifValue(value, defaultPrefix = 'J') {
+    const doc = splitDocumentValue(value, defaultPrefix);
+    return { prefix: doc.prefix, number: doc.number.replace(/\D/g, '').slice(0, 9) };
+}
+
+function setDocumentFields(prefixId, numberId, value, defaultPrefix = 'V') {
+    const doc = splitDocumentValue(value, defaultPrefix);
+    const prefix = document.getElementById(prefixId);
+    const number = document.getElementById(numberId);
+    if (prefix) prefix.value = doc.prefix || defaultPrefix;
+    if (number) number.value = doc.number || '';
+}
+
+function setRifFields(prefixId, numberId, value, defaultPrefix = 'J') {
+    const doc = splitRifValue(value, defaultPrefix);
+    const prefix = document.getElementById(prefixId);
+    const number = document.getElementById(numberId);
+    if (prefix) prefix.value = doc.prefix || defaultPrefix;
+    if (number) number.value = doc.number || '';
+}
+
+function buildDocumentValue(prefixId, numberId) {
+    const prefix = (document.getElementById(prefixId)?.value || '').trim().toUpperCase();
+    const number = (document.getElementById(numberId)?.value || '').replace(/\D/g, '');
+    return prefix && number ? `${prefix}-${number}` : '';
+}
+
+function buildRifValue(prefixId, numberId) {
+    const prefix = (document.getElementById(prefixId)?.value || '').trim().toUpperCase();
+    const number = (document.getElementById(numberId)?.value || '').replace(/\D/g, '');
+    return prefix && number.length === 9 ? `${prefix}-${number.slice(0, 8)}-${number.slice(8)}` : '';
+}
+
+function cssEscapeValue(value) {
+    if (typeof CSS !== 'undefined' && CSS.escape) return CSS.escape(String(value));
+    return String(value).replace(/["\\]/g, '\\$&');
+}
+
 function showToast(message, type = 'success') {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -11,7 +75,7 @@ function showToast(message, type = 'success') {
     toast.className = `toast-custom ${type}`;
     const icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill' };
     const colors = { success: 'var(--success)', error: 'var(--danger)', warning: 'var(--warning)', info: 'var(--info)' };
-    toast.innerHTML = `<i class="bi ${icons[type] || icons.info}" style="color:${colors[type]};font-size:1.3rem;"></i><span style="flex:1;font-weight:500;font-size:0.85rem;">${message}</span><i class="bi bi-x close-toast" style="cursor:pointer;color:var(--text-muted);font-size:1.1rem;" onclick="this.parentElement.remove()"></i>`;
+    toast.innerHTML = `<i class="bi ${icons[type] || icons.info}" style="color:${colors[type]};font-size:1.3rem;"></i><span style="flex:1;font-weight:500;font-size:0.85rem;">${escapeHtml(normalizeSystemMessage(message))}</span><i class="bi bi-x close-toast" style="cursor:pointer;color:var(--text-muted);font-size:1.1rem;" onclick="this.parentElement.remove()"></i>`;
     container.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 4000);
 }
@@ -31,7 +95,7 @@ const Validator = {
         document.querySelectorAll(`#${formId} .is-valid`).forEach(el => el.classList.remove('is-valid'));
 
         for (const [field, fieldRules] of Object.entries(rules)) {
-            const el = document.getElementById(field);
+            const el = document.getElementById(field) || document.querySelector(`#${formId} [name="${cssEscapeValue(field)}"]`);
             if (!el) continue;
             const value = el.value.trim();
             let error = '';
@@ -83,7 +147,7 @@ const Validator = {
     showServerErrors(formId, errors) {
         if (!errors) return;
         for (const [field, msg] of Object.entries(errors)) {
-            const el = document.getElementById(field);
+            const el = document.getElementById(field) || document.querySelector(`#${formId} [name="${cssEscapeValue(field)}"]`);
             if (!el) continue;
             el.classList.add('is-invalid');
             let feedback = el.nextElementSibling;
@@ -108,6 +172,7 @@ const Validator = {
                 el.classList.remove('is-invalid', 'is-valid');
             });
             form.querySelectorAll('.invalid-feedback').forEach(el => el.style.display = 'none');
+            form.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
         }
     },
 
@@ -161,7 +226,10 @@ const Validator = {
             el.classList.add('is-valid');
             el.classList.remove('is-invalid');
             const fb = el.parentNode.querySelector('.invalid-feedback');
-            if (fb) fb.style.display = 'none';
+            if (fb) {
+                fb.style.display = 'none';
+                fb.textContent = '';
+            }
         } else {
             el.classList.remove('is-invalid', 'is-valid');
         }
@@ -172,18 +240,26 @@ const Validator = {
         const form = document.getElementById(formId);
         if (!form) return;
         form.querySelectorAll('input, select, textarea').forEach(el => {
-            if (el.id) {
-                el.addEventListener('input', () => {
+            const handler = () => {
+                if (el.id) {
                     Validator.validateField(formId, el.id);
-                });
-            } else {
-                el.addEventListener('input', () => {
+                } else {
                     el.classList.remove('is-invalid');
                     const fb = el.parentNode.querySelector('.invalid-feedback');
-                    if (fb) fb.style.display = 'none';
-                });
-            }
+                    if (fb) {
+                        fb.style.display = 'none';
+                        fb.textContent = '';
+                    }
+                }
+                updateFormSubmitState(formId);
+            };
+            el.addEventListener('input', handler);
+            el.addEventListener('change', handler);
         });
+        form.addEventListener('reset', () => setTimeout(() => {
+            Validator.clearForm(formId);
+            updateFormSubmitState(formId);
+        }, 0));
     }
 };
 
@@ -223,13 +299,13 @@ async function apiCall(url, method = 'GET', data = null) {
         const res = await fetch(url, opts);
         const json = await res.json();
         if (!res.ok) {
-            if (json.errors) return json;
-            throw new Error(json.message || 'Error en la solicitud');
+            return json && typeof json === 'object'
+                ? json
+                : { status: 'error', message: 'Error en la solicitud.' };
         }
         return json;
     } catch (e) {
-        showToast(e.message || 'Error de conexion', 'error');
-        throw e;
+        return { status: 'error', message: e.message || 'Error de conexion.' };
     }
 }
 
@@ -267,8 +343,155 @@ async function loadSucursales(selectId, includeAll = true) {
     } catch (e) { }
 }
 
-function confirmAction(message, callback) {
-    if (confirm(message)) callback();
+function confirmAction(message, callback, options = {}) {
+    const text = normalizeSystemMessage(message || 'Confirme la accion.');
+    if (window.Swal) {
+        Swal.fire({
+            icon: options.type || 'warning',
+            title: text,
+            showCancelButton: true,
+            confirmButtonText: options.confirmText || 'Aceptar',
+            cancelButtonText: options.cancelText || 'Cancelar',
+            confirmButtonColor: options.confirmColor || '#e95d0f'
+        }).then(result => {
+            if (result.isConfirmed && typeof callback === 'function') callback();
+        });
+        return;
+    }
+    let modalEl = document.getElementById('systemConfirmModal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.className = 'modal fade';
+        modalEl.id = 'systemConfirmModal';
+        modalEl.tabIndex = -1;
+        modalEl.innerHTML = `<div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Confirmar accion</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body"><p class="mb-0" id="systemConfirmText"></p></div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-orange" id="systemConfirmAccept">Aceptar</button></div>
+        </div></div>`;
+        document.body.appendChild(modalEl);
+    }
+    modalEl.querySelector('#systemConfirmText').textContent = text;
+    const accept = modalEl.querySelector('#systemConfirmAccept');
+    const cloned = accept.cloneNode(true);
+    accept.parentNode.replaceChild(cloned, accept);
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    cloned.addEventListener('click', () => {
+        modal.hide();
+        if (typeof callback === 'function') callback();
+    }, { once: true });
+    modal.show();
+}
+
+function setButtonLoading(button, loading, text) {
+    const btn = typeof button === 'string' ? document.querySelector(button) : button;
+    if (!btn) return;
+    if (loading) {
+        btn.dataset.originalHtml = btn.dataset.originalHtml || btn.innerHTML;
+        btn.dataset.loading = '1';
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${escapeHtml(text || 'Procesando...')}`;
+    } else {
+        btn.disabled = false;
+        if (btn.dataset.originalHtml) btn.innerHTML = btn.dataset.originalHtml;
+        delete btn.dataset.originalHtml;
+        delete btn.dataset.loading;
+    }
+}
+
+function updateFormSubmitState(formId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    const modal = form.closest('.modal-content') || form;
+    const hasErrors = !!form.querySelector('.is-invalid');
+    modal.querySelectorAll('button[type="submit"], button[onclick*="save"], button[onclick*="Save"], #btnSaveVehicle').forEach(btn => {
+        if (!btn.dataset.loading) btn.disabled = hasErrors;
+    });
+}
+
+function bindModalValidationReset() {
+    document.querySelectorAll('.modal').forEach(modal => {
+        if (modal.dataset.validationResetBound) return;
+        modal.dataset.validationResetBound = '1';
+        modal.addEventListener('hidden.bs.modal', () => {
+            modal.querySelectorAll('form').forEach(form => Validator.clearForm(form.id));
+        });
+        modal.addEventListener('shown.bs.modal', () => {
+            modal.querySelectorAll('form').forEach(form => {
+                if (form.id) {
+                    Validator.clearForm(form.id);
+                    updateFormSubmitState(form.id);
+                }
+            });
+        });
+    });
+}
+
+function enhanceSearchableSelects(root = document) {
+    root.querySelectorAll('select.form-select:not([data-no-search])').forEach(select => {
+        if (select.dataset.searchEnhanced === '1') return;
+        select.dataset.searchEnhanced = '1';
+        const input = document.createElement('input');
+        input.type = 'search';
+        input.className = 'form-control form-control-sm select-search-input mb-1';
+        input.placeholder = 'Buscar...';
+        input.autocomplete = 'off';
+        select.parentNode.insertBefore(input, select);
+        input.addEventListener('input', () => {
+            const q = input.value.trim().toLowerCase();
+            Array.from(select.options).forEach(option => {
+                option.hidden = q && !option.textContent.toLowerCase().includes(q);
+            });
+        });
+    });
+}
+
+function formatUsdBs(amount) {
+    const usd = parseFloat(amount || 0);
+    const bs = convertUsdToBs(usd);
+    const usdText = `$${formatCurrency(usd)}`;
+    if (!bs) return usdText;
+    return `${usdText} / Bs. ${formatCurrency(bs)}`;
+}
+
+function convertUsdToBs(amount) {
+    const rates = window.TransalcaRates || {};
+    const bcv = parseFloat(rates.bcv || 0);
+    const usdt = parseFloat(rates.usdt || 0);
+    if (!bcv || !usdt) return 0;
+    return (parseFloat(amount || 0) * usdt) / bcv;
+}
+
+async function loadExchangeRatesCached() {
+    const key = 'transalca_rates_cache_v1';
+    const now = Date.now();
+    try {
+        const cached = JSON.parse(localStorage.getItem(key) || 'null');
+        if (cached && cached.expires > now) {
+            window.TransalcaRates = cached.data;
+            return cached.data;
+        }
+    } catch (e) {}
+    try {
+        const res = await fetch('/api/rates/', { credentials: 'same-origin' });
+        const json = await res.json();
+        const data = {
+            bcv: parseFloat(json?.data?.bcv?.usd || 0),
+            usdt: parseFloat(json?.data?.binance?.usdt_ves || 0)
+        };
+        window.TransalcaRates = data;
+        localStorage.setItem(key, JSON.stringify({ data, expires: now + 300000 }));
+        return data;
+    } catch (e) {
+        window.TransalcaRates = window.TransalcaRates || { bcv: 0, usdt: 0 };
+        return window.TransalcaRates;
+    }
+}
+
+function hydrateDualPrices(root = document) {
+    root.querySelectorAll('[data-usd-price]').forEach(el => {
+        el.textContent = formatUsdBs(el.dataset.usdPrice);
+    });
 }
 
 function formatCurrency(amount) {
@@ -301,6 +524,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggle && sidebar) {
         toggle.addEventListener('click', () => sidebar.classList.toggle('show'));
     }
+    bindModalValidationReset();
+    enhanceSearchableSelects();
+    loadExchangeRatesCached().then(() => hydrateDualPrices());
+    const observer = new MutationObserver(() => {
+        bindModalValidationReset();
+        enhanceSearchableSelects();
+        hydrateDualPrices();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
 });
 
 document.body.addEventListener('click', async (e) => {

@@ -59,8 +59,17 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">RIF <span class="required">*</span></label>
-                        <input type="text" class="form-control" id="rif" name="rif" placeholder="J-12345678-9">
-                        <div class="invalid-feedback"></div>
+                        <div class="input-group">
+                            <select class="form-select" id="rif_prefijo" name="rif_prefijo" style="max-width:90px;">
+                                <option value="J">J</option>
+                                <option value="G">G</option>
+                                <option value="V">V</option>
+                                <option value="E">E</option>
+                                <option value="P">P</option>
+                            </select>
+                            <input type="text" class="form-control" id="rif" name="rif" placeholder="123456789">
+                            <div class="invalid-feedback"></div>
+                        </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">

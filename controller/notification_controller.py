@@ -13,7 +13,7 @@ def get_notifications():
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         return jsonify({"status": "success", "data": model.get_by_user(uid, session.get('user_cedula'))})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @notification_bp.route('/unread', methods=['GET'])
@@ -27,7 +27,7 @@ def get_unread():
                         "data": model.get_unread(uid, cedula),
                         "count": model.count_unread(uid, cedula)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @notification_bp.route('/count', methods=['GET'])
@@ -50,7 +50,7 @@ def mark_read(nid):
         model.mark_read(nid, uid, session.get('user_cedula'))
         return jsonify({"status": "success", "message": "Marcada como leída"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @notification_bp.route('/read-all', methods=['PUT'])
@@ -62,7 +62,7 @@ def mark_all_read():
         model.mark_all_read(uid, session.get('user_cedula'))
         return jsonify({"status": "success", "message": "Todas marcadas como leídas"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @notification_bp.route('/<int:nid>', methods=['DELETE'])
@@ -74,4 +74,4 @@ def delete_notification(nid):
         model.delete_notification(nid, uid, session.get('user_cedula'))
         return jsonify({"status": "success", "message": "Notificación eliminada"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

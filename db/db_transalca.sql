@@ -30,6 +30,8 @@ CREATE TABLE marcas (
 
 CREATE TABLE proveedores (
     rif VARCHAR(20) PRIMARY KEY,
+    rif_prefijo VARCHAR(2),
+    rif_numero VARCHAR(12),
     nombre VARCHAR(200) NOT NULL,
     telefono VARCHAR(20),
     email VARCHAR(150),
@@ -40,6 +42,8 @@ CREATE TABLE proveedores (
 
 CREATE TABLE mecanicos (
     cedula VARCHAR(20) PRIMARY KEY,
+    cedula_prefijo VARCHAR(2),
+    cedula_numero VARCHAR(12),
     nombre VARCHAR(100) NOT NULL,
     apellido VARCHAR(100) NOT NULL,
     telefono VARCHAR(20),
@@ -51,6 +55,8 @@ CREATE TABLE mecanicos (
 
 CREATE TABLE clientes (
     cedula VARCHAR(20) PRIMARY KEY,
+    cedula_prefijo VARCHAR(2),
+    cedula_numero VARCHAR(12),
     nombre VARCHAR(100) NOT NULL,
     apellido VARCHAR(100) NOT NULL,
     telefono VARCHAR(20) NOT NULL,
@@ -350,8 +356,8 @@ DELIMITER ;
 
 
 INSERT INTO sucursales (nombre, direccion, telefono, email) VALUES
-('Sede Principal', 'Av. Principal, Local 1', '0424-0000000', 'principal@transalca.com'),
-('Sucursal Norte', 'Calle Norte, Centro Comercial X', '0424-1111111', 'norte@transalca.com');
+('Sede Principal', 'Av. Principal, Local 1', '04240000000', 'principal@transalca.com'),
+('Sucursal Norte', 'Calle Norte, Centro Comercial X', '04241111111', 'norte@transalca.com');
 
 INSERT INTO categorias (nombre, descripcion) VALUES
 ('Cauchos', 'Neumaticos para todo tipo de vehiculos'),
@@ -380,17 +386,25 @@ INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_
 INSERT INTO configuracion (clave, valor) VALUES
 ('nombre_empresa', 'Transalca C.A.'),
 ('rif_empresa', 'J-00000000-0'),
-('telefono_empresa', '0424-0000000'),
+('telefono_empresa', '04240000000'),
 ('direccion_empresa', 'Direccion Principal'),
 ('email_empresa', 'info@transalca.com'),
 ('moneda', 'USD');
 
 ALTER TABLE clientes
+    ADD COLUMN IF NOT EXISTS cedula_prefijo VARCHAR(2) AFTER cedula,
+    ADD COLUMN IF NOT EXISTS cedula_numero VARCHAR(12) AFTER cedula_prefijo,
     ADD COLUMN IF NOT EXISTS origen_registro VARCHAR(20) DEFAULT 'cliente' AFTER estado,
     ADD COLUMN IF NOT EXISTS usuario_id INT DEFAULT NULL AFTER origen_registro;
 
 ALTER TABLE mecanicos
+    ADD COLUMN IF NOT EXISTS cedula_prefijo VARCHAR(2) AFTER cedula,
+    ADD COLUMN IF NOT EXISTS cedula_numero VARCHAR(12) AFTER cedula_prefijo,
     ADD COLUMN IF NOT EXISTS usuario_id INT DEFAULT NULL AFTER foto_perfil;
+
+ALTER TABLE proveedores
+    ADD COLUMN IF NOT EXISTS rif_prefijo VARCHAR(2) AFTER rif,
+    ADD COLUMN IF NOT EXISTS rif_numero VARCHAR(12) AFTER rif_prefijo;
 
 ALTER TABLE servicios
     ADD COLUMN IF NOT EXISTS permite_filtros TINYINT(1) DEFAULT 1 AFTER estado;

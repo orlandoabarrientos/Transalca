@@ -25,7 +25,11 @@ class RoleModel(Connection):
         role = self.get_by_id(role_id)
         if role and role['nombre'] == 'Administrador':
             return False
-        return self.update("mantenimiento", "UPDATE roles SET estado = 0 WHERE id = %s", (role_id,))
+        if not role:
+            return None
+        new_estado = 0 if int(role.get('estado') or 0) == 1 else 1
+        self.update("mantenimiento", "UPDATE roles SET estado = %s WHERE id = %s", (new_estado, role_id))
+        return new_estado
 
     def update_status(self, role_id, estado):
         return self.update("mantenimiento",

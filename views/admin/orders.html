@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
@@ -15,13 +14,31 @@
     <div class="main-content">
         <div id="navbarContainer"></div>
         <div class="content-area">
-            <div class="mb-4"><h4 class="fw-bold mb-0">Ordenes de Venta</h4></div>
-            <div class="card">
-                <div class="card-body p-0">
-                    <table class="table mb-0">
-                        <thead><tr><th>ID</th><th>Cliente</th><th>Sucursal</th><th>Items</th><th>Total</th><th>Metodo</th><th>Estado</th><th>Fecha</th></tr></thead>
-                        <tbody id="orderBody"></tbody>
-                    </table>
+            <div class="mb-4"><h4 class="fw-bold mb-0">Ordenes</h4></div>
+            <ul class="nav nav-tabs mb-3">
+                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabSales" type="button">Venta</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabPurchases" type="button">Compra</button></li>
+            </ul>
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="tabSales">
+                    <div class="card">
+                        <div class="card-body p-0">
+                            <table class="table mb-0">
+                                <thead><tr><th>ID</th><th>Cliente</th><th>Sucursal</th><th>Total</th><th>Metodo</th><th>Estado</th><th>Fecha</th></tr></thead>
+                                <tbody id="salesOrderBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="tabPurchases">
+                    <div class="card">
+                        <div class="card-body p-0">
+                            <table class="table mb-0">
+                                <thead><tr><th>ID</th><th>Proveedor</th><th>Usuario</th><th>Sucursal</th><th>Total</th><th>Estado</th><th>Fecha</th></tr></thead>
+                                <tbody id="purchaseOrderBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

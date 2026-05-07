@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from model.profile_model import ProfileModel
 from model.bitacora_model import BitacoraModel
-from config.constants import PHONE_REGEX
+from config.validation import normalize_email, normalize_phone, optional_text, require_text
 import os
 import re
 import time
@@ -17,63 +17,67 @@ PASSWORD_REGEX = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%
 def get_profile():
     try:
         if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado"}), 401
+            return jsonify({"status": "error", "message": "No autorizado."}), 401
         profile = model.get_profile(session['user_id'])
         if profile:
             return jsonify({"status": "success", "data": profile})
-        return jsonify({"status": "error", "message": "Perfil no encontrado"}), 404
+        return jsonify({"status": "error", "message": "Perfil no encontrado."}), 404
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo cargar el perfil."}), 500
 
 
 @profile_bp.route('/', methods=['PUT'])
 def update_profile():
     try:
         if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado"}), 401
-        data = request.get_json()
+            return jsonify({"status": "error", "message": "No autorizado."}), 401
+        data = request.get_json() or {}
         errors = {}
-        if not data.get('nombre') or len(data['nombre'].strip()) < 2:
-            errors['nombre'] = 'El nombre debe tener al menos 2 caracteres'
-        if not data.get('apellido') or len(data['apellido'].strip()) < 2:
-            errors['apellido'] = 'El apellido debe tener al menos 2 caracteres'
+        clean = {
+            'nombre': require_text(errors, 'fNombre', data.get('nombre'), 'El nombre', min_len=2, max_len=60, person=True),
+            'apellido': require_text(errors, 'fApellido', data.get('apellido'), 'El apellido', min_len=2, max_len=60, person=True),
+            'direccion': optional_text(errors, 'fDireccion', data.get('direccion'), 'La direccion', max_len=255)
+        }
         current = model.get_profile(session['user_id'])
         if current and current.get('tipo') == 'cliente':
-            if not data.get('telefono') or not re.match(PHONE_REGEX, data.get('telefono', '').strip()):
-                errors['telefono'] = 'Ingrese un telefono valido'
+            clean['telefono'] = normalize_phone(errors, data.get('telefono'), 'fTelefono', required=True)
+        else:
+            clean['telefono'] = normalize_phone(errors, data.get('telefono'), 'fTelefono', required=False)
         if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        model.update_profile(session['user_id'], data)
-        session['user_nombre'] = data['nombre']
-        session['user_apellido'] = data['apellido']
-        return jsonify({"status": "success", "message": "Perfil actualizado"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+        model.update_profile(session['user_id'], clean)
+        session['user_nombre'] = clean['nombre']
+        session['user_apellido'] = clean['apellido']
+        return jsonify({"status": "success", "message": "Perfil modificado correctamente."})
+    except Exception:
+        return jsonify({"status": "error", "message": "No se pudo modificar el perfil."}), 500
 
 
 @profile_bp.route('/email', methods=['PUT'])
 def update_email():
     try:
         if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado"}), 401
-        data = request.get_json()
-        if not data.get('email') or not re.match(r'^[^@]+@[^@]+\.[^@]+$', data.get('email', '')):
-            return jsonify({"status": "error", "message": "Correo invalido", "errors": {"email": "Ingrese un correo valido"}}), 400
-        result = model.update_email(session['user_id'], data['email'].strip())
+            return jsonify({"status": "error", "message": "No autorizado."}), 401
+        data = request.get_json() or {}
+        errors = {}
+        email = normalize_email(errors, data.get('email'), 'email', required=True)
+        if errors:
+            return jsonify({"status": "error", "message": "Correo invalido.", "errors": {"email": "Ingrese un correo valido."}}), 400
+        result = model.update_email(session['user_id'], email)
         if result:
-            session['user_email'] = data['email']
-            return jsonify({"status": "success", "message": "Correo actualizado"})
+            session['user_email'] = email
+            return jsonify({"status": "success", "message": "Correo modificado correctamente."})
         return jsonify({"status": "error", "message": "El correo ya esta en uso", "errors": {"email": "El correo ya esta en uso"}}), 400
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    except Exception:
+        return jsonify({"status": "error", "message": "No se pudo modificar el correo."}), 500
 
 
 @profile_bp.route('/password', methods=['PUT'])
 def change_password():
     try:
         if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado"}), 401
-        data = request.get_json()
+            return jsonify({"status": "error", "message": "No autorizado."}), 401
+        data = request.get_json() or {}
         errors = {}
         if not data.get('old_password'):
             errors['old_password'] = 'Ingrese su contrasena actual'
@@ -82,30 +86,32 @@ def change_password():
         if data.get('new_password') != data.get('confirm_password'):
             errors['confirm_password'] = 'Las contrasenas no coinciden'
         if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
+            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         result = model.change_password(session['user_id'], data['old_password'], data['new_password'])
         if result:
             bitacora.log_action(session['user_id'], 'MODIFICAR', 'PERFIL', 'Contrasena cambiada', request.remote_addr)
-            return jsonify({"status": "success", "message": "Contrasena actualizada"})
-        return jsonify({"status": "error", "message": "Contrasena actual incorrecta", "errors": {"old_password": "Contrasena actual incorrecta"}}), 400
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+            return jsonify({"status": "success", "message": "Contrasena modificada correctamente."})
+        return jsonify({"status": "error", "message": "Contrasena actual incorrecta.", "errors": {"old_password": "Contrasena actual incorrecta."}}), 400
+    except Exception:
+        return jsonify({"status": "error", "message": "No se pudo modificar la contrasena."}), 500
 
 
 @profile_bp.route('/photo', methods=['POST'])
 def update_photo():
     try:
         if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado"}), 401
+            return jsonify({"status": "error", "message": "No autorizado."}), 401
         if 'photo' not in request.files:
-            return jsonify({"status": "error", "message": "No se envio archivo"}), 400
+            return jsonify({"status": "error", "message": "No se envio archivo."}), 400
         file = request.files['photo']
         if file.filename == '':
-            return jsonify({"status": "error", "message": "Archivo vacio"}), 400
-        allowed = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            return jsonify({"status": "error", "message": "Archivo vacio."}), 400
+        allowed = {'png', 'jpg', 'jpeg', 'webp'}
         ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
         if ext not in allowed:
-            return jsonify({"status": "error", "message": "Solo se permiten imagenes (png, jpg, jpeg, gif, webp)"}), 400
+            return jsonify({"status": "error", "message": "Solo se permiten imagenes png, jpg, jpeg o webp."}), 400
+        if file.mimetype not in {'image/png', 'image/jpeg', 'image/webp'}:
+            return jsonify({"status": "error", "message": "El archivo no es una imagen valida."}), 400
         profile = model.get_profile(session['user_id'])
         filename = f"user_{session['user_id']}_{int(time.time())}.{ext}"
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -126,6 +132,6 @@ def update_photo():
                     os.remove(old_path)
                 except OSError:
                     pass
-        return jsonify({"status": "success", "message": "Foto actualizada", "filename": filename})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "success", "message": "Foto modificada correctamente.", "filename": filename})
+    except Exception:
+        return jsonify({"status": "error", "message": "No se pudo modificar la foto."}), 500

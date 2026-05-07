@@ -8,7 +8,7 @@ $(document).ready(function() {
     loadData();
     loadModules();
     Validator.setRules('roleForm', {
-        nombre: { required: true, minLength: 3, requiredMsg: 'Nombre requerido' }
+        nombre: { required: true, minLength: 3, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El nombre es obligatorio', patternMsg: 'El nombre solo puede contener letras' }
     });
     Validator.setupRealtime('roleForm');
 });
@@ -16,17 +16,17 @@ $(document).ready(function() {
 function loadData() {
     apiCall('/api/roles/').then(res => {
         const tbody = document.getElementById('roleBody');
-        if(!tbody) return;
+        if (!tbody) return;
         tbody.innerHTML = '';
         (res.data || []).forEach(r => {
             tbody.innerHTML += `<tr class="fade-in-up">
                 <td class="col-id">${r.id}</td>
-                <td><strong>${r.nombre}</strong></td>
-                <td>${r.descripcion || '-'}</td>
+                <td><strong>${escapeHtml(r.nombre)}</strong></td>
+                <td>${escapeHtml(r.descripcion || '-')}</td>
                 <td>${statusBadge(r.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${r.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm ${r.estado ? 'btn-warning' : 'btn-success'}" onclick="toggleEstado(${r.id})" title="${r.estado ? 'Desactivar' : 'Activar'}"><i class="bi bi-${r.estado ? 'pause' : 'play'}-fill"></i></button>
+                    <button class="btn btn-icon btn-sm ${r.estado ? 'btn-warning' : 'btn-success'}" onclick="toggleEstado(${r.id})" title="${r.estado ? 'Eliminar' : 'Reactivar'}"><i class="bi bi-${r.estado ? 'trash' : 'arrow-clockwise'}"></i></button>
                 </td>
             </tr>`;
         });
@@ -38,22 +38,22 @@ async function loadModules() {
     try {
         const res = await apiCall('/api/roles/modules');
         MODULES.length = 0;
-        (res.data||[]).forEach(m => MODULES.push(m));
+        (res.data || []).forEach(m => MODULES.push(m));
     } catch(e) {}
 }
 
 function renderPermissions(permisos = []) {
     const tbody = document.getElementById('permissionsBody');
-    if(!tbody) return;
+    if (!tbody) return;
     tbody.innerHTML = '';
     MODULES.forEach(mod => {
         const p = permisos.find(x => x.modulo === mod) || {};
         tbody.innerHTML += `<tr>
-            <td class="fw-bold text-capitalize">${mod}</td>
-            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${mod}" data-perm="crear" ${p.crear ? 'checked' : ''}></td>
-            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${mod}" data-perm="leer" ${p.leer ? 'checked' : ''}></td>
-            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${mod}" data-perm="actualizar" ${p.actualizar ? 'checked' : ''}></td>
-            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${mod}" data-perm="eliminar" ${p.eliminar ? 'checked' : ''}></td>
+            <td class="fw-bold text-capitalize">${escapeHtml(mod)}</td>
+            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="crear" ${p.crear ? 'checked' : ''}></td>
+            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="leer" ${p.leer ? 'checked' : ''}></td>
+            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="actualizar" ${p.actualizar ? 'checked' : ''}></td>
+            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="eliminar" ${p.eliminar ? 'checked' : ''}></td>
         </tr>`;
     });
 }
@@ -68,9 +68,10 @@ function openModal() {
 
 function editData(id) {
     apiCall(`/api/roles/${id}`).then(res => {
-        const r = res.data;
+        if (res.status === 'error') return showToast(res.message, 'error');
+        const r = res.data || {};
         document.getElementById('roleId').value = r.id;
-        document.getElementById('nombre').value = r.nombre;
+        document.getElementById('nombre').value = r.nombre || '';
         document.getElementById('descripcion').value = r.descripcion || '';
         renderPermissions(r.permisos || []);
         document.getElementById('modalTitle').textContent = 'Editar Rol';
@@ -93,23 +94,35 @@ function collectPermissions() {
 }
 
 function saveData() {
-    if (!Validator.validate('roleForm')) return showToast('Corrija los errores','warning');
+    if (!Validator.validate('roleForm')) return showToast('Corrija los errores', 'warning');
     const id = document.getElementById('roleId').value;
-    const data = { nombre: document.getElementById('nombre').value, descripcion: document.getElementById('descripcion').value, permisos: collectPermissions() };
+    const data = {
+        nombre: document.getElementById('nombre').value,
+        descripcion: document.getElementById('descripcion').value,
+        permisos: collectPermissions()
+    };
     const url = id ? `/api/roles/${id}` : '/api/roles/';
     const method = id ? 'PUT' : 'POST';
+    const saveBtn = document.querySelector('#roleModal .btn-orange');
+    setButtonLoading(saveBtn, true, 'Guardando...');
     apiCall(url, method, data).then(res => {
-        if (res.status === 'error') { Validator.showServerErrors('roleForm', res.errors); return showToast(res.message, 'error'); }
+        setButtonLoading(saveBtn, false);
+        if (res.status === 'error') {
+            Validator.showServerErrors('roleForm', res.errors);
+            return showToast(res.message, 'error');
+        }
         bootstrap.Modal.getInstance(document.getElementById('roleModal')).hide();
-        showToast(res.message); loadData();
+        showToast(res.message);
+        loadData();
     });
 }
 
 function toggleEstado(id) {
-    confirmAction('¿Cambiar estado del rol?', () => {
+    confirmAction('Cambiar estado del rol?', () => {
         apiCall(`/api/roles/${id}`, 'DELETE').then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
-            showToast(res.message); loadData();
+            showToast(res.message);
+            loadData();
         });
-    });
+    }, { confirmText: 'Aceptar' });
 }

@@ -15,7 +15,7 @@ def dashboard():
     try:
         return jsonify({"status": "success", "data": model.get_dashboard_stats()})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @report_bp.route('/recent-orders', methods=['GET'])
@@ -24,7 +24,7 @@ def recent_orders():
         limit = int(request.args.get('limit', 10))
         return jsonify({"status": "success", "data": model.get_recent_orders(limit)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @report_bp.route('/query', methods=['GET'])
@@ -54,7 +54,7 @@ def query_reports():
             
         return jsonify({"status": "success", "data": data})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @report_bp.route('/export', methods=['GET'])
@@ -164,4 +164,4 @@ def export_reports():
         return jsonify({"status": "error", "message": "Formato de exportacion invalido"}), 400
         
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

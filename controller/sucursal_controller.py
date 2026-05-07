@@ -13,7 +13,7 @@ def get_all():
         data = model.get_all()
         return jsonify({"status": "success", "data": data})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @sucursal_bp.route('/active', methods=['GET'])
@@ -22,7 +22,7 @@ def get_active():
         data = model.get_active()
         return jsonify({"status": "success", "data": data})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @sucursal_bp.route('/<int:sid>', methods=['GET'])
@@ -33,7 +33,7 @@ def get_one(sid):
             return jsonify({"status": "success", "data": item})
         return jsonify({"status": "error", "message": "Sucursal no encontrada"}), 404
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @sucursal_bp.route('/', methods=['POST'])
@@ -51,7 +51,7 @@ def create():
             f"Sucursal creada: {data['nombre']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Sucursal creada", "id": sid})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @sucursal_bp.route('/<int:sid>', methods=['PUT'])
@@ -69,7 +69,7 @@ def update(sid):
             f"Sucursal modificada ID: {sid}", request.remote_addr)
         return jsonify({"status": "success", "message": "Sucursal actualizada"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @sucursal_bp.route('/<int:sid>', methods=['DELETE'])
@@ -82,7 +82,7 @@ def delete(sid):
             f"Sucursal desactivada ID: {sid}", request.remote_addr)
         return jsonify({"status": "success", "message": "Sucursal desactivada"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @sucursal_bp.route('/<int:sid>/toggle', methods=['PUT'])
@@ -95,4 +95,4 @@ def toggle(sid):
             f"Estado de sucursal cambiado ID: {sid}", request.remote_addr)
         return jsonify({"status": "success", "message": "Estado actualizado"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

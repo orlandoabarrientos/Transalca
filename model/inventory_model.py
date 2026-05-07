@@ -1,4 +1,9 @@
 from model.connection import Connection
+from datetime import datetime, timedelta
+
+
+def caracas_now():
+    return datetime.utcnow() - timedelta(hours=4)
 
 
 class InventoryModel(Connection):
@@ -48,9 +53,9 @@ class InventoryModel(Connection):
             conn.begin()
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO ordenes_compra (proveedor_rif, usuario_cedula, sucursal_id, total, observaciones) VALUES (%s, %s, %s, %s, %s)",
+                "INSERT INTO ordenes_compra (proveedor_rif, usuario_cedula, sucursal_id, fecha, total, observaciones) VALUES (%s, %s, %s, %s, %s, %s)",
                 (data['proveedor_rif'], data['usuario_cedula'], data.get('sucursal_id'),
-                 data['total'], data.get('observaciones', '')))
+                 caracas_now(), data['total'], data.get('observaciones', '')))
             order_id = cursor.lastrowid
             for item in details:
                 subtotal = int(item['cantidad']) * float(item['precio_unitario'])

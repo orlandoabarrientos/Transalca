@@ -2,12 +2,50 @@ from flask import Blueprint, request, jsonify
 from model.client_model import ClientModel
 from model.vehicle_model import VehicleModel
 from controller._guards import can_access_client, deny, is_employee, require_login
-from config.constants import PHONE_REGEX
-import re
+from config.validation import (
+    normalize_cedula,
+    normalize_email,
+    normalize_int,
+    normalize_phone,
+    optional_text,
+    require_text,
+    validate_choice,
+)
+from config.constants import TIPOS_COMBUSTIBLE
 
 client_bp = Blueprint('client_admin', __name__)
 model = ClientModel()
 vehicle_model = VehicleModel()
+
+
+def _validate_client(data, require_cedula=True):
+    errors = {}
+    clean = {}
+    clean['nombre'] = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=100, person=True)
+    clean['apellido'] = require_text(errors, 'apellido', data.get('apellido'), 'El apellido', min_len=2, max_len=100, person=True)
+    clean['telefono'] = normalize_phone(errors, data.get('telefono'))
+    clean['email'] = normalize_email(errors, data.get('email'), required=False)
+    clean['direccion'] = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=300)
+    if require_cedula:
+        cedula, prefijo, numero = normalize_cedula(errors, data)
+        clean['cedula'] = cedula
+        clean['cedula_prefijo'] = prefijo
+        clean['cedula_numero'] = numero
+    return clean, errors
+
+
+def _validate_vehicle(data):
+    errors = {}
+    clean = {}
+    clean['marca'] = require_text(errors, 'marca', data.get('marca'), 'La marca', min_len=2, max_len=100, allow_serial=False)
+    clean['modelo'] = require_text(errors, 'modelo', data.get('modelo'), 'El modelo', min_len=1, max_len=100, allow_serial=False)
+    clean['anio'] = normalize_int(errors, 'anio', data.get('anio'), 'El ano', min_value=1900, max_value=2100) if data.get('anio') not in (None, '') else None
+    clean['placa'] = optional_text(errors, 'placa', data.get('placa'), 'La placa', max_len=20).upper()
+    clean['color'] = optional_text(errors, 'color', data.get('color'), 'El color', max_len=50, allow_serial=False)
+    clean['tipo_vehiculo'] = optional_text(errors, 'tipo_vehiculo', data.get('tipo_vehiculo'), 'El tipo de vehiculo', max_len=50, allow_serial=False)
+    clean['tipo_combustible'] = validate_choice(errors, 'tipo_combustible', data.get('tipo_combustible') or 'gasolina', TIPOS_COMBUSTIBLE)
+    clean['kilometraje_actual'] = normalize_int(errors, 'kilometraje_actual', data.get('kilometraje_actual') or 0, 'El kilometraje', min_value=0, max_value=9999999)
+    return clean, errors
 
 
 @client_bp.route('/', methods=['GET'])
@@ -23,10 +61,8 @@ def get_all():
         return jsonify({"status": "success", "data": model.get_all(search, estado)})
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
-    except ValueError as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @client_bp.route('/stats', methods=['GET'])
@@ -40,10 +76,32 @@ def get_stats():
         return jsonify({"status": "success", "data": model.get_stats()})
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
-    except ValueError as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
+
+
+@client_bp.route('/check-unique', methods=['GET'])
+def check_unique():
+    try:
+        auth = require_login()
+        if auth:
+            return auth
+        if not is_employee():
+            return deny()
+        field = (request.args.get('field') or '').strip()
+        value = (request.args.get('value') or '').strip()
+        exclude = (request.args.get('exclude') or '').strip()
+        if field == 'cedula':
+            errors = {}
+            cedula, _, _ = normalize_cedula(errors, {'cedula': value})
+            if errors:
+                return jsonify({"status": "error", "message": errors['cedula']}), 400
+            client = model.get_by_cedula(cedula)
+            exists = bool(client and cedula != exclude)
+            return jsonify({"status": "success", "exists": exists, "active": bool(client.get('estado')) if client else False})
+        return jsonify({"status": "error", "message": "Campo no valido."}), 400
+    except Exception:
+        return jsonify({"status": "error", "message": "No se pudo validar el dato."}), 500
 
 
 @client_bp.route('/<cedula>', methods=['GET'])
@@ -67,7 +125,7 @@ def get_one(cedula):
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @client_bp.route('/', methods=['POST'])
@@ -78,19 +136,21 @@ def create():
             return auth
         if not is_employee():
             return deny()
-        data = request.get_json()
-        if not data or not data.get('cedula') or not data.get('nombre') or not data.get('apellido'):
-            return jsonify({"status": "error", "message": "Datos incompletos"}), 400
-        if not data.get('telefono') or not re.match(PHONE_REGEX, data.get('telefono', '').strip()):
-            return jsonify({"status": "error", "message": "Telefono invalido"}), 400
-        if model.get_by_cedula(data['cedula'].strip()):
-            return jsonify({"status": "error", "message": "La cedula ya existe"}), 400
-        cid = model.create(data)
-        return jsonify({"status": "success", "message": "Cliente registrado", "id": cid}), 201
+        data = request.get_json() or {}
+        clean, errors = _validate_client(data, True)
+        if errors:
+            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+        existing = model.get_by_cedula(clean['cedula'])
+        if existing and existing.get('estado'):
+            return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
+        result = model.create(clean)
+        if result.get('reactivated'):
+            return jsonify({"status": "success", "message": "Cliente reactivado y modificado correctamente.", "id": result.get('cedula')}), 200
+        return jsonify({"status": "success", "message": "Cliente registrado correctamente.", "id": result.get('cedula')}), 201
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @client_bp.route('/<cedula>', methods=['PUT'])
@@ -101,15 +161,14 @@ def update(cedula):
             return auth
         if not is_employee():
             return deny()
-        data = request.get_json()
-        if not data or not data.get('nombre') or not data.get('apellido'):
-            return jsonify({"status": "error", "message": "Datos incompletos"}), 400
-        if not data.get('telefono') or not re.match(PHONE_REGEX, data.get('telefono', '').strip()):
-            return jsonify({"status": "error", "message": "Telefono invalido"}), 400
-        model.update_client(cedula, data)
-        return jsonify({"status": "success", "message": "Cliente actualizado"})
+        data = request.get_json() or {}
+        clean, errors = _validate_client({**data, 'cedula': cedula}, True)
+        if errors:
+            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+        model.update_client(cedula, clean)
+        return jsonify({"status": "success", "message": "Cliente modificado correctamente."})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @client_bp.route('/<cedula>/toggle', methods=['PUT'])
@@ -120,10 +179,11 @@ def toggle(cedula):
             return auth
         if not is_employee():
             return deny()
-        model.toggle_estado(cedula)
-        return jsonify({"status": "success", "message": "Estado actualizado"})
+        estado = model.toggle_estado(cedula)
+        message = "Cliente reactivado correctamente." if estado else "Cliente eliminado correctamente."
+        return jsonify({"status": "success", "message": message, "estado": estado})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @client_bp.route('/<cedula>/vehicles', methods=['GET'])
@@ -136,7 +196,7 @@ def get_vehicles(cedula):
             return deny()
         return jsonify({"status": "success", "data": model.get_vehicles(cedula)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @client_bp.route('/<cedula>/vehicles', methods=['POST'])
@@ -147,14 +207,15 @@ def add_vehicle(cedula):
             return auth
         if not can_access_client(cedula):
             return deny()
-        data = request.get_json()
-        if not data or not data.get('marca') or not data.get('modelo'):
-            return jsonify({"status": "error", "message": "Datos incompletos"}), 400
-        data['cliente_cedula'] = cedula
-        vid = vehicle_model.create(data)
-        return jsonify({"status": "success", "message": "Vehiculo registrado", "id": vid}), 201
+        data = request.get_json() or {}
+        clean, errors = _validate_vehicle(data)
+        if errors:
+            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+        clean['cliente_cedula'] = cedula
+        vid = vehicle_model.create(clean)
+        return jsonify({"status": "success", "message": "Vehiculo registrado correctamente.", "id": vid}), 201
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @client_bp.route('/<cedula>/vehicles/<int:vid>', methods=['PUT'])
@@ -165,16 +226,17 @@ def update_vehicle(cedula, vid):
             return auth
         if not can_access_client(cedula):
             return deny()
-        data = request.get_json()
-        if not data or not data.get('marca') or not data.get('modelo'):
-            return jsonify({"status": "error", "message": "Datos incompletos"}), 400
+        data = request.get_json() or {}
+        clean, errors = _validate_vehicle(data)
+        if errors:
+            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         vehicle = vehicle_model.get_by_id(vid)
         if not vehicle or vehicle.get('cliente_cedula') != cedula:
             return jsonify({"status": "error", "message": "Vehiculo no encontrado"}), 404
-        vehicle_model.update_vehicle(vid, data)
-        return jsonify({"status": "success", "message": "Vehiculo actualizado"})
+        vehicle_model.update_vehicle(vid, clean)
+        return jsonify({"status": "success", "message": "Vehiculo modificado correctamente."})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @client_bp.route('/<cedula>/vehicles/<int:vid>', methods=['DELETE'])
@@ -189,6 +251,6 @@ def delete_vehicle(cedula, vid):
         if not vehicle or vehicle.get('cliente_cedula') != cedula:
             return jsonify({"status": "error", "message": "Vehiculo no encontrado"}), 404
         vehicle_model.soft_delete(vid)
-        return jsonify({"status": "success", "message": "Vehiculo eliminado"})
+        return jsonify({"status": "success", "message": "Vehiculo eliminado correctamente."})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

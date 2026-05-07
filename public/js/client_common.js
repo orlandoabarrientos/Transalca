@@ -13,7 +13,9 @@ function showToast(message, type = 'success') {
     toast.className = `toast-custom ${type}`;
     const icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill' };
     const colors = { success: 'var(--success)', error: 'var(--danger)', warning: 'var(--warning)', info: 'var(--info)' };
-    toast.innerHTML = `<i class="bi ${icons[type] || icons.info}" style="color:${colors[type]};font-size:1.3rem;"></i><span style="flex:1;font-weight:500;font-size:0.85rem;">${message}</span><i class="bi bi-x" style="cursor:pointer;color:var(--text-muted);" onclick="this.parentElement.remove()"></i>`;
+    const text = typeof normalizeSystemMessage === 'function' ? normalizeSystemMessage(message) : String(message || '');
+    const safe = typeof escapeHtml === 'function' ? escapeHtml(text) : text;
+    toast.innerHTML = `<i class="bi ${icons[type] || icons.info}" style="color:${colors[type]};font-size:1.3rem;"></i><span style="flex:1;font-weight:500;font-size:0.85rem;">${safe}</span><i class="bi bi-x" style="cursor:pointer;color:var(--text-muted);" onclick="this.parentElement.remove()"></i>`;
     container.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
 }
@@ -71,7 +73,7 @@ async function updateCartBadge() {
 
 async function addToCart(itemId, tipo = 'producto', cantidad = 1) {
     if (!currentUser) {
-        showToast('Debe iniciar sesion para agregar al carrito', 'warning');
+        showToast('Debe iniciar sesion para agregar al carrito.', 'warning');
         setTimeout(() => window.location.href = '/auth/login', 1500);
         return;
     }
@@ -84,7 +86,7 @@ async function addToCart(itemId, tipo = 'producto', cantidad = 1) {
         });
         const data = await res.json();
         if (data.status === 'success') {
-            showToast('Agregado al carrito', 'success');
+            showToast('Producto agregado al carrito correctamente.', 'success');
             updateCartBadge();
         } else {
             showToast(data.message, 'error');
@@ -134,6 +136,14 @@ async function markAllReadClient() {
 setInterval(() => { if (currentUser) loadClientNotifications(); }, 30000);
 
 document.body.addEventListener('click', async (e) => {
+    const protectedLink = e.target.closest('a[href="/client/cart"], a[href="/client/my_orders"], a[href="/client/my_loyalty"], a[href="/client/profile"], a[href="/scanner"]');
+    if (protectedLink && !currentUser) {
+        e.preventDefault();
+        showToast('Debe iniciar sesion para continuar.', 'warning');
+        const next = protectedLink.getAttribute('href') || '/client/home';
+        setTimeout(() => window.location.href = `/auth/login?next=${encodeURIComponent(next)}`, 900);
+        return;
+    }
     const logoutTarget = e.target.closest('#clientLogout');
     if (logoutTarget) {
         e.preventDefault();

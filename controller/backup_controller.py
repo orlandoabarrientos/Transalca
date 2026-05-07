@@ -14,7 +14,7 @@ def list_backups():
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         return jsonify({"status": "success", "data": model.list_backups()})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @backup_bp.route('/create', methods=['POST'])
@@ -29,7 +29,7 @@ def create_backup():
             return jsonify({"status": "success", "message": "Respaldo creado", "data": files})
         return jsonify({"status": "error", "message": "Error al crear respaldo"}), 500
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @backup_bp.route('/download/<filename>', methods=['GET'])
@@ -42,7 +42,7 @@ def download(filename):
             return send_file(filepath, as_attachment=True)
         return jsonify({"status": "error", "message": "Archivo no encontrado"}), 404
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @backup_bp.route('/delete/<filename>', methods=['DELETE'])
@@ -56,4 +56,4 @@ def delete(filename):
             return jsonify({"status": "success", "message": "Respaldo eliminado"})
         return jsonify({"status": "error", "message": "Archivo no encontrado"}), 404
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

@@ -1,4 +1,4 @@
-const PHONE_REGEX_PROFILE = /^[0-9+\-\s()]{7,20}$/;
+const PHONE_REGEX_PROFILE = /^04\d{9}$/;
 const ALLOWED_FUEL_TYPES = ['gasolina', 'gasoil', 'otro'];
 
 const clientProfileState = {
@@ -27,6 +27,20 @@ function bindProfileEvents() {
     $('#btnSaveVehicle').on('click', saveVehicleFromProfile);
     $('#btnVehicleCarnet').on('click', () => $('#vCarnetFile').trigger('click'));
     $('#vCarnetFile').on('change', onCarnetFileSelected);
+
+    Validator.setRules('profileForm', {
+        fNombre: { required: true, minLength: 2, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El nombre es obligatorio', patternMsg: 'El nombre solo puede contener letras' },
+        fApellido: { required: true, minLength: 2, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El apellido es obligatorio', patternMsg: 'El apellido solo puede contener letras' },
+        fTelefono: { required: true, pattern: PHONE_REGEX_PROFILE, requiredMsg: 'El telefono es obligatorio', patternMsg: 'Debe tener 11 digitos y comenzar por 04' }
+    });
+    Validator.setRules('vehicleForm', {
+        vMarca: { required: true, minLength: 2, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9 .-]+$/, requiredMsg: 'La marca es obligatoria', patternMsg: 'La marca tiene caracteres invalidos' },
+        vModelo: { required: true, minLength: 1, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9 .-]+$/, requiredMsg: 'El modelo es obligatorio', patternMsg: 'El modelo tiene caracteres invalidos' },
+        vAnio: { min: 1900, minMsg: 'El ano debe ser valido' },
+        vKm: { min: 0, minMsg: 'El kilometraje no puede ser negativo' }
+    });
+    Validator.setupRealtime('profileForm');
+    Validator.setupRealtime('vehicleForm');
 }
 
 async function loadProfile() {
@@ -62,9 +76,14 @@ function setProfilePhoto(filename) {
 
 async function onSaveProfile(event) {
     event.preventDefault();
+    const submitBtn = event.submitter || $('#profileForm button[type="submit"]')[0];
+    if (!Validator.validate('profileForm')) {
+        showToast('Corrija los errores del formulario', 'warning');
+        return;
+    }
     const telefono = ($('#fTelefono').val() || '').trim();
     if (!PHONE_REGEX_PROFILE.test(telefono)) {
-        showToast('Telefono invalido', 'error');
+        showToast('El telefono debe tener 11 digitos y comenzar por 04', 'error');
         return;
     }
     const payload = {
@@ -74,6 +93,7 @@ async function onSaveProfile(event) {
         direccion: ($('#fDireccion').val() || '').trim()
     };
     try {
+        setButtonLoading(submitBtn, true, 'Guardando...');
         const res = await fetch('/api/profile/', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -82,18 +102,22 @@ async function onSaveProfile(event) {
         });
         const data = await res.json();
         if (!res.ok || data.status !== 'success') {
+            if (data.errors) Validator.showServerErrors('profileForm', data.errors);
             showToast(data.message || 'No se pudo actualizar el perfil', 'error');
             return;
         }
         $('#profileName').text(`${payload.nombre} ${payload.apellido}`.trim());
-        showToast(data.message || 'Perfil actualizado', 'success');
+        showToast(data.message || 'Perfil modificado correctamente', 'success');
     } catch (e) {
         showToast('Error al actualizar el perfil', 'error');
+    } finally {
+        setButtonLoading(submitBtn, false);
     }
 }
 
 async function onChangePassword(event) {
     event.preventDefault();
+    const submitBtn = event.submitter || $('#passwordForm button[type="submit"]')[0];
     const oldPassword = ($('#fOldPass').val() || '').trim();
     const newPassword = ($('#fNewPass').val() || '').trim();
     const confirmPassword = ($('#fConfirmPass').val() || '').trim();
@@ -111,6 +135,7 @@ async function onChangePassword(event) {
         confirm_password: confirmPassword
     };
     try {
+        setButtonLoading(submitBtn, true, 'Guardando...');
         const res = await fetch('/api/profile/password', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -123,9 +148,11 @@ async function onChangePassword(event) {
             return;
         }
         $('#passwordForm')[0].reset();
-        showToast(data.message || 'Contrasena actualizada', 'success');
+        showToast(data.message || 'Contrasena modificada correctamente', 'success');
     } catch (e) {
         showToast('Error al cambiar la contrasena', 'error');
+    } finally {
+        setButtonLoading(submitBtn, false);
     }
 }
 
@@ -253,24 +280,23 @@ function editVehicleFromProfile(vehicleId) {
 }
 
 async function deleteVehicleFromProfile(vehicleId) {
-    if (!confirm('Desea eliminar este vehiculo?')) {
-        return;
-    }
-    try {
-        const res = await fetch(`/api/vehicles/${vehicleId}`, {
-            method: 'DELETE',
-            credentials: 'same-origin'
-        });
-        const data = await res.json();
-        if (!res.ok || data.status !== 'success') {
-            showToast(data.message || 'No se pudo eliminar el vehiculo', 'error');
-            return;
+    confirmAction('Desea eliminar este vehiculo?', async () => {
+        try {
+            const res = await fetch(`/api/vehicles/${vehicleId}`, {
+                method: 'DELETE',
+                credentials: 'same-origin'
+            });
+            const data = await res.json();
+            if (!res.ok || data.status !== 'success') {
+                showToast(data.message || 'No se pudo eliminar el vehiculo', 'error');
+                return;
+            }
+            showToast(data.message || 'Vehiculo eliminado correctamente', 'success');
+            await loadVehicles();
+        } catch (e) {
+            showToast('Error al eliminar vehiculo', 'error');
         }
-        showToast(data.message || 'Vehiculo eliminado', 'success');
-        await loadVehicles();
-    } catch (e) {
-        showToast('Error al eliminar vehiculo', 'error');
-    }
+    }, { confirmText: 'Eliminar', confirmColor: '#dc3545' });
 }
 
 function onCarnetFileSelected() {
@@ -326,6 +352,10 @@ async function saveVehicleFromProfile() {
         showToast('No se pudo identificar el cliente', 'error');
         return;
     }
+    if (!Validator.validate('vehicleForm')) {
+        showToast('Corrija los errores del formulario', 'warning');
+        return;
+    }
     const payload = getVehicleFormPayload();
     if (!validateVehiclePayload(payload)) {
         return;
@@ -336,6 +366,7 @@ async function saveVehicleFromProfile() {
     const method = vehicleId ? 'PUT' : 'POST';
 
     try {
+        setButtonLoading('#btnSaveVehicle', true, 'Guardando...');
         const res = await fetch(url, {
             method,
             headers: { 'Content-Type': 'application/json' },
@@ -344,6 +375,7 @@ async function saveVehicleFromProfile() {
         });
         const data = await res.json();
         if (!res.ok || data.status !== 'success') {
+            if (data.errors) Validator.showServerErrors('vehicleForm', data.errors);
             showToast(data.message || 'No se pudo guardar el vehiculo', 'error');
             return;
         }
@@ -357,11 +389,13 @@ async function saveVehicleFromProfile() {
             }
         }
 
-        showToast((data.message || 'Vehiculo guardado') + carnetMessage, 'success');
+        showToast((data.message || 'Vehiculo registrado correctamente') + carnetMessage, 'success');
         clientProfileState.vehicleModal.hide();
         await loadVehicles();
     } catch (e) {
         showToast('Error al guardar vehiculo', 'error');
+    } finally {
+        setButtonLoading('#btnSaveVehicle', false);
     }
 }
 

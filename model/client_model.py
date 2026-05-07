@@ -50,7 +50,9 @@ class ClientModel(Connection):
 
     def create(self, data):
         columns = self._columns("clientes")
-        user = self._user_by_cedula(data['cedula'].strip())
+        cedula = data['cedula'].strip()
+        existing_client = self.get_by_cedula(cedula)
+        user = self._user_by_cedula(cedula)
         if user and user.get('tipo') != 'cliente':
             raise ValueError('La cedula pertenece a un usuario interno')
         if user:
@@ -58,26 +60,47 @@ class ClientModel(Connection):
             if conflicts:
                 raise ValueError('Datos no coinciden con usuario existente: ' + ', '.join(conflicts))
         values = {
-            'cedula': data['cedula'].strip(),
+            'cedula': cedula,
+            'cedula_prefijo': data.get('cedula_prefijo'),
+            'cedula_numero': data.get('cedula_numero'),
             'nombre': data['nombre'].strip(),
             'apellido': data['apellido'].strip(),
             'telefono': data.get('telefono', '').strip(),
             'email': data.get('email', '').strip(),
             'direccion': data.get('direccion', '').strip(),
-            'origen_registro': data.get('origen_registro', 'admin')
+            'origen_registro': data.get('origen_registro', 'admin'),
+            'estado': 1
         }
         if user:
             values['usuario_id'] = user['id']
         keys = [k for k in values if k in columns]
+        if existing_client:
+            set_parts = [f"{k}=%s" for k in keys if k != 'cedula']
+            params = [values[k] for k in keys if k != 'cedula']
+            params.append(cedula)
+            self.update("transalca", f"UPDATE clientes SET {', '.join(set_parts)} WHERE cedula=%s", tuple(params))
+            return {'cedula': cedula, 'reactivated': not bool(existing_client.get('estado'))}
         sql = f"INSERT INTO clientes ({', '.join(keys)}) VALUES ({', '.join(['%s'] * len(keys))})"
-        return self.insert("transalca", sql, tuple(values[k] for k in keys))
+        self.insert("transalca", sql, tuple(values[k] for k in keys))
+        return {'cedula': cedula, 'reactivated': False}
 
     def update_client(self, cedula, data):
+        columns = self._columns("clientes")
+        values = {
+            'cedula_prefijo': data.get('cedula_prefijo'),
+            'cedula_numero': data.get('cedula_numero'),
+            'nombre': data['nombre'].strip(),
+            'apellido': data['apellido'].strip(),
+            'telefono': data.get('telefono', '').strip(),
+            'email': data.get('email', '').strip(),
+            'direccion': data.get('direccion', '').strip()
+        }
+        keys = [k for k in values if k in columns]
+        params = [values[k] for k in keys]
+        params.append(cedula)
         result = self.update("transalca",
-            "UPDATE clientes SET nombre=%s, apellido=%s, telefono=%s, email=%s, direccion=%s WHERE cedula=%s",
-            (data['nombre'].strip(), data['apellido'].strip(),
-             data.get('telefono', '').strip(), data.get('email', '').strip(),
-             data.get('direccion', '').strip(), cedula))
+            f"UPDATE clientes SET {', '.join([f'{k}=%s' for k in keys])} WHERE cedula=%s",
+            tuple(params))
         client = self.get_by_cedula(cedula)
         if client and client.get('usuario_id'):
             self.update("mantenimiento",
@@ -88,8 +111,10 @@ class ClientModel(Connection):
         return result
 
     def toggle_estado(self, cedula):
-        return self.update("transalca",
+        self.update("transalca",
             "UPDATE clientes SET estado = IF(estado=1, 0, 1) WHERE cedula=%s", (cedula,))
+        client = self.get_by_cedula(cedula)
+        return int(client.get('estado') or 0) if client else 0
 
     def get_stats(self):
         total = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM clientes")

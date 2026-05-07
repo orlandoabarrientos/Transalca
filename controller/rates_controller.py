@@ -1,7 +1,3 @@
-"""
-Rates Controller
-Provides BCV and Binance P2P exchange rates
-"""
 from flask import Blueprint, jsonify
 import time
 import threading
@@ -16,11 +12,10 @@ _cache = {
     "timestamp": 0,
     "lock": threading.Lock()
 }
-CACHE_TTL = 300  
+CACHE_TTL = 300
 
 
 def _fetch_rates():
-    """Fetch rates from both BCV and Binance with error handling."""
     result = {
         "bcv": {"usd": 0, "eur": 0, "error": None},
         "binance": {"usdt_ves": 0, "error": None},
@@ -35,7 +30,7 @@ def _fetch_rates():
         result["bcv"]["eur"] = round(bcv.get("eur", 0), 4)
     except Exception as e:
         logger.error("Error BCV: %s", e)
-        result["bcv"]["error"] = str(e)
+        result["bcv"]["error"] = "No se pudo consultar la tasa BCV."
 
     
     try:
@@ -44,14 +39,13 @@ def _fetch_rates():
         result["binance"]["usdt_ves"] = round(rate, 2)
     except Exception as e:
         logger.error("Error Binance: %s", e)
-        result["binance"]["error"] = str(e)
+        result["binance"]["error"] = "No se pudo consultar la tasa USDT."
 
     return result
 
 
 @rates_bp.route('/', methods=['GET'])
 def get_rates():
-    """Get current exchange rates (cached 5 min)."""
     try:
         now = time.time()
         with _cache["lock"]:
@@ -66,12 +60,11 @@ def get_rates():
 
     except Exception as e:
         logger.error("Error in rates endpoint: %s", e)
-        return jsonify({"status": "error", "message": "Error obteniendo tasas de cambio"}), 500
+        return jsonify({"status": "error", "message": "No se pudieron obtener las tasas de cambio."}), 500
 
 
 @rates_bp.route('/bcv', methods=['GET'])
 def get_bcv_only():
-    """Get only BCV rates."""
     try:
         from services.bcv_scraper import get_bcv_rates
         bcv = get_bcv_rates(verify=False)
@@ -83,13 +76,12 @@ def get_bcv_only():
                 "source": "BCV"
             }
         })
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 502
+    except Exception:
+        return jsonify({"status": "error", "message": "No se pudo consultar la tasa BCV."}), 502
 
 
 @rates_bp.route('/binance', methods=['GET'])
 def get_binance_only():
-    """Get only Binance P2P rate."""
     try:
         from services.binance_rates import get_usdt_rate_ves
         rate = get_usdt_rate_ves()
@@ -100,5 +92,5 @@ def get_binance_only():
                 "source": "Binance P2P"
             }
         })
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 502
+    except Exception:
+        return jsonify({"status": "error", "message": "No se pudo consultar la tasa USDT."}), 502

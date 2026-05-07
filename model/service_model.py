@@ -22,16 +22,18 @@ class ServiceModel(Connection):
             "SELECT s.*, su.nombre as sucursal_nombre FROM servicios s LEFT JOIN sucursales su ON s.sucursal_id = su.id WHERE s.sucursal_id = %s AND s.estado = 1 ORDER BY s.nombre", (suc_id,))
 
     def create(self, data):
+        duration = data.get('duracion_estimada', 60)
         return self.insert("transalca",
             "INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id) VALUES (%s, %s, %s, %s, %s)",
             (data['nombre'].strip(), data.get('descripcion', '').strip(), float(data['precio']),
-             data.get('duracion_estimada', '').strip(), data.get('sucursal_id') or None))
+             str(duration).strip(), data.get('sucursal_id') or None))
 
     def update_service(self, sid, data):
+        duration = data.get('duracion_estimada', 60)
         return self.update("transalca",
             "UPDATE servicios SET nombre = %s, descripcion = %s, precio = %s, duracion_estimada = %s, sucursal_id = %s WHERE id = %s",
             (data['nombre'].strip(), data.get('descripcion', '').strip(), float(data['precio']),
-             data.get('duracion_estimada', '').strip(), data.get('sucursal_id') or None, sid))
+             str(duration).strip(), data.get('sucursal_id') or None, sid))
 
     def soft_delete(self, sid):
         return self.update("transalca", "UPDATE servicios SET estado = 0 WHERE id = %s", (sid,))

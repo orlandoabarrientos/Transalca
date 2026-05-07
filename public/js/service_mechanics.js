@@ -1,6 +1,7 @@
 let assignmentModal;
 let mechanicModal;
 let mechanicsCache = [];
+let ordersCache = [];
 
 $(document).ready(function () {
     $('#sidebarContainer').load('/components/admin_sidebar.html', () => {
@@ -20,7 +21,20 @@ $(document).ready(function () {
 });
 
 async function initializeCatalogs() {
-    await Promise.all([loadServices(), loadMechanics()]);
+    await Promise.all([loadServices(), loadMechanics(), loadOrders()]);
+}
+
+async function loadOrders() {
+    try {
+        const res = await apiCall('/api/inventory/sales-orders');
+        ordersCache = res.data || [];
+        const orderSelect = document.getElementById('orden_venta_id');
+        if (!orderSelect) return;
+        orderSelect.innerHTML = '<option value="">Sin orden</option>';
+        ordersCache.forEach(order => {
+            orderSelect.innerHTML += `<option value="${order.id}">#${order.id} - ${escapeHtml(order.cliente_nombre || 'Cliente')} - ${formatDate(order.fecha)}</option>`;
+        });
+    } catch (e) { }
 }
 
 async function loadServices() {
@@ -100,6 +114,7 @@ function statusSelect(id, current) {
 function openAssignmentModal() {
     Validator.clearForm('assignmentForm');
     document.getElementById('assignmentModalTitle').textContent = 'Nuevo Registro Servicio Mecanico';
+    document.getElementById('orden_venta_id').value = '';
     assignmentModal.show();
 }
 
@@ -115,11 +130,18 @@ async function saveAssignment() {
         orden_venta_id: document.getElementById('orden_venta_id').value ? parseInt(document.getElementById('orden_venta_id').value, 10) : null,
         observaciones: document.getElementById('observaciones').value || ''
     };
+    const saveBtn = document.querySelector('#assignmentModal .btn-orange');
 
     try {
+        setButtonLoading(saveBtn, true, 'Guardando...');
         const res = await apiCall('/api/service-mechanics/', 'POST', data);
+        setButtonLoading(saveBtn, false);
+        if (res.status === 'error') {
+            Validator.showServerErrors('assignmentForm', res.errors);
+            return showToast(res.message, 'error');
+        }
         assignmentModal.hide();
-        showToast(res.message || 'Registro creado', 'success');
+        showToast(res.message || 'Servicio mecanico registrado correctamente', 'success');
         loadAssignments();
     } catch (e) { }
 }
@@ -140,11 +162,15 @@ async function saveMechanicAssignment() {
     }
 
     try {
+        const saveBtn = document.querySelector('#mechanicAssignModal .btn-orange');
+        setButtonLoading(saveBtn, true, 'Asignando...');
         const res = await apiCall(`/api/service-mechanics/${assignmentId}/mechanic`, 'PUT', {
             mecanico_cedula: mecanicoCedula
         });
+        setButtonLoading(saveBtn, false);
+        if (res.status === 'error') return showToast(res.message, 'error');
         mechanicModal.hide();
-        showToast(res.message || 'Mecanico asignado', 'success');
+        showToast(res.message || 'Mecanico asignado correctamente', 'success');
         loadAssignments();
     } catch (e) { }
 }
@@ -152,6 +178,11 @@ async function saveMechanicAssignment() {
 async function updateAssignmentStatus(assignmentId, estado) {
     try {
         const res = await apiCall(`/api/service-mechanics/${assignmentId}/status`, 'PUT', { estado });
+        if (res.status === 'error') {
+            showToast(res.message, 'error');
+            loadAssignments();
+            return;
+        }
         showToast(res.message || 'Estado actualizado', 'success');
     } catch (e) {
         loadAssignments();

@@ -157,7 +157,7 @@
             <div class="product-info">
                 <div class="product-category">${p.categoria_nombre || ''}</div>
                 <div class="product-name">${p.nombre}</div>
-                <div class="product-price">$${formatCurrency(p.precio)}</div>
+                <div class="product-price" data-usd-price="${p.precio}">${formatUsdBs(p.precio)}</div>
                 ${p.sucursal_nombre ? `<div class="product-branch"><i class="bi bi-geo-alt"></i>${p.sucursal_nombre}</div>` : ''}
             </div>
             <button class="btn-add-cart" onclick="addToCart('${p.codigo}')"><i class="bi bi-cart-plus me-1"></i>Agregar</button>
@@ -174,7 +174,7 @@
                 grid.innerHTML += `<div class="col-6 col-md-4 col-lg-3 fade-in-up"><div class="card p-3 text-center" style="cursor:pointer;" onclick="addToCart(${s.id},'servicio')">
             <i class="bi ${icons[s.tipo] || 'bi-wrench'}" style="font-size:2rem;color:var(--primary);"></i>
             <h6 class="fw-bold mt-2 mb-1">${s.nombre}</h6>
-            <span class="fw-bold" style="color:var(--primary);">$${formatCurrency(s.precio)}</span>
+            <span class="fw-bold" style="color:var(--primary);" data-usd-price="${s.precio}">${formatUsdBs(s.precio)}</span>
             ${s.sucursal_nombre ? `<small class="d-block text-muted mt-1"><i class="bi bi-geo-alt"></i> ${s.sucursal_nombre}</small>` : ''}
         </div></div>`;
             });

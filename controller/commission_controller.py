@@ -32,7 +32,7 @@ def get_all():
             return jsonify({"status": "success", "data": model.get_by_mecanico(mecanico, estado)})
         return jsonify({"status": "success", "data": model.get_all(estado)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @commission_bp.route('/<int:cid>', methods=['GET'])
@@ -48,7 +48,7 @@ def get_one(cid):
             return deny()
         return jsonify({"status": "success", "data": c})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @commission_bp.route('/', methods=['POST'])
@@ -66,7 +66,7 @@ def create():
         cid = model.create(data)
         return jsonify({"status": "success", "message": "Comision registrada", "id": cid}), 201
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @commission_bp.route('/auto/<int:sm_id>', methods=['POST'])
@@ -82,7 +82,7 @@ def auto_create(sm_id):
             return jsonify({"status": "error", "message": "No se pudo crear comision"}), 400
         return jsonify({"status": "success", "message": "Comision generada", "id": cid}), 201
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @commission_bp.route('/<int:cid>/pay', methods=['PUT'])
@@ -96,7 +96,7 @@ def mark_paid(cid):
         model.mark_paid(cid)
         return jsonify({"status": "success", "message": "Comision marcada como pagada"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @commission_bp.route('/<int:cid>/cancel', methods=['PUT'])
@@ -110,7 +110,7 @@ def mark_cancelled(cid):
         model.mark_cancelled(cid)
         return jsonify({"status": "success", "message": "Comision anulada"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @commission_bp.route('/summary/<cedula>', methods=['GET'])
@@ -123,4 +123,4 @@ def summary(cedula):
             return deny()
         return jsonify({"status": "success", "data": model.get_summary(cedula)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

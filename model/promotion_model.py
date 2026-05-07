@@ -39,7 +39,12 @@ class PromotionModel(Connection):
             "UPDATE promociones SET estado = 0 WHERE id = %s", (promo_id,))
 
     def soft_delete(self, promo_id):
-        return self.delete_promotion(promo_id)
+        promo = self.get_by_id(promo_id)
+        if not promo:
+            return None
+        new_estado = 0 if int(promo.get('estado') or 0) == 1 else 1
+        self.update("transalca", "UPDATE promociones SET estado = %s WHERE id = %s", (new_estado, promo_id))
+        return new_estado
 
     def assign_card_to_client(self, cliente_cedula, promocion_id):
         existing = self.fetch_one("transalca",

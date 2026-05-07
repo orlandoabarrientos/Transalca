@@ -29,7 +29,7 @@ def get_rules():
         active = request.args.get('active', '1') == '1'
         return jsonify({"status": "success", "data": model.get_rules(active)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @maintenance_bp.route('/rules', methods=['POST'])
@@ -46,7 +46,7 @@ def create_rule():
         rid = model.create_rule(data)
         return jsonify({"status": "success", "message": "Regla creada", "id": rid}), 201
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @maintenance_bp.route('/rules/<int:rid>', methods=['PUT'])
@@ -61,7 +61,7 @@ def update_rule(rid):
         model.update_rule(rid, data)
         return jsonify({"status": "success", "message": "Regla actualizada"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @maintenance_bp.route('/rules/<int:rid>/toggle', methods=['PUT'])
@@ -75,7 +75,7 @@ def toggle_rule(rid):
         model.toggle_rule(rid)
         return jsonify({"status": "success", "message": "Estado de regla cambiado"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @maintenance_bp.route('/scheduled', methods=['GET'])
@@ -93,7 +93,7 @@ def get_scheduled():
             return jsonify({"status": "error", "message": "vehiculo_id requerido"}), 400
         return jsonify({"status": "success", "data": model.get_pending(vid)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @maintenance_bp.route('/scheduled', methods=['POST'])
@@ -111,7 +111,7 @@ def create_scheduled():
         mid = model.create_scheduled(data)
         return jsonify({"status": "success", "message": "Mantenimiento programado", "id": mid}), 201
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @maintenance_bp.route('/scheduled/<int:mid>/complete', methods=['PUT'])
@@ -129,7 +129,7 @@ def complete(mid):
         model.complete_maintenance(mid, data.get('km_realizado'))
         return jsonify({"status": "success", "message": "Mantenimiento completado"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @maintenance_bp.route('/calculate/<int:vid>', methods=['POST'])
@@ -141,7 +141,7 @@ def calculate(vid):
         created = model.calculate_for_vehicle(vid)
         return jsonify({"status": "success", "message": f"{len(created)} mantenimientos programados", "created": created})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @maintenance_bp.route('/check-overdue', methods=['POST'])
@@ -155,7 +155,7 @@ def check_overdue():
         model.check_overdue()
         return jsonify({"status": "success", "message": "Verificacion completada"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @maintenance_bp.route('/vehicle/<int:vid>', methods=['GET'])
@@ -166,4 +166,4 @@ def get_vehicle_maintenance(vid):
             return error
         return jsonify({"status": "success", "data": model.get_by_vehicle(vid)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

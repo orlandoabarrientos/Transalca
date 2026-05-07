@@ -15,6 +15,23 @@ $(document).ready(function () {
         $('#vCarnetFileName').text(pendingVehicleCarnetFile ? pendingVehicleCarnetFile.name : 'No seleccionado');
         if (pendingVehicleCarnetFile) scanVehicleTitleAndFillAdmin(pendingVehicleCarnetFile);
     });
+    Validator.setRules('clientForm', {
+        fCedulaPrefijo: { required: true, custom: v => ['V', 'E', 'J', 'G', 'P'].includes(v), customMsg: 'El valor seleccionado no es valido. Recargue la pagina e intentelo nuevamente.' },
+        fCedula: { required: true, pattern: /^\d{7,8}$/, requiredMsg: 'Cedula requerida', patternMsg: 'La cedula debe tener 7 u 8 digitos' },
+        fNombre: { required: true, pattern: /^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$/u, requiredMsg: 'Nombre requerido', patternMsg: 'Solo letras y espacios' },
+        fApellido: { required: true, pattern: /^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$/u, requiredMsg: 'Apellido requerido', patternMsg: 'Solo letras y espacios' },
+        fTelefono: { required: true, pattern: /^04\d{9}$/, requiredMsg: 'Telefono requerido', patternMsg: 'Debe tener 11 digitos y comenzar por 04' },
+        fEmail: { email: true }
+    });
+    Validator.setRules('vehicleForm', {
+        vMarca: { required: true, minLength: 2, requiredMsg: 'Marca requerida' },
+        vModelo: { required: true, minLength: 1, requiredMsg: 'Modelo requerido' },
+        vKm: { min: 0, minMsg: 'El kilometraje no puede ser negativo' }
+    });
+    Validator.setupRealtime('clientForm');
+    Validator.setupRealtime('vehicleForm');
+    $('#fCedula').on('input', debounce(validateUniqueClientCedula, 350));
+    $('#fCedulaPrefijo').on('change', debounce(validateUniqueClientCedula, 350));
 });
 
 function debounce(fn, ms) {
@@ -46,6 +63,7 @@ function loadClients() {
         }
         r.data.forEach(c => {
             const estado = c.estado ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>';
+            const stateTitle = c.estado ? 'Eliminar' : 'Reactivar';
             tbody.append(`
                 <tr style="cursor:pointer" onclick="showDetail('${c.cedula}')">
                     <td><strong>${c.cedula}</strong></td>
@@ -56,7 +74,7 @@ function loadClients() {
                     <td>${estado}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); editClient('${c.cedula}')" title="Editar"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); toggleClient('${c.cedula}')" title="Cambiar estado"><i class="bi bi-toggle-on"></i></button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); toggleClient('${c.cedula}')" title="${stateTitle}"><i class="bi bi-${c.estado ? 'trash' : 'arrow-clockwise'}"></i></button>
                     </td>
                 </tr>
             `);
@@ -170,8 +188,9 @@ function hideDetail() {
 
 function showCreateModal() {
     $('#clientModalTitle').text('Nuevo Cliente');
-    $('#clientForm')[0].reset();
+    Validator.clearForm('clientForm');
     $('#editCedula').val('');
+    $('#fCedulaPrefijo').val('V').prop('disabled', false);
     $('#fCedula').prop('disabled', false);
     new bootstrap.Modal('#clientModal').show();
 }
@@ -182,7 +201,9 @@ function editClient(cedula) {
         const c = r.data;
         $('#clientModalTitle').text('Editar Cliente');
         $('#editCedula').val(cedula);
-        $('#fCedula').val(cedula).prop('disabled', true);
+        setDocumentFields('fCedulaPrefijo', 'fCedula', cedula);
+        $('#fCedulaPrefijo').prop('disabled', true);
+        $('#fCedula').prop('disabled', true);
         $('#fNombre').val(c.nombre);
         $('#fApellido').val(c.apellido);
         $('#fTelefono').val(c.telefono);
@@ -193,45 +214,55 @@ function editClient(cedula) {
 }
 
 function saveClient() {
+    if (!Validator.validate('clientForm')) {
+        showToast('Corrija los errores del formulario', 'warning');
+        return;
+    }
     const cedula = $('#editCedula').val();
     const data = {
-        cedula: $('#fCedula').val(),
+        cedula_prefijo: $('#fCedulaPrefijo').val(),
+        cedula_numero: $('#fCedula').val(),
+        cedula: buildDocumentValue('fCedulaPrefijo', 'fCedula'),
         nombre: $('#fNombre').val(),
         apellido: $('#fApellido').val(),
         telefono: $('#fTelefono').val(),
         email: $('#fEmail').val(),
         direccion: $('#fDireccion').val()
     };
-    if (!data.nombre || !data.apellido) { showToast('Nombre y apellido requeridos', 'error'); return; }
-    if (!data.telefono || data.telefono.length < 7) { showToast('Teléfono requerido (min 7 caracteres)', 'error'); return; }
-
     const url = cedula ? `/api/clients/${cedula}` : '/api/clients/';
     const method = cedula ? 'PUT' : 'POST';
-    if (!cedula && !data.cedula) { showToast('Cédula requerida', 'error'); return; }
+    const btn = document.querySelector('#clientModal .modal-footer .btn-orange');
+    setButtonLoading(btn, true, 'Guardando...');
 
     $.ajax({ url, type: method, contentType: 'application/json', data: JSON.stringify(data),
         success: function (r) {
             showToast(r.message, 'success');
+            Validator.clearForm('clientForm');
             bootstrap.Modal.getInstance(document.getElementById('clientModal'))?.hide();
             loadClients();
             loadStats();
             if (cedula && currentCedula === cedula) showDetail(cedula);
         },
-        error: function (x) { showToast(x.responseJSON?.message || 'Error', 'error'); }
+        error: function (x) {
+            if (x.responseJSON?.errors) Validator.showServerErrors('clientForm', x.responseJSON.errors);
+            showToast(x.responseJSON?.message || 'No se pudo guardar el cliente', 'error');
+        },
+        complete: function () { setButtonLoading(btn, false); }
     });
 }
 
 function toggleClient(cedula) {
-    if (!confirm('¿Cambiar estado del cliente?')) return;
-    $.ajax({ url: `/api/clients/${cedula}/toggle`, type: 'PUT',
-        success: function (r) { showToast(r.message, 'success'); loadClients(); loadStats(); },
-        error: function (x) { showToast(x.responseJSON?.message || 'Error', 'error'); }
+    confirmAction('Eliminar o reactivar este cliente?', () => {
+        $.ajax({ url: `/api/clients/${cedula}/toggle`, type: 'PUT',
+            success: function (r) { showToast(r.message, 'success'); loadClients(); loadStats(); },
+            error: function (x) { showToast(x.responseJSON?.message || 'No se pudo cambiar el estado del cliente', 'error'); }
+        });
     });
 }
 
 function showVehicleModal(vehicleData) {
     if (!currentCedula) return;
-    $('#vehicleForm')[0].reset();
+    Validator.clearForm('vehicleForm');
     pendingVehicleCarnetFile = null;
     $('#vCarnetFile').val('');
     $('#vCarnetFileName').text('No seleccionado');
@@ -262,18 +293,23 @@ function editVehicle(vid) {
 
 function deleteVehicle(vid) {
     if (!currentCedula) return;
-    if (!confirm('¿Eliminar este vehículo?')) return;
-    $.ajax({ url: `/api/clients/${currentCedula}/vehicles/${vid}`, type: 'DELETE',
-        success: function (r) {
-            showToast(r.message, 'success');
-            showDetail(currentCedula);
-        },
-        error: function (x) { showToast(x.responseJSON?.message || 'Error', 'error'); }
+    confirmAction('Eliminar este vehiculo?', () => {
+        $.ajax({ url: `/api/clients/${currentCedula}/vehicles/${vid}`, type: 'DELETE',
+            success: function (r) {
+                showToast(r.message, 'success');
+                showDetail(currentCedula);
+            },
+            error: function (x) { showToast(x.responseJSON?.message || 'No se pudo eliminar el vehiculo', 'error'); }
+        });
     });
 }
 
 function saveVehicle() {
     if (!currentCedula) return;
+    if (!Validator.validate('vehicleForm')) {
+        showToast('Corrija los errores del formulario', 'warning');
+        return;
+    }
     const vid = $('#editVehicleId').val();
     const data = {
         marca: $('#vMarca').val(),
@@ -285,7 +321,6 @@ function saveVehicle() {
         tipo_combustible: $('#vCombustible').val(),
         kilometraje_actual: parseInt($('#vKm').val()) || 0
     };
-    if (!data.marca || !data.modelo) { showToast('Marca y modelo requeridos', 'error'); return; }
     $('#vCombustible').removeClass('is-invalid');
     $('#vCombustibleFeedback').text('');
     if (!isValidConstant('TIPOS_COMBUSTIBLE', data.tipo_combustible)) {
@@ -310,15 +345,44 @@ function saveVehicle() {
                 const carnetUpload = await uploadVehicleCarnet(targetVehicleId, pendingVehicleCarnetFile);
                 if (!carnetUpload.ok) carnetWarning = ` (${carnetUpload.message})`;
             }
-            showToast((r.message || 'Vehiculo guardado') + carnetWarning, 'success');
+            showToast((r.message || 'Vehiculo guardado correctamente') + carnetWarning, 'success');
             pendingVehicleCarnetFile = null;
             $('#vCarnetFile').val('');
             $('#vCarnetFileName').text('No seleccionado');
             bootstrap.Modal.getInstance(document.getElementById('vehicleModal'))?.hide();
             showDetail(currentCedula);
         },
-        error: function (x) { showToast(x.responseJSON?.message || 'Error', 'error'); }
+        error: function (x) {
+            if (x.responseJSON?.errors) Validator.showServerErrors('vehicleForm', x.responseJSON.errors);
+            showToast(x.responseJSON?.message || 'No se pudo guardar el vehiculo', 'error');
+        }
     });
+}
+
+async function validateUniqueClientCedula() {
+    const input = document.getElementById('fCedula');
+    if (!input || input.disabled || !input.value.trim()) return true;
+    if (!Validator.validateField('clientForm', 'fCedula')) return false;
+    try {
+        const exclude = document.getElementById('editCedula')?.value || '';
+        const value = buildDocumentValue('fCedulaPrefijo', 'fCedula');
+        const res = await fetch(`/api/clients/check-unique?field=cedula&value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(exclude)}`, { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.status === 'success' && data.exists && data.active) {
+            Validator.showServerErrors('clientForm', { fCedula: 'Esta cedula ya esta registrada.' });
+            return false;
+        }
+        if (data.status === 'success' && data.exists && !data.active) {
+            input.classList.remove('is-invalid');
+            const fb = input.parentNode.querySelector('.invalid-feedback');
+            if (fb) {
+                fb.textContent = 'Cliente inactivo: se reactivara al guardar.';
+                fb.style.display = 'block';
+                fb.style.color = 'var(--warning)';
+            }
+        }
+    } catch (e) {}
+    return true;
 }
 
 function uploadVehicleCarnet(vehicleId, file) {

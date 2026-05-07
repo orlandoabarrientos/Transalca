@@ -52,8 +52,17 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label">Cédula <span class="required">*</span></label>
-                            <input type="text" class="form-control" id="cedula" name="cedula" placeholder="Ej: V-12345678">
-                            <div class="invalid-feedback"></div>
+                            <div class="input-group">
+                                <select class="form-select" id="cedula_prefijo" name="cedula_prefijo" style="max-width:90px;">
+                                    <option value="V">V</option>
+                                    <option value="E">E</option>
+                                    <option value="J">J</option>
+                                    <option value="G">G</option>
+                                    <option value="P">P</option>
+                                </select>
+                                <input type="text" class="form-control" id="cedula" name="cedula" placeholder="Ej: 12345678">
+                                <div class="invalid-feedback"></div>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Teléfono</label>

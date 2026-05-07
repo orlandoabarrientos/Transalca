@@ -14,7 +14,7 @@ def get_all():
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         return jsonify({"status": "success", "data": model.get_all_qrs()})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @qr_bp.route('/my', methods=['GET'])
@@ -26,7 +26,7 @@ def my_qrs():
             return jsonify({"status": "error", "message": "Solo clientes"}), 403
         return jsonify({"status": "success", "data": model.get_user_qrs(session['user_cedula'])})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @qr_bp.route('/<int:qr_id>', methods=['GET'])
@@ -37,7 +37,7 @@ def get_one(qr_id):
             return jsonify({"status": "success", "data": qr})
         return jsonify({"status": "error", "message": "QR no encontrado"}), 404
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @qr_bp.route('/', methods=['POST'])
@@ -63,7 +63,7 @@ def create():
             f"QR creado ID: {qr_id}", request.remote_addr)
         return jsonify({"status": "success", "message": "QR creado", "id": qr_id})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @qr_bp.route('/<int:qr_id>', methods=['PUT'])
@@ -85,7 +85,7 @@ def update(qr_id):
             f"QR modificado ID: {qr_id}", request.remote_addr)
         return jsonify({"status": "success", "message": "QR actualizado"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @qr_bp.route('/<int:qr_id>', methods=['DELETE'])
@@ -98,7 +98,7 @@ def delete(qr_id):
             f"QR desactivado ID: {qr_id}", request.remote_addr)
         return jsonify({"status": "success", "message": "QR desactivado"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @qr_bp.route('/scan/<int:qr_id>', methods=['GET'])
@@ -111,7 +111,7 @@ def scan(qr_id):
             return jsonify({"status": "success", "data": data})
         return jsonify({"status": "error", "message": "QR no encontrado"}), 404
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @qr_bp.route('/<int:qr_id>/image', methods=['GET'])
@@ -146,4 +146,4 @@ def generate_image(qr_id):
         
         return send_file(img_byte_arr, mimetype='image/png')
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

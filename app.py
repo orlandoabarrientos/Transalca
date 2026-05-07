@@ -79,6 +79,25 @@ app.register_blueprint(fuel_bp, url_prefix='/api/fuel')
 app.register_blueprint(vehicle_log_bp, url_prefix='/api/vehicle-log')
 
 
+PUBLIC_CLIENT_PAGES = {'home', 'catalog'}
+PUBLIC_API_PREFIXES = (
+    '/api/products/active',
+    '/api/categories/active',
+    '/api/sucursales/active',
+    '/api/services/active',
+    '/api/rates',
+)
+
+
+@app.before_request
+def guard_public_access():
+    if request.path.startswith('/api/') and 'user_id' not in session:
+        if any(request.path == p or request.path.startswith(p + '/') for p in PUBLIC_API_PREFIXES):
+            return None
+        return jsonify({"status": "error", "message": "Debe iniciar sesion."}), 401
+    return None
+
+
 @app.route('/')
 def index():
     return redirect('/client/home')
@@ -98,6 +117,9 @@ def admin_page(page):
 
 @app.route('/client/<page>')
 def client_page(page):
+    if page not in PUBLIC_CLIENT_PAGES and 'user_id' not in session:
+        next_path = request.full_path if request.query_string else request.path
+        return redirect(url_for('auth.login_page', next=next_path.rstrip('?')))
     try:
         return send_from_directory('views/client', f'{page}.html')
     except Exception:

@@ -28,7 +28,7 @@ def get_by_vehicle(vid):
             return error
         return jsonify({"status": "success", "data": model.get_by_vehicle(vid)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @fuel_bp.route('/', methods=['POST'])
@@ -46,7 +46,7 @@ def create():
         rid = model.create(data)
         return jsonify({"status": "success", "message": "Registro creado", "id": rid}), 201
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @fuel_bp.route('/average/<int:vid>', methods=['GET'])
@@ -58,7 +58,7 @@ def average(vid):
         avg = model.get_average_consumption(vid)
         return jsonify({"status": "success", "data": {"promedio_lkm": avg}})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @fuel_bp.route('/<int:rid>', methods=['DELETE'])
@@ -76,4 +76,4 @@ def delete(rid):
         model.delete_record(rid)
         return jsonify({"status": "success", "message": "Registro eliminado"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

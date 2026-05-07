@@ -6,6 +6,10 @@ class UserModel(Connection):
     def __init__(self):
         super().__init__()
 
+    def _columns(self):
+        rows = self.fetch_all("mantenimiento", "SHOW COLUMNS FROM usuarios")
+        return {r['Field'] for r in rows}
+
     def get_all(self, tipo=None):
         if tipo:
             return self.fetch_all("mantenimiento",
@@ -21,19 +25,45 @@ class UserModel(Connection):
     def create(self, data):
         password_hash = generate_password_hash(data['password'])
         tipo = 'cliente' if data.get('tipo') == 'cliente' else 'empleado'
+        values = {
+            'nombre': data['nombre'].strip(),
+            'apellido': data['apellido'].strip(),
+            'cedula': data['cedula'].strip(),
+            'cedula_prefijo': data.get('cedula_prefijo'),
+            'cedula_numero': data.get('cedula_numero'),
+            'email': data['email'].strip(),
+            'telefono': data.get('telefono', '').strip(),
+            'direccion': data.get('direccion', '').strip(),
+            'password_hash': password_hash,
+            'tipo': tipo,
+            'foto_perfil': data.get('foto_perfil', 'default.png')
+        }
+        columns = self._columns()
+        keys = [k for k in values if k in columns and values[k] is not None]
         user_id = self.insert("mantenimiento",
-            "INSERT INTO usuarios (nombre, apellido, cedula, email, telefono, direccion, password_hash, tipo, foto_perfil) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
-            (data['nombre'].strip(), data['apellido'].strip(), data['cedula'].strip(), data['email'].strip(),
-             data.get('telefono', '').strip(), data.get('direccion', '').strip(), password_hash,
-             tipo, data.get('foto_perfil', 'default.png')))
+            f"INSERT INTO usuarios ({', '.join(keys)}) VALUES ({', '.join(['%s'] * len(keys))})",
+            tuple(values[k] for k in keys))
         return user_id
 
     def update_info(self, user_id, data):
         tipo = 'cliente' if data.get('tipo') == 'cliente' else 'empleado'
+        values = {
+            'nombre': data['nombre'].strip(),
+            'apellido': data['apellido'].strip(),
+            'cedula': data.get('cedula', '').strip(),
+            'cedula_prefijo': data.get('cedula_prefijo'),
+            'cedula_numero': data.get('cedula_numero'),
+            'email': data.get('email', '').strip(),
+            'telefono': data.get('telefono', '').strip(),
+            'direccion': data.get('direccion', '').strip(),
+            'tipo': tipo
+        }
+        columns = self._columns()
+        keys = [k for k in values if k in columns and values[k] is not None]
+        params = [values[k] for k in keys] + [user_id]
         return self.update("mantenimiento",
-            "UPDATE usuarios SET nombre = %s, apellido = %s, cedula = %s, email = %s, telefono = %s, direccion = %s, tipo = %s WHERE id = %s",
-            (data['nombre'].strip(), data['apellido'].strip(), data.get('cedula', '').strip(), data.get('email', '').strip(),
-             data.get('telefono', '').strip(), data.get('direccion', '').strip(), tipo, user_id))
+            f"UPDATE usuarios SET {', '.join([f'{k} = %s' for k in keys])} WHERE id = %s",
+            tuple(params))
 
     def update_status(self, user_id, estado):
         return self.update("mantenimiento",
@@ -72,6 +102,11 @@ class UserModel(Connection):
             return self.insert("mantenimiento",
                 "INSERT INTO usuario_rol (usuario_id, rol_id) VALUES (%s, %s)", (user_id, rol_id))
         return existing['id']
+
+    def role_exists(self, rol_id):
+        if not rol_id:
+            return True
+        return self.fetch_one("mantenimiento", "SELECT id FROM roles WHERE id = %s AND estado = 1", (rol_id,)) is not None
 
     def remove_role(self, user_id, rol_id):
         return self.delete("mantenimiento",

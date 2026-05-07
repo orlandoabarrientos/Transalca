@@ -12,7 +12,7 @@ def get_all():
     try:
         return jsonify({"status": "success", "data": model.get_all()})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @category_bp.route('/active', methods=['GET'])
@@ -20,7 +20,7 @@ def get_active():
     try:
         return jsonify({"status": "success", "data": model.get_active()})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @category_bp.route('/<path:nombre>', methods=['GET'])
@@ -31,7 +31,7 @@ def get_one(nombre):
             return jsonify({"status": "success", "data": item})
         return jsonify({"status": "error", "message": "Categoria no encontrada"}), 404
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @category_bp.route('/', methods=['POST'])
@@ -52,7 +52,7 @@ def create():
             f"Categoria creada: {data['nombre']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Categoria creada", "nombre": data['nombre'].strip()})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @category_bp.route('/update', methods=['PUT'])
@@ -77,7 +77,7 @@ def update():
             f"Categoria modificada: {old_nombre} -> {new_nombre}", request.remote_addr)
         return jsonify({"status": "success", "message": "Categoria actualizada"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @category_bp.route('/delete', methods=['DELETE'])
@@ -92,7 +92,7 @@ def delete():
             f"Categoria desactivada: {nombre}", request.remote_addr)
         return jsonify({"status": "success", "message": "Categoria desactivada"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @category_bp.route('/toggle', methods=['PUT'])
@@ -105,4 +105,4 @@ def toggle():
         model.toggle_estado(nombre)
         return jsonify({"status": "success", "message": "Estado actualizado"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

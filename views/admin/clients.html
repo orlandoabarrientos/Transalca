@@ -116,7 +116,20 @@
             <div class="modal-body">
                 <form id="clientForm">
                     <input type="hidden" id="editCedula">
-                    <div class="mb-3"><label class="form-label">Cédula <span class="text-danger">*</span></label><input type="text" class="form-control" id="fCedula" name="cedula" placeholder="V-12345678" required></div>
+                    <div class="mb-3">
+                        <label class="form-label">Cédula <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <select class="form-select" id="fCedulaPrefijo" name="cedula_prefijo" style="max-width:90px;">
+                                <option value="V">V</option>
+                                <option value="E">E</option>
+                                <option value="J">J</option>
+                                <option value="G">G</option>
+                                <option value="P">P</option>
+                            </select>
+                            <input type="text" class="form-control" id="fCedula" name="cedula" placeholder="12345678" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
                     <div class="row">
                         <div class="col-6 mb-3"><label class="form-label">Nombre <span class="text-danger">*</span></label><input type="text" class="form-control" id="fNombre" name="nombre" required></div>
                         <div class="col-6 mb-3"><label class="form-label">Apellido <span class="text-danger">*</span></label><input type="text" class="form-control" id="fApellido" name="apellido" required></div>

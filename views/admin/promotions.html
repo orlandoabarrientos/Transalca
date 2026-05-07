@@ -66,9 +66,9 @@
             <div id="navbarContainer"></div>
             <div class="content-area">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="fw-bold mb-0">Promociones y Fidelizacion</h4>
+                    <h4 class="fw-bold mb-0">Promociones y fidelizacion</h4>
                     <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Nueva
-                        Promocion</button>
+                        promocion</button>
                 </div>
                 <ul class="nav nav-tabs mb-3">
                     <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab"
@@ -111,7 +111,7 @@
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="modalTitle">Nueva Promocion</h5><button type="button" class="btn-close"
+                    <h5 class="modal-title" id="modalTitle">Nueva promocion</h5><button type="button" class="btn-close"
                         data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -132,7 +132,7 @@
                                 </select>
                                 <div class="invalid-feedback"></div>
                             </div>
-                            <div class="col-md-6 mb-3"><label class="form-label">Puntos Requeridos</label><input
+                            <div class="col-md-6 mb-3"><label class="form-label">Puntos requeridos</label><input
                                     type="number" class="form-control" id="puntos_requeridos" name="puntos_requeridos"
                                     min="1" value="5">
                                 <div class="invalid-feedback"></div>
@@ -147,13 +147,13 @@
                             <div class="col-md-6 mb-3"><label class="form-label">Fecha Fin</label><input type="date"
                                     class="form-control" id="fecha_fin" name="fecha_fin"></div>
                         </div>
-                        <div class="mb-3"><label class="form-label">Imagen Tarjeta</label><input type="file"
+                        <div class="mb-3"><label class="form-label">Imagen tarjeta</label><input type="file"
                                 class="form-control" id="imagen_tarjeta" accept="image/*"><img id="promoImagePreview"
                                 class="promo-form-image" alt="Vista previa"></div>
                     </form>
                 </div>
                 <div class="modal-footer"><button type="button" class="btn btn-secondary"
-                        data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-orange"
+                        data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-orange" id="btnSavePromo"
                         onclick="saveData()">Guardar</button></div>
             </div>
         </div>

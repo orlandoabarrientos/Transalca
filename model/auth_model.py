@@ -56,10 +56,23 @@ class AuthModel(Connection):
         password_hash = generate_password_hash(data['password'])
         user_id = None
         try:
+            user_values = {
+                'nombre': data['nombre'],
+                'apellido': data['apellido'],
+                'cedula': data['cedula'],
+                'cedula_prefijo': data.get('cedula_prefijo'),
+                'cedula_numero': data.get('cedula_numero'),
+                'email': data['email'],
+                'telefono': data.get('telefono', ''),
+                'direccion': data.get('direccion', ''),
+                'password_hash': password_hash,
+                'tipo': 'cliente'
+            }
+            columns = self._columns("mantenimiento", "usuarios")
+            keys = [k for k in user_values if k in columns and user_values[k] is not None]
             user_id = self.insert("mantenimiento",
-                "INSERT INTO usuarios (nombre, apellido, cedula, email, telefono, direccion, password_hash, tipo) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                (data['nombre'], data['apellido'], data['cedula'], data['email'],
-                 data.get('telefono', ''), data.get('direccion', ''), password_hash, 'cliente'))
+                f"INSERT INTO usuarios ({', '.join(keys)}) VALUES ({', '.join(['%s'] * len(keys))})",
+                tuple(user_values[k] for k in keys))
             self.insert("mantenimiento",
                 "INSERT INTO usuario_rol (usuario_id, rol_id) VALUES (%s, %s)",
                 (user_id, self._role_id('Cliente')))
@@ -133,11 +146,14 @@ class AuthModel(Connection):
             "SELECT * FROM clientes WHERE cedula = %s", (data['cedula'],))
         values = {
             "cedula": data['cedula'],
+            "cedula_prefijo": data.get('cedula_prefijo'),
+            "cedula_numero": data.get('cedula_numero'),
             "nombre": data['nombre'],
             "apellido": data['apellido'],
             "telefono": data.get('telefono', ''),
             "email": data.get('email', ''),
-            "direccion": data.get('direccion', '')
+            "direccion": data.get('direccion', ''),
+            "estado": 1
         }
         if "usuario_id" in columns:
             values["usuario_id"] = user_id or data.get('id')

@@ -48,7 +48,7 @@ def scan_qr():
             }
         })
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @scanner_bp.route('/table-qrs', methods=['GET'])
@@ -61,7 +61,7 @@ def get_table_qrs():
 
         return jsonify({"status": "success", "data": model.get_table_qrs()})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @scanner_bp.route('/table-qrs', methods=['POST'])
@@ -87,7 +87,7 @@ def create_table_qr():
     except ValueError as ve:
         return jsonify({"status": "error", "message": str(ve)}), 400
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @scanner_bp.route('/table-qrs/<int:qr_id>/action', methods=['PUT'])
@@ -111,7 +111,7 @@ def update_table_qr_action(qr_id):
     except ValueError as ve:
         return jsonify({"status": "error", "message": str(ve)}), 400
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @scanner_bp.route('/promotions', methods=['GET'])
@@ -124,7 +124,7 @@ def scanner_promotions():
 
         return jsonify({"status": "success", "data": model.get_active_promotions()})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @scanner_bp.route('/invoice/<int:order_id>/image', methods=['GET'])
@@ -162,4 +162,4 @@ def invoice_qr_image(order_id):
 
         return send_file(img_byte_arr, mimetype='image/png')
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

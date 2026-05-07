@@ -17,7 +17,7 @@ def get_all():
             inventory = model.get_all()
         return jsonify({"status": "success", "data": inventory})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @inventory_bp.route('/low-stock', methods=['GET'])
@@ -26,7 +26,7 @@ def low_stock():
         items = model.get_low_stock()
         return jsonify({"status": "success", "data": items})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @inventory_bp.route('/update-stock', methods=['PUT'])
@@ -51,7 +51,7 @@ def update_stock():
             f"Stock actualizado producto: {data['producto_codigo']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Stock actualizado"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @inventory_bp.route('/purchase-orders', methods=['GET'])
@@ -60,7 +60,7 @@ def get_purchase_orders():
         orders = model.get_purchase_orders()
         return jsonify({"status": "success", "data": orders})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @inventory_bp.route('/purchase-orders/<int:order_id>', methods=['GET'])
@@ -71,7 +71,7 @@ def get_purchase_order(order_id):
             return jsonify({"status": "success", "data": order})
         return jsonify({"status": "error", "message": "Orden no encontrada"}), 404
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @inventory_bp.route('/purchase-orders', methods=['POST'])
@@ -108,7 +108,7 @@ def create_purchase_order():
             return jsonify({"status": "success", "message": "Orden de compra creada", "id": order_id})
         return jsonify({"status": "error", "message": "Error al crear orden"}), 500
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @inventory_bp.route('/purchase-orders/<int:order_id>/status', methods=['PUT'])
@@ -124,7 +124,7 @@ def update_order_status(order_id):
             f"Estado orden compra actualizado ID: {order_id}", request.remote_addr)
         return jsonify({"status": "success", "message": "Estado actualizado"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @inventory_bp.route('/sales-orders', methods=['GET'])
@@ -133,7 +133,7 @@ def get_sales_orders():
         orders = model.get_sales_orders()
         return jsonify({"status": "success", "data": orders})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @inventory_bp.route('/sales-orders/<int:order_id>', methods=['GET'])
@@ -144,4 +144,4 @@ def get_sales_order(order_id):
             return jsonify({"status": "success", "data": order})
         return jsonify({"status": "error", "message": "Orden no encontrada"}), 404
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

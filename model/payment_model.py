@@ -46,7 +46,7 @@ class PaymentModel(Connection):
         if not comp:
             return False
         self.update("transalca",
-            "UPDATE comprobantes_pago SET estado = 'aprobado', revisado_por = %s WHERE id = %s",
+            "UPDATE comprobantes_pago SET estado = 'verificado', revisado_por = %s WHERE id = %s",
             (revisado_por_cedula, comprobante_id))
         self.update("transalca",
             "UPDATE ordenes_venta SET estado = 'aprobada' WHERE id = %s", (comp['orden_venta_id'],))

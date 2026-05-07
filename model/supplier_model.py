@@ -5,6 +5,10 @@ class SupplierModel(Connection):
     def __init__(self):
         super().__init__()
 
+    def _columns(self):
+        rows = self.fetch_all("transalca", "SHOW COLUMNS FROM proveedores")
+        return {r['Field'] for r in rows}
+
     def get_all(self):
         return self.fetch_all("transalca",
             "SELECT p.*, (SELECT COUNT(*) FROM ordenes_compra WHERE proveedor_rif = p.rif) as total_ordenes FROM proveedores p ORDER BY p.nombre")
@@ -17,16 +21,37 @@ class SupplierModel(Connection):
         return self.fetch_one("transalca", "SELECT * FROM proveedores WHERE rif = %s", (rif,))
 
     def create(self, data):
+        values = {
+            'rif': data['rif'].strip(),
+            'rif_prefijo': data.get('rif_prefijo'),
+            'rif_numero': data.get('rif_numero'),
+            'nombre': data['nombre'].strip(),
+            'telefono': data.get('telefono', '').strip(),
+            'email': data.get('email', '').strip(),
+            'direccion': data.get('direccion', '').strip()
+        }
+        columns = self._columns()
+        keys = [k for k in values if k in columns and values[k] is not None]
         return self.insert("transalca",
-            "INSERT INTO proveedores (rif, nombre, telefono, email, direccion) VALUES (%s, %s, %s, %s, %s)",
-            (data['rif'].strip(), data['nombre'].strip(), data.get('telefono', '').strip(),
-             data.get('email', '').strip(), data.get('direccion', '').strip()))
+            f"INSERT INTO proveedores ({', '.join(keys)}) VALUES ({', '.join(['%s'] * len(keys))})",
+            tuple(values[k] for k in keys))
 
     def update_supplier(self, old_rif, data):
+        values = {
+            'rif': data['rif'].strip(),
+            'rif_prefijo': data.get('rif_prefijo'),
+            'rif_numero': data.get('rif_numero'),
+            'nombre': data['nombre'].strip(),
+            'telefono': data.get('telefono', '').strip(),
+            'email': data.get('email', '').strip(),
+            'direccion': data.get('direccion', '').strip()
+        }
+        columns = self._columns()
+        keys = [k for k in values if k in columns and values[k] is not None]
+        params = [values[k] for k in keys] + [old_rif]
         return self.update("transalca",
-            "UPDATE proveedores SET rif = %s, nombre = %s, telefono = %s, email = %s, direccion = %s WHERE rif = %s",
-            (data['rif'].strip(), data['nombre'].strip(), data.get('telefono', '').strip(),
-             data.get('email', '').strip(), data.get('direccion', '').strip(), old_rif))
+            f"UPDATE proveedores SET {', '.join([f'{k} = %s' for k in keys])} WHERE rif = %s",
+            tuple(params))
 
     def soft_delete(self, rif):
         return self.update("transalca",

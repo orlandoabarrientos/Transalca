@@ -7,6 +7,7 @@
     <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
     <link href="/public/css/styles.css" rel="stylesheet">
 </head>
 <body>
@@ -25,9 +26,10 @@
     </div>
 </div>
 
-<div class="modal fade" id="compModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Comprobante de Pago</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-center" id="compImg"></div><div class="modal-footer"><button class="btn btn-danger" onclick="rejectPayment()"><i class="bi bi-x-lg me-1"></i>Rechazar</button><button class="btn btn-success" onclick="approvePayment()"><i class="bi bi-check-lg me-1"></i>Aprobar</button></div></div></div></div>
+<div class="modal fade" id="compModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Comprobante de Pago</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-center" id="compImg"></div><div class="modal-footer"><button class="btn btn-danger" id="btnRejectPayment" onclick="rejectPayment()"><i class="bi bi-x-lg me-1"></i>Rechazar</button><button class="btn btn-success" id="btnApprovePayment" onclick="approvePayment()"><i class="bi bi-check-lg me-1"></i>Aprobar</button></div></div></div></div>
 <script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
 <script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
 <script src="/public/js/admin_common.js"></script>
 <script src="/public/js/payments.js"></script>
 </body>

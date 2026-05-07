@@ -17,7 +17,7 @@ def get_all():
         total = model.count_all()
         return jsonify({"status": "success", "data": logs, "total": total, "page": page})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @bitacora_bp.route('/user/<int:user_id>', methods=['GET'])
@@ -27,7 +27,7 @@ def get_by_user(user_id):
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         return jsonify({"status": "success", "data": model.get_by_user(user_id)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @bitacora_bp.route('/module/<modulo>', methods=['GET'])
@@ -37,7 +37,7 @@ def get_by_module(modulo):
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         return jsonify({"status": "success", "data": model.get_by_module(modulo)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @bitacora_bp.route('/search', methods=['GET'])
@@ -48,7 +48,7 @@ def search():
         query = request.args.get('q', '')
         return jsonify({"status": "success", "data": model.search(query)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @bitacora_bp.route('/filter', methods=['GET'])
@@ -62,4 +62,4 @@ def filter_by_date():
             return jsonify({"status": "success", "data": model.get_by_date_range(start, end)})
         return jsonify({"status": "error", "message": "Fechas requeridas"}), 400
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

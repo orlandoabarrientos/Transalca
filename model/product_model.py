@@ -64,3 +64,18 @@ class ProductModel(Connection):
         else:
             result = self.fetch_one("transalca", "SELECT codigo FROM productos WHERE codigo = %s", (codigo,))
         return result is not None
+
+    def category_exists(self, nombre):
+        if not nombre:
+            return True
+        return self.fetch_one("transalca", "SELECT nombre FROM categorias WHERE nombre = %s AND estado = 1", (nombre,)) is not None
+
+    def brand_exists(self, nombre):
+        if not nombre:
+            return True
+        return self.fetch_one("transalca", "SELECT nombre FROM marcas WHERE nombre = %s AND estado = 1", (nombre,)) is not None
+
+    def sucursal_exists(self, sucursal_id):
+        if not sucursal_id:
+            return True
+        return self.fetch_one("transalca", "SELECT id FROM sucursales WHERE id = %s AND estado = 1", (sucursal_id,)) is not None

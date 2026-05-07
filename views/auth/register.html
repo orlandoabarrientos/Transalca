@@ -33,12 +33,26 @@
             </div>
             <div class="mb-3">
                 <label class="form-label">Cedula <span class="required">*</span></label>
-                <input type="text" class="form-control" id="regCedula" name="regCedula" placeholder="V-12345678" required>
-                <div class="invalid-feedback"></div>
+                <div class="input-group">
+                    <select class="form-select" id="regCedulaPrefijo" name="regCedulaPrefijo" style="max-width:90px;">
+                        <option value="V">V</option>
+                        <option value="E">E</option>
+                        <option value="J">J</option>
+                        <option value="G">G</option>
+                        <option value="P">P</option>
+                    </select>
+                    <input type="text" class="form-control" id="regCedula" name="regCedula" placeholder="12345678" required>
+                    <div class="invalid-feedback"></div>
+                </div>
             </div>
             <div class="mb-3">
                 <label class="form-label">Telefono <span class="required">*</span></label>
-                <input type="text" class="form-control" id="regTelefono" name="regTelefono" placeholder="0424-1234567" required>
+                <input type="text" class="form-control" id="regTelefono" name="regTelefono" placeholder="04121234567" required>
+                <div class="invalid-feedback"></div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Direccion</label>
+                <input type="text" class="form-control" id="regDireccion" name="regDireccion" maxlength="300" placeholder="Direccion de contacto">
                 <div class="invalid-feedback"></div>
             </div>
             <div class="mb-3">

@@ -7,7 +7,8 @@ $(document).ready(function() {
     loadSucursales('sucursal_id', true);
     Validator.setRules('serviceForm', {
         nombre: { required: true, minLength: 3, requiredMsg: 'Nombre requerido', minLengthMsg: 'Minimo 3 caracteres' },
-        precio: { required: true, min: 0.01, requiredMsg: 'Precio requerido', minMsg: 'Debe ser mayor a 0' }
+        precio: { required: true, min: 0.01, requiredMsg: 'Precio requerido', minMsg: 'Debe ser mayor a 0' },
+        duracion_estimada: { required: true, min: 1, requiredMsg: 'Duracion requerida', minMsg: 'Debe ser mayor a 0' }
     });
     Validator.setupRealtime('serviceForm');
 });
@@ -23,7 +24,7 @@ function loadData() {
                 <td><strong>${s.nombre}</strong></td>
                 <td><span class="badge-status badge-info">${s.tipo || 'general'}</span></td>
                 <td>${s.sucursal_nombre || 'Todas'}</td>
-                <td class="fw-bold" style="color:var(--primary);">$${formatCurrency(s.precio)}</td>
+                <td class="fw-bold" style="color:var(--primary);" data-usd-price="${s.precio}">${formatUsdBs(s.precio)}</td>
                 <td>${s.duracion_estimada || '-'} min</td>
                 <td>${statusBadge(s.estado)}</td>
                 <td>

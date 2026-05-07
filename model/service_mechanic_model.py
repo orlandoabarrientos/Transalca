@@ -21,6 +21,19 @@ class ServiceMechanicModel(Connection):
         return self.fetch_one("transalca",
             "SELECT sm.*, s.nombre as servicio_nombre FROM servicio_mecanico sm INNER JOIN servicios s ON sm.servicio_id = s.id WHERE sm.id = %s", (aid,))
 
+    def service_exists(self, servicio_id):
+        return self.fetch_one("transalca", "SELECT id FROM servicios WHERE id = %s AND estado = 1", (servicio_id,)) is not None
+
+    def mechanic_exists(self, cedula):
+        if not cedula:
+            return True
+        return self.fetch_one("transalca", "SELECT cedula FROM mecanicos WHERE cedula = %s AND estado = 1", (cedula,)) is not None
+
+    def order_exists(self, orden_venta_id):
+        if not orden_venta_id:
+            return True
+        return self.fetch_one("transalca", "SELECT id FROM ordenes_venta WHERE id = %s", (orden_venta_id,)) is not None
+
     def _is_mechanic_nullable(self):
         column = self.fetch_one("transalca", "SHOW COLUMNS FROM servicio_mecanico LIKE 'mecanico_cedula'")
         if not column:
@@ -47,8 +60,10 @@ class ServiceMechanicModel(Connection):
             (data['servicio_id'], mecanico_cedula, data.get('orden_venta_id') or None, data.get('observaciones', '').strip()))
 
     def update_mechanic(self, aid, mecanico_cedula):
+        mecanico_cedula = (mecanico_cedula or '').strip()
+        value = mecanico_cedula or None
         return self.update("transalca",
-            "UPDATE servicio_mecanico SET mecanico_cedula = %s WHERE id = %s", (mecanico_cedula.strip(), aid))
+            "UPDATE servicio_mecanico SET mecanico_cedula = %s WHERE id = %s", (value, aid))
 
     def update_status(self, aid, estado):
         return self.update("transalca",

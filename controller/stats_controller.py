@@ -12,7 +12,7 @@ def revenue_timeline():
         days = int(request.args.get('days', 30))
         return jsonify({"status": "success", "data": model.get_revenue_timeline(days)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 @stats_bp.route('/products', methods=['GET'])
 def top_products():
@@ -22,7 +22,7 @@ def top_products():
         limit = int(request.args.get('limit', 5))
         return jsonify({"status": "success", "data": model.get_top_performing_products(limit)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 @stats_bp.route('/status', methods=['GET'])
 def order_status():
@@ -31,7 +31,7 @@ def order_status():
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         return jsonify({"status": "success", "data": model.get_order_status_distribution()})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 @stats_bp.route('/payments', methods=['GET'])
 def payment_methods():
@@ -40,4 +40,4 @@ def payment_methods():
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         return jsonify({"status": "success", "data": model.get_payments_distribution()})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

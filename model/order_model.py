@@ -1,5 +1,10 @@
 import json
 from model.connection import Connection
+from datetime import datetime, timedelta
+
+
+def caracas_now():
+    return datetime.utcnow() - timedelta(hours=4)
 
 
 class OrderModel(Connection):
@@ -59,6 +64,9 @@ class OrderModel(Connection):
             raise Exception("Cliente no encontrado")
 
         if tipo == 'producto':
+            product = self.fetch_one("transalca", "SELECT codigo FROM productos WHERE codigo = %s AND estado = 1", (item_id,))
+            if not product:
+                raise ValueError("Producto no disponible")
             existing = self.fetch_one("transalca",
                 "SELECT id, cantidad FROM carrito WHERE cliente_cedula = %s AND producto_codigo = %s AND tipo = 'producto'",
                 (cliente_cedula, item_id))
@@ -69,6 +77,9 @@ class OrderModel(Connection):
                 "INSERT INTO carrito (cliente_cedula, producto_codigo, tipo, cantidad) VALUES (%s, %s, 'producto', %s)",
                 (cliente_cedula, item_id, cantidad))
         else:
+            service = self.fetch_one("transalca", "SELECT id FROM servicios WHERE id = %s AND estado = 1", (item_id,))
+            if not service:
+                raise ValueError("Servicio no disponible")
             existing = self.fetch_one("transalca",
                 "SELECT id FROM carrito WHERE cliente_cedula = %s AND servicio_id = %s AND tipo = 'servicio'",
                 (cliente_cedula, item_id))
@@ -83,6 +94,10 @@ class OrderModel(Connection):
             return self.delete("transalca", "DELETE FROM carrito WHERE id = %s", (cart_id,))
         return self.update("transalca",
             "UPDATE carrito SET cantidad = %s WHERE id = %s", (cantidad, cart_id))
+
+    def cart_item_owner(self, cart_id):
+        row = self.fetch_one("transalca", "SELECT cliente_cedula FROM carrito WHERE id = %s", (cart_id,))
+        return row['cliente_cedula'] if row else None
 
     def remove_from_cart(self, cart_id):
         return self.delete("transalca", "DELETE FROM carrito WHERE id = %s", (cart_id,))
@@ -109,8 +124,8 @@ class OrderModel(Connection):
             cursor = conn.cursor()
             total = sum(item['precio'] * item['cantidad'] for item in cart_items)
             cursor.execute(
-                "INSERT INTO ordenes_venta (cliente_cedula, sucursal_id, total, metodo_pago, comprobante_url) VALUES (%s, %s, %s, %s, %s)",
-                (cliente_cedula, sucursal_id, total, metodo_pago, comprobante_url))
+                "INSERT INTO ordenes_venta (cliente_cedula, sucursal_id, fecha, total, metodo_pago, comprobante_url) VALUES (%s, %s, %s, %s, %s, %s)",
+                (cliente_cedula, sucursal_id, caracas_now(), total, metodo_pago, comprobante_url))
             order_id = cursor.lastrowid
             for item in cart_items:
                 if item['tipo'] == 'producto':

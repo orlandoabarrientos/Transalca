@@ -28,7 +28,7 @@ def get_by_vehicle(vid):
             return error
         return jsonify({"status": "success", "data": model.get_by_vehicle(vid)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @vehicle_log_bp.route('/client/<cedula>', methods=['GET'])
@@ -41,7 +41,7 @@ def get_by_client(cedula):
             return jsonify({"status": "error", "message": "No autorizado"}), 403
         return jsonify({"status": "success", "data": model.get_by_cliente(cedula)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @vehicle_log_bp.route('/<int:lid>', methods=['GET'])
@@ -57,7 +57,7 @@ def get_one(lid):
             return jsonify({"status": "error", "message": "No autorizado"}), 403
         return jsonify({"status": "success", "data": entry})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @vehicle_log_bp.route('/', methods=['POST'])
@@ -79,7 +79,7 @@ def create():
         lid = model.create(data)
         return jsonify({"status": "success", "message": "Registro creado", "id": lid}), 201
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @vehicle_log_bp.route('/oil-changes/<int:vid>', methods=['GET'])
@@ -91,4 +91,4 @@ def oil_changes(vid):
         count = model.count_oil_changes(vid)
         return jsonify({"status": "success", "data": {"count": count, "km_estimated": count * 5000}})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
