@@ -1,7 +1,3 @@
-"""
-BCV Exchange Rate Scraper
-Adapted from API BCV project - webscraping bcv.org.ve
-"""
 import logging
 import re
 from typing import Dict
@@ -22,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class ScraperError(RuntimeError):
-    """Raised when the BCV rates cannot be retrieved."""
+    pass
 
 
 def _normalize_number(value: str) -> float:
@@ -100,7 +96,6 @@ def _fallback_by_index(soup: BeautifulSoup, rates: Dict[str, float]) -> None:
 
 
 def get_bcv_rates(targets=None, timeout=10, verify=False) -> Dict[str, float]:
-    """Fetch exchange rates from BCV website."""
     if BeautifulSoup is None:
         raise ScraperError("Dependencia faltante: instale beautifulsoup4 (bs4)")
     try:

@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from model.tasa_cambio_model import TasaCambioModel
 from model.bitacora_model import BitacoraModel
-from services.bcv_sync_service import sync_bcv_rate_if_needed
+from model.bcv_sync_model import sync_bcv_rate_if_needed
 
 tasa_bp = Blueprint('tasas', __name__)
 model = TasaCambioModel()

@@ -38,7 +38,7 @@ from controller.pricing_controller import pricing_bp
 from controller.client_controller import client_bp
 from controller.fuel_controller import fuel_bp
 from controller.vehicle_log_controller import vehicle_log_bp
-from services.bcv_sync_service import start_bcv_auto_sync_scheduler
+from model.bcv_sync_model import start_bcv_auto_sync_scheduler
 
 app = Flask(__name__, static_folder='public', template_folder='views')
 app.secret_key = SECRET_KEY

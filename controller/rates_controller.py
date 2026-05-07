@@ -24,7 +24,7 @@ def _fetch_rates():
 
     
     try:
-        from services.bcv_scraper import get_bcv_rates
+        from model.bcv_rate_model import get_bcv_rates
         bcv = get_bcv_rates(verify=False)
         result["bcv"]["usd"] = round(bcv.get("usd", 0), 4)
         result["bcv"]["eur"] = round(bcv.get("eur", 0), 4)
@@ -34,7 +34,7 @@ def _fetch_rates():
 
     
     try:
-        from services.binance_rates import get_usdt_rate_ves
+        from model.binance_rate_model import get_usdt_rate_ves
         rate = get_usdt_rate_ves()
         result["binance"]["usdt_ves"] = round(rate, 2)
     except Exception as e:
@@ -66,7 +66,7 @@ def get_rates():
 @rates_bp.route('/bcv', methods=['GET'])
 def get_bcv_only():
     try:
-        from services.bcv_scraper import get_bcv_rates
+        from model.bcv_rate_model import get_bcv_rates
         bcv = get_bcv_rates(verify=False)
         return jsonify({
             "status": "success",
@@ -83,7 +83,7 @@ def get_bcv_only():
 @rates_bp.route('/binance', methods=['GET'])
 def get_binance_only():
     try:
-        from services.binance_rates import get_usdt_rate_ves
+        from model.binance_rate_model import get_usdt_rate_ves
         rate = get_usdt_rate_ves()
         return jsonify({
             "status": "success",

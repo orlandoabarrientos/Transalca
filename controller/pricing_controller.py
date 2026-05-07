@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from model.pricing_model import PricingModel
-from services.bcv_scraper import get_bcv_rates, ScraperError
-from services.binance_rates import get_usdt_rate_ves
+from model.bcv_rate_model import get_bcv_rates, ScraperError
+from model.binance_rate_model import get_usdt_rate_ves
 from controller._guards import can_access_client, deny, is_employee, require_login
 
 pricing_bp = Blueprint('pricing_bp', __name__)

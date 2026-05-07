@@ -1,7 +1,3 @@
-"""
-Binance P2P Rate Fetcher
-Gets USDT/VES median rate from Binance P2P market
-"""
 import logging
 import requests
 
@@ -9,7 +5,6 @@ logger = logging.getLogger(__name__)
 
 
 def _median(arr):
-    """Calculate median of a list of numbers."""
     if not arr or len(arr) == 0:
         return 0
     s = sorted(arr)

@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from model.vehicle_model import VehicleModel
 from controller._guards import can_access_client, deny, is_employee, require_login
-from services.vehicle_title_ocr import OCRError, parse_vehicle_title_image
+from model.vehicle_title_ocr_model import OCRError, parse_vehicle_title_image
 from config.constants import TIPOS_COMBUSTIBLE
 from config.validation import normalize_int, optional_text, require_text, validate_choice
 import os

@@ -50,7 +50,7 @@ def sync_bcv_rate_if_needed(force=False, now=None):
             result['monto'] = None
         return result
 
-    from services.bcv_scraper import get_bcv_rates
+    from model.bcv_rate_model import get_bcv_rates
 
     rates = get_bcv_rates(targets=['usd'], verify=False)
     monto = float(rates.get('usd') or 0)
