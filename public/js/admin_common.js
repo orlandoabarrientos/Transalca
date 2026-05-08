@@ -88,6 +88,7 @@ function setFieldError(el, message) {
         feedback.textContent = message || '';
         feedback.style.display = 'block';
     }
+    syncSelect2ValidationState(el);
 }
 
 function clearFieldError(el) {
@@ -99,6 +100,17 @@ function clearFieldError(el) {
         feedback.style.display = 'none';
         feedback.style.color = '';
     }
+    syncSelect2ValidationState(el);
+}
+
+function syncSelect2ValidationState(el) {
+    if (!el || el.tagName !== 'SELECT') return;
+    const container = el.nextElementSibling;
+    if (!container || !container.classList.contains('select2')) return;
+    const selection = container.querySelector('.select2-selection');
+    if (!selection) return;
+    selection.classList.toggle('is-invalid', el.classList.contains('is-invalid'));
+    selection.classList.toggle('is-valid', el.classList.contains('is-valid'));
 }
 
 function showToast(message, type = 'success') {
@@ -190,6 +202,14 @@ const Validator = {
             });
             form.querySelectorAll('.invalid-feedback').forEach(el => el.style.display = 'none');
             form.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
+            if (window.jQuery && window.jQuery.fn?.select2) {
+                form.querySelectorAll('select').forEach(select => {
+                    if (window.jQuery(select).hasClass('select2-hidden-accessible')) {
+                        window.jQuery(select).trigger('change.select2');
+                    }
+                    syncSelect2ValidationState(select);
+                });
+            }
         }
     },
 
@@ -231,9 +251,11 @@ const Validator = {
             el.classList.add('is-valid');
             el.classList.remove('is-invalid');
             clearFieldError(el);
+            syncSelect2ValidationState(el);
         } else {
             el.classList.remove('is-invalid', 'is-valid');
             clearFieldError(el);
+            syncSelect2ValidationState(el);
         }
         return true;
     },
@@ -415,6 +437,9 @@ function bindModalValidationReset() {
     document.querySelectorAll('.modal').forEach(modal => {
         if (modal.dataset.validationResetBound) return;
         modal.dataset.validationResetBound = '1';
+        modal.addEventListener('shown.bs.modal', () => {
+            enhanceSearchableSelects(modal);
+        });
         modal.addEventListener('hidden.bs.modal', () => {
             modal.querySelectorAll('form').forEach(form => Validator.clearForm(form.id));
             cleanupUiLocks();
@@ -449,43 +474,83 @@ function bindReliableSidebarNavigation() {
     });
 }
 
-function enhanceSearchableSelects(root = document) {
-    root.querySelectorAll('select.form-select:not([data-no-search])').forEach(select => {
-        if (select.dataset.searchEnhanced === '1') return;
-        if (select.closest('.input-group')) return;
-        if ((select.options?.length || 0) < 7) return;
-        select.dataset.searchEnhanced = '1';
-        const input = document.createElement('input');
-        input.type = 'search';
-        input.className = 'form-control form-control-sm select-search-input mb-1';
-        input.placeholder = 'Buscar...';
-        input.autocomplete = 'off';
-        select.parentNode.insertBefore(input, select);
-        const resetOptions = () => {
-            Array.from(select.options).forEach(option => {
-                option.hidden = false;
-            });
-        };
-        input.addEventListener('input', () => {
-            const q = input.value.trim().toLowerCase();
-            Array.from(select.options).forEach(option => {
-                option.hidden = q && !option.textContent.toLowerCase().includes(q);
-            });
-        });
-        input.addEventListener('blur', () => {
-            if (!input.value.trim()) resetOptions();
-        });
-        select.addEventListener('change', () => {
-            clearFieldError(select);
-            if (!input.value.trim()) resetOptions();
-        });
-        const modal = select.closest('.modal');
-        if (modal) {
-            modal.addEventListener('hidden.bs.modal', () => {
-                input.value = '';
-                resetOptions();
-            });
+let select2AssetsPromise = null;
+
+function ensureSelect2Assets() {
+    if (!window.jQuery) return Promise.resolve(false);
+    if (window.jQuery?.fn?.select2) return Promise.resolve(true);
+    if (select2AssetsPromise) return select2AssetsPromise;
+    const cssId = 'transalca-select2-css';
+    if (!document.getElementById(cssId)) {
+        const link = document.createElement('link');
+        link.id = cssId;
+        link.rel = 'stylesheet';
+        link.href = '/public/select2/select2.min.css';
+        document.head.appendChild(link);
+    }
+    select2AssetsPromise = new Promise(resolve => {
+        const scriptId = 'transalca-select2-js';
+        const existing = document.getElementById(scriptId);
+        const finalize = () => resolve(!!window.jQuery?.fn?.select2);
+        if (existing) {
+            if (window.jQuery?.fn?.select2) return finalize();
+            existing.addEventListener('load', finalize, { once: true });
+            existing.addEventListener('error', () => resolve(false), { once: true });
+            return;
         }
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.src = '/public/select2/select2.min.js';
+        script.async = true;
+        script.onload = finalize;
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+    });
+    return select2AssetsPromise;
+}
+
+function enhanceSearchableSelects(root = document) {
+    const scope = root instanceof Element ? root : document;
+    const selects = Array.from(scope.querySelectorAll('select.form-select'));
+    if (!selects.length) return;
+    scope.querySelectorAll('.select-search-input').forEach(node => node.remove());
+    ensureSelect2Assets().then(ready => {
+        if (!ready || !window.jQuery) return;
+        selects.forEach(select => {
+            if (select.closest('.input-group')) return;
+            const $select = window.jQuery(select);
+            const modal = select.closest('.modal');
+            const modalId = modal?.id || '';
+            const currentParent = select.dataset.select2Parent || '';
+            const shouldRebuild = select.dataset.select2Ready === '1' && currentParent !== modalId;
+            if (shouldRebuild && $select.hasClass('select2-hidden-accessible')) {
+                $select.select2('destroy');
+            }
+            if (!$select.hasClass('select2-hidden-accessible')) {
+                const firstEmptyOption = select.querySelector('option[value=""]');
+                const config = {
+                    width: '100%',
+                    minimumResultsForSearch: select.hasAttribute('data-no-search') ? Infinity : 0
+                };
+                if (firstEmptyOption) config.placeholder = firstEmptyOption.textContent.trim();
+                if (modal) config.dropdownParent = window.jQuery(modal);
+                $select.select2(config);
+                select.dataset.select2Ready = '1';
+                select.dataset.select2Parent = modalId;
+            } else {
+                $select.trigger('change.select2');
+            }
+            $select.off('.transalcaSelect2');
+            $select.on('change.transalcaSelect2 select2:select.transalcaSelect2 select2:clear.transalcaSelect2', () => {
+                if (select.form?.id && select.id) {
+                    Validator.validateField(select.form.id, select.id);
+                    updateFormSubmitState(select.form.id);
+                } else {
+                    clearFieldError(select);
+                }
+            });
+            syncSelect2ValidationState(select);
+        });
     });
 }
 
