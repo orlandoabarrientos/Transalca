@@ -417,7 +417,35 @@ function bindModalValidationReset() {
         modal.dataset.validationResetBound = '1';
         modal.addEventListener('hidden.bs.modal', () => {
             modal.querySelectorAll('form').forEach(form => Validator.clearForm(form.id));
+            cleanupUiLocks();
         });
+    });
+}
+
+function cleanupUiLocks() {
+    const hasShownModal = !!document.querySelector('.modal.show');
+    if (!hasShownModal) {
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+    }
+}
+
+function bindReliableSidebarNavigation() {
+    if (document.body.dataset.sidebarNavBound === '1') return;
+    document.body.dataset.sidebarNavBound = '1';
+    document.body.addEventListener('click', (e) => {
+        const link = e.target.closest('#adminSidebar a.nav-link[href]');
+        if (!link) return;
+        const href = (link.getAttribute('href') || '').trim();
+        if (!href || href === '#' || href.startsWith('javascript:')) return;
+        e.preventDefault();
+        if (window.innerWidth <= 768) {
+            const sidebar = document.getElementById('adminSidebar');
+            if (sidebar) sidebar.classList.remove('show');
+        }
+        window.location.assign(href);
     });
 }
 
@@ -528,6 +556,7 @@ function statusBadge(estado) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    cleanupUiLocks();
     const path = window.location.pathname;
     document.querySelectorAll('.sidebar .nav-link').forEach(link => {
         if (link.getAttribute('href') === path) {
@@ -540,14 +569,18 @@ document.addEventListener('DOMContentLoaded', () => {
         toggle.addEventListener('click', () => sidebar.classList.toggle('show'));
     }
     bindModalValidationReset();
+    bindReliableSidebarNavigation();
     enhanceSearchableSelects();
     loadExchangeRatesCached().then(() => hydrateDualPrices());
     const observer = new MutationObserver(() => {
         bindModalValidationReset();
+        bindReliableSidebarNavigation();
         enhanceSearchableSelects();
         hydrateDualPrices();
+        cleanupUiLocks();
     });
     observer.observe(document.body, { childList: true, subtree: true });
+    setInterval(cleanupUiLocks, 1500);
 });
 
 document.body.addEventListener('click', async (e) => {
