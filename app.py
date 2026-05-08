@@ -105,7 +105,8 @@ def index():
 
 @app.route('/admin/<page>')
 def admin_page(page):
-    if 'user_id' not in session or session.get('user_tipo') != 'empleado':
+    allowed_admin_tipos = {'empleado', 'admin', 'vendedor', 'mecanico', 'soporte'}
+    if 'user_id' not in session or session.get('user_tipo') not in allowed_admin_tipos:
         return redirect('/auth/login')
     try:
         return send_from_directory('views/admin', f'{page}.html')
@@ -162,6 +163,16 @@ def not_found(e):
 @app.errorhandler(500)
 def server_error(e):
     return jsonify({"status": "error", "message": "Error interno del servidor"}), 500
+
+
+@app.after_request
+def disable_asset_cache(response):
+    path = request.path or ''
+    if path.startswith('/public/') or path.startswith('/components/') or path.startswith('/admin/') or path.startswith('/client/') or path.startswith('/auth/'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
 
 
 if __name__ == '__main__':
