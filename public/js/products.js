@@ -136,16 +136,22 @@ function validateUniqueProductCodigo() {
         const input = document.getElementById('codigo');
         const oldCodigo = document.getElementById('productOldCodigo')?.value || '';
         const value = (input?.value || '').trim();
-        if (!value || !Validator.validateField('productForm', 'codigo')) return;
+        if (!input) return;
+        if (!value) {
+            clearFieldError(input);
+            updateFormSubmitState('productForm');
+            return;
+        }
+        if (!Validator.validateField('productForm', 'codigo')) {
+            updateFormSubmitState('productForm');
+            return;
+        }
         const res = await apiCall(`/api/products/check-unique?value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(oldCodigo)}`);
         if (res.status === 'success' && res.exists) {
-            input.classList.add('is-invalid');
-            const feedback = input.parentNode.querySelector('.invalid-feedback');
-            if (feedback) {
-                feedback.textContent = 'Este codigo ya esta registrado.';
-                feedback.style.display = 'block';
-            }
-            updateFormSubmitState('productForm');
+            setFieldError(input, 'Este codigo ya esta registrado.');
+        } else if (res.status === 'success') {
+            clearFieldError(input);
         }
+        updateFormSubmitState('productForm');
     }, 350);
 }

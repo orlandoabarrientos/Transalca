@@ -361,26 +361,39 @@ function saveVehicle() {
 
 async function validateUniqueClientCedula() {
     const input = document.getElementById('fCedula');
-    if (!input || input.disabled || !input.value.trim()) return true;
-    if (!Validator.validateField('clientForm', 'fCedula')) return false;
+    if (!input || input.disabled) return true;
+    if (!input.value.trim()) {
+        clearFieldError(input);
+        updateFormSubmitState('clientForm');
+        return true;
+    }
+    if (!Validator.validateField('clientForm', 'fCedula')) {
+        updateFormSubmitState('clientForm');
+        return false;
+    }
     try {
         const exclude = document.getElementById('editCedula')?.value || '';
         const value = buildDocumentValue('fCedulaPrefijo', 'fCedula');
         const res = await fetch(`/api/clients/check-unique?field=cedula&value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(exclude)}`, { credentials: 'same-origin' });
         const data = await res.json();
         if (data.status === 'success' && data.exists && data.active) {
-            Validator.showServerErrors('clientForm', { fCedula: 'Esta cedula ya esta registrada.' });
+            setFieldError(input, 'Esta cedula ya esta registrada.');
+            updateFormSubmitState('clientForm');
             return false;
         }
         if (data.status === 'success' && data.exists && !data.active) {
-            input.classList.remove('is-invalid');
-            const fb = input.parentNode.querySelector('.invalid-feedback');
+            clearFieldError(input);
+            const fb = getFieldFeedback(input);
             if (fb) {
                 fb.textContent = 'Cliente inactivo: se reactivara al guardar.';
                 fb.style.display = 'block';
                 fb.style.color = 'var(--warning)';
             }
+            updateFormSubmitState('clientForm');
+            return true;
         }
+        clearFieldError(input);
+        updateFormSubmitState('clientForm');
     } catch (e) {}
     return true;
 }

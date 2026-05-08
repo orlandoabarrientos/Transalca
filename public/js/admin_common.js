@@ -63,6 +63,44 @@ function cssEscapeValue(value) {
     return String(value).replace(/["\\]/g, '\\$&');
 }
 
+function getFieldFeedback(el) {
+    let feedback = el?.nextElementSibling;
+    while (feedback && !feedback.classList.contains('invalid-feedback')) {
+        feedback = feedback.nextElementSibling;
+    }
+    if (!feedback && el?.parentNode) {
+        feedback = el.parentNode.querySelector('.invalid-feedback');
+    }
+    if (!feedback && el?.parentNode) {
+        feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+        el.parentNode.appendChild(feedback);
+    }
+    return feedback;
+}
+
+function setFieldError(el, message) {
+    if (!el) return;
+    el.classList.add('is-invalid');
+    el.classList.remove('is-valid');
+    const feedback = getFieldFeedback(el);
+    if (feedback) {
+        feedback.textContent = message || '';
+        feedback.style.display = 'block';
+    }
+}
+
+function clearFieldError(el) {
+    if (!el) return;
+    el.classList.remove('is-invalid');
+    const feedback = getFieldFeedback(el);
+    if (feedback) {
+        feedback.textContent = '';
+        feedback.style.display = 'none';
+        feedback.style.color = '';
+    }
+}
+
 function showToast(message, type = 'success') {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -123,22 +161,11 @@ const Validator = {
 
             if (error) {
                 isValid = false;
-                el.classList.add('is-invalid');
-                el.classList.remove('is-valid');
-                let feedback = el.nextElementSibling;
-                while (feedback && !feedback.classList.contains('invalid-feedback')) {
-                    feedback = feedback.nextElementSibling;
-                }
-                if (!feedback) {
-                    feedback = document.createElement('div');
-                    feedback.className = 'invalid-feedback';
-                    el.parentNode.appendChild(feedback);
-                }
-                feedback.textContent = error;
-                feedback.style.display = 'block';
+                setFieldError(el, error);
             } else if (value) {
                 el.classList.add('is-valid');
                 el.classList.remove('is-invalid');
+                clearFieldError(el);
             }
         }
         return isValid;
@@ -149,19 +176,9 @@ const Validator = {
         for (const [field, msg] of Object.entries(errors)) {
             const el = document.getElementById(field) || document.querySelector(`#${formId} [name="${cssEscapeValue(field)}"]`);
             if (!el) continue;
-            el.classList.add('is-invalid');
-            let feedback = el.nextElementSibling;
-            while (feedback && !feedback.classList.contains('invalid-feedback')) {
-                feedback = feedback.nextElementSibling;
-            }
-            if (!feedback) {
-                feedback = document.createElement('div');
-                feedback.className = 'invalid-feedback';
-                el.parentNode.appendChild(feedback);
-            }
-            feedback.textContent = msg;
-            feedback.style.display = 'block';
+            setFieldError(el, msg);
         }
+        updateFormSubmitState(formId);
     },
 
     clearForm(formId) {
@@ -208,30 +225,15 @@ const Validator = {
         }
 
         if (error) {
-            el.classList.add('is-invalid');
-            el.classList.remove('is-valid');
-            let feedback = el.nextElementSibling;
-            while (feedback && !feedback.classList.contains('invalid-feedback')) {
-                feedback = feedback.nextElementSibling;
-            }
-            if (!feedback) {
-                feedback = document.createElement('div');
-                feedback.className = 'invalid-feedback';
-                el.parentNode.appendChild(feedback);
-            }
-            feedback.textContent = error;
-            feedback.style.display = 'block';
+            setFieldError(el, error);
             return false;
         } else if (value) {
             el.classList.add('is-valid');
             el.classList.remove('is-invalid');
-            const fb = el.parentNode.querySelector('.invalid-feedback');
-            if (fb) {
-                fb.style.display = 'none';
-                fb.textContent = '';
-            }
+            clearFieldError(el);
         } else {
             el.classList.remove('is-invalid', 'is-valid');
+            clearFieldError(el);
         }
         return true;
     },
@@ -416,20 +418,14 @@ function bindModalValidationReset() {
         modal.addEventListener('hidden.bs.modal', () => {
             modal.querySelectorAll('form').forEach(form => Validator.clearForm(form.id));
         });
-        modal.addEventListener('shown.bs.modal', () => {
-            modal.querySelectorAll('form').forEach(form => {
-                if (form.id) {
-                    Validator.clearForm(form.id);
-                    updateFormSubmitState(form.id);
-                }
-            });
-        });
     });
 }
 
 function enhanceSearchableSelects(root = document) {
     root.querySelectorAll('select.form-select:not([data-no-search])').forEach(select => {
         if (select.dataset.searchEnhanced === '1') return;
+        if (select.closest('.input-group')) return;
+        if ((select.options?.length || 0) < 7) return;
         select.dataset.searchEnhanced = '1';
         const input = document.createElement('input');
         input.type = 'search';
@@ -437,12 +433,31 @@ function enhanceSearchableSelects(root = document) {
         input.placeholder = 'Buscar...';
         input.autocomplete = 'off';
         select.parentNode.insertBefore(input, select);
+        const resetOptions = () => {
+            Array.from(select.options).forEach(option => {
+                option.hidden = false;
+            });
+        };
         input.addEventListener('input', () => {
             const q = input.value.trim().toLowerCase();
             Array.from(select.options).forEach(option => {
                 option.hidden = q && !option.textContent.toLowerCase().includes(q);
             });
         });
+        input.addEventListener('blur', () => {
+            if (!input.value.trim()) resetOptions();
+        });
+        select.addEventListener('change', () => {
+            clearFieldError(select);
+            if (!input.value.trim()) resetOptions();
+        });
+        const modal = select.closest('.modal');
+        if (modal) {
+            modal.addEventListener('hidden.bs.modal', () => {
+                input.value = '';
+                resetOptions();
+            });
+        }
     });
 }
 

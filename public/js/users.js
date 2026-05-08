@@ -143,17 +143,23 @@ function validateUniqueUser(field) {
         const input = document.getElementById(field);
         const id = document.getElementById('userId')?.value || '';
         const value = (input?.value || '').trim();
-        if (!value || !Validator.validateField('userForm', field)) return;
+        if (!input) return;
+        if (!value) {
+            clearFieldError(input);
+            updateFormSubmitState('userForm');
+            return;
+        }
+        if (!Validator.validateField('userForm', field)) {
+            updateFormSubmitState('userForm');
+            return;
+        }
         const queryValue = field === 'cedula' ? buildDocumentValue('cedula_prefijo', 'cedula') : value;
         const res = await apiCall(`/api/users/check-unique?field=${field}&value=${encodeURIComponent(queryValue)}&exclude=${encodeURIComponent(id)}`);
         if (res.status === 'success' && res.exists) {
-            input.classList.add('is-invalid');
-            const feedback = input.parentNode.querySelector('.invalid-feedback');
-            if (feedback) {
-                feedback.textContent = field === 'email' ? 'Este correo ya esta registrado.' : 'Esta cedula ya esta registrada.';
-                feedback.style.display = 'block';
-            }
-            updateFormSubmitState('userForm');
+            setFieldError(input, field === 'email' ? 'Este correo ya esta registrado.' : 'Esta cedula ya esta registrada.');
+        } else if (res.status === 'success') {
+            clearFieldError(input);
         }
+        updateFormSubmitState('userForm');
     }, 350);
 }

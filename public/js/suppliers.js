@@ -113,17 +113,23 @@ function validateUniqueSupplierRif() {
         const input = document.getElementById('rif');
         const oldRif = document.getElementById('supplierOldRif')?.value || '';
         const value = (input?.value || '').trim();
-        if (!value || !Validator.validateField('supplierForm', 'rif')) return;
+        if (!input) return;
+        if (!value) {
+            clearFieldError(input);
+            updateFormSubmitState('supplierForm');
+            return;
+        }
+        if (!Validator.validateField('supplierForm', 'rif')) {
+            updateFormSubmitState('supplierForm');
+            return;
+        }
         const queryValue = buildRifValue('rif_prefijo', 'rif');
         const res = await apiCall(`/api/suppliers/check-unique?value=${encodeURIComponent(queryValue)}&exclude=${encodeURIComponent(oldRif)}`);
         if (res.status === 'success' && res.exists) {
-            input.classList.add('is-invalid');
-            const feedback = input.parentNode.querySelector('.invalid-feedback');
-            if (feedback) {
-                feedback.textContent = 'Este rif ya esta registrado.';
-                feedback.style.display = 'block';
-            }
-            updateFormSubmitState('supplierForm');
+            setFieldError(input, 'Este rif ya esta registrado.');
+        } else if (res.status === 'success') {
+            clearFieldError(input);
         }
+        updateFormSubmitState('supplierForm');
     }, 350);
 }

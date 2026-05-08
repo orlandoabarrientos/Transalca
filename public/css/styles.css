@@ -696,6 +696,19 @@ a:hover {
     font-size: 0.85rem;
 }
 
+.select-search-input {
+    font-size: 0.78rem;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+}
+
+.select-search-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
 
 .modal-content {
     border: none;

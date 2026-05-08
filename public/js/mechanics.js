@@ -121,17 +121,23 @@ function validateUniqueMechanicCedula() {
         const input = document.getElementById('cedula');
         const oldCedula = document.getElementById('mechanicOldCedula')?.value || '';
         const value = (input?.value || '').trim();
-        if (!value || !Validator.validateField('mechanicForm', 'cedula')) return;
+        if (!input) return;
+        if (!value) {
+            clearFieldError(input);
+            updateFormSubmitState('mechanicForm');
+            return;
+        }
+        if (!Validator.validateField('mechanicForm', 'cedula')) {
+            updateFormSubmitState('mechanicForm');
+            return;
+        }
         const queryValue = buildDocumentValue('cedula_prefijo', 'cedula');
         const res = await apiCall(`/api/mechanics/check-unique?value=${encodeURIComponent(queryValue)}&exclude=${encodeURIComponent(oldCedula)}`);
         if (res.status === 'success' && res.exists) {
-            input.classList.add('is-invalid');
-            const feedback = input.parentNode.querySelector('.invalid-feedback');
-            if (feedback) {
-                feedback.textContent = 'Esta cedula ya esta registrada.';
-                feedback.style.display = 'block';
-            }
-            updateFormSubmitState('mechanicForm');
+            setFieldError(input, 'Esta cedula ya esta registrada.');
+        } else if (res.status === 'success') {
+            clearFieldError(input);
         }
+        updateFormSubmitState('mechanicForm');
     }, 350);
 }

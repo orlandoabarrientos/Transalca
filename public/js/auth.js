@@ -93,17 +93,30 @@ function debounceAuthUnique(fn, ms) {
 async function validateRegisterUnique(field) {
     const map = { cedula: 'regCedula', email: 'regEmail' };
     const input = document.getElementById(map[field]);
-    if (!input || !input.value.trim()) return true;
-    if (!Validator.validateField('registerForm', map[field])) return false;
+    if (!input) return true;
+    if (!input.value.trim()) {
+        clearFieldError(input);
+        updateFormSubmitState('registerForm');
+        return true;
+    }
+    if (!Validator.validateField('registerForm', map[field])) {
+        updateFormSubmitState('registerForm');
+        return false;
+    }
     try {
         const value = field === 'cedula' ? buildDocumentValue('regCedulaPrefijo', 'regCedula') : input.value;
         const res = await fetch(`/auth/check-unique?field=${field}&value=${encodeURIComponent(value)}`, { credentials: 'same-origin' });
         const data = await res.json();
         if (data.status === 'success' && data.exists) {
             const msg = field === 'cedula' ? 'Esta cedula ya esta registrada.' : 'Este correo ya esta registrado.';
-            Validator.showServerErrors('registerForm', { [map[field]]: msg });
+            setFieldError(input, msg);
+            updateFormSubmitState('registerForm');
             return false;
         }
+        if (data.status === 'success') {
+            clearFieldError(input);
+        }
+        updateFormSubmitState('registerForm');
     } catch (e) {}
     return true;
 }

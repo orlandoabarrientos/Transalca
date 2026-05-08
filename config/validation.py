@@ -9,7 +9,7 @@ EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
 PERSON_RE = re.compile(r"^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$", re.UNICODE)
 SAFE_TEXT_RE = re.compile(r"^[^<>]{1,}$")
 BAD_INPUT_RE = re.compile(r"(<\s*/?\s*script|<[^>]+>|on[a-z]+\s*=|javascript:|data:text/html)", re.IGNORECASE)
-SERIAL_LIKE_RE = re.compile(r"^[A-Z0-9]{10,}$", re.IGNORECASE)
+SERIAL_LIKE_RE = re.compile(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9\-]{8,}$")
 
 DOCUMENT_PREFIXES = {"V", "E", "J", "G", "P"}
 RIF_PREFIXES = {"J", "G", "V", "E", "P"}
