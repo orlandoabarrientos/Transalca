@@ -475,6 +475,8 @@ function bindReliableSidebarNavigation() {
 }
 
 let select2AssetsPromise = null;
+let domEnhancementTimer = null;
+let domEnhancementRunning = false;
 
 function ensureSelect2Assets() {
     if (!window.jQuery) return Promise.resolve(false);
@@ -537,8 +539,13 @@ function enhanceSearchableSelects(root = document) {
                 $select.select2(config);
                 select.dataset.select2Ready = '1';
                 select.dataset.select2Parent = modalId;
+                select.dataset.select2OptionsCount = String(select.options?.length || 0);
             } else {
-                $select.trigger('change.select2');
+                const optionsCount = String(select.options?.length || 0);
+                if (select.dataset.select2OptionsCount !== optionsCount) {
+                    select.dataset.select2OptionsCount = optionsCount;
+                    $select.trigger('change.select2');
+                }
             }
             $select.off('.transalcaSelect2');
             $select.on('change.transalcaSelect2 select2:select.transalcaSelect2 select2:clear.transalcaSelect2', () => {
@@ -552,6 +559,41 @@ function enhanceSearchableSelects(root = document) {
             syncSelect2ValidationState(select);
         });
     });
+}
+
+function isNoisyMutationNode(node) {
+    if (!node || node.nodeType !== 1) return false;
+    return !!node.closest?.('.select2-container, .select2-dropdown, .toast-container, .dropdown-menu');
+}
+
+function mutationNeedsEnhancement(mutation) {
+    if (isNoisyMutationNode(mutation.target)) return false;
+    if (mutation.target?.matches?.('select.form-select')) return true;
+    if (mutation.target?.closest?.('select.form-select')) return true;
+    for (const node of mutation.addedNodes || []) {
+        if (node.nodeType !== 1 || isNoisyMutationNode(node)) continue;
+        if (node.matches?.('select.form-select, .modal, [data-usd-price]')) return true;
+        if (node.querySelector?.('select.form-select, .modal, [data-usd-price]')) return true;
+    }
+    return false;
+}
+
+function runDomEnhancements(root = document) {
+    if (domEnhancementRunning) return;
+    domEnhancementRunning = true;
+    try {
+        bindModalValidationReset();
+        bindReliableSidebarNavigation();
+        enhanceSearchableSelects(root);
+        hydrateDualPrices(root);
+    } finally {
+        domEnhancementRunning = false;
+    }
+}
+
+function scheduleDomEnhancements(root = document) {
+    clearTimeout(domEnhancementTimer);
+    domEnhancementTimer = setTimeout(() => runDomEnhancements(root), 120);
 }
 
 function formatUsdBs(amount) {
@@ -633,19 +675,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggle && sidebar) {
         toggle.addEventListener('click', () => sidebar.classList.toggle('show'));
     }
-    bindModalValidationReset();
-    bindReliableSidebarNavigation();
-    enhanceSearchableSelects();
+    runDomEnhancements();
     loadExchangeRatesCached().then(() => hydrateDualPrices());
-    const observer = new MutationObserver(() => {
-        bindModalValidationReset();
-        bindReliableSidebarNavigation();
-        enhanceSearchableSelects();
-        hydrateDualPrices();
-        cleanupUiLocks();
+    const observer = new MutationObserver(mutations => {
+        if (mutations.some(mutationNeedsEnhancement)) {
+            scheduleDomEnhancements();
+        }
     });
     observer.observe(document.body, { childList: true, subtree: true });
-    setInterval(cleanupUiLocks, 1500);
+    setInterval(cleanupUiLocks, 5000);
 });
 
 document.body.addEventListener('click', async (e) => {
