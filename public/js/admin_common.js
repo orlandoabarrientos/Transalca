@@ -196,20 +196,13 @@ const Validator = {
     clearForm(formId) {
         const form = document.getElementById(formId);
         if (form) {
+            if (form.dataset.validatorClearing === '1') return;
+            form.dataset.validatorClearing = '1';
             form.reset();
-            form.querySelectorAll('.is-invalid, .is-valid').forEach(el => {
-                el.classList.remove('is-invalid', 'is-valid');
-            });
-            form.querySelectorAll('.invalid-feedback').forEach(el => el.style.display = 'none');
-            form.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
-            if (window.jQuery && window.jQuery.fn?.select2) {
-                form.querySelectorAll('select').forEach(select => {
-                    if (window.jQuery(select).hasClass('select2-hidden-accessible')) {
-                        window.jQuery(select).trigger('change.select2');
-                    }
-                    syncSelect2ValidationState(select);
-                });
-            }
+            clearFormValidationState(form);
+            setTimeout(() => {
+                delete form.dataset.validatorClearing;
+            }, 0);
         }
     },
 
@@ -263,6 +256,8 @@ const Validator = {
     setupRealtime(formId) {
         const form = document.getElementById(formId);
         if (!form) return;
+        if (form.dataset.validatorRealtimeBound === '1') return;
+        form.dataset.validatorRealtimeBound = '1';
         form.querySelectorAll('input, select, textarea').forEach(el => {
             const handler = () => {
                 if (el.id) {
@@ -281,11 +276,31 @@ const Validator = {
             el.addEventListener('change', handler);
         });
         form.addEventListener('reset', () => setTimeout(() => {
-            Validator.clearForm(formId);
+            if (form.dataset.validatorClearing === '1') return;
+            clearFormValidationState(form);
             updateFormSubmitState(formId);
         }, 0));
     }
 };
+
+function clearFormValidationState(form) {
+    if (!form) return;
+    form.querySelectorAll('.is-invalid, .is-valid').forEach(el => {
+        el.classList.remove('is-invalid', 'is-valid');
+    });
+    form.querySelectorAll('.invalid-feedback').forEach(el => {
+        el.style.display = 'none';
+        el.textContent = '';
+    });
+    if (window.jQuery && window.jQuery.fn?.select2) {
+        form.querySelectorAll('select').forEach(select => {
+            if (window.jQuery(select).hasClass('select2-hidden-accessible')) {
+                window.jQuery(select).trigger('change.select2');
+            }
+            syncSelect2ValidationState(select);
+        });
+    }
+}
 
 function checkPasswordStrength(password) {
     let score = 0;
