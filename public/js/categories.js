@@ -23,7 +23,7 @@ function loadData() {
                 <td>${statusBadge(c.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${escape(c.nombre)}')" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm ${c.estado ? 'btn-warning' : 'btn-success'}" onclick="toggleEstado('${escape(c.nombre)}')" title="${c.estado ? 'Desactivar' : 'Activar'}"><i class="bi bi-${c.estado ? 'pause' : 'play'}-fill"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${escape(c.nombre)}')" title="Eliminar"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -74,7 +74,7 @@ function saveData() {
 
 function toggleEstado(nombre) {
     nombre = unescape(nombre);
-    confirmAction('¿Cambiar estado de esta categoria?', () => {
-        apiCall('/api/categories/toggle', 'PUT', { nombre }).then(res => { showToast(res.message); loadData(); });
+    confirmAction('Eliminar esta categoria?', () => {
+        apiCall('/api/categories/delete', 'DELETE', { nombre }).then(res => { showToast(res.message); loadData(); });
     });
 }

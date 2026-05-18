@@ -13,10 +13,10 @@ class UserModel(Connection):
     def get_all(self, tipo=None):
         if tipo:
             return self.fetch_all("mantenimiento",
-                "SELECT u.*, GROUP_CONCAT(r.nombre) as roles FROM usuarios u LEFT JOIN usuario_rol ur ON u.id = ur.usuario_id LEFT JOIN roles r ON ur.rol_id = r.id WHERE u.tipo = %s GROUP BY u.id ORDER BY u.id DESC",
+                "SELECT u.*, GROUP_CONCAT(r.nombre) as roles FROM usuarios u LEFT JOIN usuario_rol ur ON u.id = ur.usuario_id LEFT JOIN roles r ON ur.rol_id = r.id WHERE u.tipo = %s AND u.estado = 1 GROUP BY u.id ORDER BY u.id DESC",
                 (tipo,))
         return self.fetch_all("mantenimiento",
-            "SELECT u.*, GROUP_CONCAT(r.nombre) as roles FROM usuarios u LEFT JOIN usuario_rol ur ON u.id = ur.usuario_id LEFT JOIN roles r ON ur.rol_id = r.id GROUP BY u.id ORDER BY u.id DESC")
+            "SELECT u.*, GROUP_CONCAT(r.nombre) as roles FROM usuarios u LEFT JOIN usuario_rol ur ON u.id = ur.usuario_id LEFT JOIN roles r ON ur.rol_id = r.id WHERE u.estado = 1 GROUP BY u.id ORDER BY u.id DESC")
 
     def get_by_id(self, user_id):
         return self.fetch_one("mantenimiento",
@@ -82,9 +82,12 @@ class UserModel(Connection):
             "UPDATE usuarios SET estado = 0 WHERE id = %s", (user_id,))
 
     def email_exists(self, email, exclude_id=None):
+        exclude = {"usuario_id": exclude_id}
         if exclude_id:
-            return self.fetch_one("mantenimiento", "SELECT id FROM usuarios WHERE email = %s AND id != %s", (email, exclude_id)) is not None
-        return self.fetch_one("mantenimiento", "SELECT id FROM usuarios WHERE email = %s", (email,)) is not None
+            user = self.get_by_id(exclude_id)
+            if user:
+                exclude["cliente_cedula"] = user.get('cedula')
+        return self.email_exists_globally(email, exclude)
 
     def cedula_exists(self, cedula, exclude_id=None):
         if exclude_id:

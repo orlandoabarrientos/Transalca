@@ -87,6 +87,14 @@
 <script src="/public/jquery/jquery.min.js"></script>
 <script src="/public/js/admin_common.js"></script>
 <script>
+function debounce(fn, ms) {
+    let t;
+    return function (...args) {
+        clearTimeout(t);
+        t = setTimeout(() => fn.apply(this, args), ms);
+    };
+}
+
 $(document).ready(function() {
     $('#sidebarContainer').load('/components/admin_sidebar.html', () => {
         document.querySelector('[data-page="sucursales"]')?.classList.add('active');
@@ -95,9 +103,11 @@ $(document).ready(function() {
     loadData();
     Validator.setRules('sucursalForm', {
         nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es requerido', minLengthMsg: 'Minimo 3 caracteres' },
+        telefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 digitos y comenzar por 04' },
         email: { email: true }
     });
     Validator.setupRealtime('sucursalForm');
+    document.getElementById('email')?.addEventListener('input', debounce(validateUniqueSucursalEmail, 350));
 });
 
 function loadData() {
@@ -114,7 +124,7 @@ function loadData() {
                 <td>${statusBadge(s.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${s.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm ${s.estado ? 'btn-warning' : 'btn-success'}" onclick="toggleEstado(${s.id})" title="${s.estado ? 'Desactivar' : 'Activar'}"><i class="bi bi-${s.estado ? 'pause' : 'play'}-fill"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${s.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -150,7 +160,10 @@ function saveData() {
     const data = { nombre: document.getElementById('nombre').value, direccion: document.getElementById('direccion').value, telefono: document.getElementById('telefono').value, email: document.getElementById('email').value };
     const url = id ? `/api/sucursales/${id}` : '/api/sucursales/';
     const method = id ? 'PUT' : 'POST';
+    const saveBtn = document.querySelector('#sucursalModal .btn-orange');
+    setButtonLoading(saveBtn, true, 'Guardando...');
     apiCall(url, method, data).then(res => {
+        setButtonLoading(saveBtn, false);
         if (res.status === 'error') { Validator.showServerErrors('sucursalForm', res.errors); return showToast(res.message, 'error'); }
         bootstrap.Modal.getInstance(document.getElementById('sucursalModal')).hide();
         showToast(res.message);
@@ -159,8 +172,32 @@ function saveData() {
 }
 
 function toggleEstado(id) {
-    confirmAction('¿Cambiar estado de esta sucursal?', () => {
-        apiCall(`/api/sucursales/${id}/toggle`, 'PUT').then(res => { showToast(res.message); loadData(); });
+    confirmAction('Eliminar esta sucursal?', () => {
+        apiCall(`/api/sucursales/${id}`, 'DELETE').then(res => { showToast(res.message); loadData(); });
+    }, { confirmText: 'Eliminar' });
+}
+
+function validateUniqueSucursalEmail() {
+    const input = document.getElementById('email');
+    if (!input) return;
+    const value = input.value.trim();
+    if (!value) {
+        clearFieldError(input);
+        updateFormSubmitState('sucursalForm');
+        return;
+    }
+    if (!Validator.validateField('sucursalForm', 'email')) {
+        updateFormSubmitState('sucursalForm');
+        return;
+    }
+    const id = document.getElementById('sucursalId')?.value || '';
+    apiCall(`/api/sucursales/check-unique?field=email&value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(id)}`).then(res => {
+        if (res.status === 'success' && res.exists) {
+            setFieldError(input, 'Este correo ya esta registrado.');
+        } else if (res.status === 'success') {
+            clearFieldError(input);
+        }
+        updateFormSubmitState('sucursalForm');
     });
 }
 </script>

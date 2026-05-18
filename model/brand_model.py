@@ -7,7 +7,7 @@ class BrandModel(Connection):
 
     def get_all(self):
         return self.fetch_all("transalca",
-            "SELECT m.*, (SELECT COUNT(*) FROM productos WHERE marca = m.nombre) as total_productos FROM marcas m ORDER BY m.nombre")
+            "SELECT m.*, (SELECT COUNT(*) FROM productos WHERE marca = m.nombre AND estado = 1) as total_productos FROM marcas m WHERE m.estado = 1 ORDER BY m.nombre")
 
     def get_active(self):
         return self.fetch_all("transalca",
@@ -30,7 +30,7 @@ class BrandModel(Connection):
         return self.update("transalca", "UPDATE marcas SET estado = 0 WHERE nombre = %s", (nombre,))
 
     def toggle_estado(self, nombre):
-        return self.update("transalca", "UPDATE marcas SET estado = IF(estado=1,0,1) WHERE nombre = %s", (nombre,))
+        return self.soft_delete(nombre)
 
     def nombre_exists(self, nombre, exclude_nombre=None):
         if exclude_nombre:

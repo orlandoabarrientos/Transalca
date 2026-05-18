@@ -69,7 +69,10 @@ def check_unique():
             email = normalize_email(errors, value)
             if errors:
                 return jsonify({"status": "error", "message": errors['email']}), 400
-            return jsonify({"status": "success", "exists": model.email_exists(email, exclude)})
+            cedula_exclude = (request.args.get('cedula') or '').strip()
+            if exclude:
+                return jsonify({"status": "success", "exists": model.email_exists(email, exclude)})
+            return jsonify({"status": "success", "exists": model.email_exists_globally(email, {"cliente_cedula": cedula_exclude})})
         if field == 'cedula':
             cedula, _, _ = normalize_cedula(errors, {'cedula': value})
             if errors:
@@ -102,7 +105,8 @@ def create():
         data, errors = _validate_user(request.get_json() or {}, require_password=True)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if model.email_exists(data['email']):
+        email_exclude = {"cliente_cedula": data['cedula']} if data.get('tipo') == 'cliente' else {}
+        if model.email_exists_globally(data['email'], email_exclude):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         if model.cedula_exists(data['cedula']):
             return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
@@ -167,8 +171,7 @@ def toggle_status(user_id):
         estado = int(estado)
         model.update_status(user_id, estado)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'USUARIOS', f"Estado de usuario cambiado ID: {user_id}", request.remote_addr)
-        message = "Usuario reactivado correctamente." if estado == 1 else "Usuario eliminado correctamente."
-        return jsonify({"status": "success", "message": message})
+        return jsonify({"status": "success", "message": "Usuario eliminado correctamente." if estado == 0 else "Estado modificado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cambiar el estado del usuario."}), 500
 

@@ -42,9 +42,16 @@ def get_active():
 @supplier_bp.route('/check-unique', methods=['GET'])
 def check_unique():
     try:
+        field = (request.args.get('field') or 'rif').strip()
+        exclude = request.args.get('exclude') or None
+        if field == 'email':
+            errors = {}
+            email = normalize_email(errors, request.args.get('value', ''), required=True)
+            if errors:
+                return jsonify({"status": "error", "message": errors['email']}), 400
+            return jsonify({"status": "success", "exists": model.email_exists_globally(email, {"proveedor_rif": exclude})})
         errors = {}
         rif, _, _ = normalize_rif(errors, {'rif': request.args.get('value', '')})
-        exclude = request.args.get('exclude') or None
         if errors:
             return jsonify({"status": "error", "message": errors['rif']}), 400
         return jsonify({"status": "success", "exists": model.rif_exists(rif, exclude)})
@@ -73,6 +80,8 @@ def create():
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         if model.rif_exists(data['rif']):
             return jsonify({"status": "error", "message": "Este rif ya esta registrado.", "errors": {"rif": "Este rif ya esta registrado."}}), 400
+        if data.get('email') and model.email_exists_globally(data['email'], {"proveedor_rif": data['rif']}):
+            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         model.create(data)
         bitacora.log_action(session['user_id'], 'CREAR', 'PROVEEDORES', f"Proveedor creado: {data['nombre']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Proveedor registrado correctamente.", "rif": data['rif']})
@@ -94,6 +103,8 @@ def update():
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         if data['rif'] != old_rif and model.rif_exists(data['rif']):
             return jsonify({"status": "error", "message": "Este rif ya esta registrado.", "errors": {"rif": "Este rif ya esta registrado."}}), 400
+        if data.get('email') and model.email_exists_globally(data['email'], {"proveedor_rif": old_rif}):
+            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         model.update_supplier(old_rif, data)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'PROVEEDORES', f"Proveedor modificado: {old_rif}", request.remote_addr)
         return jsonify({"status": "success", "message": "Proveedor modificado correctamente."})
@@ -111,9 +122,8 @@ def toggle():
         supplier = model.get_by_rif(rif)
         if not supplier:
             return jsonify({"status": "error", "message": "Proveedor no encontrado."}), 404
-        model.toggle_estado(rif)
+        model.soft_delete(rif)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'PROVEEDORES', f"Estado proveedor cambiado: {rif}", request.remote_addr)
-        message = "Proveedor eliminado correctamente." if int(supplier.get('estado') or 0) == 1 else "Proveedor reactivado correctamente."
-        return jsonify({"status": "success", "message": message})
+        return jsonify({"status": "success", "message": "Proveedor eliminado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cambiar el estado del proveedor."}), 500

@@ -26,33 +26,7 @@ class AuthModel(Connection):
             raise ValueError(f"Rol {name} no existe")
         return role['id']
 
-    def _norm(self, value):
-        text = (value or '').strip().lower()
-        return '' if text == '0000000' else text
-
-    def _existing_client_conflicts(self, data):
-        client = self.fetch_one("transalca",
-            "SELECT * FROM clientes WHERE cedula = %s", (data['cedula'],))
-        if not client:
-            return []
-        checks = [
-            ('nombre', 'nombre'),
-            ('apellido', 'apellido'),
-            ('telefono', 'telefono'),
-            ('email', 'email')
-        ]
-        conflicts = []
-        for field, label in checks:
-            current = self._norm(client.get(field))
-            incoming = self._norm(data.get(field))
-            if current and incoming and current != incoming:
-                conflicts.append(label)
-        return conflicts
-
     def register(self, data):
-        conflicts = self._existing_client_conflicts(data)
-        if conflicts:
-            raise ValueError("Los datos no coinciden con el cliente ya registrado: " + ", ".join(conflicts))
         password_hash = generate_password_hash(data['password'])
         user_id = None
         try:
@@ -91,10 +65,8 @@ class AuthModel(Connection):
              data.get('telefono', ''), data.get('direccion', ''), password_hash, 'empleado'))
         return user_id
 
-    def email_exists(self, email):
-        result = self.fetch_one("mantenimiento",
-            "SELECT id FROM usuarios WHERE email = %s", (email,))
-        return result is not None
+    def email_exists(self, email, exclude_client_cedula=None):
+        return self.email_exists_globally(email, {"cliente_cedula": exclude_client_cedula})
 
     def cedula_exists(self, cedula):
         result = self.fetch_one("mantenimiento",

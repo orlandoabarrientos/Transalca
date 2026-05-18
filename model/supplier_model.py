@@ -11,7 +11,7 @@ class SupplierModel(Connection):
 
     def get_all(self):
         return self.fetch_all("transalca",
-            "SELECT p.*, (SELECT COUNT(*) FROM ordenes_compra WHERE proveedor_rif = p.rif) as total_ordenes FROM proveedores p ORDER BY p.nombre")
+            "SELECT p.*, (SELECT COUNT(*) FROM ordenes_compra WHERE proveedor_rif = p.rif) as total_ordenes FROM proveedores p WHERE p.estado = 1 ORDER BY p.nombre")
 
     def get_active(self):
         return self.fetch_all("transalca",
@@ -58,8 +58,7 @@ class SupplierModel(Connection):
             "UPDATE proveedores SET estado = 0 WHERE rif = %s", (rif,))
 
     def toggle_estado(self, rif):
-        return self.update("transalca",
-            "UPDATE proveedores SET estado = IF(estado=1,0,1) WHERE rif = %s", (rif,))
+        return self.soft_delete(rif)
 
     def rif_exists(self, rif, exclude_rif=None):
         if exclude_rif:

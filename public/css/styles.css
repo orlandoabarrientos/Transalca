@@ -890,6 +890,20 @@ a:hover {
     border-left-color: var(--warning);
 }
 
+.toast-close {
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+}
+
+.toast-close:hover {
+    color: var(--text-primary);
+}
+
 @keyframes slideInRight {
     from {
         transform: translateX(100%);

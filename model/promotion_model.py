@@ -6,7 +6,7 @@ class PromotionModel(Connection):
         super().__init__()
 
     def get_all(self):
-        return self.fetch_all("transalca", "SELECT * FROM promociones ORDER BY id DESC")
+        return self.fetch_all("transalca", "SELECT * FROM promociones WHERE estado = 1 ORDER BY id DESC")
 
     def get_active(self):
         return self.fetch_all("transalca",
@@ -42,9 +42,8 @@ class PromotionModel(Connection):
         promo = self.get_by_id(promo_id)
         if not promo:
             return None
-        new_estado = 0 if int(promo.get('estado') or 0) == 1 else 1
-        self.update("transalca", "UPDATE promociones SET estado = %s WHERE id = %s", (new_estado, promo_id))
-        return new_estado
+        self.update("transalca", "UPDATE promociones SET estado = 0 WHERE id = %s", (promo_id,))
+        return 0
 
     def assign_card_to_client(self, cliente_cedula, promocion_id):
         existing = self.fetch_one("transalca",

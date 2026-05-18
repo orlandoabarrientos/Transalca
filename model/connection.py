@@ -106,3 +106,35 @@ class Connection:
     def rollback_transaction(self, db):
         conn = self.con_mantenimiento() if db == "mantenimiento" else self.con_transalca()
         conn.rollback()
+
+    def email_exists_globally(self, email, exclude=None):
+        normalized = (email or '').strip().lower()
+        if not normalized:
+            return False
+        exclude = exclude or {}
+        checks = [
+            ("mantenimiento", "usuarios", "email", "id", exclude.get("usuario_id"), "cedula", exclude.get("usuario_cedula")),
+            ("transalca", "clientes", "email", "cedula", exclude.get("cliente_cedula"), None, None),
+            ("transalca", "proveedores", "email", "rif", exclude.get("proveedor_rif"), None, None),
+            ("transalca", "sucursales", "email", "id", exclude.get("sucursal_id"), None, None),
+        ]
+        for db, table, column, key, excluded_value, second_key, second_excluded_value in checks:
+            try:
+                where = [f"LOWER({column}) = %s"]
+                params = [normalized]
+                if excluded_value not in (None, ''):
+                    where.append(f"{key} != %s")
+                    params.append(excluded_value)
+                if second_key and second_excluded_value not in (None, ''):
+                    where.append(f"{second_key} != %s")
+                    params.append(second_excluded_value)
+                row = self.fetch_one(
+                    db,
+                    f"SELECT {key} FROM {table} WHERE {' AND '.join(where)} LIMIT 1",
+                    tuple(params)
+                )
+                if row:
+                    return True
+            except Exception:
+                continue
+        return False

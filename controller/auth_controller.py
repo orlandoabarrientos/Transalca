@@ -102,7 +102,7 @@ def do_register():
             'email': email,
             'direccion': direccion
         })
-        if model.email_exists(email):
+        if model.email_exists(email, exclude_client_cedula=cedula):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         if model.cedula_exists(cedula):
             return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
@@ -126,7 +126,8 @@ def check_unique():
             email = normalize_email(errors, value)
             if errors:
                 return jsonify({"status": "error", "message": errors['email']}), 400
-            return jsonify({"status": "success", "exists": model.email_exists(email)})
+            cedula_exclude = (request.args.get('cedula') or '').strip()
+            return jsonify({"status": "success", "exists": model.email_exists(email, exclude_client_cedula=cedula_exclude)})
         if field == 'cedula':
             errors = {}
             cedula, _, _ = normalize_cedula(errors, {'cedula': value})

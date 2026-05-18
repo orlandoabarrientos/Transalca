@@ -21,7 +21,6 @@ function loadPromos() {
         if (!tbody) return;
         tbody.innerHTML = '';
         (res.data || []).forEach(p => {
-            const active = Number(p.estado) === 1;
             tbody.innerHTML += `<tr class="fade-in-up">
                 <td class="col-id">${escapeHtml(p.id)}</td>
                 <td><strong>${escapeHtml(p.nombre)}</strong></td>
@@ -31,7 +30,7 @@ function loadPromos() {
                 <td>${statusBadge(p.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${Number(p.id)})" title="Modificar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm ${active ? 'btn-warning' : 'btn-success'}" onclick="deletePromo(${Number(p.id)})" title="${active ? 'Eliminar' : 'Reactivar'}"><i class="bi bi-${active ? 'trash' : 'arrow-clockwise'}"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="deletePromo(${Number(p.id)})" title="Eliminar"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -67,6 +66,32 @@ function loadCards() {
             </div>`;
         });
         if (!res.data?.length) {
+            loadPromotionCardTemplates(container);
+        }
+    });
+}
+
+function loadPromotionCardTemplates(container) {
+    apiCall('/api/promotions/active').then(res => {
+        const promos = res.data || [];
+        container.innerHTML = '';
+        promos.forEach(p => {
+            const cardImg = p.imagen_tarjeta ? `/public/assets/images/${encodeURIComponent(p.imagen_tarjeta)}` : '/public/assets/images/default_card.png';
+            container.innerHTML += `<div class="promo-fidelity-card fade-in-up">
+                <div class="promo-fidelity-head">
+                    <strong>${escapeHtml(p.nombre || 'Promocion')}</strong>
+                    <span class="badge-status badge-info">Plantilla</span>
+                </div>
+                <img src="${cardImg}" class="promo-fidelity-img" alt="Tarjeta" onerror="this.src='/public/assets/images/default_card.png'">
+                <div class="promo-fidelity-body">
+                    <div class="mb-1"><strong>Tipo:</strong> ${escapeHtml(p.tipo || '-')}</div>
+                    <div class="mb-1"><strong>Puntos:</strong> ${escapeHtml(p.puntos_requeridos || 0)}</div>
+                    <div class="mb-1"><strong>Recompensa:</strong> ${escapeHtml(p.recompensa || '-')}</div>
+                    <div class="mb-2 text-muted">${escapeHtml(p.descripcion || '')}</div>
+                </div>
+            </div>`;
+        });
+        if (!promos.length) {
             container.innerHTML = '<div class="text-center py-5 w-100"><div class="empty-state"><i class="bi bi-credit-card"></i><p>No hay tarjetas registradas</p></div></div>';
         }
     });
@@ -138,6 +163,8 @@ function saveData() {
             showToast(res.message, 'success');
             loadPromos();
             loadCards();
+        }).catch(message => {
+            showToast(message || 'No se pudo subir la imagen.', 'error');
         });
     }).finally(() => {
         setButtonLoading(button, false);
@@ -145,14 +172,14 @@ function saveData() {
 }
 
 function deletePromo(id) {
-    confirmAction('Eliminar o reactivar esta promocion?', () => {
+    confirmAction('Eliminar esta promocion?', () => {
         apiCall(`/api/promotions/${id}`, 'DELETE').then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message, 'success');
             loadPromos();
             loadCards();
         });
-    });
+    }, { confirmText: 'Eliminar' });
 }
 
 function addPoint(cardId) {
@@ -207,10 +234,11 @@ function uploadPromoImageIfNeeded(promoId) {
         body: formData
     }).then(r => r.json()).then(data => {
         if (data.status === 'error') {
-            showToast(data.message || 'No se pudo subir la imagen.', 'warning');
+            return Promise.reject(data.message || 'No se pudo subir la imagen.');
         }
+        return data;
     }).catch(() => {
-        showToast('No se pudo subir la imagen.', 'warning');
+        return Promise.reject('No se pudo subir la imagen.');
     });
 }
 

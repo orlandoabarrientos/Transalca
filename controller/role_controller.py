@@ -86,8 +86,7 @@ def delete(role_id):
             return jsonify({"status": "error", "message": "Rol no encontrado"}), 404
         bitacora.log_action(session['user_id'], 'ELIMINAR', 'ROLES',
             f"Estado rol cambiado ID: {role_id}", request.remote_addr)
-        message = "Rol eliminado correctamente" if result == 0 else "Rol reactivado correctamente"
-        return jsonify({"status": "success", "message": message, "estado": result})
+        return jsonify({"status": "success", "message": "Rol eliminado correctamente", "estado": result})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cambiar el estado del rol"}), 500
 

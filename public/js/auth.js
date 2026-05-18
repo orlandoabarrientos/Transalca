@@ -105,7 +105,8 @@ async function validateRegisterUnique(field) {
     }
     try {
         const value = field === 'cedula' ? buildDocumentValue('regCedulaPrefijo', 'regCedula') : input.value;
-        const res = await fetch(`/auth/check-unique?field=${field}&value=${encodeURIComponent(value)}`, { credentials: 'same-origin' });
+        const cedula = buildDocumentValue('regCedulaPrefijo', 'regCedula');
+        const res = await fetch(`/auth/check-unique?field=${field}&value=${encodeURIComponent(value)}&cedula=${encodeURIComponent(cedula)}`, { credentials: 'same-origin' });
         const data = await res.json();
         if (data.status === 'success' && data.exists) {
             const msg = field === 'cedula' ? 'Esta cedula ya esta registrada.' : 'Este correo ya esta registrado.';

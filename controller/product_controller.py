@@ -164,9 +164,8 @@ def toggle():
         product = model.get_by_codigo(codigo)
         if not product:
             return jsonify({"status": "error", "message": "Producto no encontrado"}), 404
-        model.toggle_estado(codigo)
+        model.soft_delete(codigo)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'PRODUCTOS', f"Estado producto cambiado: {codigo}", request.remote_addr)
-        message = "Producto eliminado correctamente" if int(product.get('estado') or 0) == 1 else "Producto reactivado correctamente"
-        return jsonify({"status": "success", "message": message})
+        return jsonify({"status": "success", "message": "Producto eliminado correctamente"})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cambiar el estado del producto"}), 500

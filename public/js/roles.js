@@ -26,7 +26,7 @@ function loadData() {
                 <td>${statusBadge(r.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${r.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm ${r.estado ? 'btn-warning' : 'btn-success'}" onclick="toggleEstado(${r.id})" title="${r.estado ? 'Eliminar' : 'Reactivar'}"><i class="bi bi-${r.estado ? 'trash' : 'arrow-clockwise'}"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${r.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -118,11 +118,11 @@ function saveData() {
 }
 
 function toggleEstado(id) {
-    confirmAction('Cambiar estado del rol?', () => {
+    confirmAction('Eliminar este rol?', () => {
         apiCall(`/api/roles/${id}`, 'DELETE').then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message);
             loadData();
         });
-    }, { confirmText: 'Aceptar' });
+    }, { confirmText: 'Eliminar' });
 }

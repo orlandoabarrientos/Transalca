@@ -61,7 +61,7 @@ def create():
         qr_id = model.create_qr(data)
         bitacora.log_action(session['user_id'], 'CREAR', 'QR',
             f"QR creado ID: {qr_id}", request.remote_addr)
-        return jsonify({"status": "success", "message": "QR creado", "id": qr_id})
+        return jsonify({"status": "success", "message": "QR registrado correctamente.", "id": qr_id})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -83,7 +83,7 @@ def update(qr_id):
         model.update_qr(qr_id, data)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'QR',
             f"QR modificado ID: {qr_id}", request.remote_addr)
-        return jsonify({"status": "success", "message": "QR actualizado"})
+        return jsonify({"status": "success", "message": "QR modificado correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -96,7 +96,7 @@ def delete(qr_id):
         model.soft_delete(qr_id)
         bitacora.log_action(session['user_id'], 'ELIMINAR', 'QR',
             f"QR desactivado ID: {qr_id}", request.remote_addr)
-        return jsonify({"status": "success", "message": "QR desactivado"})
+        return jsonify({"status": "success", "message": "QR eliminado correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 

@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from model.service_model import ServiceModel
 from model.bitacora_model import BitacoraModel
-from config.validation import normalize_decimal, normalize_int, optional_text, require_text
+from config.validation import SELECT_TAMPER_MESSAGE, normalize_decimal, normalize_int, optional_text, require_text
 
 service_bp = Blueprint('services', __name__)
 model = ServiceModel()
@@ -16,6 +16,14 @@ def _validate_service(data):
     clean['precio'] = normalize_decimal(errors, 'precio', data.get('precio'), 'El precio')
     clean['duracion_estimada'] = normalize_int(errors, 'duracion_estimada', data.get('duracion_estimada') or 60, 'La duracion', min_value=1, max_value=1440)
     clean['sucursal_id'] = data.get('sucursal_id') or None
+    if clean['sucursal_id']:
+        try:
+            clean['sucursal_id'] = int(clean['sucursal_id'])
+        except (TypeError, ValueError):
+            errors['sucursal_id'] = SELECT_TAMPER_MESSAGE
+        else:
+            if not model.sucursal_exists(clean['sucursal_id']):
+                errors['sucursal_id'] = SELECT_TAMPER_MESSAGE
     return clean, errors
 
 

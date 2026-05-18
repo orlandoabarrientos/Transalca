@@ -42,7 +42,7 @@ function loadData() {
                 <td>${statusBadge(u.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${u.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm ${u.estado ? 'btn-warning' : 'btn-success'}" onclick="toggleEstado(${u.id}, ${u.estado})" title="${u.estado ? 'Eliminar' : 'Reactivar'}"><i class="bi bi-${u.estado ? 'trash' : 'arrow-clockwise'}"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${u.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -127,14 +127,14 @@ function saveData() {
     });
 }
 
-function toggleEstado(id, estado) {
-    confirmAction(estado ? 'Eliminar este usuario?' : 'Reactivar este usuario?', () => {
-        apiCall(`/api/users/${id}/status`, 'PUT', { estado: estado ? 0 : 1 }).then(res => {
+function toggleEstado(id) {
+    confirmAction('Eliminar este usuario?', () => {
+        apiCall(`/api/users/${id}/status`, 'PUT', { estado: 0 }).then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message);
             loadData();
         });
-    });
+    }, { confirmText: 'Eliminar' });
 }
 
 function validateUniqueUser(field) {
@@ -153,8 +153,9 @@ function validateUniqueUser(field) {
             updateFormSubmitState('userForm');
             return;
         }
-        const queryValue = field === 'cedula' ? buildDocumentValue('cedula_prefijo', 'cedula') : value;
-        const res = await apiCall(`/api/users/check-unique?field=${field}&value=${encodeURIComponent(queryValue)}&exclude=${encodeURIComponent(id)}`);
+        const cedulaValue = buildDocumentValue('cedula_prefijo', 'cedula');
+        const queryValue = field === 'cedula' ? cedulaValue : value;
+        const res = await apiCall(`/api/users/check-unique?field=${field}&value=${encodeURIComponent(queryValue)}&exclude=${encodeURIComponent(id)}&cedula=${encodeURIComponent(cedulaValue)}`);
         if (res.status === 'success' && res.exists) {
             setFieldError(input, field === 'email' ? 'Este correo ya esta registrado.' : 'Esta cedula ya esta registrada.');
         } else if (res.status === 'success') {

@@ -10,7 +10,7 @@ class MechanicModel(Connection):
         return {r['Field'] for r in rows}
 
     def get_all(self):
-        return self.fetch_all("transalca", "SELECT * FROM mecanicos ORDER BY nombre, apellido")
+        return self.fetch_all("transalca", "SELECT * FROM mecanicos WHERE estado = 1 ORDER BY nombre, apellido")
 
     def get_by_cedula(self, cedula):
         return self.fetch_one("transalca", "SELECT * FROM mecanicos WHERE cedula = %s", (cedula,))
@@ -57,7 +57,7 @@ class MechanicModel(Connection):
             tuple(params))
 
     def soft_delete(self, cedula):
-        return self.toggle_estado(cedula)
+        return self.update("transalca", "UPDATE mecanicos SET estado = 0 WHERE cedula = %s", (cedula,))
 
     def toggle_estado(self, cedula):
         item = self.get_by_cedula(cedula)

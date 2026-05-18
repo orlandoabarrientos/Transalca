@@ -23,7 +23,7 @@ function loadData() {
                 <td>${statusBadge(b.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${escape(b.nombre)}')" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm ${b.estado ? 'btn-warning' : 'btn-success'}" onclick="toggleEstado('${escape(b.nombre)}')" title="${b.estado ? 'Desactivar' : 'Activar'}"><i class="bi bi-${b.estado ? 'pause' : 'play'}-fill"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${escape(b.nombre)}')" title="Eliminar"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -74,7 +74,7 @@ function saveData() {
 
 function toggleEstado(nombre) {
     nombre = unescape(nombre);
-    confirmAction('¿Cambiar estado de esta marca?', () => {
-        apiCall('/api/brands/toggle', 'PUT', { nombre }).then(res => { showToast(res.message); loadData(); });
-    });
+    confirmAction('Eliminar esta marca?', () => {
+        apiCall('/api/brands/delete', 'DELETE', { nombre }).then(res => { showToast(res.message); loadData(); });
+    }, { confirmText: 'Eliminar' });
 }

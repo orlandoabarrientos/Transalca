@@ -140,6 +140,9 @@ def invoice_qr_image(order_id):
         if session.get('user_tipo') == 'cliente' and order.get('cliente_cedula') != session.get('user_cedula'):
             return jsonify({"status": "error", "message": "Sin permisos para esta factura"}), 403
 
+        if str(order.get('estado') or '').lower() not in ('aprobada', 'aprobado', 'verificado', 'pagado'):
+            return jsonify({"status": "error", "message": "El QR de factura solo esta disponible cuando el pago esta aprobado."}), 403
+
         qr_obj = model.ensure_invoice_qr(order_id)
         if not qr_obj:
             return jsonify({"status": "error", "message": "No se pudo generar QR de factura"}), 500

@@ -28,7 +28,7 @@ function loadData() {
                 <td>
                     <button class="btn btn-icon btn-outline-info btn-sm" onclick="viewQRImage(${q.id})" title="Ver Codigo QR"><i class="bi bi-qr-code-scan"></i></button>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${q.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="deleteQR(${q.id})" title="Desactivar"><i class="bi bi-pause-fill"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="deleteQR(${q.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -78,7 +78,7 @@ function saveData() {
     });
 }
 
-function deleteQR(id) { confirmAction('¿Desactivar QR?', () => { apiCall(`/api/qr/${id}`, 'DELETE').then(res => { showToast(res.message); loadData(); }); }); }
+function deleteQR(id) { confirmAction('Eliminar este QR?', () => { apiCall(`/api/qr/${id}`, 'DELETE').then(res => { showToast(res.message); loadData(); }); }, { confirmText: 'Eliminar' }); }
 
 function viewQRImage(id) {
     const preview = document.getElementById('qrImagePreview');

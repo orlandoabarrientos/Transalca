@@ -29,7 +29,7 @@ function loadData() {
                 <td>${statusBadge(s.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${s.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm ${s.estado ? 'btn-warning' : 'btn-success'}" onclick="toggleEstado(${s.id})" title="${s.estado ? 'Desactivar' : 'Activar'}"><i class="bi bi-${s.estado ? 'pause' : 'play'}-fill"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${s.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -84,7 +84,7 @@ function saveData() {
 }
 
 function toggleEstado(id) {
-    confirmAction('¿Cambiar estado de este servicio?', () => {
-        apiCall(`/api/services/${id}/toggle`, 'PUT').then(res => { showToast(res.message); loadData(); });
+    confirmAction('Eliminar este servicio?', () => {
+        apiCall(`/api/services/${id}`, 'DELETE').then(res => { showToast(res.message); loadData(); });
     });
 }

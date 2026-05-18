@@ -100,8 +100,7 @@ def delete(promo_id):
         if new_estado is None:
             return jsonify({"status": "error", "message": "Promocion no encontrada."}), 404
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'PROMOCIONES', f"Estado promocion cambiado ID: {promo_id}", request.remote_addr)
-        message = "Promocion eliminada correctamente." if new_estado == 0 else "Promocion reactivada correctamente."
-        return jsonify({"status": "success", "message": message, "estado": new_estado})
+        return jsonify({"status": "success", "message": "Promocion eliminada correctamente.", "estado": new_estado})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cambiar el estado de la promocion."}), 500
 

@@ -50,7 +50,7 @@ def create():
         model.create(data)
         bitacora.log_action(session['user_id'], 'CREAR', 'CATEGORIAS',
             f"Categoria creada: {data['nombre']}", request.remote_addr)
-        return jsonify({"status": "success", "message": "Categoria creada", "nombre": data['nombre'].strip()})
+        return jsonify({"status": "success", "message": "Categoria registrada correctamente.", "nombre": data['nombre'].strip()})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -75,7 +75,7 @@ def update():
         model.update_category(old_nombre, data)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'CATEGORIAS',
             f"Categoria modificada: {old_nombre} -> {new_nombre}", request.remote_addr)
-        return jsonify({"status": "success", "message": "Categoria actualizada"})
+        return jsonify({"status": "success", "message": "Categoria modificada correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -90,7 +90,7 @@ def delete():
         model.soft_delete(nombre)
         bitacora.log_action(session['user_id'], 'ELIMINAR', 'CATEGORIAS',
             f"Categoria desactivada: {nombre}", request.remote_addr)
-        return jsonify({"status": "success", "message": "Categoria desactivada"})
+        return jsonify({"status": "success", "message": "Categoria eliminada correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -103,6 +103,6 @@ def toggle():
         data = request.get_json()
         nombre = data.get('nombre', '')
         model.toggle_estado(nombre)
-        return jsonify({"status": "success", "message": "Estado actualizado"})
+        return jsonify({"status": "success", "message": "Categoria eliminada correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

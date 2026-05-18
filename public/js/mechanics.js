@@ -39,7 +39,7 @@ function loadData() {
                 <td>${statusBadge(m.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(m.cedula)}')" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm ${m.estado ? 'btn-warning' : 'btn-success'}" onclick="deleteData('${encodeURIComponent(m.cedula)}')" title="${m.estado ? 'Eliminar' : 'Reactivar'}"><i class="bi bi-${m.estado ? 'trash' : 'arrow-clockwise'}"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="deleteData('${encodeURIComponent(m.cedula)}')" title="Eliminar"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -106,13 +106,13 @@ function saveData() {
 
 function deleteData(cedula) {
     cedula = decodeURIComponent(cedula);
-    confirmAction('Cambiar estado de este mecanico?', () => {
+    confirmAction('Eliminar este mecanico?', () => {
         apiCall('/api/mechanics/delete', 'DELETE', { cedula }).then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message);
             loadData();
         });
-    }, { confirmText: 'Aceptar' });
+    }, { confirmText: 'Eliminar' });
 }
 
 function validateUniqueMechanicCedula() {

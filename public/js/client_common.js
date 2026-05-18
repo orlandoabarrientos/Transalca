@@ -15,9 +15,12 @@ function showToast(message, type = 'success') {
     const colors = { success: 'var(--success)', error: 'var(--danger)', warning: 'var(--warning)', info: 'var(--info)' };
     const text = typeof normalizeSystemMessage === 'function' ? normalizeSystemMessage(message) : String(message || '');
     const safe = typeof escapeHtml === 'function' ? escapeHtml(text) : text;
-    toast.innerHTML = `<i class="bi ${icons[type] || icons.info}" style="color:${colors[type]};font-size:1.3rem;"></i><span style="flex:1;font-weight:500;font-size:0.85rem;">${safe}</span><i class="bi bi-x" style="cursor:pointer;color:var(--text-muted);" onclick="this.parentElement.remove()"></i>`;
+    toast.innerHTML = `<i class="bi ${icons[type] || icons.info}" style="color:${colors[type]};font-size:1.3rem;"></i><span style="flex:1;font-weight:500;font-size:0.85rem;">${safe}</span><button type="button" class="toast-close close-toast" aria-label="Cerrar"><i class="bi bi-x"></i></button>`;
     container.appendChild(toast);
-    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+    setTimeout(() => {
+        if (typeof dismissToast === 'function') dismissToast(toast);
+        else toast.remove();
+    }, 5000);
 }
 
 async function checkSession() {
@@ -56,6 +59,11 @@ function updateNavForUser() {
 function updateNavForGuest() {
     document.querySelectorAll('.auth-required').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.guest-only').forEach(el => el.style.display = '');
+}
+
+function applyAuthVisibility() {
+    if (currentUser) updateNavForUser();
+    else updateNavForGuest();
 }
 
 async function updateCartBadge() {
@@ -104,6 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
     checkSession().then(loggedIn => {
         if (loggedIn) loadClientNotifications();
     });
+    const observer = new MutationObserver(() => applyAuthVisibility());
+    observer.observe(document.body, { childList: true, subtree: true });
 });
 
 async function loadClientNotifications() {

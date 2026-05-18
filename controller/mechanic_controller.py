@@ -135,11 +135,10 @@ def delete():
             return jsonify({"status": "error", "message": "No autorizado."}), 401
         data = request.get_json() or {}
         cedula = (data.get('cedula') or '').strip()
-        new_estado = model.soft_delete(cedula)
-        if new_estado is None:
+        result = model.soft_delete(cedula)
+        if result is None:
             return jsonify({"status": "error", "message": "Mecanico no encontrado."}), 404
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'MECANICOS', f"Estado mecanico cambiado: {cedula}", request.remote_addr)
-        message = "Mecanico eliminado correctamente." if new_estado == 0 else "Mecanico reactivado correctamente."
-        return jsonify({"status": "success", "message": message, "estado": new_estado})
+        return jsonify({"status": "success", "message": "Mecanico eliminado correctamente.", "estado": 0})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cambiar el estado del mecanico."}), 500

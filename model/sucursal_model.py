@@ -7,7 +7,7 @@ class SucursalModel(Connection):
 
     def get_all(self):
         return self.fetch_all("transalca",
-            "SELECT * FROM sucursales ORDER BY nombre")
+            "SELECT * FROM sucursales WHERE estado = 1 ORDER BY nombre")
 
     def get_active(self):
         return self.fetch_all("transalca",
@@ -29,7 +29,7 @@ class SucursalModel(Connection):
 
     def toggle_estado(self, sucursal_id):
         return self.update("transalca",
-            "UPDATE sucursales SET estado = IF(estado=1,0,1) WHERE id = %s", (sucursal_id,))
+            "UPDATE sucursales SET estado = 0 WHERE id = %s", (sucursal_id,))
 
     def soft_delete(self, sucursal_id):
         return self.update("transalca",

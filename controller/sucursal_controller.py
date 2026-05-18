@@ -1,10 +1,22 @@
 from flask import Blueprint, request, jsonify, session
 from model.sucursal_model import SucursalModel
 from model.bitacora_model import BitacoraModel
+from config.validation import normalize_email, normalize_phone, optional_text, require_text
 
 sucursal_bp = Blueprint('sucursales', __name__)
 model = SucursalModel()
 bitacora = BitacoraModel()
+
+
+def _validate_sucursal(data):
+    errors = {}
+    clean = {
+        'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=200, allow_serial=False),
+        'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=300),
+        'telefono': normalize_phone(errors, data.get('telefono'), required=False),
+        'email': normalize_email(errors, data.get('email'), required=False)
+    }
+    return clean, errors
 
 
 @sucursal_bp.route('/', methods=['GET'])
@@ -25,6 +37,29 @@ def get_active():
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
+@sucursal_bp.route('/check-unique', methods=['GET'])
+def check_unique():
+    try:
+        field = (request.args.get('field') or '').strip()
+        value = (request.args.get('value') or '').strip()
+        exclude = request.args.get('exclude') or None
+        if field == 'email':
+            errors = {}
+            email = normalize_email(errors, value, required=True)
+            if errors:
+                return jsonify({"status": "error", "message": errors['email']}), 400
+            return jsonify({"status": "success", "exists": model.email_exists_globally(email, {"sucursal_id": exclude})})
+        if field == 'nombre':
+            errors = {}
+            nombre = require_text(errors, 'nombre', value, 'El nombre', min_len=3, max_len=200, allow_serial=False)
+            if errors:
+                return jsonify({"status": "error", "message": errors['nombre']}), 400
+            return jsonify({"status": "success", "exists": model.nombre_exists(nombre, exclude)})
+        return jsonify({"status": "error", "message": "Campo no valido."}), 400
+    except Exception:
+        return jsonify({"status": "error", "message": "No se pudo validar el dato."}), 500
+
+
 @sucursal_bp.route('/<int:sid>', methods=['GET'])
 def get_one(sid):
     try:
@@ -41,15 +76,17 @@ def create():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        data = request.get_json()
-        if not data.get('nombre') or len(data['nombre'].strip()) < 3:
-            return jsonify({"status": "error", "message": "El nombre debe tener al menos 3 caracteres"}), 400
-        if model.nombre_exists(data['nombre'].strip()):
-            return jsonify({"status": "error", "message": "Ya existe una sucursal con ese nombre"}), 400
+        data, errors = _validate_sucursal(request.get_json() or {})
+        if errors:
+            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+        if model.nombre_exists(data['nombre']):
+            return jsonify({"status": "error", "message": "Ya existe una sucursal con ese nombre.", "errors": {"nombre": "Ya existe una sucursal con ese nombre."}}), 400
+        if data.get('email') and model.email_exists_globally(data['email']):
+            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         sid = model.create(data)
         bitacora.log_action(session['user_id'], 'CREAR', 'SUCURSALES',
             f"Sucursal creada: {data['nombre']}", request.remote_addr)
-        return jsonify({"status": "success", "message": "Sucursal creada", "id": sid})
+        return jsonify({"status": "success", "message": "Sucursal registrada correctamente.", "id": sid})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -59,15 +96,17 @@ def update(sid):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        data = request.get_json()
-        if not data.get('nombre') or len(data['nombre'].strip()) < 3:
-            return jsonify({"status": "error", "message": "El nombre debe tener al menos 3 caracteres"}), 400
-        if model.nombre_exists(data['nombre'].strip(), sid):
-            return jsonify({"status": "error", "message": "Ya existe una sucursal con ese nombre"}), 400
+        data, errors = _validate_sucursal(request.get_json() or {})
+        if errors:
+            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+        if model.nombre_exists(data['nombre'], sid):
+            return jsonify({"status": "error", "message": "Ya existe una sucursal con ese nombre.", "errors": {"nombre": "Ya existe una sucursal con ese nombre."}}), 400
+        if data.get('email') and model.email_exists_globally(data['email'], {"sucursal_id": sid}):
+            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         model.update_sucursal(sid, data)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'SUCURSALES',
             f"Sucursal modificada ID: {sid}", request.remote_addr)
-        return jsonify({"status": "success", "message": "Sucursal actualizada"})
+        return jsonify({"status": "success", "message": "Sucursal modificada correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -80,7 +119,7 @@ def delete(sid):
         model.soft_delete(sid)
         bitacora.log_action(session['user_id'], 'ELIMINAR', 'SUCURSALES',
             f"Sucursal desactivada ID: {sid}", request.remote_addr)
-        return jsonify({"status": "success", "message": "Sucursal desactivada"})
+        return jsonify({"status": "success", "message": "Sucursal eliminada correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -93,6 +132,6 @@ def toggle(sid):
         model.toggle_estado(sid)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'SUCURSALES',
             f"Estado de sucursal cambiado ID: {sid}", request.remote_addr)
-        return jsonify({"status": "success", "message": "Estado actualizado"})
+        return jsonify({"status": "success", "message": "Sucursal eliminada correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

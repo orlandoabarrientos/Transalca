@@ -7,7 +7,7 @@ class ProductModel(Connection):
 
     def get_all(self):
         return self.fetch_all("transalca",
-            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, s.nombre as sucursal_nombre, COALESCE(SUM(i.stock),0) as stock FROM productos p LEFT JOIN sucursales s ON p.sucursal_id = s.id LEFT JOIN inventario i ON p.codigo = i.producto_codigo GROUP BY p.codigo ORDER BY p.nombre")
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, s.nombre as sucursal_nombre, COALESCE(SUM(i.stock),0) as stock FROM productos p LEFT JOIN sucursales s ON p.sucursal_id = s.id LEFT JOIN inventario i ON p.codigo = i.producto_codigo WHERE p.estado = 1 GROUP BY p.codigo ORDER BY p.nombre")
 
     def get_active(self):
         return self.fetch_all("transalca",
@@ -56,7 +56,7 @@ class ProductModel(Connection):
         return self.update("transalca", "UPDATE productos SET estado = 0 WHERE codigo = %s", (codigo,))
 
     def toggle_estado(self, codigo):
-        return self.update("transalca", "UPDATE productos SET estado = IF(estado=1,0,1) WHERE codigo = %s", (codigo,))
+        return self.soft_delete(codigo)
 
     def codigo_exists(self, codigo, exclude_codigo=None):
         if exclude_codigo:

@@ -39,13 +39,14 @@ class ProfileModel(Connection):
         return updated
 
     def update_email(self, user_id, email):
-        existing = self.fetch_one("mantenimiento",
-            "SELECT id FROM usuarios WHERE email = %s AND id != %s", (email, user_id))
-        if existing:
+        user = self.get_profile(user_id)
+        exclude = {"usuario_id": user_id}
+        if user and user.get('tipo') == 'cliente':
+            exclude["cliente_cedula"] = user.get('cedula')
+        if self.email_exists_globally(email, exclude):
             return False
         self.update("mantenimiento",
             "UPDATE usuarios SET email = %s WHERE id = %s", (email, user_id))
-        user = self.get_profile(user_id)
         if user and user.get('tipo') == 'cliente':
             self.update("transalca", "UPDATE clientes SET email=%s WHERE cedula=%s", (email, user['cedula']))
         return True

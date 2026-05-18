@@ -1,4 +1,5 @@
 let supplierRifTimer = null;
+let supplierEmailTimer = null;
 
 $(document).ready(function() {
     $('#sidebarContainer').load('/components/admin_sidebar.html', () => {
@@ -16,6 +17,7 @@ $(document).ready(function() {
     Validator.setupRealtime('supplierForm');
     document.getElementById('rif')?.addEventListener('input', validateUniqueSupplierRif);
     document.getElementById('rif_prefijo')?.addEventListener('change', validateUniqueSupplierRif);
+    document.getElementById('email')?.addEventListener('input', validateUniqueSupplierEmail);
 });
 
 function loadData() {
@@ -32,7 +34,7 @@ function loadData() {
                 <td>${statusBadge(s.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(s.rif)}')" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm ${s.estado ? 'btn-warning' : 'btn-success'}" onclick="toggleEstado('${encodeURIComponent(s.rif)}')" title="${s.estado ? 'Eliminar' : 'Reactivar'}"><i class="bi bi-${s.estado ? 'trash' : 'arrow-clockwise'}"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${encodeURIComponent(s.rif)}')" title="Eliminar"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -40,6 +42,32 @@ function loadData() {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-truck"></i><p>No hay proveedores registrados</p></div></td></tr>';
         }
     });
+}
+
+function validateUniqueSupplierEmail() {
+    clearTimeout(supplierEmailTimer);
+    supplierEmailTimer = setTimeout(async () => {
+        const input = document.getElementById('email');
+        const oldRif = document.getElementById('supplierOldRif')?.value || buildRifValue('rif_prefijo', 'rif');
+        const value = (input?.value || '').trim();
+        if (!input) return;
+        if (!value) {
+            clearFieldError(input);
+            updateFormSubmitState('supplierForm');
+            return;
+        }
+        if (!Validator.validateField('supplierForm', 'email')) {
+            updateFormSubmitState('supplierForm');
+            return;
+        }
+        const res = await apiCall(`/api/suppliers/check-unique?field=email&value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(oldRif)}`);
+        if (res.status === 'success' && res.exists) {
+            setFieldError(input, 'Este correo ya esta registrado.');
+        } else if (res.status === 'success') {
+            clearFieldError(input);
+        }
+        updateFormSubmitState('supplierForm');
+    }, 350);
 }
 
 function openModal(rif = null) {
@@ -98,13 +126,13 @@ function saveData() {
 
 function toggleEstado(rif) {
     rif = decodeURIComponent(rif);
-    confirmAction('Cambiar estado de este proveedor?', () => {
+    confirmAction('Eliminar este proveedor?', () => {
         apiCall('/api/suppliers/toggle', 'PUT', { rif }).then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message);
             loadData();
         });
-    });
+    }, { confirmText: 'Eliminar' });
 }
 
 function validateUniqueSupplierRif() {

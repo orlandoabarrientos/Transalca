@@ -32,6 +32,7 @@ $(document).ready(function () {
     Validator.setupRealtime('vehicleForm');
     $('#fCedula').on('input', debounce(validateUniqueClientCedula, 350));
     $('#fCedulaPrefijo').on('change', debounce(validateUniqueClientCedula, 350));
+    $('#fEmail').on('input', debounce(validateUniqueClientEmail, 350));
 });
 
 function debounce(fn, ms) {
@@ -63,7 +64,6 @@ function loadClients() {
         }
         r.data.forEach(c => {
             const estado = c.estado ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>';
-            const stateTitle = c.estado ? 'Eliminar' : 'Reactivar';
             tbody.append(`
                 <tr style="cursor:pointer" onclick="showDetail('${c.cedula}')">
                     <td><strong>${c.cedula}</strong></td>
@@ -74,7 +74,7 @@ function loadClients() {
                     <td>${estado}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); editClient('${c.cedula}')" title="Editar"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); toggleClient('${c.cedula}')" title="${stateTitle}"><i class="bi bi-${c.estado ? 'trash' : 'arrow-clockwise'}"></i></button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); toggleClient('${c.cedula}')" title="Eliminar"><i class="bi bi-trash"></i></button>
                     </td>
                 </tr>
             `);
@@ -252,10 +252,10 @@ function saveClient() {
 }
 
 function toggleClient(cedula) {
-    confirmAction('Eliminar o reactivar este cliente?', () => {
+    confirmAction('Eliminar este cliente?', () => {
         $.ajax({ url: `/api/clients/${cedula}/toggle`, type: 'PUT',
             success: function (r) { showToast(r.message, 'success'); loadClients(); loadStats(); },
-            error: function (x) { showToast(x.responseJSON?.message || 'No se pudo cambiar el estado del cliente', 'error'); }
+            error: function (x) { showToast(x.responseJSON?.message || 'No se pudo eliminar el cliente', 'error'); }
         });
     });
 }
@@ -383,16 +383,38 @@ async function validateUniqueClientCedula() {
         }
         if (data.status === 'success' && data.exists && !data.active) {
             clearFieldError(input);
-            const fb = getFieldFeedback(input);
-            if (fb) {
-                fb.textContent = 'Cliente inactivo: se reactivara al guardar.';
-                fb.style.display = 'block';
-                fb.style.color = 'var(--warning)';
-            }
             updateFormSubmitState('clientForm');
             return true;
         }
         clearFieldError(input);
+        updateFormSubmitState('clientForm');
+    } catch (e) {}
+    return true;
+}
+
+async function validateUniqueClientEmail() {
+    const input = document.getElementById('fEmail');
+    if (!input) return true;
+    const value = input.value.trim();
+    if (!value) {
+        clearFieldError(input);
+        updateFormSubmitState('clientForm');
+        return true;
+    }
+    if (!Validator.validateField('clientForm', 'fEmail')) {
+        updateFormSubmitState('clientForm');
+        return false;
+    }
+    try {
+        const exclude = document.getElementById('editCedula')?.value || buildDocumentValue('fCedulaPrefijo', 'fCedula');
+        const res = await fetch(`/api/clients/check-unique?field=email&value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(exclude)}`, { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.status === 'success' && data.exists) {
+            setFieldError(input, 'Este correo ya esta registrado.');
+            updateFormSubmitState('clientForm');
+            return false;
+        }
+        if (data.status === 'success') clearFieldError(input);
         updateFormSubmitState('clientForm');
     } catch (e) {}
     return true;

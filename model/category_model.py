@@ -7,7 +7,7 @@ class CategoryModel(Connection):
 
     def get_all(self):
         return self.fetch_all("transalca",
-            "SELECT c.*, (SELECT COUNT(*) FROM productos WHERE categoria = c.nombre) as total_productos FROM categorias c ORDER BY c.nombre")
+            "SELECT c.*, (SELECT COUNT(*) FROM productos WHERE categoria = c.nombre AND estado = 1) as total_productos FROM categorias c WHERE c.estado = 1 ORDER BY c.nombre")
 
     def get_active(self):
         return self.fetch_all("transalca",
@@ -30,7 +30,7 @@ class CategoryModel(Connection):
         return self.update("transalca", "UPDATE categorias SET estado = 0 WHERE nombre = %s", (nombre,))
 
     def toggle_estado(self, nombre):
-        return self.update("transalca", "UPDATE categorias SET estado = IF(estado=1,0,1) WHERE nombre = %s", (nombre,))
+        return self.soft_delete(nombre)
 
     def nombre_exists(self, nombre, exclude_nombre=None):
         if exclude_nombre:

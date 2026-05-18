@@ -125,9 +125,28 @@ function showToast(message, type = 'success') {
     toast.className = `toast-custom ${type}`;
     const icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill' };
     const colors = { success: 'var(--success)', error: 'var(--danger)', warning: 'var(--warning)', info: 'var(--info)' };
-    toast.innerHTML = `<i class="bi ${icons[type] || icons.info}" style="color:${colors[type]};font-size:1.3rem;"></i><span style="flex:1;font-weight:500;font-size:0.85rem;">${escapeHtml(normalizeSystemMessage(message))}</span><i class="bi bi-x close-toast" style="cursor:pointer;color:var(--text-muted);font-size:1.1rem;" onclick="this.parentElement.remove()"></i>`;
+    toast.innerHTML = `<i class="bi ${icons[type] || icons.info}" style="color:${colors[type]};font-size:1.3rem;"></i><span style="flex:1;font-weight:500;font-size:0.85rem;">${escapeHtml(normalizeSystemMessage(message))}</span><button type="button" class="toast-close close-toast" aria-label="Cerrar"><i class="bi bi-x"></i></button>`;
     container.appendChild(toast);
-    setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 4000);
+    setTimeout(() => dismissToast(toast), 5000);
+}
+
+function dismissToast(toast) {
+    if (!toast || !toast.parentNode) return;
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    setTimeout(() => toast.remove(), 300);
+}
+
+function installSweetAlertDefaults() {
+    if (!window.Swal || window.Swal.__transalcaDefaults) return;
+    const originalFire = window.Swal.fire.bind(window.Swal);
+    window.Swal.fire = function(options, ...args) {
+        if (typeof options === 'object' && options && !options.showCancelButton && !options.timer) {
+            options = { timer: 5000, timerProgressBar: true, showConfirmButton: true, ...options };
+        }
+        return originalFire(options, ...args);
+    };
+    window.Swal.__transalcaDefaults = true;
 }
 
 const Validator = {
@@ -448,6 +467,50 @@ function updateFormSubmitState(formId) {
     });
 }
 
+function inputNumericMode(input) {
+    const key = `${input.id || ''} ${input.name || ''}`.toLowerCase();
+    if (input.dataset.numeric === 'decimal') return 'decimal';
+    if (input.dataset.numeric === 'integer') return 'integer';
+    if (input.type === 'number') {
+        return ['precio', 'monto', 'tasa', 'unitario', 'total'].some(token => key.includes(token)) ? 'decimal' : 'integer';
+    }
+    if (key.includes('telefono') || key.includes('phone')) return 'phone';
+    if (['cedula', 'rif', 'cantidad', 'duracion', 'kilometraje', 'anio', 'ano', 'puntos', 'stock'].some(token => key.includes(token))) return 'integer';
+    return '';
+}
+
+function sanitizeNumericValue(value, mode) {
+    let text = String(value || '');
+    if (mode === 'phone' || mode === 'integer') return text.replace(/\D/g, '');
+    if (mode === 'decimal') {
+        text = text.replace(',', '.').replace(/[^0-9.]/g, '');
+        const parts = text.split('.');
+        return parts.length > 1 ? `${parts.shift()}.${parts.join('').slice(0, 2)}` : text;
+    }
+    return text;
+}
+
+function bindInputGuards() {
+    if (document.body.dataset.inputGuardsBound === '1') return;
+    document.body.dataset.inputGuardsBound = '1';
+    document.body.addEventListener('beforeinput', event => {
+        const input = event.target.closest?.('input');
+        if (!input || event.inputType?.startsWith('delete')) return;
+        const mode = inputNumericMode(input);
+        if (!mode || event.data == null) return;
+        const allowed = mode === 'decimal' ? /^[0-9.,]+$/ : /^\d+$/;
+        if (!allowed.test(event.data)) event.preventDefault();
+    });
+    document.body.addEventListener('input', event => {
+        const input = event.target.closest?.('input');
+        if (!input) return;
+        const mode = inputNumericMode(input);
+        if (!mode) return;
+        const clean = sanitizeNumericValue(input.value, mode);
+        if (input.value !== clean) input.value = clean;
+    });
+}
+
 function bindModalValidationReset() {
     document.querySelectorAll('.modal').forEach(modal => {
         if (modal.dataset.validationResetBound) return;
@@ -587,8 +650,8 @@ function mutationNeedsEnhancement(mutation) {
     if (mutation.target?.closest?.('select.form-select')) return true;
     for (const node of mutation.addedNodes || []) {
         if (node.nodeType !== 1 || isNoisyMutationNode(node)) continue;
-        if (node.matches?.('select.form-select, .modal, [data-usd-price]')) return true;
-        if (node.querySelector?.('select.form-select, .modal, [data-usd-price]')) return true;
+        if (node.matches?.('select.form-select, .modal, [data-usd-price], [data-currency-toggle-label]')) return true;
+        if (node.querySelector?.('select.form-select, .modal, [data-usd-price], [data-currency-toggle-label]')) return true;
     }
     return false;
 }
@@ -599,6 +662,7 @@ function runDomEnhancements(root = document) {
     try {
         bindModalValidationReset();
         bindReliableSidebarNavigation();
+        bindInputGuards();
         enhanceSearchableSelects(root);
         hydrateDualPrices(root);
     } finally {
@@ -611,12 +675,35 @@ function scheduleDomEnhancements(root = document) {
     domEnhancementTimer = setTimeout(() => runDomEnhancements(root), 120);
 }
 
+function getSelectedCurrency() {
+    const currency = (localStorage.getItem('transalca_currency') || 'USD').toUpperCase();
+    return currency === 'VES' ? 'VES' : 'USD';
+}
+
+function setSelectedCurrency(currency) {
+    localStorage.setItem('transalca_currency', currency === 'VES' ? 'VES' : 'USD');
+    hydrateDualPrices();
+    updateCurrencyMenuLabel();
+}
+
+function toggleCurrency() {
+    setSelectedCurrency(getSelectedCurrency() === 'USD' ? 'VES' : 'USD');
+}
+
+function updateCurrencyMenuLabel() {
+    const currency = getSelectedCurrency();
+    document.querySelectorAll('[data-currency-toggle-label]').forEach(el => {
+        el.textContent = currency === 'USD' ? 'Ver precios en Bs' : 'Ver precios en dolares';
+    });
+}
+
 function formatUsdBs(amount) {
     const usd = parseFloat(amount || 0);
-    const bs = convertUsdToBs(usd);
-    const usdText = `$${formatCurrency(usd)}`;
-    if (!bs) return usdText;
-    return `${usdText} / Bs. ${formatCurrency(bs)}`;
+    if (getSelectedCurrency() === 'VES') {
+        const bs = convertUsdToBs(usd);
+        return bs ? `Bs. ${formatCurrency(bs)}` : `$${formatCurrency(usd)}`;
+    }
+    return `$${formatCurrency(usd)}`;
 }
 
 function convertUsdToBs(amount) {
@@ -657,6 +744,7 @@ function hydrateDualPrices(root = document) {
     root.querySelectorAll('[data-usd-price]').forEach(el => {
         el.textContent = formatUsdBs(el.dataset.usdPrice);
     });
+    updateCurrencyMenuLabel();
 }
 
 function formatCurrency(amount) {
@@ -678,6 +766,7 @@ function statusBadge(estado) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    installSweetAlertDefaults();
     cleanupUiLocks();
     const path = window.location.pathname;
     document.querySelectorAll('.sidebar .nav-link').forEach(link => {
@@ -702,6 +791,18 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.body.addEventListener('click', async (e) => {
+    const closeToast = e.target.closest('.close-toast');
+    if (closeToast) {
+        e.preventDefault();
+        dismissToast(closeToast.closest('.toast-custom'));
+        return;
+    }
+    const currencyToggle = e.target.closest('[data-currency-toggle]');
+    if (currencyToggle) {
+        e.preventDefault();
+        toggleCurrency();
+        return;
+    }
     const logoutTarget = e.target.closest('#btnLogout, #navLogout');
     if (logoutTarget) {
         e.preventDefault();

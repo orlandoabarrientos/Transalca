@@ -6,7 +6,7 @@ class RoleModel(Connection):
         super().__init__()
 
     def get_all(self):
-        return self.fetch_all("mantenimiento", "SELECT * FROM roles ORDER BY id")
+        return self.fetch_all("mantenimiento", "SELECT * FROM roles WHERE estado = 1 ORDER BY id")
 
     def get_by_id(self, role_id):
         return self.fetch_one("mantenimiento", "SELECT * FROM roles WHERE id = %s", (role_id,))
@@ -27,9 +27,8 @@ class RoleModel(Connection):
             return False
         if not role:
             return None
-        new_estado = 0 if int(role.get('estado') or 0) == 1 else 1
-        self.update("mantenimiento", "UPDATE roles SET estado = %s WHERE id = %s", (new_estado, role_id))
-        return new_estado
+        self.update("mantenimiento", "UPDATE roles SET estado = 0 WHERE id = %s", (role_id,))
+        return 0
 
     def update_status(self, role_id, estado):
         return self.update("mantenimiento",

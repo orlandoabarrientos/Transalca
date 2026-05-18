@@ -99,6 +99,13 @@ def check_unique():
             client = model.get_by_cedula(cedula)
             exists = bool(client and cedula != exclude)
             return jsonify({"status": "success", "exists": exists, "active": bool(client.get('estado')) if client else False})
+        if field == 'email':
+            errors = {}
+            email = normalize_email(errors, value, required=True)
+            if errors:
+                return jsonify({"status": "error", "message": errors['email']}), 400
+            exists = model.email_exists_globally(email, {"cliente_cedula": exclude, "usuario_cedula": exclude})
+            return jsonify({"status": "success", "exists": exists})
         return jsonify({"status": "error", "message": "Campo no valido."}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo validar el dato."}), 500
@@ -143,9 +150,11 @@ def create():
         existing = model.get_by_cedula(clean['cedula'])
         if existing and existing.get('estado'):
             return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
+        if clean.get('email') and model.email_exists_globally(clean['email'], {"cliente_cedula": clean['cedula'], "usuario_cedula": clean['cedula']}):
+            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         result = model.create(clean)
         if result.get('reactivated'):
-            return jsonify({"status": "success", "message": "Cliente reactivado y modificado correctamente.", "id": result.get('cedula')}), 200
+            return jsonify({"status": "success", "message": "Cliente registrado correctamente.", "id": result.get('cedula')}), 201
         return jsonify({"status": "success", "message": "Cliente registrado correctamente.", "id": result.get('cedula')}), 201
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
@@ -165,6 +174,8 @@ def update(cedula):
         clean, errors = _validate_client({**data, 'cedula': cedula}, True)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+        if clean.get('email') and model.email_exists_globally(clean['email'], {"cliente_cedula": cedula, "usuario_cedula": cedula}):
+            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         model.update_client(cedula, clean)
         return jsonify({"status": "success", "message": "Cliente modificado correctamente."})
     except Exception as e:
@@ -180,8 +191,7 @@ def toggle(cedula):
         if not is_employee():
             return deny()
         estado = model.toggle_estado(cedula)
-        message = "Cliente reactivado correctamente." if estado else "Cliente eliminado correctamente."
-        return jsonify({"status": "success", "message": message, "estado": estado})
+        return jsonify({"status": "success", "message": "Cliente eliminado correctamente.", "estado": estado})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 

@@ -32,7 +32,7 @@ function loadData() {
                 <td>${statusBadge(p.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(p.codigo)}')" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm ${p.estado ? 'btn-warning' : 'btn-success'}" onclick="toggleEstado('${encodeURIComponent(p.codigo)}')" title="${p.estado ? 'Eliminar' : 'Reactivar'}"><i class="bi bi-${p.estado ? 'trash' : 'arrow-clockwise'}"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${encodeURIComponent(p.codigo)}')" title="Eliminar"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -121,7 +121,7 @@ function saveData() {
 
 function toggleEstado(codigo) {
     codigo = decodeURIComponent(codigo);
-    confirmAction('Cambiar estado del producto?', () => {
+    confirmAction('Eliminar este producto?', () => {
         apiCall('/api/products/toggle', 'PUT', { codigo }).then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message);

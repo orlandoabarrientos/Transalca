@@ -9,23 +9,10 @@ class ClientModel(Connection):
         rows = self.fetch_all("transalca", f"SHOW COLUMNS FROM {table}")
         return {r['Field'] for r in rows}
 
-    def _norm(self, value):
-        text = (value or '').strip().lower()
-        return '' if text == '0000000' else text
-
     def _user_by_cedula(self, cedula):
         return self.fetch_one("mantenimiento",
             "SELECT id, nombre, apellido, cedula, email, telefono, direccion, tipo FROM usuarios WHERE cedula = %s",
             (cedula,))
-
-    def _conflicts_with_user(self, data, user):
-        conflicts = []
-        for field in ('nombre', 'apellido', 'telefono', 'email'):
-            current = self._norm(user.get(field))
-            incoming = self._norm(data.get(field))
-            if current and incoming and current != incoming:
-                conflicts.append(field)
-        return conflicts
 
     def get_all(self, search=None, estado=None):
         sql = (
@@ -38,9 +25,8 @@ class ClientModel(Connection):
             sql += " AND (c.nombre LIKE %s OR c.apellido LIKE %s OR c.cedula LIKE %s OR c.email LIKE %s OR c.telefono LIKE %s)"
             q = f"%{search}%"
             params.extend([q, q, q, q, q])
-        if estado is not None:
-            sql += " AND c.estado = %s"
-            params.append(int(estado))
+        sql += " AND c.estado = %s"
+        params.append(int(estado) if estado is not None else 1)
         sql += " ORDER BY c.created_at DESC"
         return self.fetch_all("transalca", sql, tuple(params) if params else None)
 
@@ -55,10 +41,6 @@ class ClientModel(Connection):
         user = self._user_by_cedula(cedula)
         if user and user.get('tipo') != 'cliente':
             raise ValueError('La cedula pertenece a un usuario interno')
-        if user:
-            conflicts = self._conflicts_with_user(data, user)
-            if conflicts:
-                raise ValueError('Datos no coinciden con usuario existente: ' + ', '.join(conflicts))
         values = {
             'cedula': cedula,
             'cedula_prefijo': data.get('cedula_prefijo'),
@@ -79,9 +61,17 @@ class ClientModel(Connection):
             params = [values[k] for k in keys if k != 'cedula']
             params.append(cedula)
             self.update("transalca", f"UPDATE clientes SET {', '.join(set_parts)} WHERE cedula=%s", tuple(params))
+            if user:
+                self.update("mantenimiento",
+                    "UPDATE usuarios SET nombre=%s, apellido=%s, telefono=%s, email=%s, direccion=%s WHERE id=%s AND tipo='cliente'",
+                    (values['nombre'], values['apellido'], values['telefono'], values['email'], values['direccion'], user['id']))
             return {'cedula': cedula, 'reactivated': not bool(existing_client.get('estado'))}
         sql = f"INSERT INTO clientes ({', '.join(keys)}) VALUES ({', '.join(['%s'] * len(keys))})"
         self.insert("transalca", sql, tuple(values[k] for k in keys))
+        if user:
+            self.update("mantenimiento",
+                "UPDATE usuarios SET nombre=%s, apellido=%s, telefono=%s, email=%s, direccion=%s WHERE id=%s AND tipo='cliente'",
+                (values['nombre'], values['apellido'], values['telefono'], values['email'], values['direccion'], user['id']))
         return {'cedula': cedula, 'reactivated': False}
 
     def update_client(self, cedula, data):
@@ -112,7 +102,7 @@ class ClientModel(Connection):
 
     def toggle_estado(self, cedula):
         self.update("transalca",
-            "UPDATE clientes SET estado = IF(estado=1, 0, 1) WHERE cedula=%s", (cedula,))
+            "UPDATE clientes SET estado = 0 WHERE cedula=%s", (cedula,))
         client = self.get_by_cedula(cedula)
         return int(client.get('estado') or 0) if client else 0
 
