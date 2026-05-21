@@ -7,7 +7,7 @@ $(document).ready(function() {
     Validator.setRules('tasaForm', {
         fecha: { required: true, requiredMsg: 'Fecha requerida' },
         monto: { required: true, min: 0.01, requiredMsg: 'Monto requerido', minMsg: 'Debe ser mayor a 0' },
-        fuente: { required: true, minLength: 2, requiredMsg: 'Fuente requerida', minLengthMsg: 'Minimo 2 caracteres' }
+        fuente: { required: true, minLength: 2, requiredMsg: 'Fuente requerida', minLengthMsg: 'Mínimo 2 caracteres' }
     });
     Validator.setupRealtime('tasaForm');
 });
@@ -25,8 +25,8 @@ function loadData() {
                 <td class="fw-bold" style="color:var(--primary);">${parseFloat(t.monto).toFixed(2)} Bs</td>
                 <td>${t.fuente}</td>
                 <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${t.id}, '${t.fecha}', ${t.monto}, '${t.fuente}')" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-outline-danger" onclick="deleteData(${t.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${t.id}, '${t.fecha}', ${t.monto}, '${t.fuente}')" title="Modificar Tasa"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-icon btn-sm btn-outline-danger" onclick="deleteData(${t.id})" title="Eliminar Tasa"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -44,20 +44,23 @@ function loadData() {
 function openModal(id = null) {
     Validator.clearForm('tasaForm');
     document.getElementById('tasaId').value = id || '';
-    document.getElementById('modalTitle').textContent = id ? 'Editar Tasa' : 'Registrar Tasa';
+    document.getElementById('modalTitle').textContent = id ? 'Modificar Tasa' : 'Registrar Tasa';
     if (!id) {
         document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
     }
     new bootstrap.Modal(document.getElementById('tasaModal')).show();
+    Validator.initTracking('tasaForm');
 }
 
 function editData(id, fecha, monto, fuente) {
+    Validator.clearForm('tasaForm');
     document.getElementById('tasaId').value = id;
     document.getElementById('fecha').value = fecha.split('T')[0];
     document.getElementById('monto').value = monto;
     document.getElementById('fuente').value = fuente;
-    document.getElementById('modalTitle').textContent = 'Editar Tasa';
+    document.getElementById('modalTitle').textContent = 'Modificar Tasa';
     new bootstrap.Modal(document.getElementById('tasaModal')).show();
+    Validator.initTracking('tasaForm');
 }
 
 function saveData() {
@@ -79,7 +82,7 @@ function saveData() {
 }
 
 function deleteData(id) {
-    confirmAction('¿Eliminar esta tasa?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar esta tasa?', () => {
         apiCall(`/api/tasas/${id}`, 'DELETE').then(res => { showToast(res.message); loadData(); });
     });
 }

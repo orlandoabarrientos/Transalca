@@ -12,7 +12,7 @@ $(document).ready(function() {
         proveedor_rif: { required: true, requiredMsg: 'Seleccione un proveedor' },
         sucursal_id: { required: true, requiredMsg: 'Seleccione una sucursal' },
         producto_codigo: { required: true, requiredMsg: 'Seleccione un producto' },
-        cantidad: { required: true, min: 1, requiredMsg: 'Cantidad requerida', minMsg: 'Minimo 1' }
+        cantidad: { required: true, min: 1, requiredMsg: 'Cantidad requerida', minMsg: 'Mínimo 1' }
     });
     Validator.setupRealtime('inventoryForm');
 });
@@ -71,13 +71,13 @@ function loadOrders() {
                 <td>${o.proveedor_nombre || 'N/A'}</td>
                 <td>${o.sucursal_nombre || 'N/A'}</td>
                 <td>${o.usuario_nombre || 'N/A'}</td>
-                <td>$${formatCurrency(o.total || 0)}</td>
+                <td data-usd-price="${o.total || 0}">${formatUsdBs(o.total || 0)}</td>
                 <td>${formatDate(o.fecha)}</td>
                 <td>${statusBadge(o.estado)}</td>
             </tr>`;
         });
         if (!res.data?.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-archive"></i><p>Sin ordenes de compra</p></div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-archive"></i><p>Sin órdenes de compra registradas</p></div></td></tr>';
         }
     });
 }
@@ -92,6 +92,7 @@ function filterTable() {
 function openModal() {
     Validator.clearForm('inventoryForm');
     new bootstrap.Modal(document.getElementById('inventoryModal')).show();
+    Validator.initTracking('inventoryForm');
 }
 
 function saveOrder() {
@@ -107,7 +108,10 @@ function saveOrder() {
         observaciones: document.getElementById('observaciones').value,
         total: parseInt(document.getElementById('cantidad').value) * (parseFloat(document.getElementById('precio_unitario').value) || 0)
     };
+    const saveBtn = document.querySelector('#inventoryModal .btn-orange');
+    setButtonLoading(saveBtn, true, 'Guardando...');
     apiCall('/api/inventory/purchase-orders', 'POST', data).then(res => {
+        setButtonLoading(saveBtn, false);
         if (res.status === 'error') { Validator.showServerErrors('inventoryForm', res.errors); return showToast(res.message, 'error'); }
         bootstrap.Modal.getInstance(document.getElementById('inventoryModal')).hide();
         showToast(res.message);

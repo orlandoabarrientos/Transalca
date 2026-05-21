@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Promociones - Transalca C.A.</title>
+    <title>Gestionar Promociones - Transalca C.A.</title>
     <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
@@ -12,39 +11,225 @@
     <style>
         .promo-card-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 16px;
-            padding: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            padding: 20px;
         }
 
-        .promo-fidelity-card {
+        /* 3D Physical Plastic Card Design */
+        .promo-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            padding: 10px 0;
+        }
+
+        /* Container wrapper for the premium loyalty cards */
+        .loyalty-card-wrapper {
+            background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 14px;
-            overflow: hidden;
-            background: #fff;
+            border-radius: 20px;
+            padding: 18px;
             box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: var(--transition);
         }
 
-        .promo-fidelity-head {
-            padding: 14px;
-            background: linear-gradient(135deg, #F97316, #EA580C);
+        .loyalty-card-wrapper:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Physical Credit Card Representation */
+        .fidelity-card-physical {
+            width: 100%;
+            aspect-ratio: 1.586; /* Standard credit card ratio */
+            border-radius: 14px;
+            padding: 18px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
             color: #fff;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+            transition: transform 0.3s;
+            text-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.85);
+            background-size: cover !important;
+            background-position: center !important;
+        }
+
+        .fidelity-card-physical::before {
+            content: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 50%);
+            pointer-events: none;
+        }
+
+        .fidelity-card-physical > * {
+            display: none !important;
+        }
+
+        .card-meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1;
+        }
+
+        .card-brand-logo {
+            font-size: 0.95rem;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            color: rgba(255, 255, 255, 0.95);
+            text-transform: uppercase;
+        }
+
+        .card-chip-gold {
+            width: 36px;
+            height: 28px;
+            background: linear-gradient(135deg, #ffd700 0%, #d4af37 50%, #aa7c11 100%);
+            border-radius: 5px;
+            position: relative;
+            box-shadow: inset 0 1px 1px rgba(255,255,255,0.4), 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        .card-chip-gold::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 6px;
+            width: 24px;
+            height: 22px;
+            border: 1px solid rgba(0,0,0,0.2);
+            border-radius: 3px;
+        }
+
+        .card-contactless {
+            font-size: 1.25rem;
+            opacity: 0.8;
+            color: #fff;
+        }
+
+        .card-number-display {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.05rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin: 6px 0;
+            color: #f8fafc;
+            z-index: 1;
+        }
+
+        .card-holder-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            z-index: 1;
+        }
+
+        .card-holder-name {
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #f1f5f9;
+        }
+
+        .card-holder-cedula {
+            font-size: 0.68rem;
+            color: #cbd5e1;
+        }
+
+        .card-status-badge {
+            font-size: 0.6rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        .card-status-badge.active-badge {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border-color: rgba(34, 197, 94, 0.4);
+        }
+
+        .card-status-badge.redeemed-badge {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        .card-status-badge.template-badge {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+
+        /* Stamps & Info Panel */
+        .card-stamps-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .punch-card-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin: 8px 0;
+        }
+
+        .punch-slot {
+            aspect-ratio: 1;
+            border-radius: 50%;
+            border: 2px dashed var(--border);
+            background: var(--bg-main);
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 8px;
+            justify-content: center;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        .promo-fidelity-img {
-            width: 100%;
-            height: 160px;
-            object-fit: cover;
-            background: #f3f4f6;
-            border-bottom: 1px solid var(--border);
+        .punch-slot.filled {
+            border-style: solid;
+            border-color: var(--primary);
+            background: radial-gradient(circle, var(--primary-glow) 0%, var(--primary) 100%);
+            box-shadow: 0 0 8px var(--primary-glow);
+            color: #fff;
+            transform: scale(1.05);
         }
 
-        .promo-fidelity-body {
-            padding: 14px;
+        .punch-slot.filled i {
+            font-size: 0.95rem;
+            color: #fff;
+        }
+
+        .punch-slot.reward-slot {
+            border-color: var(--warning);
+            color: var(--warning);
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        .punch-slot.reward-slot.filled {
+            border-color: var(--warning);
+            background: radial-gradient(circle, rgba(245,158,11,0.2) 0%, var(--warning) 100%);
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
         }
 
         .promo-form-image {
@@ -58,7 +243,6 @@
         }
     </style>
 </head>
-
 <body>
     <div class="admin-layout">
         <div id="sidebarContainer"></div>
@@ -66,14 +250,12 @@
             <div id="navbarContainer"></div>
             <div class="content-area">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="fw-bold mb-0">Promociones y fidelizacion</h4>
-                    <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Nueva
-                        promocion</button>
+                    <h4 class="fw-bold mb-0">Gestionar Promociones</h4>
+                    <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Registrar Promoción</button>
                 </div>
                 <ul class="nav nav-tabs mb-3">
-                    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab"
-                            href="#tabPromos">Promociones</a></li>
-                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabCards">Tarjetas</a></li>
+                    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabPromos">Promociones</a></li>
+                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabCards">Tarjetas de Fidelidad</a></li>
                 </ul>
                 <div class="tab-content">
                     <div class="tab-pane fade show active" id="tabPromos">
@@ -111,50 +293,62 @@
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="modalTitle">Nueva promocion</h5><button type="button" class="btn-close"
-                        data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="modalTitle">Registrar Promoción</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="promoForm"><input type="hidden" id="promoId">
-                        <div class="mb-3"><label class="form-label">Nombre <span class="required">*</span></label><input
-                                type="text" class="form-control" id="nombre" name="nombre">
+                    <form id="promoForm">
+                        <input type="hidden" id="promoId">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="nombre" name="nombre">
                             <div class="invalid-feedback"></div>
                         </div>
-                        <div class="mb-3"><label class="form-label">Descripcion</label><textarea class="form-control"
-                                id="descripcion" name="descripcion" rows="2"></textarea></div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" id="descripcion" name="descripcion" rows="2"></textarea>
+                        </div>
                         <div class="row">
-                            <div class="col-md-6 mb-3"><label class="form-label">Tipo <span
-                                        class="required">*</span></label><select class="form-select" id="tipo"
-                                    name="tipo">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Tipo <span class="required">*</span></label>
+                                <select class="form-select" id="tipo" name="tipo">
                                     <option value="puntos">Puntos</option>
                                     <option value="descuento">Descuento</option>
                                     <option value="gratis">Gratis</option>
                                 </select>
                                 <div class="invalid-feedback"></div>
                             </div>
-                            <div class="col-md-6 mb-3"><label class="form-label">Puntos requeridos</label><input
-                                    type="number" class="form-control" id="puntos_requeridos" name="puntos_requeridos"
-                                    min="1" value="5">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Puntos requeridos</label>
+                                <input type="number" class="form-control" id="puntos_requeridos" name="puntos_requeridos" min="1" value="5">
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
-                        <div class="mb-3"><label class="form-label">Recompensa</label><input type="text"
-                                class="form-control" id="recompensa" name="recompensa"
-                                placeholder="Ej: Alineacion gratis"></div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3"><label class="form-label">Fecha Inicio</label><input type="date"
-                                    class="form-control" id="fecha_inicio" name="fecha_inicio"></div>
-                            <div class="col-md-6 mb-3"><label class="form-label">Fecha Fin</label><input type="date"
-                                    class="form-control" id="fecha_fin" name="fecha_fin"></div>
+                        <div class="mb-3">
+                            <label class="form-label">Recompensa</label>
+                            <input type="text" class="form-control" id="recompensa" name="recompensa" placeholder="Ej: Alineación gratis">
                         </div>
-                        <div class="mb-3"><label class="form-label">Imagen tarjeta</label><input type="file"
-                                class="form-control" id="imagen_tarjeta" accept="image/*"><img id="promoImagePreview"
-                                class="promo-form-image" alt="Vista previa"></div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Fecha Inicio</label>
+                                <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Fecha Fin</label>
+                                <input type="date" class="form-control" id="fecha_fin" name="fecha_fin">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Imagen tarjeta</label>
+                            <input type="file" class="form-control" id="imagen_tarjeta" accept="image/*">
+                            <img id="promoImagePreview" class="promo-form-image" alt="Vista previa">
+                        </div>
                     </form>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary"
-                        data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-orange" id="btnSavePromo"
-                        onclick="saveData()">Guardar</button></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-orange" id="btnSavePromo" onclick="saveData()">Guardar</button>
+                </div>
             </div>
         </div>
     </div>
@@ -163,5 +357,4 @@
     <script src="/public/js/admin_common.js"></script>
     <script src="/public/js/promotions.js"></script>
 </body>
-
 </html>

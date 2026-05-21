@@ -136,8 +136,9 @@ async function loadDashboard() {
         if (res.data?.length) {
             tbody.innerHTML = '';
             res.data.forEach(o => {
-                const badge = o.estado === 'aprobado' ? 'badge-active' : o.estado === 'pendiente' ? 'badge-pending' : 'badge-inactive';
-                tbody.innerHTML += `<tr><td>#${o.id}</td><td>${o.cliente_nombre || 'N/A'}</td><td>$${formatCurrency(o.total)}</td><td><span class="badge-status ${badge}">${o.estado}</span></td><td>${formatDate(o.fecha)}</td></tr>`;
+                const st = String(o.estado || '').toLowerCase();
+                const badge = ['aprobado', 'aprobada', 'pagado', 'pagada', 'verificado', 'verificada', 'entregado', 'entregada'].includes(st) ? 'badge-active' : st === 'pendiente' ? 'badge-pending' : 'badge-inactive';
+                tbody.innerHTML += `<tr><td>#${o.id}</td><td>${o.cliente_nombre || 'N/A'}</td><td data-usd-price="${o.total}">${formatUsdBs(o.total)}</td><td><span class="badge-status ${badge}">${o.estado}</span></td><td>${formatDate(o.fecha)}</td></tr>`;
             });
         }
     } catch(e) {}

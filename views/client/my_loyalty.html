@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+
     <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
@@ -15,213 +15,211 @@
     <style>
         .loyalty-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 24px;
+            padding: 10px 0;
         }
 
-        .fidelity-card {
+        /* Container wrapper for the premium loyalty cards */
+        .loyalty-card-wrapper {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             border-radius: 20px;
-            padding: 28px;
-            color: #fff;
+            padding: 18px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: var(--transition);
+        }
+
+        .loyalty-card-wrapper:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Physical Credit Card Representation */
+        .fidelity-card-physical {
+            width: 100%;
+            aspect-ratio: 1.586; /* Standard credit card ratio */
+            border-radius: 14px;
+            padding: 18px;
             position: relative;
             overflow: hidden;
-            min-height: 260px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-            transition: transform 0.3s, box-shadow 0.3s;
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+            transition: transform 0.3s;
+            text-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.85);
+            background-size: cover !important;
+            background-position: center !important;
         }
 
-        .fidelity-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-        }
-
-        .fidelity-card::before {
-            content: '';
-            position: absolute;
-            top: -40px;
-            right: -40px;
-            width: 140px;
-            height: 140px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .fidelity-card::after {
-            content: '';
-            position: absolute;
-            bottom: -30px;
-            left: -30px;
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.06);
-        }
-
-        .fidelity-card .card-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            position: relative;
-            z-index: 1;
-        }
-
-        .fidelity-card .promo-name {
-            font-size: 1.15rem;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-        }
-
-        .fidelity-card .brand-label {
-            font-size: 0.65rem;
-            opacity: 0.7;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-top: 2px;
-        }
-
-        .fidelity-card .card-icon {
-            font-size: 2.2rem;
-            opacity: 0.9;
-        }
-
-        .progress-section {
-            position: relative;
-            z-index: 1;
-            margin: 20px 0 10px;
-        }
-
-        .progress-label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.75rem;
-            margin-bottom: 8px;
-            opacity: 0.85;
-        }
-
-        .progress-track {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            height: 14px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .progress-fill {
-            height: 100%;
-            border-radius: 12px;
-            background: linear-gradient(90deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.9));
-            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-        }
-
-        .progress-fill::after {
-            content: '';
+        .fidelity-card-physical::before {
+            content: none;
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
-            animation: shimmer 2s infinite;
+            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 50%);
+            pointer-events: none;
         }
 
-        @keyframes shimmer {
-            0% {
-                transform: translateX(-100%);
-            }
-
-            100% {
-                transform: translateX(100%);
-            }
+        .fidelity-card-physical > * {
+            display: none !important;
         }
 
-        .stamps-row {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-top: 12px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .stamp {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.85rem;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            background: rgba(255, 255, 255, 0.08);
-            transition: all 0.3s;
-        }
-
-        .stamp.filled {
-            background: rgba(255, 255, 255, 0.95);
-            color: #0f3460;
-            border-color: rgba(255, 255, 255, 0.95);
-            font-weight: 700;
-        }
-
-        .stamp.filled i {
-            color: #0f3460;
-        }
-
-        .card-bottom {
+        .card-meta-row {
             display: flex;
             justify-content: space-between;
-            align-items: flex-end;
-            position: relative;
+            align-items: center;
             z-index: 1;
-            margin-top: 16px;
         }
 
-        .reward-info {
-            font-size: 0.78rem;
-            opacity: 0.9;
-        }
-
-        .status-pill {
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 0.72rem;
-            font-weight: 700;
+        .card-brand-logo {
+            font-size: 0.95rem;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            color: rgba(255, 255, 255, 0.95);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
-        .status-active {
-            background: rgba(255, 255, 255, 0.2);
+        .card-chip-gold {
+            width: 36px;
+            height: 28px;
+            background: linear-gradient(135deg, #ffd700 0%, #d4af37 50%, #aa7c11 100%);
+            border-radius: 5px;
+            position: relative;
+            box-shadow: inset 0 1px 1px rgba(255,255,255,0.4), 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        .card-chip-gold::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 6px;
+            width: 24px;
+            height: 22px;
+            border: 1px solid rgba(0,0,0,0.2);
+            border-radius: 3px;
+        }
+
+        .card-contactless {
+            font-size: 1.25rem;
+            opacity: 0.8;
             color: #fff;
         }
 
-        .status-redeemed {
-            background: rgba(255, 255, 255, 0.95);
-            color: #059669;
+        .card-number-display {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.05rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin: 6px 0;
+            color: #f8fafc;
+            z-index: 1;
         }
 
-        .grad-active {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+        .card-holder-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            z-index: 1;
         }
 
-        .grad-redeemed {
-            background: linear-gradient(135deg, #059669 0%, #34d399 100%);
+        .card-holder-name {
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #f1f5f9;
         }
 
-        .grad-promo1 {
-            background: linear-gradient(135deg, #e94560 0%, #0f3460 100%);
+        .card-holder-cedula {
+            font-size: 0.68rem;
+            color: #cbd5e1;
         }
 
-        .grad-promo2 {
-            background: linear-gradient(135deg, #6c3483 0%, #2874a6 100%);
+        .card-status-badge {
+            font-size: 0.6rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.25);
         }
 
-        .grad-promo3 {
-            background: linear-gradient(135deg, #d35400 0%, #e67e22 100%);
+        .card-status-badge.active-badge {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border-color: rgba(34, 197, 94, 0.4);
+        }
+
+        .card-status-badge.redeemed-badge {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        /* Stamps & Info Panel */
+        .card-stamps-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .punch-card-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin: 8px 0;
+        }
+
+        .punch-slot {
+            aspect-ratio: 1;
+            border-radius: 50%;
+            border: 2px dashed var(--border);
+            background: var(--bg-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .punch-slot.filled {
+            border-style: solid;
+            border-color: var(--primary);
+            background: radial-gradient(circle, var(--primary-glow) 0%, var(--primary) 100%);
+            box-shadow: 0 0 8px var(--primary-glow);
+            color: #fff;
+            transform: scale(1.05);
+        }
+
+        .punch-slot.filled i {
+            font-size: 0.95rem;
+            color: #fff;
+        }
+
+        .punch-slot.reward-slot {
+            border-color: var(--warning);
+            color: var(--warning);
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        .punch-slot.reward-slot.filled {
+            border-color: var(--warning);
+            background: radial-gradient(circle, rgba(245,158,11,0.2) 0%, var(--warning) 100%);
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
         }
     </style>
 </head>
@@ -230,55 +228,108 @@
     <div id="navbarContainer"></div>
     <div class="container py-4">
         <h3 class="fw-bold mb-2"><i class="bi bi-gift-fill me-2" style="color:var(--highlight);"></i>Mi Programa de
-            Fidelización</h3>
+            FidelizaciÃ³n</h3>
         <p class="text-muted mb-4">Acumula puntos con tus compras y canjea recompensas exclusivas.</p>
         <div class="loyalty-grid" id="myCards"></div>
         <div id="noCards" class="text-center py-5" style="display:none;">
             <i class="bi bi-gift fs-1 text-muted"></i>
-            <p class="text-muted mt-2">Aún no tienes tarjetas de fidelización.</p>
-            <p class="text-muted">¡Realiza tu primera compra para comenzar a acumular puntos!</p>
+            <p class="text-muted mt-2">AÃºn no tienes tarjetas de fidelizaciÃ³n.</p>
+            <p class="text-muted">Â¡Realiza tu primera compra para comenzar a acumular puntos!</p>
         </div>
     </div>
     <div id="footerContainer"></div>
     <script src="/public/jquery/jquery.min.js"></script>
     <script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
     <script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
-    <script src="/public/js/admin_common.js"></script>
     <script src="/public/js/client_common.js"></script>
     <script src="/componente_ia/chat_widget.js"></script>
     <script>
-        const gradients = ['grad-promo1', 'grad-promo2', 'grad-promo3'];
+        function formatCardNumber(id) {
+            const padded = String(id || 0).padStart(8, '0');
+            return `4318 0092 ${padded.slice(0, 4)} ${padded.slice(4)}`;
+        }
+
+        function getCardBackground(imagenTarjeta) {
+            if (imagenTarjeta) {
+                const url = `/public/assets/images/${encodeURIComponent(imagenTarjeta)}`;
+                return `url('${url}')`;
+            }
+            return 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)';
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         $(document).ready(function () {
             $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
             $('#footerContainer').load('/components/client_footer.html');
             $.get('/api/promotions/cards/my', function (r) {
                 if (!r.data || r.data.length === 0) { $('#noCards').show(); return; }
                 var html = '';
-                r.data.forEach(function (card, idx) {
-                    var pct = Math.min(100, Math.round((card.puntos_actuales / card.puntos_requeridos) * 100));
-                    var gradClass = card.canjeada ? 'grad-redeemed' : gradients[idx % gradients.length];
-                    var icon = card.canjeada ? 'bi-trophy-fill' : 'bi-gem';
-                    var statusClass = card.canjeada ? 'status-redeemed' : 'status-active';
-                    var statusText = card.canjeada ? '✓ CANJEADA' : 'ACTIVA';
-                    var stamps = '';
-                    for (var i = 0; i < card.puntos_requeridos; i++) {
-                        stamps += '<div class="stamp ' + (i < card.puntos_actuales ? 'filled' : '') + '"><i class="bi ' + (i < card.puntos_actuales ? 'bi-check-lg' : 'bi-circle') + '" style="font-size:0.7rem;"></i></div>';
+                r.data.forEach(function (card) {
+                    var accumulated = card.puntos_acumulados || 0;
+                    var required = card.puntos_requeridos || 0;
+
+                    var stampsHtml = '<div class="punch-card-grid">';
+                    for (var i = 1; i <= required; i++) {
+                        var isReward = (i === required);
+                        var isFilled = (i <= accumulated);
+
+                        var slotClass = 'punch-slot';
+                        if (isReward) slotClass += ' reward-slot';
+                        if (isFilled) slotClass += ' filled';
+
+                        var slotContent = '';
+                        if (isFilled) {
+                            slotContent = isReward ? '<i class="bi bi-gift-fill"></i>' : '<i class="bi bi-patch-check-fill"></i>';
+                        } else {
+                            slotContent = isReward ? '<i class="bi bi-gift"></i>' : i;
+                        }
+
+                        stampsHtml += '<div class="' + slotClass + '">' + slotContent + '</div>';
                     }
-                    html += '<div class="fidelity-card ' + gradClass + '">' +
-                        '<div class="card-top">' +
-                        '<div><div class="promo-name">' + card.promocion_nombre + '</div><div class="brand-label">TRANSALCA C.A.</div></div>' +
-                        '<i class="bi ' + icon + ' card-icon"></i>' +
+                    stampsHtml += '</div>';
+
+                    var bg = getCardBackground(card.imagen_tarjeta);
+                    var cardNum = formatCardNumber(card.id);
+                    var statusClass = card.canjeada ? 'redeemed-badge' : 'active-badge';
+                    var statusText = card.canjeada ? 'Canjeada' : 'Activa';
+
+                    html += '<div class="loyalty-card-wrapper fade-in-up">' +
+                        '<div class="fidelity-card-physical" style="background: ' + bg + ';">' +
+                            '<div class="card-meta-row">' +
+                                '<span class="card-brand-logo">TRANSALCA</span>' +
+                                '<span class="card-status-badge ' + statusClass + '">' + statusText + '</span>' +
+                            '</div>' +
+                            '<div class="card-meta-row mt-2">' +
+                                '<div class="card-chip-gold"></div>' +
+                                '<i class="bi bi-wifi card-contactless"></i>' +
+                            '</div>' +
+                            '<div class="card-number-display">' + cardNum + '</div>' +
+                            '<div class="card-holder-row">' +
+                                '<div>' +
+                                    '<div class="card-holder-name">' + escapeHtml(card.cliente_nombre || 'N/A') + '</div>' +
+                                    '<div class="card-holder-cedula">C.I. ' + escapeHtml(card.cliente_cedula_display || card.cliente_cedula || '-') + '</div>' +
+                                '</div>' +
+                            '</div>' +
                         '</div>' +
-                        '<div class="progress-section">' +
-                        '<div class="progress-label"><span>Progreso</span><span>' + card.puntos_actuales + ' / ' + card.puntos_requeridos + ' puntos</span></div>' +
-                        '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%;"></div></div>' +
-                        '<div class="stamps-row">' + stamps + '</div>' +
+                        '<div class="card-stamps-panel">' +
+                            '<div class="d-flex justify-content-between align-items-center mb-1">' +
+                                '<strong class="text-orange fs-6" style="font-weight:700;">' + escapeHtml(card.promo_nombre || card.promocion_nombre || 'PromociÃ³n') + '</strong>' +
+                                '<span class="small text-muted" style="font-weight:600;">' + accumulated + ' / ' + required + ' Puntos</span>' +
+                            '</div>' +
+                            '<p class="small text-muted mb-2">' + escapeHtml(card.promo_descripcion || '') + '</p>' +
+                            '<div class="small mb-2"><strong class="text-orange">Recompensa:</strong> ' + escapeHtml(card.recompensa || '-') + '</div>' +
+                            stampsHtml +
                         '</div>' +
-                        '<div class="card-bottom">' +
-                        '<div class="reward-info">🎁 ' + card.recompensa + '</div>' +
-                        '<span class="status-pill ' + statusClass + '">' + statusText + '</span>' +
-                        '</div>' +
-                        '</div>';
+                    '</div>';
                 });
                 $('#myCards').html(html);
             });

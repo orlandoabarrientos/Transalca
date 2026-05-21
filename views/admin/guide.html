@@ -1,8 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GuÃ­a del Administrador - Transalca C.A.</title>
     <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
@@ -15,86 +16,175 @@
         <div id="navbarContainer"></div>
         <div class="content-area">
             <div class="mb-4">
-                <h4 class="fw-bold mb-1">Guia del Administrador</h4>
-                <p class="text-muted mb-0">Flujo recomendado para operar el sistema de forma ordenada.</p>
+                <h4 class="fw-bold mb-1">GuÃ­a Completa del Administrador</h4>
+                <p class="text-muted mb-0">Manual detallado con los procedimientos y flujos operativos del sistema Transalca.</p>
             </div>
 
-            <div class="card mb-3">
-                <div class="card-header"><span>Flujo Diario Recomendado</span></div>
+            <div class="card mb-4">
+                <div class="card-header"><span><i class="bi bi-calendar-check me-2 text-orange"></i>Flujo Diario de Operaciones Recomendado</span></div>
                 <div class="card-body">
-                    <ol class="mb-0">
-                        <li>Revise notificaciones, tickets abiertos y pagos pendientes.</li>
-                        <li>Valide inventario critico y reposicion por sucursal.</li>
-                        <li>Gestione clientes y vehiculos desde el modulo Clientes.</li>
-                        <li>Confirme ordenes, servicios mecanicos y estados de trabajo.</li>
-                        <li>Cierre el dia revisando reportes y registrando respaldo.</li>
-                    </ol>
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="p-3 border rounded h-100 bg-light">
+                                <h6 class="fw-bold text-orange"><i class="bi bi-1-circle-fill me-2"></i>Inicio del Turno (Control)</h6>
+                                <p class="small text-muted mb-0">Consulte las notificaciones en el <strong>Dashboard</strong>. Valide e ingrese a <strong>Revisar Pago</strong> para verificar transferencias y pagos mÃ³viles pendientes recibidos desde la web.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 border rounded h-100 bg-light">
+                                <h6 class="fw-bold text-orange"><i class="bi bi-2-circle-fill me-2"></i>Durante el DÃ­a (OperaciÃ³n)</h6>
+                                <p class="small text-muted mb-0">Gestione tickets en <strong>Servicio MecÃ¡nico</strong> coordinando con el taller. Controle las solicitudes de soporte en <strong>Tickets Soporte</strong> y revise ventas en <strong>Reporte Orden de Venta</strong>.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 border rounded h-100 bg-light">
+                                <h6 class="fw-bold text-orange"><i class="bi bi-3-circle-fill me-2"></i>Fin de Turno (AuditorÃ­a)</h6>
+                                <p class="small text-muted mb-0">Compare cierres de caja en <strong>Reportes EstadÃ­sticos</strong>. Asegure la consistencia del stock y genere un respaldo local desde <strong>Respaldos de Base de Datos</strong>.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="row g-3">
+            <div class="row g-4">
                 <div class="col-lg-8">
                     <div class="card">
-                        <div class="card-header"><span>Como Hacer Cada Tarea</span></div>
-                        <div class="card-body">
-                            <div class="accordion" id="guideAccordion">
+                        <div class="card-header"><span><i class="bi bi-info-circle me-2 text-orange"></i>Procedimientos Detallados por MÃ³dulo</span></div>
+                        <div class="card-body p-0">
+                            <div class="accordion accordion-flush" id="guideAccordion">
                                 <div class="accordion-item">
                                     <h2 class="accordion-header">
-                                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#guideClientes">
-                                            Clientes y vehiculos
+                                        <button class="accordion-button fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#guideClientes">
+                                            <i class="bi bi-people-fill me-2 text-orange"></i> GestiÃ³n de Clientes y VehÃ­culos
                                         </button>
                                     </h2>
                                     <div id="guideClientes" class="accordion-collapse collapse show" data-bs-parent="#guideAccordion">
                                         <div class="accordion-body">
-                                            Entre en <strong>Clientes</strong>, busque por nombre o cedula, abra el detalle y gestione vehiculos, servicios y tickets desde la misma ficha.
+                                            <h6><strong>1. Registro de Nuevos Clientes:</strong></h6>
+                                            <p class="small text-muted">Haga clic en <code>Registrar Cliente</code>. Ingrese CÃ©dula o RIF (7 u 8 dÃ­gitos sin letras para cÃ©dulas, o formato jurÃ­dico J/G/V-12345678), Nombres, Apellidos, TelÃ©fono (debe iniciar con 04 y tener 11 dÃ­gitos en total) y un Correo ElectrÃ³nico vÃ¡lido.</p>
+
+                                            <h6><strong>2. Registro y AsociaciÃ³n de VehÃ­culos:</strong></h6>
+                                            <p class="small text-muted">Abra la ficha del cliente haciendo clic en <code>Detalle</code> en la tabla. En la pestaÃ±a de vehÃ­culos, presione <code>Registrar VehÃ­culo</code>. Ingrese Placa (formato AAA11A o similar), Marca, Modelo, AÃ±o y el Kilometraje actual.</p>
+
+                                            <h6><strong>3. Carga AutomÃ¡tica vÃ­a OCR (Escaneo de TÃ­tulo):</strong></h6>
+                                            <p class="small text-muted">Para agilizar el proceso, presione <code>Cargar TÃ­tulo</code> y suba una foto del documento de propiedad del vehÃ­culo. El sistema procesarÃ¡ el texto automÃ¡ticamente y autocompletarÃ¡ los campos Marca, Modelo, Placa y Serial del Motor.</p>
                                         </div>
                                     </div>
                                 </div>
+
                                 <div class="accordion-item">
                                     <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#guideCatalogo">
-                                            Catalogo, productos y stock
+                                        <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#guideCatalogo">
+                                            <i class="bi bi-box-seam-fill me-2 text-orange"></i> CatÃ¡logo, CategorÃ­as, Marcas e Inventario
                                         </button>
                                     </h2>
                                     <div id="guideCatalogo" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
                                         <div class="accordion-body">
-                                            Use <strong>Productos</strong>, <strong>Categorias</strong>, <strong>Marcas</strong> y <strong>Gestionar Stock</strong>. Mantenga precios, costo y existencia actualizados por sucursal.
+                                            <h6><strong>1. CreaciÃ³n de la Estructura Comercial:</strong></h6>
+                                            <p class="small text-muted mb-3">Antes de ingresar un producto fÃ­sico, asegÃºrese de haber configurado sus clasificaciones correspondientes en los mÃ³dulos de <code>CategorÃ­as</code> y <code>Marcas</code>.</p>
+
+                                            <h6><strong>2. CatÃ¡logo General de Productos:</strong></h6>
+                                            <p class="small text-muted mb-3">En el mÃ³dulo <code>G. Productos</code>, use <code>Registrar Producto</code> para subir especificaciones, cÃ³digo de barra Ãºnico, precios en divisas, porcentaje de IVA y alertas de stock mÃ­nimo.</p>
+
+                                            <h6><strong>3. Control de Stock por Sucursales (Movimientos):</strong></h6>
+                                            <p class="small text-muted">El inventario se maneja por sucursal de forma independiente. Para registrar ingresos o egresos, acceda a <code>G. Stock de Productos</code>, seleccione la sucursal, el producto y el tipo de movimiento detallando la cantidad exacta.</p>
                                         </div>
                                     </div>
                                 </div>
+
                                 <div class="accordion-item">
                                     <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#guideServicios">
-                                            Servicios mecanicos y comisiones
+                                        <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#guideServicios">
+                                            <i class="bi bi-wrench-adjustable me-2 text-orange"></i> Servicios MecÃ¡nicos, Taller y Comisiones
                                         </button>
                                     </h2>
                                     <div id="guideServicios" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
                                         <div class="accordion-body">
-                                            Configure servicios en <strong>Servicios</strong>, asigne trabajos en <strong>Servicio Mecanico</strong> y supervise mecanicos y comisiones desde sus modulos.
+                                            <h6><strong>1. ConfiguraciÃ³n de Tarifas de Servicio:</strong></h6>
+                                            <p class="small text-muted mb-3">En <code>G. Servicios</code>, configure el catÃ¡logo de servicios estÃ¡ndar (ej. Cambio de Aceite, AlineaciÃ³n, RectificaciÃ³n) estableciendo su costo base en USD.</p>
+
+                                            <h6><strong>2. AsignaciÃ³n de Trabajos en Taller:</strong></h6>
+                                            <p class="small text-muted mb-3">En <code>Servicio MecÃ¡nico</code>, genere una orden de taller. Seleccione el cliente, el vehÃ­culo a intervenir, el servicio solicitado y asigne al mecÃ¡nico encargado.</p>
+
+                                            <h6><strong>3. Ciclo de Trabajo y Pago de Comisiones:</strong></h6>
+                                            <p class="small text-muted">Cambie el estado a <code>En Progreso</code> al iniciar, y a <code>Completado</code> al concluir la tarea. Al marcar como completado, el sistema calcula de forma automÃ¡tica la comisiÃ³n del mecÃ¡nico basada en el porcentaje registrado en su perfil de <code>G. MecÃ¡nicos</code>.</p>
                                         </div>
                                     </div>
                                 </div>
+
                                 <div class="accordion-item">
                                     <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#guideVentas">
-                                            Ordenes, pagos y promociones
+                                        <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#guideVentas">
+                                            <i class="bi bi-cart-check-fill me-2 text-orange"></i> Reporte Orden de Venta
                                         </button>
                                     </h2>
                                     <div id="guideVentas" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
                                         <div class="accordion-body">
-                                            Revise <strong>Ordenes</strong>, valide comprobantes en <strong>Pagos</strong> y gestione campañas en <strong>Promociones</strong>.
+                                            <h6><strong>1. Ã“rdenes de Venta (Clientes):</strong></h6>
+                                            <p class="small text-muted mb-3">Administre los pedidos realizados por los clientes en la tienda. Pueden registrarse de manera presencial o a travÃ©s del portal web. Toda orden iniciada por transferencia/pago mÃ³vil estarÃ¡ en estado <code>Pendiente</code> hasta la confirmaciÃ³n de fondos.</p>
+
+                                            <h6><strong>2. ExportaciÃ³n:</strong></h6>
+                                            <p class="small text-muted">Use <code>Reporte Orden de Venta</code> o <code>Reportes</code> para descargar PDF o Excel con los filtros aplicados.</p>
                                         </div>
                                     </div>
                                 </div>
+
                                 <div class="accordion-item">
                                     <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#guideSoporte">
-                                            Soporte, reportes y respaldo
+                                        <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#guidePagos">
+                                            <i class="bi bi-credit-card-2-front-fill me-2 text-orange"></i> VerificaciÃ³n y ConciliaciÃ³n de Pagos
+                                        </button>
+                                    </h2>
+                                    <div id="guidePagos" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+                                        <div class="accordion-body">
+                                            <h6><strong>1. Monitoreo de Transacciones Web:</strong></h6>
+                                            <p class="small text-muted mb-3">En <code>G. Pagos</code> (PestaÃ±a "Pendientes"), se listan los comprobantes cargados por los clientes para saldar sus Ã³rdenes de venta.</p>
+
+                                            <h6><strong>2. ValidaciÃ³n de Comprobantes ("Revisar pago"):</strong></h6>
+                                            <p class="small text-muted mb-3">Haga clic en <code>Revisar pago</code>. Visualice la imagen del comprobante y verifique el banco emisor, la referencia numÃ©rica y la fecha de transacciÃ³n en su cuenta bancaria receptora.</p>
+
+                                            <h6><strong>3. AprobaciÃ³n o Rechazo:</strong></h6>
+                                            <p class="small text-muted">Si los fondos estÃ¡n conciliados, presione <code>Aprobar</code>. La insignia del pago cambiarÃ¡ a verde (<strong>Aprobado</strong>) y la orden de venta asociada se actualizarÃ¡ automÃ¡ticamente a <strong>Pagada</strong>. Si no coincide, presione <code>Rechazar</code> indicando el motivo para notificar al cliente.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#guidePromos">
+                                            <i class="bi bi-gift-fill me-2 text-orange"></i> CampaÃ±as de FidelizaciÃ³n (Tarjetas de Puntos)
+                                        </button>
+                                    </h2>
+                                    <div id="guidePromos" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+                                        <div class="accordion-body">
+                                            <h6><strong>1. CreaciÃ³n de Promociones:</strong></h6>
+                                            <p class="small text-muted mb-3">En <code>G. Promociones</code>, use <code>Registrar PromociÃ³n</code>. Especifique el nombre (ej. Cambio de Aceite Gratis), puntos requeridos, descripciÃ³n y cargue un fondo de diseÃ±o premium para la tarjeta digital de los clientes.</p>
+
+                                            <h6><strong>2. AcumulaciÃ³n de Sellos:</strong></h6>
+                                            <p class="small text-muted mb-3">Por cada compra vÃ¡lida del cliente, busque su tarjeta activa en la secciÃ³n "Tarjetas de FidelizaciÃ³n" y presione <code>Registrar punto</code>. TambiÃ©n puede usar el <code>EscÃ¡ner</code> para procesar el cÃ³digo QR generado por el cliente.</p>
+
+                                            <h6><strong>3. Entrega de Recompensa y Canje:</strong></h6>
+                                            <p class="small text-muted">Cuando el cliente complete los puntos necesarios (ej. 5 de 5), la tarjeta mostrarÃ¡ un icono de regalo. El administrador deberÃ¡ entregar la recompensa fÃ­sica y marcar la tarjeta como <code>Canjeada</code> para archivarla en el sistema.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#guideSoporte">
+                                            <i class="bi bi-shield-lock-fill me-2 text-orange"></i> Soporte, AuditorÃ­a y Seguridad
                                         </button>
                                     </h2>
                                     <div id="guideSoporte" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
                                         <div class="accordion-body">
-                                            Atienda conversaciones en <strong>Tickets Soporte</strong>, analice datos en <strong>Reportes/Estadisticas</strong> y ejecute respaldos periodicos en <strong>Respaldos</strong>.
+                                            <h6><strong>1. AtenciÃ³n de Tickets:</strong></h6>
+                                            <p class="small text-muted mb-3">En <code>G. Tickets Soporte</code>, responda las solicitudes de ayuda de los clientes. Mantenga actualizados los estados de soporte (Abierto, En Proceso, Cerrado).</p>
+
+                                            <h6><strong>2. AuditorÃ­a Interna (BitÃ¡cora):</strong></h6>
+                                            <p class="small text-muted mb-3">El mÃ³dulo <code>G. BitÃ¡cora</code> registra cada evento del sistema (inicios de sesiÃ³n, creaciÃ³n de Ã³rdenes, modificaciÃ³n de inventario), indicando el usuario responsable, acciÃ³n, descripciÃ³n e IP de conexiÃ³n.</p>
+
+                                            <h6><strong>3. Copias de Seguridad (Respaldos):</strong></h6>
+                                            <p class="small text-muted">En <code>G. Respaldos</code>, ejecute <code>Generar Respaldo</code> periÃ³dicamente para salvaguardar la base de datos SQL. Descargue el archivo resultante y almacÃ©nelo de forma segura fuera del servidor principal.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -104,26 +194,26 @@
                 </div>
 
                 <div class="col-lg-4">
-                    <div class="card mb-3">
-                        <div class="card-header"><span>Accesos Rapidos</span></div>
+                    <div class="card mb-4">
+                        <div class="card-header"><span><i class="bi bi-lightning-fill me-2 text-orange"></i>Accesos RÃ¡pidos</span></div>
                         <div class="card-body d-grid gap-2">
                             <a href="/admin/clients" class="btn btn-outline-orange"><i class="bi bi-people me-1"></i>Clientes</a>
-                            <a href="/admin/orders" class="btn btn-outline-orange"><i class="bi bi-cart-check me-1"></i>Ordenes</a>
+                            <a href="/admin/orders_sales" class="btn btn-outline-orange"><i class="bi bi-cart-check me-1"></i>Reporte Orden de Venta</a>
                             <a href="/admin/payments" class="btn btn-outline-orange"><i class="bi bi-credit-card me-1"></i>Pagos</a>
                             <a href="/admin/tickets" class="btn btn-outline-orange"><i class="bi bi-chat-dots me-1"></i>Tickets</a>
                             <a href="/admin/reports" class="btn btn-outline-orange"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Reportes</a>
                             <a href="/admin/backup" class="btn btn-outline-orange"><i class="bi bi-database-down me-1"></i>Respaldos</a>
                         </div>
                     </div>
+
                     <div class="card">
-                        <div class="card-header"><span>Buenas Practicas</span></div>
+                        <div class="card-header"><span><i class="bi bi-shield-check me-2 text-orange"></i>PolÃ­ticas de OperaciÃ³n</span></div>
                         <div class="card-body">
-                            <ul class="mb-0">
-                                <li>Valide datos del cliente antes de guardar.</li>
-                                <li>No cierre tickets sin respuesta final al cliente.</li>
-                                <li>Mantenga estados de orden y servicio sincronizados.</li>
-                                <li>Revise bitacora para auditoria interna.</li>
-                                <li>Ejecute respaldo antes de cambios masivos.</li>
+                            <ul class="mb-0 small ps-3">
+                                <li class="mb-2"><strong>Veracidad:</strong> Toda orden de venta cobrada debe contar con su comprobante de pago digital debidamente verificado y guardado.</li>
+                                <li class="mb-2"><strong>Consistencia:</strong> Registre de inmediato cualquier retiro de mercancÃ­a del inventario en el mÃ³dulo correspondiente para evitar descuadres en los cierres de caja.</li>
+                                <li class="mb-2"><strong>AtenciÃ³n:</strong> Los tickets de soporte al cliente deben ser respondidos en un plazo mÃ¡ximo de 4 horas hÃ¡biles.</li>
+                                <li><strong>Seguridad:</strong> Genere copias de respaldo antes de realizar cargas masivas de catÃ¡logo o inventario.</li>
                             </ul>
                         </div>
                     </div>

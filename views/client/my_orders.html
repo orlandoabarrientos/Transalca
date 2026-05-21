@@ -17,7 +17,10 @@
 <body>
     <div id="navbarContainer"></div>
     <div class="container py-4" style="min-height:420px;">
-        <h3 class="fw-bold mb-4"><i class="bi bi-bag-check me-2"></i>Mis Pedidos</h3>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+            <h3 class="fw-bold mb-0"><i class="bi bi-bag-check me-2"></i>Mis Pedidos</h3>
+            <input type="search" class="form-control auto-table-search" id="orderSearch" placeholder="Buscar pedido..." style="max-width:320px;">
+        </div>
         <div id="ordersList"><div class="text-center py-5"><span class="spinner-border text-primary"></span><p class="text-muted mt-2">Cargando pedidos...</p></div></div>
     </div>
     <div id="footerContainer"></div>
@@ -50,7 +53,6 @@
     <script src="/public/jquery/jquery.min.js"></script>
     <script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
     <script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
-    <script src="/public/js/admin_common.js"></script>
     <script src="/public/js/client_common.js"></script>
     <script src="/componente_ia/chat_widget.js"></script>
     <script>
@@ -63,16 +65,23 @@
                     html = '<div class="text-center py-5 text-muted"><i class="bi bi-bag-x fs-1"></i><p>No tienes pedidos aún</p><a href="/client/catalog" class="btn btn-primary-custom">Ir al Catálogo</a></div>';
                 } else {
                     r.data.forEach(function (o) {
-                        var badge = o.estado === 'aprobada' ? 'badge-approved' : o.estado === 'pendiente' ? 'badge-pending' : 'badge-rejected';
-                        var icon = o.estado === 'aprobada' ? 'bi-check-circle-fill text-success' : o.estado === 'pendiente' ? 'bi-clock-fill text-warning' : 'bi-x-circle-fill text-danger';
-                        var approved = ['aprobada', 'aprobado', 'verificado', 'pagado'].includes(String(o.estado || '').toLowerCase());
+                        var state = String(o.estado || '').toLowerCase();
+                        var approved = ['aprobada', 'aprobado', 'verificado', 'verificada', 'pagado', 'pagada'].includes(state);
+                        var badge = approved ? 'badge-active' : state === 'pendiente' ? 'badge-pending' : 'badge-inactive';
+                        var icon = approved ? 'bi-check-circle-fill text-success' : state === 'pendiente' ? 'bi-clock-fill text-warning' : 'bi-x-circle-fill text-danger';
                         var qrButton = approved ? '<button class="btn btn-sm btn-outline-orange" onclick="viewInvoiceQr(' + o.id + ', this)"><i class="bi bi-upc-scan me-1"></i>QR Factura</button>' : '';
-                        html += '<div class="card-custom mb-3"><div class="card-body"><div class="d-flex justify-content-between align-items-center"><div><h6 class="fw-bold mb-1">Pedido #' + o.id + '</h6><small class="text-muted">' + formatDateLocal(o.fecha) + ' | ' + (o.metodo_pago || '') + '</small></div><div class="text-end"><span class="badge-status ' + badge + '"><i class="bi ' + icon + ' me-1"></i>' + o.estado + '</span><h5 class="fw-bold mt-1" style="color:var(--highlight);" data-usd-price="' + o.total + '">' + formatUsdBs(o.total) + '</h5></div></div><div class="d-flex gap-2 mt-2"><button class="btn btn-sm btn-outline-primary" onclick="viewOrder(' + o.id + ', this)"><i class="bi bi-eye me-1"></i>Ver Detalle</button>' + qrButton + '</div></div></div>';
+                        html += '<div class="card-custom mb-3 order-card"><div class="card-body"><div class="d-flex justify-content-between align-items-center"><div><h6 class="fw-bold mb-1">Pedido #' + o.id + '</h6><small class="text-muted">' + formatDateLocal(o.fecha) + ' | ' + (o.metodo_pago || '') + '</small></div><div class="text-end"><span class="badge-status ' + badge + '"><i class="bi ' + icon + ' me-1"></i>' + o.estado + '</span><h5 class="fw-bold mt-1" style="color:var(--highlight);" data-usd-price="' + o.total + '">' + formatUsdBs(o.total) + '</h5></div></div><div class="d-flex gap-2 mt-2"><button class="btn btn-sm btn-outline-primary" onclick="viewOrder(' + o.id + ', this)"><i class="bi bi-eye me-1"></i>Ver Detalle</button>' + qrButton + '</div></div></div>';
                     });
                 }
                 $('#ordersList').html(html);
             }).fail(function () {
                 $('#ordersList').html('<div class="text-center py-5 text-muted"><i class="bi bi-exclamation-triangle fs-1"></i><p>No se pudieron cargar los pedidos.</p></div>');
+            });
+            $('#orderSearch').on('input', function () {
+                var term = this.value.trim().toLowerCase();
+                document.querySelectorAll('.order-card').forEach(function (card) {
+                    card.style.display = !term || card.textContent.toLowerCase().includes(term) ? '' : 'none';
+                });
             });
         });
         function viewOrder(id, button) {

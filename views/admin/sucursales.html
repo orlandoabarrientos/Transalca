@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+    <title>Gestionar Sucursales - Transalca C.A.</title>
     <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
@@ -15,13 +15,11 @@
     <div class="main-content">
         <div id="navbarContainer"></div>
         <div class="content-area">
-            
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="fw-bold mb-0">Sucursales</h4>
-                <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Nueva Sucursal</button>
+                <h4 class="fw-bold mb-0">Gestionar Sucursales</h4>
+                <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Registrar Sucursal</button>
             </div>
 
-            
             <div class="card">
                 <div class="card-body p-0">
                     <table class="table mb-0" id="sucursalTable">
@@ -29,8 +27,8 @@
                             <tr>
                                 <th class="col-id">ID</th>
                                 <th>Nombre</th>
-                                <th>Direccion</th>
-                                <th>Telefono</th>
+                                <th>Dirección</th>
+                                <th>Teléfono</th>
                                 <th>Email</th>
                                 <th>Estado</th>
                                 <th>Acciones</th>
@@ -44,12 +42,11 @@
     </div>
 </div>
 
-
 <div class="modal fade" id="sucursalModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modalTitle">Nueva Sucursal</h5>
+                <h5 class="modal-title" id="modalTitle">Registrar Sucursal</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -61,11 +58,11 @@
                         <div class="invalid-feedback"></div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Direccion</label>
+                        <label class="form-label">Dirección</label>
                         <input type="text" class="form-control" id="direccion" name="direccion">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Telefono</label>
+                        <label class="form-label">Teléfono</label>
                         <input type="text" class="form-control" id="telefono" name="telefono">
                     </div>
                     <div class="mb-3">
@@ -102,8 +99,8 @@ $(document).ready(function() {
     $('#navbarContainer').load('/components/admin_navbar.html');
     loadData();
     Validator.setRules('sucursalForm', {
-        nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es requerido', minLengthMsg: 'Minimo 3 caracteres' },
-        telefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 digitos y comenzar por 04' },
+        nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es requerido', minLengthMsg: 'Mínimo 3 caracteres' },
+        telefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 dígitos y comenzar por 04' },
         email: { email: true }
     });
     Validator.setupRealtime('sucursalForm');
@@ -123,8 +120,8 @@ function loadData() {
                 <td>${s.email || '-'}</td>
                 <td>${statusBadge(s.estado)}</td>
                 <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${s.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${s.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${s.id})" title="Modificar Sucursal"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${s.id})" title="Eliminar Sucursal"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -137,20 +134,23 @@ function loadData() {
 function openModal(id = null) {
     Validator.clearForm('sucursalForm');
     document.getElementById('sucursalId').value = id || '';
-    document.getElementById('modalTitle').textContent = id ? 'Editar Sucursal' : 'Nueva Sucursal';
+    document.getElementById('modalTitle').textContent = id ? 'Modificar Sucursal' : 'Registrar Sucursal';
     new bootstrap.Modal(document.getElementById('sucursalModal')).show();
+    Validator.initTracking('sucursalForm');
 }
 
 function editData(id) {
     apiCall(`/api/sucursales/${id}`).then(res => {
         const s = res.data;
+        Validator.clearForm('sucursalForm');
         document.getElementById('sucursalId').value = s.id;
         document.getElementById('nombre').value = s.nombre;
         document.getElementById('direccion').value = s.direccion || '';
         document.getElementById('telefono').value = s.telefono || '';
         document.getElementById('email').value = s.email || '';
-        document.getElementById('modalTitle').textContent = 'Editar Sucursal';
+        document.getElementById('modalTitle').textContent = 'Modificar Sucursal';
         new bootstrap.Modal(document.getElementById('sucursalModal')).show();
+        Validator.initTracking('sucursalForm');
     });
 }
 
@@ -172,9 +172,9 @@ function saveData() {
 }
 
 function toggleEstado(id) {
-    confirmAction('Eliminar esta sucursal?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar esta sucursal?', () => {
         apiCall(`/api/sucursales/${id}`, 'DELETE').then(res => { showToast(res.message); loadData(); });
-    }, { confirmText: 'Eliminar' });
+    });
 }
 
 function validateUniqueSucursalEmail() {
@@ -182,19 +182,23 @@ function validateUniqueSucursalEmail() {
     if (!input) return;
     const value = input.value.trim();
     if (!value) {
+        delete input.dataset.externalError;
         clearFieldError(input);
         updateFormSubmitState('sucursalForm');
         return;
     }
     if (!Validator.validateField('sucursalForm', 'email')) {
+        delete input.dataset.externalError;
         updateFormSubmitState('sucursalForm');
         return;
     }
     const id = document.getElementById('sucursalId')?.value || '';
     apiCall(`/api/sucursales/check-unique?field=email&value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(id)}`).then(res => {
         if (res.status === 'success' && res.exists) {
-            setFieldError(input, 'Este correo ya esta registrado.');
+            input.dataset.externalError = 'Este correo ya está registrado.';
+            setFieldError(input, 'Este correo ya está registrado.');
         } else if (res.status === 'success') {
+            delete input.dataset.externalError;
             clearFieldError(input);
         }
         updateFormSubmitState('sucursalForm');

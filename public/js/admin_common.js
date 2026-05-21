@@ -156,6 +156,15 @@ const Validator = {
         this.rules[formId] = rules;
     },
 
+    initTracking(formId) {
+        const form = document.getElementById(formId);
+        if (!form) return;
+        setTimeout(() => {
+            form._initialState = serializeForm(form);
+            updateFormSubmitState(formId);
+        }, 150);
+    },
+
     validate(formId) {
         const rules = this.rules[formId];
         if (!rules) return true;
@@ -169,25 +178,27 @@ const Validator = {
             const value = el.value.trim();
             let error = '';
 
-            if (fieldRules.required && !value) {
+            if (el.dataset.externalError) {
+                error = el.dataset.externalError;
+            } else if (fieldRules.required && !value) {
                 error = fieldRules.requiredMsg || 'Este campo es requerido';
             } else if (fieldRules.minLength && value.length < fieldRules.minLength) {
-                error = fieldRules.minLengthMsg || `Minimo ${fieldRules.minLength} caracteres`;
+                error = fieldRules.minLengthMsg || `Mínimo ${fieldRules.minLength} caracteres`;
             } else if (fieldRules.maxLength && value.length > fieldRules.maxLength) {
-                error = fieldRules.maxLengthMsg || `Maximo ${fieldRules.maxLength} caracteres`;
+                error = fieldRules.maxLengthMsg || `Máximo ${fieldRules.maxLength} caracteres`;
             } else if (fieldRules.pattern && !fieldRules.pattern.test(value)) {
-                error = fieldRules.patternMsg || 'Formato invalido';
+                error = fieldRules.patternMsg || 'Formato inválido';
             } else if (fieldRules.min !== undefined && parseFloat(value) < fieldRules.min) {
-                error = fieldRules.minMsg || `El valor minimo es ${fieldRules.min}`;
+                error = fieldRules.minMsg || `El valor mínimo es ${fieldRules.min}`;
             } else if (fieldRules.email && value && !/^[^@]+@[^@]+\.[^@]+$/.test(value)) {
-                error = 'Ingrese un correo valido';
+                error = 'Ingrese un correo válido';
             } else if (fieldRules.match) {
                 const matchEl = document.getElementById(fieldRules.match);
                 if (matchEl && value !== matchEl.value) {
                     error = fieldRules.matchMsg || 'Los campos no coinciden';
                 }
             } else if (fieldRules.custom && !fieldRules.custom(value)) {
-                error = fieldRules.customMsg || 'Valor invalido';
+                error = fieldRules.customMsg || 'Valor inválido';
             }
 
             if (error) {
@@ -218,6 +229,7 @@ const Validator = {
             if (form.dataset.validatorClearing === '1') return;
             form.dataset.validatorClearing = '1';
             form.reset();
+            delete form._initialState;
             clearFormValidationState(form);
             setTimeout(() => {
                 delete form.dataset.validatorClearing;
@@ -235,25 +247,27 @@ const Validator = {
         const value = el.value.trim();
         let error = '';
 
-        if (fieldRules.required && !value) {
+        if (el.dataset.externalError) {
+            error = el.dataset.externalError;
+        } else if (fieldRules.required && !value) {
             error = fieldRules.requiredMsg || 'Este campo es requerido';
         } else if (fieldRules.minLength && value.length < fieldRules.minLength) {
-            error = fieldRules.minLengthMsg || `Minimo ${fieldRules.minLength} caracteres`;
+            error = fieldRules.minLengthMsg || `Mínimo ${fieldRules.minLength} caracteres`;
         } else if (fieldRules.maxLength && value.length > fieldRules.maxLength) {
-            error = fieldRules.maxLengthMsg || `Maximo ${fieldRules.maxLength} caracteres`;
+            error = fieldRules.maxLengthMsg || `Máximo ${fieldRules.maxLength} caracteres`;
         } else if (fieldRules.pattern && !fieldRules.pattern.test(value)) {
-            error = fieldRules.patternMsg || 'Formato invalido';
+            error = fieldRules.patternMsg || 'Formato inválido';
         } else if (fieldRules.min !== undefined && parseFloat(value) < fieldRules.min) {
-            error = fieldRules.minMsg || `El valor minimo es ${fieldRules.min}`;
+            error = fieldRules.minMsg || `El valor mínimo es ${fieldRules.min}`;
         } else if (fieldRules.email && value && !/^[^@]+@[^@]+\.[^@]+$/.test(value)) {
-            error = 'Ingrese un correo valido';
+            error = 'Ingrese un correo válido';
         } else if (fieldRules.match) {
             const matchEl = document.getElementById(fieldRules.match);
             if (matchEl && value !== matchEl.value) {
                 error = fieldRules.matchMsg || 'Los campos no coinciden';
             }
         } else if (fieldRules.custom && !fieldRules.custom(value)) {
-            error = fieldRules.customMsg || 'Valor invalido';
+            error = fieldRules.customMsg || 'Valor inválido';
         }
 
         if (error) {
@@ -289,14 +303,23 @@ const Validator = {
                         fb.textContent = '';
                     }
                 }
+                if (form._initialState) {
+                    form._isDirty = serializeForm(form) !== form._initialState;
+                } else {
+                    form._isDirty = true;
+                }
                 updateFormSubmitState(formId);
             };
-            el.addEventListener('input', handler);
+            el.addEventListener('input', () => {
+                delete el.dataset.externalError;
+                handler();
+            });
             el.addEventListener('change', handler);
         });
         form.addEventListener('reset', () => setTimeout(() => {
             if (form.dataset.validatorClearing === '1') return;
             clearFormValidationState(form);
+            delete form._initialState;
             updateFormSubmitState(formId);
         }, 0));
     }
@@ -457,13 +480,30 @@ function setButtonLoading(button, loading, text) {
     }
 }
 
+function serializeForm(form) {
+    const data = {};
+    form.querySelectorAll('input, select, textarea').forEach(el => {
+        if (!el.id && !el.name) return;
+        const key = el.id || el.name;
+        if (el.type === 'checkbox' || el.type === 'radio') {
+            data[key] = el.checked;
+        } else {
+            data[key] = el.value.trim();
+        }
+    });
+    return JSON.stringify(data);
+}
+
 function updateFormSubmitState(formId) {
     const form = document.getElementById(formId);
     if (!form) return;
     const modal = form.closest('.modal-content') || form;
     const hasErrors = !!form.querySelector('.is-invalid');
-    modal.querySelectorAll('button[type="submit"], button[onclick*="save"], button[onclick*="Save"], #btnSaveVehicle').forEach(btn => {
-        if (!btn.dataset.loading) btn.disabled = hasErrors;
+    const isDirty = form._initialState ? (serializeForm(form) !== form._initialState) : true;
+    modal.querySelectorAll('button[type="submit"], button[onclick*="save"], button[onclick*="Save"], #btnSaveVehicle, #btnSavePromo').forEach(btn => {
+        if (!btn.dataset.loading) {
+            btn.disabled = hasErrors || (form._initialState ? !isDirty : false);
+        }
     });
 }
 
@@ -609,7 +649,7 @@ function enhanceSearchableSelects(root = document) {
             if (!$select.hasClass('select2-hidden-accessible')) {
                 const firstEmptyOption = select.querySelector('option[value=""]');
                 const config = {
-                    width: '100%',
+                    width: select.style.width || '100%',
                     minimumResultsForSearch: select.hasAttribute('data-no-search') ? Infinity : 0
                 };
                 if (firstEmptyOption) config.placeholder = firstEmptyOption.textContent.trim();
@@ -639,6 +679,40 @@ function enhanceSearchableSelects(root = document) {
     });
 }
 
+function installListSearches(root = document) {
+    const scope = root instanceof Element ? root : document;
+    const tables = Array.from(scope.querySelectorAll('.content-area table'));
+    tables.forEach((table, index) => {
+        if (table.dataset.autoSearchReady === '1' || table.dataset.noAutoSearch === '1' || table.closest('.modal')) return;
+        const contentArea = table.closest('.content-area');
+        const card = table.closest('.card') || table.parentElement;
+        if (!contentArea || !card || card.querySelector('.auto-table-search-wrap')) return;
+        const manualSearch = card.querySelector('input[id*="search" i], input[name*="search" i], .table-search-input, [data-table-search]') || card.previousElementSibling?.querySelector?.('input[id*="search" i], input[name*="search" i], .table-search-input, [data-table-search]');
+        if (manualSearch) {
+            table.dataset.autoSearchReady = '1';
+            return;
+        }
+        const wrap = document.createElement('div');
+        wrap.className = 'auto-table-search-wrap d-flex justify-content-end mb-3';
+        const input = document.createElement('input');
+        input.type = 'search';
+        input.className = 'form-control auto-table-search';
+        input.placeholder = 'Buscar...';
+        input.setAttribute('aria-label', 'Buscar en la lista');
+        input.dataset.tableSearch = `auto-${index}`;
+        wrap.appendChild(input);
+        card.parentNode.insertBefore(wrap, card);
+        input.addEventListener('input', () => {
+            const term = input.value.trim().toLowerCase();
+            table.querySelectorAll('tbody tr').forEach(row => {
+                if (row.querySelector('.empty-state')) return;
+                row.style.display = !term || row.textContent.toLowerCase().includes(term) ? '' : 'none';
+            });
+        });
+        table.dataset.autoSearchReady = '1';
+    });
+}
+
 function isNoisyMutationNode(node) {
     if (!node || node.nodeType !== 1) return false;
     return !!node.closest?.('.select2-container, .select2-dropdown, .toast-container, .dropdown-menu');
@@ -650,8 +724,8 @@ function mutationNeedsEnhancement(mutation) {
     if (mutation.target?.closest?.('select.form-select')) return true;
     for (const node of mutation.addedNodes || []) {
         if (node.nodeType !== 1 || isNoisyMutationNode(node)) continue;
-        if (node.matches?.('select.form-select, .modal, [data-usd-price], [data-currency-toggle-label]')) return true;
-        if (node.querySelector?.('select.form-select, .modal, [data-usd-price], [data-currency-toggle-label]')) return true;
+        if (node.matches?.('select.form-select, .modal, table, [data-usd-price], [data-currency-toggle-label]')) return true;
+        if (node.querySelector?.('select.form-select, .modal, table, [data-usd-price], [data-currency-toggle-label]')) return true;
     }
     return false;
 }
@@ -664,7 +738,21 @@ function runDomEnhancements(root = document) {
         bindReliableSidebarNavigation();
         bindInputGuards();
         enhanceSearchableSelects(root);
+        installListSearches(root);
         hydrateDualPrices(root);
+
+        // Restore and persist sidebar scroll
+        const sidebar = document.getElementById('adminSidebar');
+        if (sidebar && !sidebar.dataset.scrollRestored) {
+            sidebar.dataset.scrollRestored = '1';
+            const scrollTop = sessionStorage.getItem('adminSidebarScrollTop');
+            if (scrollTop !== null) {
+                sidebar.scrollTop = parseInt(scrollTop);
+            }
+            sidebar.addEventListener('scroll', () => {
+                sessionStorage.setItem('adminSidebarScrollTop', sidebar.scrollTop);
+            });
+        }
     } finally {
         domEnhancementRunning = false;
     }
@@ -680,10 +768,17 @@ function getSelectedCurrency() {
     return currency === 'VES' ? 'VES' : 'USD';
 }
 
-function setSelectedCurrency(currency) {
-    localStorage.setItem('transalca_currency', currency === 'VES' ? 'VES' : 'USD');
+async function setSelectedCurrency(currency) {
+    const nextCurrency = currency === 'VES' ? 'VES' : 'USD';
+    localStorage.setItem('transalca_currency', nextCurrency);
+    updateCurrencyMenuLabel();
+    hydrateDualPrices();
+    if (nextCurrency === 'VES') await loadExchangeRatesCached(true);
     hydrateDualPrices();
     updateCurrencyMenuLabel();
+    if (nextCurrency === 'VES' && !convertUsdToBs(1)) {
+        showToast('No se pudo calcular el precio en Bs. Verifique las tasas BCV y USDT.', 'warning');
+    }
 }
 
 function toggleCurrency() {
@@ -693,7 +788,7 @@ function toggleCurrency() {
 function updateCurrencyMenuLabel() {
     const currency = getSelectedCurrency();
     document.querySelectorAll('[data-currency-toggle-label]').forEach(el => {
-        el.textContent = currency === 'USD' ? 'Ver precios en Bs' : 'Ver precios en dolares';
+        el.textContent = currency === 'USD' ? 'Ver precios en bolívares' : 'Ver precios en dólares';
     });
 }
 
@@ -714,12 +809,12 @@ function convertUsdToBs(amount) {
     return (parseFloat(amount || 0) * usdt) / bcv;
 }
 
-async function loadExchangeRatesCached() {
+async function loadExchangeRatesCached(force = false) {
     const key = 'transalca_rates_cache_v1';
     const now = Date.now();
     try {
         const cached = JSON.parse(localStorage.getItem(key) || 'null');
-        if (cached && cached.expires > now) {
+        if (!force && cached && cached.expires > now) {
             window.TransalcaRates = cached.data;
             return cached.data;
         }
@@ -727,10 +822,7 @@ async function loadExchangeRatesCached() {
     try {
         const res = await fetch('/api/rates/', { credentials: 'same-origin' });
         const json = await res.json();
-        const data = {
-            bcv: parseFloat(json?.data?.bcv?.usd || 0),
-            usdt: parseFloat(json?.data?.binance?.usdt_ves || 0)
-        };
+        const data = normalizeRatePayload(json);
         window.TransalcaRates = data;
         localStorage.setItem(key, JSON.stringify({ data, expires: now + 300000 }));
         return data;
@@ -738,6 +830,13 @@ async function loadExchangeRatesCached() {
         window.TransalcaRates = window.TransalcaRates || { bcv: 0, usdt: 0 };
         return window.TransalcaRates;
     }
+}
+
+function normalizeRatePayload(json) {
+    return {
+        bcv: parseFloat(json?.data?.bcv?.usd || json?.data?.bcv?.monto || 0),
+        usdt: parseFloat(json?.data?.binance?.usdt_ves || json?.data?.usdt?.monto || 0)
+    };
 }
 
 function hydrateDualPrices(root = document) {
@@ -757,12 +856,19 @@ function formatDate(dateStr) {
 }
 
 function statusBadge(estado) {
-    if (estado === 1 || estado === true || estado === 'activo' || estado === 'aprobado') {
+    const raw = String(estado ?? '').trim();
+    const normalized = raw.toLowerCase();
+    const label = raw || 'Inactivo';
+    if (estado === 1 || estado === true || ['activo', 'activa'].includes(normalized)) {
         return '<span class="badge-status badge-active">Activo</span>';
-    } else if (estado === 'pendiente') {
-        return '<span class="badge-status badge-pending">Pendiente</span>';
     }
-    return '<span class="badge-status badge-inactive">Inactivo</span>';
+    if (['aprobado', 'aprobada', 'pagado', 'pagada', 'verificado', 'verificada', 'completado', 'completada', 'entregado', 'entregada', 'recibido', 'recibida'].includes(normalized)) {
+        return `<span class="badge-status badge-active">${escapeHtml(label)}</span>`;
+    }
+    if (['pendiente', 'procesando', 'enviado', 'enviada', 'abierto', 'abierta', 'media'].includes(normalized)) {
+        return `<span class="badge-status badge-pending">${escapeHtml(label)}</span>`;
+    }
+    return `<span class="badge-status badge-inactive">${escapeHtml(label)}</span>`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -825,17 +931,33 @@ async function loadNavSession() {
             if (titleEl) {
                 const page = window.location.pathname.split('/').pop();
                 const titles = {
-                    dashboard: 'Dashboard', clients: 'Clientes', products: 'Productos', categories: 'Categorias',
-                    brands: 'Marcas', suppliers: 'Proveedores', inventory: 'Gestionar Stock de Productos',
-                    services: 'Servicios', service_mechanics: 'Servicio Mecanico', mechanics: 'Mecanicos', orders: 'Ordenes de Venta',
-                    tickets: 'Tickets de Soporte',
-                    payments: 'Comprobacion de Pagos', promotions: 'Promociones',
-                    users: 'Usuarios', roles: 'Roles y Permisos', qr: 'Codigos QR',
-                    reports: 'Reportes', report_stats: 'Estadisticas', tasas: 'Tasa de Cambio',
-                    bitacora: 'Bitacora', backup: 'Respaldos',
-                    profile: 'Mi Perfil', sucursales: 'Sucursales', guide: 'Guia'
+                    dashboard: 'Dashboard',
+                    clients: 'Gestionar Clientes',
+                    products: 'Gestionar Productos',
+                    categories: 'Gestionar Categorías',
+                    brands: 'Gestionar Marcas',
+                    suppliers: 'Gestionar Proveedores',
+                    inventory: 'Gestionar Stock de producto',
+                    services: 'Gestionar Servicios',
+                    service_mechanics: 'Gestionar Servicio Mecánico',
+                    mechanics: 'Gestionar Mecánicos',
+                    orders_sales: 'Reporte Orden de Venta',
+                    tickets: 'Gestionar Tickets de Soporte',
+                    payments: 'Gestionar Comprobantes de Pago',
+                    promotions: 'Gestionar Promociones',
+                    users: 'Gestionar Usuarios',
+                    roles: 'Gestionar Roles y Permisos',
+                    qr: 'Gestionar Códigos QR',
+                    reports: 'Reportes',
+                    report_stats: 'Reportes estadísticos',
+                    tasas: 'Gestionar Tasa de Cambio',
+                    bitacora: 'Gestionar Bitácora',
+                    backup: 'Gestionar Respaldos',
+                    profile: 'Gestionar Mi Perfil',
+                    sucursales: 'Gestionar Sucursales',
+                    guide: 'Guía'
                 };
-                titleEl.textContent = titles[page] || 'Panel de Administracion';
+                titleEl.textContent = titles[page] || 'Panel de Administración';
             }
         }
     } catch (e) { }

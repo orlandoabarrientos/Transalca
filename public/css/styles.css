@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
 
@@ -629,14 +629,23 @@ a:hover {
 }
 
 
-.form-control,
-.form-select {
+.form-control {
     border: 1.5px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 10px 14px;
     font-size: 0.85rem;
     transition: var(--transition);
     background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.form-select {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    transition: var(--transition);
+    background-color: var(--bg-card);
     color: var(--text-primary);
 }
 
@@ -697,11 +706,14 @@ a:hover {
 }
 
 .select2-container {
-    width: 100% !important;
+    width: 100%;
+    display: block;
+    min-width: 0;
 }
 
 .select2-container .select2-selection--single {
-    height: 40px;
+    height: 43px;
+    min-height: 43px;
     border: 1.5px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--bg-card);
@@ -711,15 +723,21 @@ a:hover {
 
 .select2-container .select2-selection--single .select2-selection__rendered {
     color: var(--text-primary);
-    line-height: normal;
-    padding-left: 12px;
+    line-height: 41px;
+    padding-left: 14px;
     padding-right: 30px;
     font-size: 0.85rem;
+    width: 100%;
 }
 
 .select2-container .select2-selection--single .select2-selection__arrow {
-    height: 38px;
+    height: 41px;
     right: 8px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__clear {
+    height: 41px;
+    line-height: 41px;
 }
 
 .select2-container--default .select2-selection--single .select2-selection__placeholder {
@@ -763,6 +781,15 @@ a:hover {
 .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
     background: var(--primary);
     color: #fff;
+}
+
+.auto-table-search-wrap {
+    max-width: 320px;
+    margin-left: auto;
+}
+
+.auto-table-search {
+    min-width: 240px;
 }
 
 
@@ -1118,6 +1145,21 @@ a:hover {
 .filter-bar .form-control {
     max-width: 220px;
     font-size: 0.8rem;
+}
+
+.report-filter-button {
+    min-height: 43px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.compact-filter-card .select2-container {
+    flex: 0 0 auto;
+}
+
+.chart-type-select,
+.chart-card .select2-container {
+    max-width: 160px;
 }
 
 

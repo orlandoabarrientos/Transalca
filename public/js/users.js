@@ -11,11 +11,11 @@ $(document).ready(function() {
     Validator.setRules('userForm', {
         nombre: { required: true, minLength: 2, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El nombre es obligatorio', patternMsg: 'El nombre solo puede contener letras' },
         apellido: { required: true, minLength: 2, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El apellido es obligatorio', patternMsg: 'El apellido solo puede contener letras' },
-        cedula_prefijo: { required: true, custom: v => ['V', 'E', 'J', 'G', 'P'].includes(v), customMsg: 'El valor seleccionado no es valido. Recargue la pagina e intentelo nuevamente.' },
-        cedula: { required: true, pattern: /^\d{7,8}$/, requiredMsg: 'La cedula es obligatoria.', patternMsg: 'La cedula debe tener 7 u 8 digitos.' },
+        cedula_prefijo: { required: true, custom: v => ['V', 'E', 'J', 'G', 'P'].includes(v), customMsg: 'El valor seleccionado no es válido. Recargue la página e inténtelo nuevamente.' },
+        cedula: { required: true, pattern: /^\d{7,8}$/, requiredMsg: 'La cédula es obligatoria.', patternMsg: 'La cédula debe tener 7 u 8 dígitos.' },
         email: { required: true, email: true, requiredMsg: 'El correo es obligatorio' },
-        telefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 digitos y comenzar por 04' },
-        tipo: { required: true, custom: v => ['cliente', 'empleado'].includes(v), customMsg: 'El valor seleccionado no es valido. Recargue la pagina e intentelo nuevamente' }
+        telefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 dígitos y comenzar por 04' },
+        tipo: { required: true, custom: v => ['cliente', 'empleado'].includes(v), customMsg: 'El valor seleccionado no es válido. Recargue la página e inténtelo nuevamente' }
     });
     Validator.setupRealtime('userForm');
     document.getElementById('cedula')?.addEventListener('input', () => validateUniqueUser('cedula'));
@@ -41,12 +41,12 @@ function loadData() {
                 <td>${escapeHtml(u.roles || '-')}</td>
                 <td>${statusBadge(u.estado)}</td>
                 <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${u.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${u.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${u.id})" title="Modificar Usuario"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${u.id})" title="Eliminar Usuario"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
-        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="empty-state"><i class="bi bi-people"></i><p>No hay usuarios</p></div></td></tr>';
+        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="empty-state"><i class="bi bi-people"></i><p>No hay usuarios registrados</p></div></td></tr>';
     });
 }
 
@@ -64,10 +64,11 @@ async function loadRoles() {
 function openModal(id = null) {
     Validator.clearForm('userForm');
     document.getElementById('userId').value = id || '';
-    document.getElementById('modalTitle').textContent = id ? 'Editar Usuario' : 'Nuevo Usuario';
+    document.getElementById('modalTitle').textContent = id ? 'Modificar Usuario' : 'Registrar Usuario';
     setDocumentFields('cedula_prefijo', 'cedula', '', 'V');
     document.getElementById('passwordRow').style.display = id ? 'none' : '';
     new bootstrap.Modal(document.getElementById('userModal')).show();
+    Validator.initTracking('userForm');
 }
 
 function editData(id) {
@@ -85,15 +86,16 @@ function editData(id) {
         document.getElementById('tipo').value = u.tipo || 'empleado';
         if (u.roles?.length) document.getElementById('rol_id').value = u.roles[0].id;
         document.getElementById('passwordRow').style.display = 'none';
-        document.getElementById('modalTitle').textContent = 'Editar Usuario';
+        document.getElementById('modalTitle').textContent = 'Modificar Usuario';
         new bootstrap.Modal(document.getElementById('userModal')).show();
+        Validator.initTracking('userForm');
     });
 }
 
 function saveData() {
     const id = document.getElementById('userId').value;
     if (!id) {
-        Validator.rules.userForm.password = { required: true, pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$/, requiredMsg: 'La contrasena es obligatoria', patternMsg: 'Minimo 8 caracteres, una mayuscula, una minuscula, un numero y un especial' };
+        Validator.rules.userForm.password = { required: true, pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$/, requiredMsg: 'La contraseña es obligatoria', patternMsg: 'Mínimo 8 caracteres, una mayúscula, una minúscula, un número y un especial' };
     } else {
         delete Validator.rules.userForm.password;
     }
@@ -128,13 +130,13 @@ function saveData() {
 }
 
 function toggleEstado(id) {
-    confirmAction('Eliminar este usuario?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar este usuario?', () => {
         apiCall(`/api/users/${id}/status`, 'PUT', { estado: 0 }).then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message);
             loadData();
         });
-    }, { confirmText: 'Eliminar' });
+    });
 }
 
 function validateUniqueUser(field) {
@@ -145,11 +147,13 @@ function validateUniqueUser(field) {
         const value = (input?.value || '').trim();
         if (!input) return;
         if (!value) {
+            delete input.dataset.externalError;
             clearFieldError(input);
             updateFormSubmitState('userForm');
             return;
         }
         if (!Validator.validateField('userForm', field)) {
+            delete input.dataset.externalError;
             updateFormSubmitState('userForm');
             return;
         }
@@ -157,8 +161,11 @@ function validateUniqueUser(field) {
         const queryValue = field === 'cedula' ? cedulaValue : value;
         const res = await apiCall(`/api/users/check-unique?field=${field}&value=${encodeURIComponent(queryValue)}&exclude=${encodeURIComponent(id)}&cedula=${encodeURIComponent(cedulaValue)}`);
         if (res.status === 'success' && res.exists) {
-            setFieldError(input, field === 'email' ? 'Este correo ya esta registrado.' : 'Esta cedula ya esta registrada.');
+            const errorMsg = field === 'email' ? 'Este correo ya está registrado.' : 'Esta cédula ya está registrada.';
+            input.dataset.externalError = errorMsg;
+            setFieldError(input, errorMsg);
         } else if (res.status === 'success') {
+            delete input.dataset.externalError;
             clearFieldError(input);
         }
         updateFormSubmitState('userForm');

@@ -1,7 +1,10 @@
 <nav class="top-navbar">
     <div class="d-flex align-items-center gap-3">
         <button class="btn d-md-none" id="toggleSidebar"><i class="bi bi-list fs-4"></i></button>
-        <h5 class="page-title mb-0" id="pageTitle">Dashboard</h5>
+        <h5 class="page-title mb-0 fw-bold" style="color:var(--text-dark); letter-spacing:0.5px;">
+            TRANSALCA <span class="fw-normal text-muted fs-6 d-none d-sm-inline">| Sistema de Gestión</span>
+        </h5>
+        <span id="pageTitle" style="display:none;"></span>
     </div>
     <div class="d-flex align-items-center gap-3">
         <div class="d-none d-lg-flex align-items-center gap-2" id="adminRatesBar" style="font-size:0.68rem;font-weight:600;">
@@ -30,7 +33,7 @@
                 <button class="btn btn-sm" data-bs-toggle="dropdown"><i class="bi bi-chevron-down"></i></button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a class="dropdown-item" href="/admin/profile"><i class="bi bi-person-circle me-2"></i>Mi Perfil</a></li>
-                    <li><a class="dropdown-item" href="#" data-currency-toggle><i class="bi bi-currency-exchange me-2"></i><span data-currency-toggle-label>Ver precios en Bs</span></a></li>
+                    <li><a class="dropdown-item" href="#" data-currency-toggle><i class="bi bi-currency-exchange me-2"></i><span data-currency-toggle-label>Ver precios en bolívares</span></a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="#" id="navLogout"><i class="bi bi-box-arrow-left me-2"></i>Cerrar Sesión</a></li>
                 </ul>

@@ -2,7 +2,9 @@ let currentCedula = null;
 let pendingVehicleCarnetFile = null;
 
 $(document).ready(function () {
-    $('#sidebarContainer').load('/components/admin_sidebar.html');
+    $('#sidebarContainer').load('/components/admin_sidebar.html', () => {
+        document.querySelector('[data-page="clients"]')?.classList.add('active');
+    });
     $('#navbarContainer').load('/components/admin_navbar.html', () => loadNavSession());
     loadClients();
     loadStats();
@@ -16,11 +18,11 @@ $(document).ready(function () {
         if (pendingVehicleCarnetFile) scanVehicleTitleAndFillAdmin(pendingVehicleCarnetFile);
     });
     Validator.setRules('clientForm', {
-        fCedulaPrefijo: { required: true, custom: v => ['V', 'E', 'J', 'G', 'P'].includes(v), customMsg: 'El valor seleccionado no es valido. Recargue la pagina e intentelo nuevamente.' },
-        fCedula: { required: true, pattern: /^\d{7,8}$/, requiredMsg: 'Cedula requerida', patternMsg: 'La cedula debe tener 7 u 8 digitos' },
+        fCedulaPrefijo: { required: true, custom: v => ['V', 'E', 'J', 'G', 'P'].includes(v), customMsg: 'El valor seleccionado no es válido. Recargue la página e inténtelo nuevamente.' },
+        fCedula: { required: true, pattern: /^\d{7,8}$/, requiredMsg: 'Cédula requerida', patternMsg: 'La cédula debe tener 7 u 8 dígitos' },
         fNombre: { required: true, pattern: /^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$/u, requiredMsg: 'Nombre requerido', patternMsg: 'Solo letras y espacios' },
         fApellido: { required: true, pattern: /^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$/u, requiredMsg: 'Apellido requerido', patternMsg: 'Solo letras y espacios' },
-        fTelefono: { required: true, pattern: /^04\d{9}$/, requiredMsg: 'Telefono requerido', patternMsg: 'Debe tener 11 digitos y comenzar por 04' },
+        fTelefono: { required: true, pattern: /^04\d{9}$/, requiredMsg: 'Teléfono requerido', patternMsg: 'Debe tener 11 dígitos y comenzar por 04' },
         fEmail: { email: true }
     });
     Validator.setRules('vehicleForm', {
@@ -73,8 +75,8 @@ function loadClients() {
                     <td><span class="badge bg-info">${c.vehiculos_count || 0}</span></td>
                     <td>${estado}</td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); editClient('${c.cedula}')" title="Editar"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); toggleClient('${c.cedula}')" title="Eliminar"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); editClient('${c.cedula}')" title="Modificar Cliente"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); toggleClient('${c.cedula}')" title="Eliminar Cliente"><i class="bi bi-trash"></i></button>
                     </td>
                 </tr>
             `);
@@ -104,8 +106,8 @@ function showDetail(cedula) {
                     <td>${(v.kilometraje_actual || 0).toLocaleString()}</td>
                     <td>${v.tipo_combustible || '—'}</td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editVehicle(${v.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle(${v.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editVehicle(${v.id})" title="Modificar Vehículo"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle(${v.id})" title="Eliminar Vehículo"><i class="bi bi-trash"></i></button>
                     </td>
                 </tr>`;
             });
@@ -143,7 +145,7 @@ function showDetail(cedula) {
         if (c.ordenes && c.ordenes.length > 0) {
             ohtml = '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>ID</th><th>Total</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>';
             c.ordenes.forEach(o => {
-                ohtml += `<tr><td>#${o.id}</td><td>$${formatCurrency(o.total)}</td><td>${estadoBadge(o.estado)}</td><td>${formatDate(o.created_at || o.fecha)}</td></tr>`;
+                ohtml += `<tr><td>#${o.id}</td><td data-usd-price="${o.total}">${formatUsdBs(o.total)}</td><td>${estadoBadge(o.estado)}</td><td>${formatDate(o.created_at || o.fecha)}</td></tr>`;
             });
             ohtml += '</tbody></table></div>';
         } else {
@@ -187,19 +189,20 @@ function hideDetail() {
 }
 
 function showCreateModal() {
-    $('#clientModalTitle').text('Nuevo Cliente');
+    $('#clientModalTitle').text('Registrar Cliente');
     Validator.clearForm('clientForm');
     $('#editCedula').val('');
     $('#fCedulaPrefijo').val('V').prop('disabled', false);
     $('#fCedula').prop('disabled', false);
     new bootstrap.Modal('#clientModal').show();
+    Validator.initTracking('clientForm');
 }
 
 function editClient(cedula) {
     $.get(`/api/clients/${cedula}`, function (r) {
         if (r.status !== 'success') return;
         const c = r.data;
-        $('#clientModalTitle').text('Editar Cliente');
+        $('#clientModalTitle').text('Modificar Cliente');
         $('#editCedula').val(cedula);
         setDocumentFields('fCedulaPrefijo', 'fCedula', cedula);
         $('#fCedulaPrefijo').prop('disabled', true);
@@ -210,6 +213,7 @@ function editClient(cedula) {
         $('#fEmail').val(c.email);
         $('#fDireccion').val(c.direccion);
         new bootstrap.Modal('#clientModal').show();
+        Validator.initTracking('clientForm');
     });
 }
 
@@ -252,7 +256,7 @@ function saveClient() {
 }
 
 function toggleClient(cedula) {
-    confirmAction('Eliminar este cliente?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar este cliente?', () => {
         $.ajax({ url: `/api/clients/${cedula}/toggle`, type: 'PUT',
             success: function (r) { showToast(r.message, 'success'); loadClients(); loadStats(); },
             error: function (x) { showToast(x.responseJSON?.message || 'No se pudo eliminar el cliente', 'error'); }
@@ -267,7 +271,7 @@ function showVehicleModal(vehicleData) {
     $('#vCarnetFile').val('');
     $('#vCarnetFileName').text('No seleccionado');
     if (vehicleData) {
-        $('#vehicleModalTitle').text('Editar Vehículo');
+        $('#vehicleModalTitle').text('Modificar Vehículo');
         $('#editVehicleId').val(vehicleData.id);
         $('#vMarca').val(vehicleData.marca);
         $('#vModelo').val(vehicleData.modelo);
@@ -278,10 +282,11 @@ function showVehicleModal(vehicleData) {
         $('#vCombustible').val(vehicleData.tipo_combustible);
         $('#vKm').val(vehicleData.kilometraje_actual);
     } else {
-        $('#vehicleModalTitle').text('Agregar Vehículo');
+        $('#vehicleModalTitle').text('Registrar Vehículo');
         $('#editVehicleId').val('');
     }
     new bootstrap.Modal('#vehicleModal').show();
+    Validator.initTracking('vehicleForm');
 }
 
 function editVehicle(vid) {
@@ -293,13 +298,13 @@ function editVehicle(vid) {
 
 function deleteVehicle(vid) {
     if (!currentCedula) return;
-    confirmAction('Eliminar este vehiculo?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar este vehículo?', () => {
         $.ajax({ url: `/api/clients/${currentCedula}/vehicles/${vid}`, type: 'DELETE',
             success: function (r) {
                 showToast(r.message, 'success');
                 showDetail(currentCedula);
             },
-            error: function (x) { showToast(x.responseJSON?.message || 'No se pudo eliminar el vehiculo', 'error'); }
+            error: function (x) { showToast(x.responseJSON?.message || 'No se pudo eliminar el vehículo', 'error'); }
         });
     });
 }
@@ -345,7 +350,7 @@ function saveVehicle() {
                 const carnetUpload = await uploadVehicleCarnet(targetVehicleId, pendingVehicleCarnetFile);
                 if (!carnetUpload.ok) carnetWarning = ` (${carnetUpload.message})`;
             }
-            showToast((r.message || 'Vehiculo guardado correctamente') + carnetWarning, 'success');
+            showToast((r.message || 'Vehículo guardado correctamente') + carnetWarning, 'success');
             pendingVehicleCarnetFile = null;
             $('#vCarnetFile').val('');
             $('#vCarnetFileName').text('No seleccionado');
@@ -354,7 +359,7 @@ function saveVehicle() {
         },
         error: function (x) {
             if (x.responseJSON?.errors) Validator.showServerErrors('vehicleForm', x.responseJSON.errors);
-            showToast(x.responseJSON?.message || 'No se pudo guardar el vehiculo', 'error');
+            showToast(x.responseJSON?.message || 'No se pudo guardar el vehículo', 'error');
         }
     });
 }
@@ -363,11 +368,13 @@ async function validateUniqueClientCedula() {
     const input = document.getElementById('fCedula');
     if (!input || input.disabled) return true;
     if (!input.value.trim()) {
+        delete input.dataset.externalError;
         clearFieldError(input);
         updateFormSubmitState('clientForm');
         return true;
     }
     if (!Validator.validateField('clientForm', 'fCedula')) {
+        delete input.dataset.externalError;
         updateFormSubmitState('clientForm');
         return false;
     }
@@ -377,15 +384,18 @@ async function validateUniqueClientCedula() {
         const res = await fetch(`/api/clients/check-unique?field=cedula&value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(exclude)}`, { credentials: 'same-origin' });
         const data = await res.json();
         if (data.status === 'success' && data.exists && data.active) {
-            setFieldError(input, 'Esta cedula ya esta registrada.');
+            input.dataset.externalError = 'Esta cédula ya está registrada';
+            setFieldError(input, 'Esta cédula ya está registrada');
             updateFormSubmitState('clientForm');
             return false;
         }
         if (data.status === 'success' && data.exists && !data.active) {
+            delete input.dataset.externalError;
             clearFieldError(input);
             updateFormSubmitState('clientForm');
             return true;
         }
+        delete input.dataset.externalError;
         clearFieldError(input);
         updateFormSubmitState('clientForm');
     } catch (e) {}
@@ -397,11 +407,13 @@ async function validateUniqueClientEmail() {
     if (!input) return true;
     const value = input.value.trim();
     if (!value) {
+        delete input.dataset.externalError;
         clearFieldError(input);
         updateFormSubmitState('clientForm');
         return true;
     }
     if (!Validator.validateField('clientForm', 'fEmail')) {
+        delete input.dataset.externalError;
         updateFormSubmitState('clientForm');
         return false;
     }
@@ -410,11 +422,15 @@ async function validateUniqueClientEmail() {
         const res = await fetch(`/api/clients/check-unique?field=email&value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(exclude)}`, { credentials: 'same-origin' });
         const data = await res.json();
         if (data.status === 'success' && data.exists) {
-            setFieldError(input, 'Este correo ya esta registrado.');
+            input.dataset.externalError = 'Este correo ya está registrado';
+            setFieldError(input, 'Este correo ya está registrado');
             updateFormSubmitState('clientForm');
             return false;
         }
-        if (data.status === 'success') clearFieldError(input);
+        if (data.status === 'success') {
+            delete input.dataset.externalError;
+            clearFieldError(input);
+        }
         updateFormSubmitState('clientForm');
     } catch (e) {}
     return true;
@@ -434,7 +450,7 @@ function uploadVehicleCarnet(vehicleId, file) {
                 resolve({ ok: true });
             },
             error: function (x) {
-                resolve({ ok: false, message: x.responseJSON?.message || 'No se pudo subir el titulo' });
+                resolve({ ok: false, message: x.responseJSON?.message || 'No se pudo subir el título' });
             }
         });
     });
@@ -451,7 +467,7 @@ function scanVehicleTitleAndFillAdmin(file) {
         contentType: false,
         success: function (r) {
             if (r.status !== 'success' || !r.data) {
-                showToast(r.message || 'No se pudo leer el documento automaticamente', 'warning');
+                showToast(r.message || 'No se pudo leer el documento automáticamente', 'warning');
                 return;
             }
             const d = r.data;
@@ -464,10 +480,10 @@ function scanVehicleTitleAndFillAdmin(file) {
             if (d.tipo_combustible && isValidConstant('TIPOS_COMBUSTIBLE', d.tipo_combustible)) {
                 $('#vCombustible').val(d.tipo_combustible);
             }
-            showToast('Datos del documento cargados automaticamente', 'success');
+            showToast('Datos del documento cargados automáticamente', 'success');
         },
         error: function (x) {
-            showToast(x.responseJSON?.message || 'No se pudo procesar el documento automaticamente', 'warning');
+            showToast(x.responseJSON?.message || 'No se pudo procesar el documento automáticamente', 'warning');
         }
     });
 }

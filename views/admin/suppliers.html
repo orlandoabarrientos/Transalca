@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+    <title>Gestionar Proveedores - Transalca C.A.</title>
     <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
@@ -16,18 +16,17 @@
         <div id="navbarContainer"></div>
         <div class="content-area">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="fw-bold mb-0">Proveedores</h4>
-                <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Nuevo Proveedor</button>
+                <h4 class="fw-bold mb-0">Gestionar Proveedores</h4>
+                <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Registrar Proveedor</button>
             </div>
             <div class="card">
                 <div class="card-body p-0">
                     <table class="table mb-0">
                         <thead>
                             <tr>
-
                                 <th>Nombre</th>
                                 <th>RIF</th>
-                                <th>Telefono</th>
+                                <th>Teléfono</th>
                                 <th>Email</th>
                                 <th>Estado</th>
                                 <th>Acciones</th>
@@ -41,12 +40,11 @@
     </div>
 </div>
 
-
 <div class="modal fade" id="supplierModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modalTitle">Nuevo Proveedor</h5>
+                <h5 class="modal-title" id="modalTitle">Registrar Proveedor</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -73,7 +71,7 @@
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Telefono</label>
+                            <label class="form-label">Teléfono</label>
                             <input type="text" class="form-control" id="telefono" name="telefono">
                             <div class="invalid-feedback"></div>
                         </div>
@@ -84,7 +82,7 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Direccion</label>
+                        <label class="form-label">Dirección</label>
                         <input type="text" class="form-control" id="direccion" name="direccion">
                     </div>
                 </form>

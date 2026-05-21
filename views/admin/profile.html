@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+    <title>Gestionar Mi Perfil - Transalca C.A.</title>
     <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
@@ -15,7 +15,7 @@
     <div class="main-content">
         <div id="navbarContainer"></div>
         <div class="content-area">
-            <div class="mb-4"><h4 class="fw-bold mb-0">Mi Perfil</h4></div>
+            <div class="mb-4"><h4 class="fw-bold mb-0">Gestionar Mi Perfil</h4></div>
             <div class="row g-4">
                 <div class="col-lg-4">
                     <div class="card text-center">
@@ -32,23 +32,59 @@
                 </div>
                 <div class="col-lg-8">
                     <div class="card mb-3">
-                        <div class="card-header"><span>Informacion Personal</span></div>
+                        <div class="card-header"><span>Información Personal</span></div>
                         <div class="card-body">
                             <form id="profileForm">
-                                <div class="row"><div class="col-md-6 mb-3"><label class="form-label">Nombre</label><input type="text" class="form-control" id="nombre" name="nombre"><div class="invalid-feedback"></div></div><div class="col-md-6 mb-3"><label class="form-label">Apellido</label><input type="text" class="form-control" id="apellido" name="apellido"><div class="invalid-feedback"></div></div></div>
-                                <div class="row"><div class="col-md-6 mb-3"><label class="form-label">Telefono</label><input type="text" class="form-control" id="telefono" name="telefono"></div><div class="col-md-6 mb-3"><label class="form-label">Direccion</label><input type="text" class="form-control" id="direccion" name="direccion"></div></div>
-                                <button type="button" class="btn btn-orange" onclick="saveProfile()">Guardar Cambios</button>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Nombre</label>
+                                        <input type="text" class="form-control" id="nombre" name="nombre">
+                                        <div class="invalid-feedback"></div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Apellido</label>
+                                        <input type="text" class="form-control" id="apellido" name="apellido">
+                                        <div class="invalid-feedback"></div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Teléfono</label>
+                                        <input type="text" class="form-control" id="telefono" name="telefono">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Dirección</label>
+                                        <input type="text" class="form-control" id="direccion" name="direccion">
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-orange" id="btnSaveProfile" onclick="saveProfile()">Guardar Cambios</button>
                             </form>
                         </div>
                     </div>
                     <div class="card">
-                        <div class="card-header"><span>Cambiar Contrasena</span></div>
+                        <div class="card-header"><span>Cambiar Contraseña</span></div>
                         <div class="card-body">
                             <form id="passwordForm">
-                                <div class="mb-3"><label class="form-label">Contrasena Actual</label><input type="password" class="form-control" id="old_password" name="old_password"><div class="invalid-feedback"></div></div>
-                                <div class="mb-3"><label class="form-label">Nueva Contrasena</label><input type="password" class="form-control" id="new_password" name="new_password"><div class="invalid-feedback"></div><div class="password-strength mt-1"><div class="bar" id="passwordStrengthBar"></div></div><small class="form-text">Min 8, 1 mayuscula, 1 minuscula, 1 numero, 1 especial</small></div>
-                                <div class="mb-3"><label class="form-label">Confirmar Nueva</label><input type="password" class="form-control" id="confirm_password" name="confirm_password"><div class="invalid-feedback"></div></div>
-                                <button type="button" class="btn btn-orange" onclick="changePassword()">Cambiar Contrasena</button>
+                                <div class="mb-3">
+                                    <label class="form-label">Contraseña Actual</label>
+                                    <input type="password" class="form-control" id="old_password" name="old_password">
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Nueva Contraseña</label>
+                                    <input type="password" class="form-control" id="new_password" name="new_password">
+                                    <div class="invalid-feedback"></div>
+                                    <div class="password-strength mt-1">
+                                        <div class="bar" id="passwordStrengthBar"></div>
+                                    </div>
+                                    <small class="form-text">Mín 8, 1 mayúscula, 1 minúscula, 1 número, 1 especial</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Confirmar Nueva Contraseña</label>
+                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password">
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                                <button type="button" class="btn btn-orange" id="btnChangePassword" onclick="changePassword()">Cambiar Contraseña</button>
                             </form>
                         </div>
                     </div>

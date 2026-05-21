@@ -6,9 +6,9 @@ $(document).ready(function() {
     loadData();
     loadSucursales('sucursal_id', true);
     Validator.setRules('serviceForm', {
-        nombre: { required: true, minLength: 3, requiredMsg: 'Nombre requerido', minLengthMsg: 'Minimo 3 caracteres' },
-        precio: { required: true, min: 0.01, requiredMsg: 'Precio requerido', minMsg: 'Debe ser mayor a 0' },
-        duracion_estimada: { required: true, min: 1, requiredMsg: 'Duracion requerida', minMsg: 'Debe ser mayor a 0' }
+        nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'Mínimo 3 caracteres' },
+        precio: { required: true, min: 0.01, requiredMsg: 'El precio es obligatorio', minMsg: 'Debe ser mayor a 0' },
+        duracion_estimada: { required: true, min: 1, requiredMsg: 'La duración es obligatoria', minMsg: 'Debe ser mayor a 0' }
     });
     Validator.setupRealtime('serviceForm');
 });
@@ -28,8 +28,8 @@ function loadData() {
                 <td>${s.duracion_estimada || '-'} min</td>
                 <td>${statusBadge(s.estado)}</td>
                 <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${s.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${s.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${s.id})" title="Modificar Servicio"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${s.id})" title="Eliminar Servicio"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -42,13 +42,15 @@ function loadData() {
 function openModal(id = null) {
     Validator.clearForm('serviceForm');
     document.getElementById('serviceId').value = id || '';
-    document.getElementById('modalTitle').textContent = id ? 'Editar Servicio' : 'Nuevo Servicio';
+    document.getElementById('modalTitle').textContent = id ? 'Modificar Servicio' : 'Registrar Servicio';
     new bootstrap.Modal(document.getElementById('serviceModal')).show();
+    Validator.initTracking('serviceForm');
 }
 
 function editData(id) {
     apiCall(`/api/services/${id}`).then(res => {
         const s = res.data;
+        Validator.clearForm('serviceForm');
         document.getElementById('serviceId').value = s.id;
         document.getElementById('nombre').value = s.nombre;
         document.getElementById('descripcion').value = s.descripcion || '';
@@ -57,8 +59,9 @@ function editData(id) {
         document.getElementById('duracion_estimada').value = s.duracion_estimada || 60;
         const sucSel = document.getElementById('sucursal_id');
         if(sucSel) sucSel.value = s.sucursal_id || '';
-        document.getElementById('modalTitle').textContent = 'Editar Servicio';
+        document.getElementById('modalTitle').textContent = 'Modificar Servicio';
         new bootstrap.Modal(document.getElementById('serviceModal')).show();
+        Validator.initTracking('serviceForm');
     });
 }
 
@@ -84,7 +87,7 @@ function saveData() {
 }
 
 function toggleEstado(id) {
-    confirmAction('Eliminar este servicio?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar este servicio?', () => {
         apiCall(`/api/services/${id}`, 'DELETE').then(res => { showToast(res.message); loadData(); });
     });
 }

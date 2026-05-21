@@ -8,8 +8,21 @@ $(document).ready(function() {
     loadData();
     loadCombos();
     Validator.setRules('productForm', {
-        codigo: { required: true, minLength: 2, requiredMsg: 'El codigo es obligatorio' },
-        nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'Minimo 3 caracteres' },
+        codigo: { required: true, minLength: 2, requiredMsg: 'El código es obligatorio' },
+        nombre: { 
+            required: true, 
+            minLength: 3, 
+            maxLength: 50, 
+            pattern: /^[A-Za-z0-9ñÑáéíóúÁÉÍÓÚ\s\-\.\#\:\,\_\/]+$/, 
+            requiredMsg: 'El nombre es obligatorio', 
+            minLengthMsg: 'Mínimo 3 caracteres',
+            maxLengthMsg: 'Máximo 50 caracteres',
+            patternMsg: 'El nombre contiene caracteres no válidos' 
+        },
+        descripcion: {
+            maxLength: 250,
+            maxLengthMsg: 'La descripción no puede superar los 250 caracteres'
+        },
         precio: { required: true, min: 0.01, requiredMsg: 'El precio es obligatorio', minMsg: 'El precio debe ser mayor a 0' }
     });
     Validator.setupRealtime('productForm');
@@ -31,8 +44,8 @@ function loadData() {
                 <td>${p.stock !== undefined ? p.stock : '-'}</td>
                 <td>${statusBadge(p.estado)}</td>
                 <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(p.codigo)}')" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${encodeURIComponent(p.codigo)}')" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(p.codigo)}')" title="Modificar Producto"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${encodeURIComponent(p.codigo)}')" title="Eliminar Producto"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -51,7 +64,7 @@ async function loadCombos() {
         const catSel = document.getElementById('categoria');
         const brandSel = document.getElementById('marca');
         if (catSel) {
-            catSel.innerHTML = '<option value="">Sin categoria</option>';
+            catSel.innerHTML = '<option value="">Sin categoría</option>';
             (cats.data || []).forEach(c => catSel.innerHTML += `<option value="${escapeHtml(c.nombre)}">${escapeHtml(c.nombre)}</option>`);
         }
         if (brandSel) {
@@ -65,8 +78,9 @@ async function loadCombos() {
 function openModal(codigo = null) {
     Validator.clearForm('productForm');
     document.getElementById('productOldCodigo').value = codigo ? decodeURIComponent(codigo) : '';
-    document.getElementById('modalTitle').textContent = codigo ? 'Editar Producto' : 'Nuevo Producto';
+    document.getElementById('modalTitle').textContent = codigo ? 'Modificar Producto' : 'Registrar Producto';
     new bootstrap.Modal(document.getElementById('productModal')).show();
+    Validator.initTracking('productForm');
 }
 
 function editData(codigo) {
@@ -74,6 +88,7 @@ function editData(codigo) {
     apiCall(`/api/products/detail/${encodeURIComponent(codigo)}`).then(res => {
         if (res.status === 'error') return showToast(res.message, 'error');
         const p = res.data || {};
+        Validator.clearForm('productForm');
         document.getElementById('productOldCodigo').value = p.codigo;
         document.getElementById('codigo').value = p.codigo || '';
         document.getElementById('nombre').value = p.nombre || '';
@@ -85,8 +100,9 @@ function editData(codigo) {
         if (brandSel) brandSel.value = p.marca || '';
         const sucSel = document.getElementById('sucursal_id');
         if (sucSel) sucSel.value = p.sucursal_id || '';
-        document.getElementById('modalTitle').textContent = 'Editar Producto';
+        document.getElementById('modalTitle').textContent = 'Modificar Producto';
         new bootstrap.Modal(document.getElementById('productModal')).show();
+        Validator.initTracking('productForm');
     });
 }
 
@@ -121,7 +137,7 @@ function saveData() {
 
 function toggleEstado(codigo) {
     codigo = decodeURIComponent(codigo);
-    confirmAction('Eliminar este producto?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar este producto?', () => {
         apiCall('/api/products/toggle', 'PUT', { codigo }).then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message);
@@ -138,18 +154,22 @@ function validateUniqueProductCodigo() {
         const value = (input?.value || '').trim();
         if (!input) return;
         if (!value) {
+            delete input.dataset.externalError;
             clearFieldError(input);
             updateFormSubmitState('productForm');
             return;
         }
         if (!Validator.validateField('productForm', 'codigo')) {
+            delete input.dataset.externalError;
             updateFormSubmitState('productForm');
             return;
         }
         const res = await apiCall(`/api/products/check-unique?value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(oldCodigo)}`);
         if (res.status === 'success' && res.exists) {
-            setFieldError(input, 'Este codigo ya esta registrado.');
+            input.dataset.externalError = 'Este código ya está registrado';
+            setFieldError(input, 'Este código ya está registrado');
         } else if (res.status === 'success') {
+            delete input.dataset.externalError;
             clearFieldError(input);
         }
         updateFormSubmitState('productForm');

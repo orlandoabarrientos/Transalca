@@ -23,7 +23,7 @@ function loadPending() {
                 <td>${escapeHtml(p.metodo_pago || '-')}</td>
                 <td>${formatDate(p.fecha)}</td>
                 <td>
-                    <button class="btn btn-sm btn-success" onclick="viewComp(${p.id})"><i class="bi bi-check-lg me-1"></i>Revisar</button>
+                    <button class="btn btn-sm btn-success" onclick="viewComp(${p.id})"><i class="bi bi-check-lg me-1"></i>Revisar pago</button>
                 </td>
             </tr>`;
         });
@@ -37,7 +37,8 @@ function loadAll() {
         if (!tbody) return;
         tbody.innerHTML = '';
         (res.data || []).forEach(p => {
-            const badge = (p.estado === 'aprobado' || p.estado === 'verificado') ? 'badge-active' : p.estado === 'pendiente' ? 'badge-pending' : 'badge-inactive';
+            const stateLower = String(p.estado || '').toLowerCase();
+            const badge = ['aprobado', 'aprobada', 'verificado', 'verificada', 'pagado', 'activo'].includes(stateLower) ? 'badge-active' : ['pendiente', 'procesando'].includes(stateLower) ? 'badge-pending' : 'badge-inactive';
             tbody.innerHTML += `<tr class="fade-in-up">
                 <td>#${p.id}</td>
                 <td>#${p.orden_venta_id}</td>
@@ -69,7 +70,7 @@ function viewComp(id) {
 
 function approvePayment() {
     if (!currentPaymentId) return;
-    confirmAction('Aprobar este pago?', () => {
+    confirmAction('¿Estás seguro de Aprobar este pago?', () => {
         setButtonLoading('#btnApprovePayment', true, 'Procesando...');
         apiCall(`/api/payments/${currentPaymentId}/approve`, 'POST').then(res => {
             setButtonLoading('#btnApprovePayment', false);
@@ -88,11 +89,21 @@ function rejectPayment() {
         showToast('No se pudo abrir el formulario de rechazo', 'error');
         return;
     }
+    const compModalEl = document.getElementById('compModal');
+    const compModal = compModalEl ? bootstrap.Modal.getInstance(compModalEl) : null;
+    compModal?._focustrap?.deactivate();
     Swal.fire({
         icon: 'warning',
         title: 'Motivo del rechazo.',
         input: 'textarea',
         inputPlaceholder: 'Explique el motivo.',
+        didOpen: () => {
+            const input = Swal.getInput();
+            if (input) input.focus();
+        },
+        willClose: () => {
+            compModal?._focustrap?.activate();
+        },
         showCancelButton: true,
         confirmButtonText: 'Rechazar',
         cancelButtonText: 'Cancelar',

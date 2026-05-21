@@ -55,7 +55,7 @@ async function loadMechanics() {
         const baseOptions = '<option value="">Sin asignar por ahora</option>';
         const allOptions = mechanicsCache.map(m => `<option value="${m.cedula}">${m.nombre} ${m.apellido} (${m.cedula})</option>`).join('');
         document.getElementById('mecanico_cedula').innerHTML = baseOptions + allOptions;
-        document.getElementById('assignment_mechanic_cedula').innerHTML = '<option value="">Seleccione mecanico</option>' + allOptions;
+        document.getElementById('assignment_mechanic_cedula').innerHTML = '<option value="">Seleccione mecánico</option>' + allOptions;
     } catch (e) { }
 }
 
@@ -85,13 +85,13 @@ async function loadAssignments() {
                 <td>${formatDate(a.fecha)}</td>
                 <td>${a.observaciones || '-'}</td>
                 <td>
-                    ${!hasMechanic ? `<button class="btn btn-icon btn-outline-orange btn-sm" title="Asignar mecanico" onclick="openMechanicModal(${a.id})"><i class="bi bi-person-plus"></i></button>` : ''}
+                    ${!hasMechanic ? `<button class="btn btn-icon btn-outline-orange btn-sm" title="Asignar Mecánico" onclick="openMechanicModal(${a.id})"><i class="bi bi-person-plus"></i></button>` : ''}
                 </td>
             </tr>`;
         });
 
         if (!assignments.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="empty-state"><i class="bi bi-tools"></i><p>No hay registros de servicio mecanico</p></div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="empty-state"><i class="bi bi-tools"></i><p>No hay registros de servicio mecánico</p></div></td></tr>';
         }
 
         document.getElementById('statTotal').textContent = assignments.length;
@@ -99,6 +99,7 @@ async function loadAssignments() {
     } catch (e) { }
 }
 
+// Para la bitácora
 function statusSelect(id, current) {
     const options = [
         ['asignado', 'Asignado'],
@@ -113,9 +114,10 @@ function statusSelect(id, current) {
 
 function openAssignmentModal() {
     Validator.clearForm('assignmentForm');
-    document.getElementById('assignmentModalTitle').textContent = 'Nuevo Registro Servicio Mecanico';
+    document.getElementById('assignmentModalTitle').textContent = 'Registrar Servicio Mecánico';
     document.getElementById('orden_venta_id').value = '';
     assignmentModal.show();
+    Validator.initTracking('assignmentForm');
 }
 
 async function saveAssignment() {
@@ -141,7 +143,7 @@ async function saveAssignment() {
             return showToast(res.message, 'error');
         }
         assignmentModal.hide();
-        showToast(res.message || 'Servicio mecanico registrado correctamente', 'success');
+        showToast(res.message || 'Servicio mecánico registrado correctamente', 'success');
         loadAssignments();
     } catch (e) { }
 }
@@ -157,7 +159,7 @@ async function saveMechanicAssignment() {
     const mecanicoCedula = document.getElementById('assignment_mechanic_cedula').value;
 
     if (!assignmentId || !mecanicoCedula) {
-        showToast('Seleccione un mecanico', 'warning');
+        showToast('Seleccione un mecánico', 'warning');
         return;
     }
 
@@ -170,7 +172,7 @@ async function saveMechanicAssignment() {
         setButtonLoading(saveBtn, false);
         if (res.status === 'error') return showToast(res.message, 'error');
         mechanicModal.hide();
-        showToast(res.message || 'Mecanico asignado correctamente', 'success');
+        showToast(res.message || 'Mecánico asignado correctamente', 'success');
         loadAssignments();
     } catch (e) { }
 }
@@ -187,4 +189,13 @@ async function updateAssignmentStatus(assignmentId, estado) {
     } catch (e) {
         loadAssignments();
     }
+}
+
+function escapeHtml(text) {
+    return String(text ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }

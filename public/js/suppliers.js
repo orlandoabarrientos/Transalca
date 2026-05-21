@@ -8,11 +8,11 @@ $(document).ready(function() {
     $('#navbarContainer').load('/components/admin_navbar.html');
     loadData();
     Validator.setRules('supplierForm', {
-        nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'Minimo 3 caracteres' },
-        rif_prefijo: { required: true, custom: v => ['J', 'G', 'V', 'E', 'P'].includes(v), customMsg: 'El valor seleccionado no es valido. Recargue la pagina e intentelo nuevamente.' },
-        rif: { required: true, pattern: /^\d{9}$/, requiredMsg: 'El rif es obligatorio.', patternMsg: 'El rif debe tener 9 digitos.' },
+        nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'Mínimo 3 caracteres' },
+        rif_prefijo: { required: true, custom: v => ['J', 'G', 'V', 'E', 'P'].includes(v), customMsg: 'El valor seleccionado no es válido. Recargue la página e inténtelo nuevamente.' },
+        rif: { required: true, pattern: /^\d{9}$/, requiredMsg: 'El RIF es obligatorio.', patternMsg: 'El RIF debe tener 9 dígitos.' },
         email: { email: true },
-        telefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 digitos y comenzar por 04' }
+        telefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 dígitos y comenzar por 04' }
     });
     Validator.setupRealtime('supplierForm');
     document.getElementById('rif')?.addEventListener('input', validateUniqueSupplierRif);
@@ -33,8 +33,8 @@ function loadData() {
                 <td>${escapeHtml(s.email || '-')}</td>
                 <td>${statusBadge(s.estado)}</td>
                 <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(s.rif)}')" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${encodeURIComponent(s.rif)}')" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(s.rif)}')" title="Modificar Proveedor"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${encodeURIComponent(s.rif)}')" title="Eliminar Proveedor"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -52,18 +52,22 @@ function validateUniqueSupplierEmail() {
         const value = (input?.value || '').trim();
         if (!input) return;
         if (!value) {
+            delete input.dataset.externalError;
             clearFieldError(input);
             updateFormSubmitState('supplierForm');
             return;
         }
         if (!Validator.validateField('supplierForm', 'email')) {
+            delete input.dataset.externalError;
             updateFormSubmitState('supplierForm');
             return;
         }
         const res = await apiCall(`/api/suppliers/check-unique?field=email&value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(oldRif)}`);
         if (res.status === 'success' && res.exists) {
-            setFieldError(input, 'Este correo ya esta registrado.');
+            input.dataset.externalError = 'Este correo ya está registrado.';
+            setFieldError(input, 'Este correo ya está registrado.');
         } else if (res.status === 'success') {
+            delete input.dataset.externalError;
             clearFieldError(input);
         }
         updateFormSubmitState('supplierForm');
@@ -74,8 +78,9 @@ function openModal(rif = null) {
     Validator.clearForm('supplierForm');
     document.getElementById('supplierOldRif').value = rif ? decodeURIComponent(rif) : '';
     setRifFields('rif_prefijo', 'rif', rif ? decodeURIComponent(rif) : '', 'J');
-    document.getElementById('modalTitle').textContent = rif ? 'Editar Proveedor' : 'Nuevo Proveedor';
+    document.getElementById('modalTitle').textContent = rif ? 'Modificar Proveedor' : 'Registrar Proveedor';
     new bootstrap.Modal(document.getElementById('supplierModal')).show();
+    Validator.initTracking('supplierForm');
 }
 
 function editData(rif) {
@@ -90,8 +95,9 @@ function editData(rif) {
         document.getElementById('telefono').value = s.telefono || '';
         document.getElementById('email').value = s.email || '';
         document.getElementById('direccion').value = s.direccion || '';
-        document.getElementById('modalTitle').textContent = 'Editar Proveedor';
+        document.getElementById('modalTitle').textContent = 'Modificar Proveedor';
         new bootstrap.Modal(document.getElementById('supplierModal')).show();
+        Validator.initTracking('supplierForm');
     });
 }
 
@@ -126,13 +132,13 @@ function saveData() {
 
 function toggleEstado(rif) {
     rif = decodeURIComponent(rif);
-    confirmAction('Eliminar este proveedor?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar este proveedor?', () => {
         apiCall('/api/suppliers/toggle', 'PUT', { rif }).then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message);
             loadData();
         });
-    }, { confirmText: 'Eliminar' });
+    });
 }
 
 function validateUniqueSupplierRif() {
@@ -143,21 +149,34 @@ function validateUniqueSupplierRif() {
         const value = (input?.value || '').trim();
         if (!input) return;
         if (!value) {
+            delete input.dataset.externalError;
             clearFieldError(input);
             updateFormSubmitState('supplierForm');
             return;
         }
         if (!Validator.validateField('supplierForm', 'rif')) {
+            delete input.dataset.externalError;
             updateFormSubmitState('supplierForm');
             return;
         }
         const queryValue = buildRifValue('rif_prefijo', 'rif');
         const res = await apiCall(`/api/suppliers/check-unique?value=${encodeURIComponent(queryValue)}&exclude=${encodeURIComponent(oldRif)}`);
         if (res.status === 'success' && res.exists) {
-            setFieldError(input, 'Este rif ya esta registrado.');
+            input.dataset.externalError = 'Este RIF ya está registrado.';
+            setFieldError(input, 'Este RIF ya está registrado.');
         } else if (res.status === 'success') {
+            delete input.dataset.externalError;
             clearFieldError(input);
         }
         updateFormSubmitState('supplierForm');
     }, 350);
+}
+
+function escapeHtml(text) {
+    return String(text ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }

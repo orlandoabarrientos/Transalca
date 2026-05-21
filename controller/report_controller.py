@@ -78,7 +78,7 @@ def export_reports():
             data = model.get_sales_history(start_date, end_date, status)
             headers = ["ID", "Cliente", "Fecha", "Total", "Estado"]
             rows = [[d['id'], d['cliente'], d['fecha'], f"${d['total']}", d['estado']] for d in data]
-            title = "Reporte de Ventas"
+            title = "Reporte Orden de Venta"
         elif report_type == 'payments':
             data = model.get_payments_history(start_date, end_date, status)
             headers = ["ID", "Orden", "Cliente", "Fecha", "Referencia", "Monto", "Moneda", "Método", "Estado"]
@@ -88,7 +88,7 @@ def export_reports():
             data = model.get_inventory_kardex(start_date, end_date)
             headers = ["ID", "Producto", "Código", "Motivo", "Tipo Obra", "Fecha", "Cantidad"]
             rows = [[d['id'], d['producto'], d['codigo'], d['motivo'], d['tipo'], d['fecha'], d['cantidad']] for d in data]
-            title = "Kárdex de Gestionar Stock de Productos"
+            title = "Kardex de Stock"
         elif report_type == 'mechanics':
             data = model.get_mechanics_performance(start_date, end_date)
             headers = ["Mecánico", "Servicios Asignados", "Completados", "Ingreso Generado"]

@@ -5,8 +5,8 @@ $(document).ready(function() {
     updatePasswordStrength('new_password', 'passwordStrengthBar');
     Validator.setRules('profileForm', { nombre: { required: true, minLength: 2 }, apellido: { required: true, minLength: 2 } });
     Validator.setRules('passwordForm', {
-        old_password: { required: true, requiredMsg: 'Ingrese contrasena actual' },
-        new_password: { required: true, pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$/, patternMsg: 'Min 8, 1 may, 1 min, 1 num, 1 esp' },
+        old_password: { required: true, requiredMsg: 'Ingrese contraseña actual' },
+        new_password: { required: true, pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$/, patternMsg: 'Mín 8, 1 may, 1 min, 1 num, 1 esp' },
         confirm_password: { required: true, match: 'new_password', matchMsg: 'No coinciden' }
     });
     Validator.setupRealtime('profileForm');
@@ -25,6 +25,8 @@ async function loadProfile() {
             document.getElementById('profileName').textContent = `${u.nombre} ${u.apellido}`;
             document.getElementById('profileEmail').textContent = u.email;
             if (u.foto_perfil) document.getElementById('profilePhoto').src = `/public/assets/profile_pics/${u.foto_perfil}`;
+            Validator.initTracking('profileForm');
+            Validator.initTracking('passwordForm');
         }
     } catch(e) {}
 }
@@ -32,7 +34,10 @@ async function loadProfile() {
 function saveProfile() {
     if (!Validator.validate('profileForm')) return showToast('Corrija errores','warning');
     const data = { nombre: document.getElementById('nombre').value, apellido: document.getElementById('apellido').value, telefono: document.getElementById('telefono').value, direccion: document.getElementById('direccion').value };
+    const saveBtn = document.getElementById('btnSaveProfile');
+    setButtonLoading(saveBtn, true, 'Guardando...');
     apiCall('/api/profile/', 'PUT', data).then(res => {
+        setButtonLoading(saveBtn, false);
         if (res.status === 'error') { Validator.showServerErrors('profileForm', res.errors); return showToast(res.message, 'error'); }
         showToast('Perfil actualizado'); loadProfile();
     });
@@ -41,12 +46,16 @@ function saveProfile() {
 function changePassword() {
     if (!Validator.validate('passwordForm')) return showToast('Corrija errores','warning');
     const data = { old_password: document.getElementById('old_password').value, new_password: document.getElementById('new_password').value, confirm_password: document.getElementById('confirm_password').value };
+    const saveBtn = document.getElementById('btnChangePassword');
+    setButtonLoading(saveBtn, true, 'Guardando...');
     apiCall('/api/profile/password', 'PUT', data).then(res => {
+        setButtonLoading(saveBtn, false);
         if (res.status === 'error') { Validator.showServerErrors('passwordForm', res.errors); return showToast(res.message, 'error'); }
-        showToast('Contrasena actualizada');
+        showToast('Contraseña actualizada');
         document.getElementById('old_password').value = '';
         document.getElementById('new_password').value = '';
         document.getElementById('confirm_password').value = '';
+        loadProfile();
     });
 }
 

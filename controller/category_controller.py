@@ -23,6 +23,19 @@ def get_active():
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
+@category_bp.route('/check-unique', methods=['GET'])
+def check_unique():
+    try:
+        value = request.args.get('value', '').strip()
+        exclude = request.args.get('exclude', '').strip()
+        if not value:
+            return jsonify({"status": "success", "unique": True})
+        exists = model.nombre_exists(value, exclude if exclude else None)
+        return jsonify({"status": "success", "unique": not exists})
+    except Exception as e:
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
+
+
 @category_bp.route('/<path:nombre>', methods=['GET'])
 def get_one(nombre):
     try:

@@ -6,9 +6,9 @@ $(document).ready(function () {
     loadPromos();
     loadCards();
     Validator.setRules('promoForm', {
-        nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es obligatorio.', minLengthMsg: 'El nombre debe tener al menos 3 caracteres.' },
-        tipo: { required: true, allowed: ['puntos', 'descuento', 'gratis'], requiredMsg: 'Seleccione un tipo valido.' },
-        puntos_requeridos: { required: true, min: 1, requiredMsg: 'Los puntos son obligatorios.', minMsg: 'Los puntos deben ser mayores a 0.' }
+        nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'El nombre debe tener al menos 3 caracteres' },
+        tipo: { required: true, allowed: ['puntos', 'descuento', 'gratis'], requiredMsg: 'Seleccione un tipo válido' },
+        puntos_requeridos: { required: true, min: 1, requiredMsg: 'Los puntos son obligatorios', minMsg: 'Los puntos deben ser mayores a 0' }
     });
     Validator.setupRealtime('promoForm');
     bindModalValidationReset();
@@ -29,8 +29,8 @@ function loadPromos() {
                 <td>${escapeHtml(p.recompensa || '-')}</td>
                 <td>${statusBadge(p.estado)}</td>
                 <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${Number(p.id)})" title="Modificar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="deletePromo(${Number(p.id)})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${Number(p.id)})" title="Modificar Promoción"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="deletePromo(${Number(p.id)})" title="Eliminar Promoción"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -40,28 +40,81 @@ function loadPromos() {
     });
 }
 
+function formatCardNumber(id) {
+    const padded = String(id || 0).padStart(8, '0');
+    return `4318 0092 ${padded.slice(0, 4)} ${padded.slice(4)}`;
+}
+
+function getCardBackground(imagenTarjeta) {
+    if (imagenTarjeta) {
+        const url = `/public/assets/images/${encodeURIComponent(imagenTarjeta)}`;
+        return `url('${url}')`;
+    }
+    return 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)';
+}
+
 function loadCards() {
     apiCall('/api/promotions/cards').then(res => {
         const container = document.getElementById('cardsBody');
         if (!container) return;
         container.innerHTML = '';
         (res.data || []).forEach(c => {
-            const progreso = `${c.puntos_acumulados || 0}/${c.puntos_requeridos || 0}`;
-            const cardImg = c.imagen_tarjeta ? `/public/assets/images/${encodeURIComponent(c.imagen_tarjeta)}` : '/public/assets/images/default_card.png';
-            container.innerHTML += `<div class="promo-fidelity-card fade-in-up">
-                <div class="promo-fidelity-head">
-                    <strong>${escapeHtml(c.promo_nombre || 'Promocion')}</strong>
-                    <span class="badge-status ${c.canjeada ? 'badge-active' : 'badge-pending'}">${c.canjeada ? 'Canjeada' : 'Activa'}</span>
+            const accumulated = c.puntos_acumulados || 0;
+            const required = c.puntos_requeridos || 0;
+
+            let slotsHtml = '<div class="punch-card-grid">';
+            for (let i = 1; i <= required; i++) {
+                const isReward = (i === required);
+                const isFilled = (i <= accumulated);
+
+                let slotClass = 'punch-slot';
+                if (isReward) slotClass += ' reward-slot';
+                if (isFilled) slotClass += ' filled';
+
+                let slotContent = '';
+                if (isFilled) {
+                    slotContent = isReward ? '<i class="bi bi-gift-fill"></i>' : '<i class="bi bi-patch-check-fill"></i>';
+                } else {
+                    slotContent = isReward ? '<i class="bi bi-gift"></i>' : i;
+                }
+
+                slotsHtml += `<div class="${slotClass}">${slotContent}</div>`;
+            }
+            slotsHtml += '</div>';
+
+            const bg = getCardBackground(c.imagen_tarjeta);
+            const cardNum = formatCardNumber(c.id);
+            const statusClass = c.canjeada ? 'redeemed-badge' : 'active-badge';
+            const statusText = c.canjeada ? 'Canjeada' : 'Activa';
+
+            container.innerHTML += `<div class="loyalty-card-wrapper fade-in-up">
+                <div class="fidelity-card-physical" style="background: ${bg};">
+                    <div class="card-meta-row">
+                        <span class="card-brand-logo">TRANSALCA</span>
+                        <span class="card-status-badge ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="card-meta-row mt-2">
+                        <div class="card-chip-gold"></div>
+                        <i class="bi bi-wifi card-contactless"></i>
+                    </div>
+                    <div class="card-number-display">${cardNum}</div>
+                    <div class="card-holder-row">
+                        <div>
+                            <div class="card-holder-name">${escapeHtml(c.cliente_nombre || 'N/A')}</div>
+                            <div class="card-holder-cedula">C.I. ${escapeHtml(c.cliente_cedula_display || c.cliente_cedula || '-')}</div>
+                        </div>
+                    </div>
                 </div>
-                <img src="${cardImg}" class="promo-fidelity-img" alt="Tarjeta" onerror="this.src='/public/assets/images/default_card.png'">
-                <div class="promo-fidelity-body">
-                    <div class="mb-1"><strong>Cliente:</strong> ${escapeHtml(c.cliente_nombre || 'N/A')}</div>
-                    <div class="mb-1"><strong>Cedula:</strong> ${escapeHtml(c.cliente_cedula_display || c.cliente_cedula || '-')}</div>
-                    <div class="mb-1"><strong>Tipo:</strong> ${escapeHtml(c.tipo || '-')}</div>
-                    <div class="mb-1"><strong>Puntos:</strong> ${escapeHtml(progreso)}</div>
-                    <div class="mb-1"><strong>Recompensa:</strong> ${escapeHtml(c.recompensa || '-')}</div>
-                    <div class="mb-2 text-muted">${escapeHtml(c.promo_descripcion || '')}</div>
-                    ${!c.canjeada ? `<button class="btn btn-sm btn-outline-orange" onclick="addPoint(${Number(c.id)})"><i class="bi bi-plus-circle me-1"></i>Registrar punto</button>` : ''}
+
+                <div class="card-stamps-panel">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong class="text-orange fs-6" style="font-weight:700;">${escapeHtml(c.promo_nombre || 'Promoción')}</strong>
+                        <span class="small text-muted" style="font-weight:600;">${accumulated} / ${required} Puntos</span>
+                    </div>
+                    <p class="small text-muted mb-2">${escapeHtml(c.promo_descripcion || '')}</p>
+                    <div class="small mb-2"><strong class="text-orange">Recompensa:</strong> ${escapeHtml(c.recompensa || '-')}</div>
+                    ${slotsHtml}
+                    ${!c.canjeada ? `<button class="btn btn-sm btn-outline-orange w-100 mt-2" onclick="addPoint(${Number(c.id)})"><i class="bi bi-plus-circle me-1"></i>Registrar punto</button>` : ''}
                 </div>
             </div>`;
         });
@@ -76,18 +129,46 @@ function loadPromotionCardTemplates(container) {
         const promos = res.data || [];
         container.innerHTML = '';
         promos.forEach(p => {
-            const cardImg = p.imagen_tarjeta ? `/public/assets/images/${encodeURIComponent(p.imagen_tarjeta)}` : '/public/assets/images/default_card.png';
-            container.innerHTML += `<div class="promo-fidelity-card fade-in-up">
-                <div class="promo-fidelity-head">
-                    <strong>${escapeHtml(p.nombre || 'Promocion')}</strong>
-                    <span class="badge-status badge-info">Plantilla</span>
+            const required = p.puntos_requeridos || 5;
+            let slotsHtml = '<div class="punch-card-grid">';
+            for (let i = 1; i <= required; i++) {
+                const isReward = (i === required);
+                let slotClass = 'punch-slot';
+                if (isReward) slotClass += ' reward-slot';
+                slotsHtml += `<div class="${slotClass}">${isReward ? '<i class="bi bi-gift"></i>' : i}</div>`;
+            }
+            slotsHtml += '</div>';
+
+            const bg = getCardBackground(p.imagen_tarjeta);
+            const cardNum = formatCardNumber(0);
+
+            container.innerHTML += `<div class="loyalty-card-wrapper fade-in-up">
+                <div class="fidelity-card-physical" style="background: ${bg};">
+                    <div class="card-meta-row">
+                        <span class="card-brand-logo">TRANSALCA</span>
+                        <span class="card-status-badge template-badge">Plantilla</span>
+                    </div>
+                    <div class="card-meta-row mt-2">
+                        <div class="card-chip-gold"></div>
+                        <i class="bi bi-wifi card-contactless"></i>
+                    </div>
+                    <div class="card-number-display">${cardNum}</div>
+                    <div class="card-holder-row">
+                        <div>
+                            <div class="card-holder-name">CLIENTE DE PRUEBA</div>
+                            <div class="card-holder-cedula">C.I. V-00000000</div>
+                        </div>
+                    </div>
                 </div>
-                <img src="${cardImg}" class="promo-fidelity-img" alt="Tarjeta" onerror="this.src='/public/assets/images/default_card.png'">
-                <div class="promo-fidelity-body">
-                    <div class="mb-1"><strong>Tipo:</strong> ${escapeHtml(p.tipo || '-')}</div>
-                    <div class="mb-1"><strong>Puntos:</strong> ${escapeHtml(p.puntos_requeridos || 0)}</div>
-                    <div class="mb-1"><strong>Recompensa:</strong> ${escapeHtml(p.recompensa || '-')}</div>
-                    <div class="mb-2 text-muted">${escapeHtml(p.descripcion || '')}</div>
+
+                <div class="card-stamps-panel">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong class="text-orange fs-6" style="font-weight:700;">${escapeHtml(p.nombre || 'Promoción')}</strong>
+                        <span class="small text-muted" style="font-weight:600;">0 / ${required} Puntos</span>
+                    </div>
+                    <p class="small text-muted mb-2">${escapeHtml(p.descripcion || '')}</p>
+                    <div class="small mb-2"><strong class="text-orange">Recompensa:</strong> ${escapeHtml(p.recompensa || '-')}</div>
+                    ${slotsHtml}
                 </div>
             </div>`;
         });
@@ -100,7 +181,7 @@ function loadPromotionCardTemplates(container) {
 function openModal() {
     Validator.clearForm('promoForm');
     document.getElementById('promoId').value = '';
-    document.getElementById('modalTitle').textContent = 'Nueva promocion';
+    document.getElementById('modalTitle').textContent = 'Registrar Promoción';
     document.getElementById('nombre').value = '';
     document.getElementById('descripcion').value = '';
     document.getElementById('tipo').value = 'puntos';
@@ -111,6 +192,7 @@ function openModal() {
     document.getElementById('imagen_tarjeta').value = '';
     setPromoPreview('');
     new bootstrap.Modal(document.getElementById('promoModal')).show();
+    Validator.initTracking('promoForm');
 }
 
 function editData(id) {
@@ -128,15 +210,16 @@ function editData(id) {
         document.getElementById('fecha_fin').value = normalizeDateInput(p.fecha_fin);
         document.getElementById('imagen_tarjeta').value = '';
         setPromoPreview(p.imagen_tarjeta ? `/public/assets/images/${encodeURIComponent(p.imagen_tarjeta)}` : '');
-        document.getElementById('modalTitle').textContent = 'Modificar promocion';
+        document.getElementById('modalTitle').textContent = 'Modificar Promoción';
         new bootstrap.Modal(document.getElementById('promoModal')).show();
+        Validator.initTracking('promoForm');
     });
 }
 
 function saveData() {
     if (!Validator.validate('promoForm')) {
         updateFormSubmitState('promoForm');
-        return showToast('Corrija los errores del formulario.', 'warning');
+        return showToast('Corrija los errores del formulario', 'warning');
     }
     const id = document.getElementById('promoId').value;
     const button = document.getElementById('btnSavePromo');
@@ -164,7 +247,7 @@ function saveData() {
             loadPromos();
             loadCards();
         }).catch(message => {
-            showToast(message || 'No se pudo subir la imagen.', 'error');
+            showToast(message || 'No se pudo subir la imagen', 'error');
         });
     }).finally(() => {
         setButtonLoading(button, false);
@@ -172,20 +255,20 @@ function saveData() {
 }
 
 function deletePromo(id) {
-    confirmAction('Eliminar esta promocion?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar esta promoción?', () => {
         apiCall(`/api/promotions/${id}`, 'DELETE').then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message, 'success');
             loadPromos();
             loadCards();
         });
-    }, { confirmText: 'Eliminar' });
+    });
 }
 
 function addPoint(cardId) {
     apiCall(`/api/promotions/cards/${cardId}/add-point`, 'POST', { descripcion: 'Punto registrado' }).then(res => {
         if (res.status === 'error') return showToast(res.message, 'error');
-        showToast(res.message || 'Punto registrado correctamente.', 'success');
+        showToast(res.message || 'Punto registrado correctamente', 'success');
         loadCards();
     });
 }
@@ -199,7 +282,7 @@ function onPromoImageSelected(e) {
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
         e.target.value = '';
         setPromoPreview('');
-        return showToast('El archivo debe ser una imagen png, jpg, jpeg o webp.', 'warning');
+        return showToast('El archivo debe ser una imagen png, jpg, jpeg o webp', 'warning');
     }
     const reader = new FileReader();
     reader.onload = function (evt) {
@@ -234,11 +317,11 @@ function uploadPromoImageIfNeeded(promoId) {
         body: formData
     }).then(r => r.json()).then(data => {
         if (data.status === 'error') {
-            return Promise.reject(data.message || 'No se pudo subir la imagen.');
+            return Promise.reject(data.message || 'No se pudo subir la imagen');
         }
         return data;
     }).catch(() => {
-        return Promise.reject('No se pudo subir la imagen.');
+        return Promise.reject('No se pudo subir la imagen');
     });
 }
 

@@ -71,10 +71,18 @@ function renderTable(type, data) {
 
     if (type === 'sales') {
         hHtml += '<th>ID</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Estado</th>';
-        data.forEach(d => bHtml += `<tr><td>#${d.id}</td><td>${d.cliente}</td><td>${formatDate(d.fecha)}</td><td>$${formatCurrency(d.total)}</td><td><span class="badge-status badge-${d.estado === 'aprobada' ? 'active' : d.estado === 'pendiente' ? 'pending' : 'inactive'}">${d.estado}</span></td></tr>`);
+        data.forEach(d => {
+            const st = String(d.estado || '').toLowerCase();
+            const color = ['aprobada', 'aprobado', 'completada', 'completado', 'entregada', 'entregado', 'verificado', 'verificada', 'pagado', 'activo'].includes(st) ? 'active' : ['pendiente', 'procesando', 'enviada'].includes(st) ? 'pending' : 'inactive';
+            bHtml += `<tr><td>#${d.id}</td><td>${d.cliente}</td><td>${formatDate(d.fecha)}</td><td data-usd-price="${d.total}">${formatUsdBs(d.total)}</td><td><span class="badge-status badge-${color}">${d.estado}</span></td></tr>`;
+        });
     } else if (type === 'payments') {
         hHtml += '<th>ID</th><th>Orden</th><th>Cliente</th><th>Referencia</th><th>Monto</th><th>Método</th><th>Estado</th><th>Fecha</th>';
-        data.forEach(d => bHtml += `<tr><td>#${d.id}</td><td><a href="#">#${d.orden_id}</a></td><td>${d.cliente}</td><td>${d.referencia}</td><td>${d.monto} ${d.moneda}</td><td>${d.metodo}</td><td><span class="badge-status badge-${d.estado === 'aprobado' ? 'active' : d.estado === 'pendiente' ? 'pending' : 'inactive'}">${d.estado}</span></td><td>${formatDate(d.fecha)}</td></tr>`);
+        data.forEach(d => {
+            const st = String(d.estado || '').toLowerCase();
+            const color = ['aprobado', 'aprobada', 'verificado', 'verificada', 'pagado', 'activo'].includes(st) ? 'active' : ['pendiente', 'procesando'].includes(st) ? 'pending' : 'inactive';
+            bHtml += `<tr><td>#${d.id}</td><td><a href="#">#${d.orden_id}</a></td><td>${d.cliente}</td><td>${d.referencia}</td><td>${d.monto} ${d.moneda}</td><td>${d.metodo}</td><td><span class="badge-status badge-${color}">${d.estado}</span></td><td>${formatDate(d.fecha)}</td></tr>`;
+        });
     } else if (type === 'inventory') {
         hHtml += '<th>ID</th><th>Producto</th><th>Código</th><th>Motivo</th><th>Tipo</th><th>Cantidad</th><th>Fecha</th>';
         data.forEach(d => bHtml += `<tr><td>#${d.id}</td><td>${d.producto}</td><td><small class="text-muted">${d.codigo}</small></td><td>${d.motivo}</td><td><span class="badge-status ${d.tipo === 'entrada' ? 'badge-active' : 'badge-inactive'}">${d.tipo}</span></td><td>${d.cantidad}</td><td>${formatDate(d.fecha)}</td></tr>`);

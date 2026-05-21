@@ -4,7 +4,9 @@ const adminTicketState = {
 };
 
 $(document).ready(function () {
-    $('#sidebarContainer').load('/components/admin_sidebar.html');
+    $('#sidebarContainer').load('/components/admin_sidebar.html', () => {
+        document.querySelector('[data-page="tickets"]')?.classList.add('active');
+    });
     $('#navbarContainer').load('/components/admin_navbar.html', () => loadNavSession());
     bindAdminTicketEvents();
     loadAdminTickets();
@@ -101,7 +103,7 @@ async function openAdminTicket(ticketId, silent = false) {
 }
 
 function clearAdminTicketDetail() {
-    $('#adminTicketDetail').html('Seleccione un ticket para abrir la conversacion.');
+    $('#adminTicketDetail').html('Seleccione un ticket para abrir la conversación.');
     $('#adminTicketChat').html('<div class="text-muted small">Sin mensajes</div>');
     $('#adminReplyForm').hide();
     $('#adminTicketStatusSelect').prop('disabled', true);
@@ -139,7 +141,7 @@ function renderAdminTicketDetail(ticket) {
             <div>
                 <h6 class="mb-1">#${ticket.id} ${escapeHtml(ticket.asunto || '')}</h6>
                 <div class="small text-muted">Cliente: ${escapeHtml((ticket.cliente_nombre || '') + ' ' + (ticket.cliente_apellido || ''))}</div>
-                <div class="small text-muted">Vehiculo: ${escapeHtml(`${ticket.vehiculo_placa || 'N/A'} ${ticket.vehiculo_marca || ''} ${ticket.vehiculo_modelo || ''}`.trim())}</div>
+                <div class="small text-muted">Vehículo: ${escapeHtml(`${ticket.vehiculo_placa || 'N/A'} ${ticket.vehiculo_marca || ''} ${ticket.vehiculo_modelo || ''}`.trim())}</div>
             </div>
             <div class="text-end">
                 ${estadoBadge(ticket.prioridad || 'media')}

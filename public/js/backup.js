@@ -15,12 +15,12 @@ function loadData() {
                 <td>${b.size || '-'}</td>
                 <td>${b.date || '-'}</td>
                 <td>
-                    <a href="/api/backup/download/${b.filename}" class="btn btn-icon btn-outline-orange btn-sm" title="Descargar"><i class="bi bi-download"></i></a>
-                    <button class="btn btn-icon btn-sm btn-danger" onclick="deleteBackup('${b.filename}')" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    <a href="/api/backup/download/${b.filename}" class="btn btn-icon btn-outline-orange btn-sm" title="Descargar Respaldo"><i class="bi bi-download"></i></a>
+                    <button class="btn btn-icon btn-sm btn-danger" onclick="deleteBackup('${b.filename}')" title="Eliminar Respaldo"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
-        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-database"></i><p>Sin respaldos</p></div></td></tr>';
+        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-database"></i><p>Sin respaldos registrados</p></div></td></tr>';
     });
 }
 
@@ -33,7 +33,7 @@ function createBackup() {
 }
 
 function deleteBackup(filename) {
-    confirmAction('¿Eliminar este respaldo?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar este respaldo?', () => {
         apiCall(`/api/backup/delete/${filename}`, 'DELETE').then(res => { showToast(res.message); loadData(); });
     });
 }

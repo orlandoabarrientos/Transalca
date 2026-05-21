@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte Orden de Venta - Transalca C.A.</title>
+    <link rel="icon" type="image/png" href="/public/img/logo.png">
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="fw-bold mb-1">Reporte Orden de Venta</h4>
+                    <p class="text-muted mb-0">Consulta y exportación de órdenes de venta.</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-danger" onclick="exportSalesOrders('pdf')"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</button>
+                    <button class="btn btn-outline-success" onclick="exportSalesOrders('excel')"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
+                </div>
+            </div>
+            <div class="card mb-4">
+                <div class="card-body filter-bar compact-filter-card mb-0">
+                    <input type="search" class="form-control" id="salesOrderSearch" placeholder="Buscar orden de venta..." style="width:340px;max-width:340px;">
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body p-0 table-responsive">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Cliente</th>
+                                <th>Sucursal</th>
+                                <th>Total</th>
+                                <th>Método de Pago</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesOrderBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/orders_sales.js"></script>
+</body>
+</html>

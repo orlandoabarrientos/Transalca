@@ -94,6 +94,8 @@ function toggleUtilityFields() {
     if (promoWrap) promoWrap.style.display = utilityType === 'promocion' ? '' : 'none';
     if (orderWrap) orderWrap.style.display = utilityType === 'validar_pago' ? '' : 'none';
     if (ttlWrap) ttlWrap.style.display = utilityType ? '' : 'none';
+    if (window.enhanceSearchableSelects) enhanceSearchableSelects(document.getElementById('qrModal'));
+    if (window.jQuery?.fn?.select2) window.jQuery('#promocionRefSelect').trigger('change.select2');
 }
 
 function loadActivePromotions() {
@@ -116,6 +118,8 @@ function loadActivePromotions() {
         });
         select.disabled = false;
         if (hint) hint.textContent = '';
+        if (window.enhanceSearchableSelects) enhanceSearchableSelects(document.getElementById('qrModal'));
+        if (window.jQuery?.fn?.select2) window.jQuery(select).trigger('change.select2');
     }).catch(() => {
         select.innerHTML = '<option value="">No se pudieron cargar promociones</option>';
         select.disabled = true;

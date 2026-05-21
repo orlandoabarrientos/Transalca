@@ -25,8 +25,8 @@ function loadData() {
                 <td>${escapeHtml(r.descripcion || '-')}</td>
                 <td>${statusBadge(r.estado)}</td>
                 <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${r.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${r.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${r.id})" title="Modificar Rol"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${r.id})" title="Eliminar Rol"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -61,21 +61,24 @@ function renderPermissions(permisos = []) {
 function openModal() {
     Validator.clearForm('roleForm');
     document.getElementById('roleId').value = '';
-    document.getElementById('modalTitle').textContent = 'Nuevo Rol';
+    document.getElementById('modalTitle').textContent = 'Registrar Rol';
     renderPermissions();
     new bootstrap.Modal(document.getElementById('roleModal')).show();
+    Validator.initTracking('roleForm');
 }
 
 function editData(id) {
     apiCall(`/api/roles/${id}`).then(res => {
         if (res.status === 'error') return showToast(res.message, 'error');
         const r = res.data || {};
+        Validator.clearForm('roleForm');
         document.getElementById('roleId').value = r.id;
         document.getElementById('nombre').value = r.nombre || '';
         document.getElementById('descripcion').value = r.descripcion || '';
         renderPermissions(r.permisos || []);
-        document.getElementById('modalTitle').textContent = 'Editar Rol';
+        document.getElementById('modalTitle').textContent = 'Modificar Rol';
         new bootstrap.Modal(document.getElementById('roleModal')).show();
+        Validator.initTracking('roleForm');
     });
 }
 
@@ -118,11 +121,20 @@ function saveData() {
 }
 
 function toggleEstado(id) {
-    confirmAction('Eliminar este rol?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar este rol?', () => {
         apiCall(`/api/roles/${id}`, 'DELETE').then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message);
             loadData();
         });
-    }, { confirmText: 'Eliminar' });
+    });
+}
+
+function escapeHtml(text) {
+    return String(text ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }

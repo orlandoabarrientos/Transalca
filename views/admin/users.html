@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+    <title>Gestionar Usuarios - Transalca C.A.</title>
     <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
@@ -16,19 +16,32 @@
         <div id="navbarContainer"></div>
         <div class="content-area">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="fw-bold mb-0">Usuarios</h4>
-                <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Nuevo Usuario</button>
+                <h4 class="fw-bold mb-0">Gestionar Usuarios</h4>
+                <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Registrar Usuario</button>
             </div>
             <div class="filter-bar">
                 <label class="form-label mb-0 fw-bold" style="font-size:0.8rem;">Tipo:</label>
                 <select class="form-select" id="filterTipo" onchange="loadData()">
-                    <option value="">Todos</option><option value="empleado">Empleados</option><option value="cliente">Clientes</option>
+                    <option value="">Todos</option>
+                    <option value="empleado">Empleados</option>
+                    <option value="cliente">Clientes</option>
                 </select>
             </div>
             <div class="card">
                 <div class="card-body p-0">
                     <table class="table mb-0">
-                        <thead><tr><th class="col-id">ID</th><th>Nombre</th><th>Cedula</th><th>Email</th><th>Tipo</th><th>Roles</th><th>Estado</th><th>Acciones</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th class="col-id">ID</th>
+                                <th>Nombre</th>
+                                <th>Cédula</th>
+                                <th>Email</th>
+                                <th>Tipo</th>
+                                <th>Roles</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
                         <tbody id="userBody"></tbody>
                     </table>
                 </div>
@@ -39,30 +52,86 @@
 <div class="modal fade" id="userModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title" id="modalTitle">Nuevo Usuario</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Registrar Usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body">
                 <form id="userForm">
                     <input type="hidden" id="userId">
                     <div class="row">
-                        <div class="col-md-6 mb-3"><label class="form-label">Nombre <span class="required">*</span></label><input type="text" class="form-control" id="nombre" name="nombre"><div class="invalid-feedback"></div></div>
-                        <div class="col-md-6 mb-3"><label class="form-label">Apellido <span class="required">*</span></label><input type="text" class="form-control" id="apellido" name="apellido"><div class="invalid-feedback"></div></div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombre <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="nombre" name="nombre">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Apellido <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="apellido" name="apellido">
+                            <div class="invalid-feedback"></div>
+                        </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-6 mb-3"><label class="form-label">Cedula <span class="required">*</span></label><div class="input-group"><select class="form-select" id="cedula_prefijo" name="cedula_prefijo" style="max-width:90px;"><option value="V">V</option><option value="E">E</option><option value="J">J</option><option value="G">G</option><option value="P">P</option></select><input type="text" class="form-control" id="cedula" name="cedula" placeholder="12345678"><div class="invalid-feedback"></div></div></div>
-                        <div class="col-md-6 mb-3"><label class="form-label">Email <span class="required">*</span></label><input type="email" class="form-control" id="email" name="email"><div class="invalid-feedback"></div></div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Cédula <span class="required">*</span></label>
+                            <div class="input-group">
+                                <select class="form-select" id="cedula_prefijo" name="cedula_prefijo" style="max-width:90px;">
+                                    <option value="V">V</option>
+                                    <option value="E">E</option>
+                                    <option value="J">J</option>
+                                    <option value="G">G</option>
+                                    <option value="P">P</option>
+                                </select>
+                                <input type="text" class="form-control" id="cedula" name="cedula" placeholder="12345678">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email <span class="required">*</span></label>
+                            <input type="email" class="form-control" id="email" name="email">
+                            <div class="invalid-feedback"></div>
+                        </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-6 mb-3"><label class="form-label">Telefono</label><input type="text" class="form-control" id="telefono" name="telefono"></div>
-                        <div class="col-md-6 mb-3"><label class="form-label">Tipo</label><select class="form-select" id="tipo" name="tipo"><option value="cliente">Cliente</option><option value="empleado">Empleado</option></select></div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" id="telefono" name="telefono">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tipo</label>
+                            <select class="form-select" id="tipo" name="tipo">
+                                <option value="cliente">Cliente</option>
+                                <option value="empleado">Empleado</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="mb-3"><label class="form-label">Direccion</label><input type="text" class="form-control" id="direccion" name="direccion"></div>
+                    <div class="mb-3">
+                        <label class="form-label">Dirección</label>
+                        <input type="text" class="form-control" id="direccion" name="direccion">
+                    </div>
                     <div class="row" id="passwordRow">
-                        <div class="col-md-6 mb-3"><label class="form-label">Contrasena <span class="required">*</span></label><input type="password" class="form-control" id="password" name="password"><div class="invalid-feedback"></div><div class="password-strength mt-1"><div class="bar" id="passwordStrengthBar"></div></div><small class="form-text">Min 8, 1 mayuscula, 1 minuscula, 1 numero, 1 especial</small></div>
-                        <div class="col-md-6 mb-3"><label class="form-label">Rol</label><select class="form-select" id="rol_id" name="rol_id"><option value="">Sin rol</option></select></div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Contraseña <span class="required">*</span></label>
+                            <input type="password" class="form-control" id="password" name="password">
+                            <div class="invalid-feedback"></div>
+                            <div class="password-strength mt-1">
+                                <div class="bar" id="passwordStrengthBar"></div>
+                            </div>
+                            <small class="form-text">Mín 8, 1 mayúscula, 1 minúscula, 1 número, 1 especial</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Rol</label>
+                            <select class="form-select" id="rol_id" name="rol_id">
+                                <option value="">Sin rol</option>
+                            </select>
+                        </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-orange" onclick="saveData()">Guardar</button></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-orange" onclick="saveData()">Guardar</button>
+            </div>
         </div>
     </div>
 </div>

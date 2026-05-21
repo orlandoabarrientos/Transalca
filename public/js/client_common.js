@@ -108,11 +108,54 @@ function formatCurrency(amount) {
     return parseFloat(amount || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function installClientListSearches(root = document) {
+    const scope = root instanceof Element ? root : document;
+    scope.querySelectorAll('table').forEach((table, index) => {
+        if (table.dataset.clientAutoSearchReady === '1' || table.closest('.modal')) return;
+        const card = table.closest('.card') || table.parentElement;
+        if (!card || card.querySelector('.auto-table-search-wrap')) return;
+        const manualSearch = card.querySelector('input[id*="search" i], input[name*="search" i], [data-table-search]') || card.previousElementSibling?.querySelector?.('input[id*="search" i], input[name*="search" i], [data-table-search]');
+        if (manualSearch) {
+            table.dataset.clientAutoSearchReady = '1';
+            return;
+        }
+        const wrap = document.createElement('div');
+        wrap.className = 'auto-table-search-wrap d-flex justify-content-end mb-3';
+        const input = document.createElement('input');
+        input.type = 'search';
+        input.className = 'form-control auto-table-search';
+        input.placeholder = 'Buscar...';
+        input.setAttribute('aria-label', 'Buscar en la lista');
+        input.dataset.tableSearch = `client-auto-${index}`;
+        wrap.appendChild(input);
+        card.parentNode.insertBefore(wrap, card);
+        input.addEventListener('input', () => {
+            const term = input.value.trim().toLowerCase();
+            table.querySelectorAll('tbody tr').forEach(row => {
+                row.style.display = !term || row.textContent.toLowerCase().includes(term) ? '' : 'none';
+            });
+        });
+        table.dataset.clientAutoSearchReady = '1';
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     checkSession().then(loggedIn => {
         if (loggedIn) loadClientNotifications();
     });
-    const observer = new MutationObserver(() => applyAuthVisibility());
+    loadExchangeRatesCached().then(() => hydrateDualPrices());
+    installClientListSearches();
+    updateCurrencyMenuLabel();
+    const observer = new MutationObserver((mutations) => {
+        applyAuthVisibility();
+        const hasNewPrices = mutations.some(m => Array.from(m.addedNodes).some(n => n.nodeType === 1 && (n.hasAttribute('data-usd-price') || n.querySelector('[data-usd-price]'))));
+        if (hasNewPrices) {
+            hydrateDualPrices();
+        }
+        if (mutations.some(m => Array.from(m.addedNodes).some(n => n.nodeType === 1 && (n.matches?.('table') || n.querySelector?.('table'))))) {
+            installClientListSearches();
+        }
+    });
     observer.observe(document.body, { childList: true, subtree: true });
 });
 
@@ -146,12 +189,24 @@ async function markAllReadClient() {
 setInterval(() => { if (currentUser) loadClientNotifications(); }, 30000);
 
 document.body.addEventListener('click', async (e) => {
+    const closeToast = e.target.closest('.close-toast, .toast-close');
+    if (closeToast) {
+        e.preventDefault();
+        dismissToast(closeToast.closest('.toast-custom'));
+        return;
+    }
     const protectedLink = e.target.closest('a[href="/client/cart"], a[href="/client/my_orders"], a[href="/client/my_loyalty"], a[href="/client/profile"], a[href="/scanner"]');
     if (protectedLink && !currentUser) {
         e.preventDefault();
         showToast('Debe iniciar sesion para continuar.', 'warning');
         const next = protectedLink.getAttribute('href') || '/client/home';
         setTimeout(() => window.location.href = `/auth/login?next=${encodeURIComponent(next)}`, 900);
+        return;
+    }
+    const currencyToggle = e.target.closest('[data-currency-toggle]');
+    if (currencyToggle) {
+        e.preventDefault();
+        toggleCurrency();
         return;
     }
     const logoutTarget = e.target.closest('#clientLogout');
@@ -161,3 +216,166 @@ document.body.addEventListener('click', async (e) => {
         window.location.href = '/client/home';
     }
 });
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function normalizeSystemMessage(message) {
+    const text = String(message || '').trim();
+    if (!text) return 'Operacion procesada.';
+    const lower = text.charAt(0).toUpperCase() + text.slice(1);
+    return lower.endsWith('.') || lower.endsWith('?') || lower.endsWith('!') ? lower : `${lower}.`;
+}
+
+function dismissToast(toast) {
+    if (!toast) return;
+    toast.classList.add('removing');
+    const remove = () => toast.remove();
+    toast.addEventListener('transitionend', remove, { once: true });
+    setTimeout(remove, 250);
+}
+
+function getSelectedCurrency() {
+    const currency = (localStorage.getItem('transalca_currency') || 'USD').toUpperCase();
+    return currency === 'VES' ? 'VES' : 'USD';
+}
+
+async function setSelectedCurrency(currency) {
+    const nextCurrency = currency === 'VES' ? 'VES' : 'USD';
+    localStorage.setItem('transalca_currency', nextCurrency);
+    updateCurrencyMenuLabel();
+    hydrateDualPrices();
+    if (nextCurrency === 'VES') await loadExchangeRatesCached(true);
+    hydrateDualPrices();
+    updateCurrencyMenuLabel();
+    if (nextCurrency === 'VES' && !convertUsdToBs(1)) {
+        showToast('No se pudo calcular el precio en Bs. Verifique las tasas BCV y USDT.', 'warning');
+    }
+}
+
+function toggleCurrency() {
+    setSelectedCurrency(getSelectedCurrency() === 'USD' ? 'VES' : 'USD');
+}
+
+function updateCurrencyMenuLabel() {
+    const currency = getSelectedCurrency();
+    document.querySelectorAll('[data-currency-toggle-label]').forEach(el => {
+        el.textContent = currency === 'USD' ? 'Ver precios en bolívares' : 'Ver precios en dólares';
+    });
+}
+
+function formatUsdBs(amount) {
+    const usd = parseFloat(amount || 0);
+    if (getSelectedCurrency() === 'VES') {
+        const bs = convertUsdToBs(usd);
+        return bs ? `Bs. ${formatCurrency(bs)}` : `$${formatCurrency(usd)}`;
+    }
+    return `$${formatCurrency(usd)}`;
+}
+
+function convertUsdToBs(amount) {
+    const rates = window.TransalcaRates || {};
+    const bcv = parseFloat(rates.bcv || 0);
+    const usdt = parseFloat(rates.usdt || 0);
+    if (!bcv || !usdt) return 0;
+    return (parseFloat(amount || 0) * usdt) / bcv;
+}
+
+async function loadExchangeRatesCached(force = false) {
+    const key = 'transalca_rates_cache_v1';
+    const now = Date.now();
+    try {
+        const cached = JSON.parse(localStorage.getItem(key) || 'null');
+        if (!force && cached && cached.expires > now) {
+            window.TransalcaRates = cached.data;
+            return cached.data;
+        }
+    } catch (e) {}
+    try {
+        const res = await fetch('/api/rates/', { credentials: 'same-origin' });
+        const json = await res.json();
+        const data = normalizeRatePayload(json);
+        window.TransalcaRates = data;
+        localStorage.setItem(key, JSON.stringify({ data, expires: now + 300000 }));
+        return data;
+    } catch (e) {
+        window.TransalcaRates = window.TransalcaRates || { bcv: 0, usdt: 0 };
+        return window.TransalcaRates;
+    }
+}
+
+function normalizeRatePayload(json) {
+    return {
+        bcv: parseFloat(json?.data?.bcv?.usd || json?.data?.bcv?.monto || 0),
+        usdt: parseFloat(json?.data?.binance?.usdt_ves || json?.data?.usdt?.monto || 0)
+    };
+}
+
+function hydrateDualPrices(root = document) {
+    root.querySelectorAll('[data-usd-price]').forEach(el => {
+        el.textContent = formatUsdBs(el.dataset.usdPrice);
+    });
+    updateCurrencyMenuLabel();
+}
+
+function setButtonLoading(button, loading, text) {
+    const btn = typeof button === 'string' ? document.querySelector(button) : button;
+    if (!btn) return;
+    if (loading) {
+        btn.dataset.originalHtml = btn.dataset.originalHtml || btn.innerHTML;
+        btn.dataset.loading = '1';
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${escapeHtml(text || 'Procesando...')}`;
+    } else {
+        btn.disabled = false;
+        if (btn.dataset.originalHtml) btn.innerHTML = btn.dataset.originalHtml;
+        delete btn.dataset.originalHtml;
+        delete btn.dataset.loading;
+    }
+}
+
+function confirmAction(message, callback, options = {}) {
+    const text = normalizeSystemMessage(message || 'Confirme la accion.');
+    if (window.Swal) {
+        Swal.fire({
+            icon: options.type || 'warning',
+            title: text,
+            showCancelButton: true,
+            confirmButtonText: options.confirmText || 'Aceptar',
+            cancelButtonText: options.cancelText || 'Cancelar',
+            confirmButtonColor: options.confirmColor || '#e95d0f'
+        }).then(result => {
+            if (result.isConfirmed && typeof callback === 'function') callback();
+        });
+        return;
+    }
+    let modalEl = document.getElementById('systemConfirmModal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.className = 'modal fade';
+        modalEl.id = 'systemConfirmModal';
+        modalEl.tabIndex = -1;
+        modalEl.innerHTML = `<div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Confirmar accion</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body"><p class="mb-0" id="systemConfirmText"></p></div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-orange" id="systemConfirmAccept">Aceptar</button></div>
+        </div></div>`;
+        document.body.appendChild(modalEl);
+    }
+    modalEl.querySelector('#systemConfirmText').textContent = text;
+    const accept = modalEl.querySelector('#systemConfirmAccept');
+    const cloned = accept.cloneNode(true);
+    accept.parentNode.replaceChild(cloned, accept);
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    cloned.addEventListener('click', () => {
+        modal.hide();
+        if (typeof callback === 'function') callback();
+    }, { once: true });
+    modal.show();
+}

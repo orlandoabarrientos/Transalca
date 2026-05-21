@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionar Clientes - Transalca C.A.</title>
     <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
@@ -15,22 +16,26 @@
     <div class="main-content">
         <div id="navbarContainer"></div>
         <div class="content-area">
+            <div class="mb-3">
+                <h4 class="fw-bold mb-1">Gestionar Clientes</h4>
+                <p class="text-muted mb-0">Administración completa de clientes, vehículos e historial.</p>
+            </div>
             <div class="row g-3 mb-4">
                 <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:var(--primary-soft);color:var(--primary);"><i class="bi bi-people-fill"></i></div><div><div class="stat-value" id="totalClients">0</div><div class="stat-label">Total Clientes</div></div></div></div>
                 <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#dcfce7;color:#16a34a;"><i class="bi bi-person-check-fill"></i></div><div><div class="stat-value" id="activeClients">0</div><div class="stat-label">Activos</div></div></div></div>
             </div>
 
             <div class="card mb-4">
-                <div class="card-body d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                <div class="card-body filter-bar compact-filter-card mb-0">
                     <div class="d-flex gap-2 flex-wrap align-items-center">
-                        <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Buscar por nombre, cedula, email..." style="width:280px;">
-                        <select class="form-select form-select-sm" id="filterEstado" style="width:140px;">
+                        <input type="text" class="form-control" id="searchInput" placeholder="Buscar por nombre, cédula, email..." style="width:320px;max-width:320px;">
+                        <select class="form-select" id="filterEstado" style="width:180px;max-width:180px;">
                             <option value="">Todos</option>
                             <option value="1">Activos</option>
                             <option value="0">Inactivos</option>
                         </select>
                     </div>
-                    <button class="btn btn-sm btn-orange" onclick="showCreateModal()"><i class="bi bi-plus-circle me-1"></i>Nuevo Cliente</button>
+                    <button class="btn btn-orange ms-auto" onclick="showCreateModal()"><i class="bi bi-plus-circle me-1"></i>Registrar Cliente</button>
                 </div>
             </div>
 
@@ -83,7 +88,7 @@
                         <div class="tab-pane fade show active" id="tabVehiculos">
                             <div class="d-flex justify-content-between mb-2">
                                 <h6 class="mb-0">Vehículos del cliente</h6>
-                                <button class="btn btn-sm btn-orange" onclick="showVehicleModal()"><i class="bi bi-plus me-1"></i>Agregar Vehículo</button>
+                                <button class="btn btn-sm btn-orange" onclick="showVehicleModal()"><i class="bi bi-plus me-1"></i>Registrar Vehículo</button>
                             </div>
                             <div id="vehiclesList"></div>
                         </div>
@@ -112,7 +117,10 @@
 <div class="modal fade" id="clientModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title" id="clientModalTitle">Nuevo Cliente</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header">
+                <h5 class="modal-title" id="clientModalTitle">Registrar Cliente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body">
                 <form id="clientForm">
                     <input type="hidden" id="editCedula">
@@ -150,7 +158,10 @@
 <div class="modal fade" id="vehicleModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title" id="vehicleModalTitle">Agregar Vehículo</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header">
+                <h5 class="modal-title" id="vehicleModalTitle">Registrar Vehículo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body">
                 <form id="vehicleForm">
                     <input type="hidden" id="editVehicleId">
@@ -176,10 +187,10 @@
                     </div>
                     <div class="mb-3"><label class="form-label">Kilometraje actual</label><input type="number" class="form-control" id="vKm" name="kilometraje_actual" min="0" value="0"></div>
                     <div class="mb-2">
-                        <label class="form-label d-block">Titulo del vehiculo</label>
+                        <label class="form-label d-block">Título del vehículo</label>
                         <input type="file" id="vCarnetFile" accept="image/*" capture="environment" class="d-none">
                         <button type="button" class="btn btn-sm btn-outline-primary" id="btnVehicleCarnet">
-                            <i class="bi bi-upc-scan me-1"></i>Escanear/Subir titulo
+                            <i class="bi bi-upc-scan me-1"></i>Escanear/Subir título
                         </button>
                         <span class="small text-muted ms-2" id="vCarnetFileName">No seleccionado</span>
                     </div>
@@ -187,7 +198,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-orange" onclick="saveVehicle()">Guardar Vehículo</button>
+                <button type="button" class="btn btn-orange" onclick="saveVehicle()">Guardar</button>
             </div>
         </div>
     </div>

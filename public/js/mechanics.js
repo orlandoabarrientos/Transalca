@@ -9,9 +9,9 @@ $(document).ready(function() {
     Validator.setRules('mechanicForm', {
         nombre: { required: true, minLength: 2, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El nombre es obligatorio', patternMsg: 'El nombre solo puede contener letras' },
         apellido: { required: true, minLength: 2, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El apellido es obligatorio', patternMsg: 'El apellido solo puede contener letras' },
-        cedula_prefijo: { required: true, custom: v => ['V', 'E', 'J', 'G', 'P'].includes(v), customMsg: 'El valor seleccionado no es valido. Recargue la pagina e intentelo nuevamente.' },
-        cedula: { required: true, pattern: /^\d{7,8}$/, requiredMsg: 'La cedula es obligatoria.', patternMsg: 'La cedula debe tener 7 u 8 digitos.' },
-        telefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 digitos y comenzar por 04' }
+        cedula_prefijo: { required: true, custom: v => ['V', 'E', 'J', 'G', 'P'].includes(v), customMsg: 'El valor seleccionado no es válido. Recargue la página e inténtelo nuevamente.' },
+        cedula: { required: true, pattern: /^\d{7,8}$/, requiredMsg: 'La cédula es obligatoria.', patternMsg: 'La cédula debe tener 7 u 8 dígitos.' },
+        telefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 dígitos y comenzar por 04' }
     });
     Validator.setupRealtime('mechanicForm');
     document.getElementById('cedula')?.addEventListener('input', validateUniqueMechanicCedula);
@@ -38,21 +38,22 @@ function loadData() {
                 <td>${escapeHtml(m.telefono || '-')}</td>
                 <td>${statusBadge(m.estado)}</td>
                 <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(m.cedula)}')" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="deleteData('${encodeURIComponent(m.cedula)}')" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(m.cedula)}')" title="Modificar Mecánico"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="deleteData('${encodeURIComponent(m.cedula)}')" title="Eliminar Mecánico"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
-        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-person-badge"></i><p>No hay mecanicos registrados</p></div></td></tr>';
+        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-person-badge"></i><p>No hay mecánicos registrados</p></div></td></tr>';
     });
 }
 
-async function openModal(cedula = null) {
+function openModal(cedula = null) {
     Validator.clearForm('mechanicForm');
     document.getElementById('mechanicOldCedula').value = cedula ? decodeURIComponent(cedula) : '';
     setDocumentFields('cedula_prefijo', 'cedula', cedula ? decodeURIComponent(cedula) : '', 'V');
-    document.getElementById('modalTitle').textContent = cedula ? 'Editar Mecanico' : 'Nuevo Mecanico';
+    document.getElementById('modalTitle').textContent = cedula ? 'Modificar Mecánico' : 'Registrar Mecánico';
     new bootstrap.Modal(document.getElementById('mechanicModal')).show();
+    Validator.initTracking('mechanicForm');
 }
 
 function editData(cedula) {
@@ -67,8 +68,9 @@ function editData(cedula) {
         setDocumentFields('cedula_prefijo', 'cedula', m.cedula || '', 'V');
         document.getElementById('telefono').value = m.telefono || '';
         document.getElementById('especialidad').value = m.especialidad || '';
-        document.getElementById('modalTitle').textContent = 'Editar Mecanico';
+        document.getElementById('modalTitle').textContent = 'Modificar Mecánico';
         new bootstrap.Modal(document.getElementById('mechanicModal')).show();
+        Validator.initTracking('mechanicForm');
     });
 }
 
@@ -106,13 +108,13 @@ function saveData() {
 
 function deleteData(cedula) {
     cedula = decodeURIComponent(cedula);
-    confirmAction('Eliminar este mecanico?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar este mecánico?', () => {
         apiCall('/api/mechanics/delete', 'DELETE', { cedula }).then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message);
             loadData();
         });
-    }, { confirmText: 'Eliminar' });
+    });
 }
 
 function validateUniqueMechanicCedula() {
@@ -123,21 +125,34 @@ function validateUniqueMechanicCedula() {
         const value = (input?.value || '').trim();
         if (!input) return;
         if (!value) {
+            delete input.dataset.externalError;
             clearFieldError(input);
             updateFormSubmitState('mechanicForm');
             return;
         }
         if (!Validator.validateField('mechanicForm', 'cedula')) {
+            delete input.dataset.externalError;
             updateFormSubmitState('mechanicForm');
             return;
         }
         const queryValue = buildDocumentValue('cedula_prefijo', 'cedula');
         const res = await apiCall(`/api/mechanics/check-unique?value=${encodeURIComponent(queryValue)}&exclude=${encodeURIComponent(oldCedula)}`);
         if (res.status === 'success' && res.exists) {
-            setFieldError(input, 'Esta cedula ya esta registrada.');
+            input.dataset.externalError = 'Esta cédula ya está registrada';
+            setFieldError(input, 'Esta cédula ya está registrada');
         } else if (res.status === 'success') {
+            delete input.dataset.externalError;
             clearFieldError(input);
         }
         updateFormSubmitState('mechanicForm');
     }, 350);
+}
+
+function escapeHtml(text) {
+    return String(text ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
