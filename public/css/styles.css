@@ -905,6 +905,12 @@ a:hover {
     border-left: 4px solid var(--primary);
 }
 
+.toast-custom.removing {
+    opacity: 0;
+    transform: translateX(100%);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
 .toast-custom.success {
     border-left-color: var(--success);
 }
@@ -925,6 +931,13 @@ a:hover {
     line-height: 1;
     padding: 0;
     cursor: pointer;
+    pointer-events: auto;
+    position: relative;
+    z-index: 2;
+}
+
+.toast-close * {
+    pointer-events: none;
 }
 
 .toast-close:hover {

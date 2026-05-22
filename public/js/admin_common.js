@@ -126,14 +126,18 @@ function showToast(message, type = 'success') {
     const icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill' };
     const colors = { success: 'var(--success)', error: 'var(--danger)', warning: 'var(--warning)', info: 'var(--info)' };
     toast.innerHTML = `<i class="bi ${icons[type] || icons.info}" style="color:${colors[type]};font-size:1.3rem;"></i><span style="flex:1;font-weight:500;font-size:0.85rem;">${escapeHtml(normalizeSystemMessage(message))}</span><button type="button" class="toast-close close-toast" aria-label="Cerrar"><i class="bi bi-x"></i></button>`;
+    toast.querySelector('.toast-close')?.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        dismissToast(toast);
+    });
     container.appendChild(toast);
     setTimeout(() => dismissToast(toast), 5000);
 }
 
 function dismissToast(toast) {
     if (!toast || !toast.parentNode) return;
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateX(100%)';
+    toast.classList.add('removing');
     setTimeout(() => toast.remove(), 300);
 }
 
@@ -724,8 +728,8 @@ function mutationNeedsEnhancement(mutation) {
     if (mutation.target?.closest?.('select.form-select')) return true;
     for (const node of mutation.addedNodes || []) {
         if (node.nodeType !== 1 || isNoisyMutationNode(node)) continue;
-        if (node.matches?.('select.form-select, .modal, table, [data-usd-price], [data-currency-toggle-label]')) return true;
-        if (node.querySelector?.('select.form-select, .modal, table, [data-usd-price], [data-currency-toggle-label]')) return true;
+        if (node.matches?.('select.form-select, .modal, table, button.btn, a.btn, [data-usd-price], [data-currency-toggle-label]')) return true;
+        if (node.querySelector?.('select.form-select, .modal, table, button.btn, a.btn, [data-usd-price], [data-currency-toggle-label]')) return true;
     }
     return false;
 }
@@ -740,6 +744,8 @@ function runDomEnhancements(root = document) {
         enhanceSearchableSelects(root);
         installListSearches(root);
         hydrateDualPrices(root);
+        normalizeActionButtons(root);
+        applyAdminDocumentTitle();
 
         // Restore and persist sidebar scroll
         const sidebar = document.getElementById('adminSidebar');
@@ -871,9 +877,75 @@ function statusBadge(estado) {
     return `<span class="badge-status badge-inactive">${escapeHtml(label)}</span>`;
 }
 
+function getAdminModuleTitle() {
+    const page = window.location.pathname.split('/').pop();
+    const titles = {
+        dashboard: 'Dashboard',
+        clients: 'Gestionar Clientes',
+        products: 'Gestionar Productos',
+        categories: 'Gestionar Categorías',
+        brands: 'Gestionar Marcas',
+        suppliers: 'Gestionar Proveedores',
+        inventory: 'Gestionar Stock de producto',
+        services: 'Gestionar Servicios',
+        service_mechanics: 'Gestionar Servicio Mecánico',
+        mechanics: 'Gestionar Mecánicos',
+        orders_sales: 'Reporte Orden de Venta',
+        tickets: 'Gestionar Tickets de Soporte',
+        payments: 'Gestionar Comprobantes de Pago',
+        promotions: 'Gestionar Promociones',
+        users: 'Gestionar Usuarios',
+        roles: 'Gestionar Roles y Permisos',
+        qr: 'Gestionar Códigos QR',
+        reports: 'Reportes',
+        report_stats: 'Reportes estadísticos',
+        tasas: 'Gestionar Tasa de Cambio',
+        bitacora: 'Gestionar Bitácora',
+        backup: 'Gestionar Respaldos',
+        profile: 'Gestionar Mi Perfil',
+        sucursales: 'Gestionar Sucursales',
+        guide: 'Guía'
+    };
+    return titles[page] || 'Panel de Administración';
+}
+
+function applyAdminDocumentTitle() {
+    const title = getAdminModuleTitle();
+    document.title = `Transalca Admin | ${title}`;
+    const titleEl = document.getElementById('pageTitle');
+    if (titleEl) titleEl.textContent = title;
+}
+
+function normalizeActionButtons(root = document) {
+    const scope = root instanceof Element ? root : document;
+    scope.querySelectorAll('button.btn, a.btn').forEach(btn => {
+        const text = (btn.textContent || '').trim().toLowerCase();
+        const title = (btn.getAttribute('title') || '').trim().toLowerCase();
+        const label = `${text} ${title}`;
+        let action = '';
+        if (label.includes('registrar')) action = 'register';
+        else if (label.includes('modificar') || label.includes('editar')) action = 'edit';
+        else if (label.includes('eliminar')) action = 'delete';
+        if (!action) return;
+        btn.classList.remove('btn-orange', 'btn-outline-orange', 'btn-warning', 'btn-outline-warning', 'btn-danger', 'btn-outline-danger', 'btn-success', 'btn-outline-success');
+        const icon = btn.querySelector('i.bi');
+        if (action === 'register') {
+            btn.classList.add('btn-success');
+            if (icon) icon.className = 'bi bi-plus-circle me-1';
+        } else if (action === 'edit') {
+            btn.classList.add('btn-warning');
+            if (icon) icon.className = 'bi bi-pencil-square';
+        } else if (action === 'delete') {
+            btn.classList.add('btn-danger');
+            if (icon) icon.className = 'bi bi-trash';
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     installSweetAlertDefaults();
     cleanupUiLocks();
+    applyAdminDocumentTitle();
     const path = window.location.pathname;
     document.querySelectorAll('.sidebar .nav-link').forEach(link => {
         if (link.getAttribute('href') === path) {
@@ -896,10 +968,11 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(cleanupUiLocks, 5000);
 });
 
-document.body.addEventListener('click', async (e) => {
-    const closeToast = e.target.closest('.close-toast');
+document.addEventListener('click', async (e) => {
+    const closeToast = e.target.closest('.close-toast, .toast-close');
     if (closeToast) {
         e.preventDefault();
+        e.stopPropagation();
         dismissToast(closeToast.closest('.toast-custom'));
         return;
     }
@@ -915,7 +988,7 @@ document.body.addEventListener('click', async (e) => {
         await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
         window.location.href = '/auth/login';
     }
-});
+}, true);
 
 async function loadNavSession() {
     try {
@@ -927,38 +1000,7 @@ async function loadNavSession() {
             if (nameEl) nameEl.textContent = `${u.nombre} ${u.apellido}`;
             const photoEl = document.getElementById('navUserPhoto');
             if (photoEl) photoEl.src = `/public/assets/profile_pics/${u.foto || 'default.png'}`;
-            const titleEl = document.getElementById('pageTitle');
-            if (titleEl) {
-                const page = window.location.pathname.split('/').pop();
-                const titles = {
-                    dashboard: 'Dashboard',
-                    clients: 'Gestionar Clientes',
-                    products: 'Gestionar Productos',
-                    categories: 'Gestionar Categorías',
-                    brands: 'Gestionar Marcas',
-                    suppliers: 'Gestionar Proveedores',
-                    inventory: 'Gestionar Stock de producto',
-                    services: 'Gestionar Servicios',
-                    service_mechanics: 'Gestionar Servicio Mecánico',
-                    mechanics: 'Gestionar Mecánicos',
-                    orders_sales: 'Reporte Orden de Venta',
-                    tickets: 'Gestionar Tickets de Soporte',
-                    payments: 'Gestionar Comprobantes de Pago',
-                    promotions: 'Gestionar Promociones',
-                    users: 'Gestionar Usuarios',
-                    roles: 'Gestionar Roles y Permisos',
-                    qr: 'Gestionar Códigos QR',
-                    reports: 'Reportes',
-                    report_stats: 'Reportes estadísticos',
-                    tasas: 'Gestionar Tasa de Cambio',
-                    bitacora: 'Gestionar Bitácora',
-                    backup: 'Gestionar Respaldos',
-                    profile: 'Gestionar Mi Perfil',
-                    sucursales: 'Gestionar Sucursales',
-                    guide: 'Guía'
-                };
-                titleEl.textContent = titles[page] || 'Panel de Administración';
-            }
+            applyAdminDocumentTitle();
         }
     } catch (e) { }
 }

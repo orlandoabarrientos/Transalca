@@ -75,7 +75,7 @@ function approvePayment() {
         apiCall(`/api/payments/${currentPaymentId}/approve`, 'POST').then(res => {
             setButtonLoading('#btnApprovePayment', false);
             if (res.status === 'error') return showToast(res.message, 'error');
-            bootstrap.Modal.getInstance(document.getElementById('compModal')).hide();
+            bootstrap.Modal.getInstance(document.getElementById('compModal'))?.hide();
             showToast(res.message || 'Pago verificado correctamente', 'success');
             loadPending();
             loadAll();
@@ -92,6 +92,7 @@ function rejectPayment() {
     const compModalEl = document.getElementById('compModal');
     const compModal = compModalEl ? bootstrap.Modal.getInstance(compModalEl) : null;
     compModal?._focustrap?.deactivate();
+    compModal?.hide();
     Swal.fire({
         icon: 'warning',
         title: 'Motivo del rechazo.',
@@ -102,7 +103,7 @@ function rejectPayment() {
             if (input) input.focus();
         },
         willClose: () => {
-            compModal?._focustrap?.activate();
+            if (compModalEl?.classList.contains('show')) compModal?._focustrap?.activate();
         },
         showCancelButton: true,
         confirmButtonText: 'Rechazar',
@@ -116,12 +117,15 @@ function rejectPayment() {
             return null;
         }
     }).then(result => {
-        if (!result.isConfirmed) return;
+        if (!result.isConfirmed) {
+            compModal?.show();
+            return;
+        }
         setButtonLoading('#btnRejectPayment', true, 'Procesando...');
         apiCall(`/api/payments/${currentPaymentId}/reject`, 'POST', { observaciones: result.value }).then(res => {
             setButtonLoading('#btnRejectPayment', false);
             if (res.status === 'error') return showToast(res.message, 'error');
-            bootstrap.Modal.getInstance(document.getElementById('compModal')).hide();
+            bootstrap.Modal.getInstance(document.getElementById('compModal'))?.hide();
             showToast(res.message || 'Pago rechazado correctamente', 'warning');
             loadPending();
             loadAll();

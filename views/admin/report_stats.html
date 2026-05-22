@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reportes Estadísticos - Transalca C.A.</title>
+    <title>Transalca Admin | Reportes estadísticos</title>
     <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
@@ -13,7 +13,7 @@
         .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
         .chart-title { font-size: 1.1rem; font-weight: 700; color: var(--text-dark); margin: 0; }
         .chart-container { position: relative; height: 300px; width: 100%; }
-        
+
         .filter-ribbon { background: var(--primary-soft); padding: 1rem 1.5rem; border-radius: 12px; display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; border-left: 4px solid var(--primary); }
         .filter-ribbon select { border-color: transparent; font-weight: 500; color: var(--primary-dark); cursor: pointer; }
     </style>
@@ -23,13 +23,13 @@
     <div id="sidebarContainer"></div>
     <div class="main-content">
         <div id="navbarContainer"></div>
-        
+
         <div class="content-area">
             <div class="mb-4">
                 <h4 class="fw-bold mb-1">Reportes Estadísticos</h4>
                 <p class="text-muted small">Visualización en vivo del estado del negocio.</p>
             </div>
-            
+
             <div class="filter-ribbon">
                 <i class="bi bi-funnel-fill fs-5" style="color:var(--primary);"></i>
                 <span class="fw-bold" style="color:var(--primary-dark);">Filtro Rápido Visual:</span>
@@ -45,7 +45,7 @@
                     <button class="btn btn-sm btn-outline-primary" onclick="loadStats()"><i class="bi bi-arrow-clockwise me-1"></i>Actualizar</button>
                 </div>
             </div>
-            
+
             <div class="row g-4 mb-4">
                 <div class="col-lg-8">
                     <div class="chart-card">
@@ -70,7 +70,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="row g-4">
                 <div class="col-lg-6">
                     <div class="chart-card">

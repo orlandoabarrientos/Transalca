@@ -16,6 +16,11 @@ function showToast(message, type = 'success') {
     const text = typeof normalizeSystemMessage === 'function' ? normalizeSystemMessage(message) : String(message || '');
     const safe = typeof escapeHtml === 'function' ? escapeHtml(text) : text;
     toast.innerHTML = `<i class="bi ${icons[type] || icons.info}" style="color:${colors[type]};font-size:1.3rem;"></i><span style="flex:1;font-weight:500;font-size:0.85rem;">${safe}</span><button type="button" class="toast-close close-toast" aria-label="Cerrar"><i class="bi bi-x"></i></button>`;
+    toast.querySelector('.toast-close')?.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        dismissToast(toast);
+    });
     container.appendChild(toast);
     setTimeout(() => {
         if (typeof dismissToast === 'function') dismissToast(toast);
@@ -139,12 +144,40 @@ function installClientListSearches(root = document) {
     });
 }
 
+function normalizeActionButtons(root = document) {
+    const scope = root instanceof Element ? root : document;
+    scope.querySelectorAll('button.btn, a.btn').forEach(btn => {
+        const text = (btn.textContent || '').trim().toLowerCase();
+        const title = (btn.getAttribute('title') || '').trim().toLowerCase();
+        const label = `${text} ${title}`;
+        let action = '';
+        if (label.includes('registrar')) action = 'register';
+        else if (label.includes('modificar') || label.includes('editar')) action = 'edit';
+        else if (label.includes('eliminar')) action = 'delete';
+        if (!action) return;
+        btn.classList.remove('btn-orange', 'btn-outline-orange', 'btn-warning', 'btn-outline-warning', 'btn-danger', 'btn-outline-danger', 'btn-success', 'btn-outline-success');
+        const icon = btn.querySelector('i.bi');
+        if (action === 'register') {
+            btn.classList.add('btn-success');
+            if (icon) icon.className = 'bi bi-plus-circle me-1';
+        } else if (action === 'edit') {
+            btn.classList.add('btn-warning');
+            if (icon) icon.className = 'bi bi-pencil-square';
+        } else if (action === 'delete') {
+            btn.classList.add('btn-danger');
+            if (icon) icon.className = 'bi bi-trash';
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    document.title = 'Transalca Group | La mejor calidad';
     checkSession().then(loggedIn => {
         if (loggedIn) loadClientNotifications();
     });
     loadExchangeRatesCached().then(() => hydrateDualPrices());
     installClientListSearches();
+    normalizeActionButtons();
     updateCurrencyMenuLabel();
     const observer = new MutationObserver((mutations) => {
         applyAuthVisibility();
@@ -154,6 +187,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (mutations.some(m => Array.from(m.addedNodes).some(n => n.nodeType === 1 && (n.matches?.('table') || n.querySelector?.('table'))))) {
             installClientListSearches();
+        }
+        if (mutations.some(m => Array.from(m.addedNodes).some(n => n.nodeType === 1 && (n.matches?.('button.btn, a.btn') || n.querySelector?.('button.btn, a.btn'))))) {
+            normalizeActionButtons();
         }
     });
     observer.observe(document.body, { childList: true, subtree: true });
@@ -188,10 +224,11 @@ async function markAllReadClient() {
 
 setInterval(() => { if (currentUser) loadClientNotifications(); }, 30000);
 
-document.body.addEventListener('click', async (e) => {
+document.addEventListener('click', async (e) => {
     const closeToast = e.target.closest('.close-toast, .toast-close');
     if (closeToast) {
         e.preventDefault();
+        e.stopPropagation();
         dismissToast(closeToast.closest('.toast-custom'));
         return;
     }
@@ -215,7 +252,7 @@ document.body.addEventListener('click', async (e) => {
         await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
         window.location.href = '/client/home';
     }
-});
+}, true);
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -234,11 +271,9 @@ function normalizeSystemMessage(message) {
 }
 
 function dismissToast(toast) {
-    if (!toast) return;
+    if (!toast || !toast.parentNode) return;
     toast.classList.add('removing');
-    const remove = () => toast.remove();
-    toast.addEventListener('transitionend', remove, { once: true });
-    setTimeout(remove, 250);
+    setTimeout(() => toast.remove(), 300);
 }
 
 function getSelectedCurrency() {
