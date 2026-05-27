@@ -101,6 +101,15 @@ CREATE TABLE servicios (
     FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE SET NULL
 );
 
+INSERT IGNORE INTO productos (codigo, nombre, descripcion, precio, estado)
+VALUES ('SIN_PRODUCTO', 'Sin producto', 'Registro interno para compras sin producto', 0.00, 0);
+
+SET @old_sql_mode = @@SQL_MODE;
+SET SQL_MODE = IF(@@SQL_MODE = '', 'NO_AUTO_VALUE_ON_ZERO', CONCAT(@@SQL_MODE, ',NO_AUTO_VALUE_ON_ZERO'));
+INSERT IGNORE INTO servicios (id, nombre, descripcion, precio, duracion_estimada, estado)
+VALUES (0, 'Sin servicio', 'Registro interno para compras sin servicio', 0.00, '0', 0);
+SET SQL_MODE = @old_sql_mode;
+
 CREATE TABLE inventario (
     producto_codigo VARCHAR(50) NOT NULL,
     sucursal_id INT NOT NULL,
@@ -148,7 +157,7 @@ CREATE TABLE ordenes_venta (
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     total DECIMAL(12,2) DEFAULT 0.00,
     estado VARCHAR(30) NOT NULL DEFAULT 'pendiente',
-    metodo_pago VARCHAR(50),
+    metodo_pago VARCHAR(100),
     comprobante_url VARCHAR(255),
     observaciones VARCHAR(1000),
     FOREIGN KEY (cliente_cedula) REFERENCES clientes(cedula) ON UPDATE CASCADE,
@@ -170,15 +179,15 @@ CREATE TABLE detalle_orden_compra (
 CREATE TABLE detalle_orden_venta (
     id INT AUTO_INCREMENT PRIMARY KEY,
     orden_id INT NOT NULL,
-    producto_codigo VARCHAR(50),
-    servicio_id INT,
+    producto_codigo VARCHAR(50) NOT NULL DEFAULT 'SIN_PRODUCTO',
+    servicio_id INT NOT NULL DEFAULT 0,
     tipo VARCHAR(20) NOT NULL DEFAULT 'producto',
     cantidad INT NOT NULL DEFAULT 1,
     precio_unitario DECIMAL(10,2) NOT NULL,
     subtotal DECIMAL(12,2) NOT NULL,
     FOREIGN KEY (orden_id) REFERENCES ordenes_venta(id) ON DELETE CASCADE,
     FOREIGN KEY (producto_codigo) REFERENCES productos(codigo) ON UPDATE CASCADE,
-    FOREIGN KEY (servicio_id) REFERENCES servicios(id) ON DELETE SET NULL
+    FOREIGN KEY (servicio_id) REFERENCES servicios(id)
 );
 
 CREATE TABLE servicio_mecanico (
@@ -202,8 +211,7 @@ CREATE TABLE comprobantes_pago (
     revisado_por VARCHAR(20),
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     observaciones VARCHAR(1000),
-    FOREIGN KEY (orden_venta_id) REFERENCES ordenes_venta(id) ON DELETE CASCADE,
-    INDEX idx_comprobantes_revisado_por (revisado_por)
+    FOREIGN KEY (orden_venta_id) REFERENCES ordenes_venta(id) ON DELETE CASCADE
 );
 
 
@@ -244,24 +252,20 @@ CREATE TABLE qr_codes (
     FOREIGN KEY (promocion_id) REFERENCES promociones(id) ON DELETE SET NULL,
     FOREIGN KEY (servicio_id) REFERENCES servicios(id) ON DELETE SET NULL,
     FOREIGN KEY (orden_venta_id) REFERENCES ordenes_venta(id) ON DELETE SET NULL,
-    INDEX idx_qr_usuario_cedula (usuario_cedula),
-    INDEX idx_qr_referencia (tipo, referencia_id),
-    INDEX idx_qr_promocion (promocion_id),
-    INDEX idx_qr_servicio (servicio_id),
-    INDEX idx_qr_orden (orden_venta_id)
+    INDEX idx_qr_referencia (tipo, referencia_id)
 );
 
 CREATE TABLE carrito (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cliente_cedula VARCHAR(20) NOT NULL,
-    producto_codigo VARCHAR(50),
-    servicio_id INT,
+    producto_codigo VARCHAR(50) NOT NULL DEFAULT 'SIN_PRODUCTO',
+    servicio_id INT NOT NULL DEFAULT 0,
     tipo VARCHAR(20) NOT NULL DEFAULT 'producto',
     cantidad INT DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (cliente_cedula) REFERENCES clientes(cedula) ON UPDATE CASCADE,
     FOREIGN KEY (producto_codigo) REFERENCES productos(codigo) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (servicio_id) REFERENCES servicios(id) ON DELETE CASCADE
+    FOREIGN KEY (servicio_id) REFERENCES servicios(id)
 );
 
 CREATE TABLE exchange_rates (
@@ -301,7 +305,7 @@ AFTER INSERT ON detalle_orden_venta
 FOR EACH ROW
 BEGIN
     DECLARE v_suc INT;
-    IF NEW.tipo = 'producto' AND NEW.producto_codigo IS NOT NULL THEN
+    IF NEW.tipo = 'producto' AND NEW.producto_codigo <> 'SIN_PRODUCTO' THEN
         SELECT sucursal_id INTO v_suc FROM ordenes_venta WHERE id = NEW.orden_id LIMIT 1;
         UPDATE inventario SET stock = stock - NEW.cantidad
         WHERE producto_codigo = NEW.producto_codigo AND sucursal_id = v_suc;
@@ -427,7 +431,7 @@ CREATE TABLE IF NOT EXISTS vehiculos (
     marca VARCHAR(100) NOT NULL,
     modelo VARCHAR(100) NOT NULL,
     anio SMALLINT,
-    placa VARCHAR(20),
+    placa VARCHAR(20) NOT NULL,
     color VARCHAR(50),
     tipo_vehiculo VARCHAR(50),
     tipo_combustible VARCHAR(20) DEFAULT 'gasolina',
@@ -444,9 +448,7 @@ CREATE TABLE IF NOT EXISTS vehiculos (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_vehiculos_cliente FOREIGN KEY (cliente_cedula) REFERENCES clientes(cedula) ON UPDATE CASCADE,
-    UNIQUE KEY uq_vehiculos_placa (placa),
-    INDEX idx_vehiculos_cliente (cliente_cedula),
-    INDEX idx_vehiculos_estado (estado)
+    UNIQUE KEY uq_vehiculos_placa (placa)
 );
 
 CREATE TABLE IF NOT EXISTS reglas_mantenimiento (
@@ -465,7 +467,7 @@ CREATE TABLE IF NOT EXISTS reglas_mantenimiento (
 
 CREATE TABLE IF NOT EXISTS mantenimientos_programados (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    vehiculo_id INT NOT NULL,
+    vehiculo_placa VARCHAR(20) NOT NULL,
     regla_id INT DEFAULT NULL,
     tipo_mantenimiento VARCHAR(100) NOT NULL,
     modo VARCHAR(20) DEFAULT 'manual',
@@ -478,15 +480,14 @@ CREATE TABLE IF NOT EXISTS mantenimientos_programados (
     observaciones TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_mantenimientos_vehiculo FOREIGN KEY (vehiculo_id) REFERENCES vehiculos(id) ON DELETE CASCADE,
+    CONSTRAINT fk_mantenimientos_vehiculo FOREIGN KEY (vehiculo_placa) REFERENCES vehiculos(placa) ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT fk_mantenimientos_regla FOREIGN KEY (regla_id) REFERENCES reglas_mantenimiento(id) ON DELETE SET NULL,
-    INDEX idx_mant_vehiculo_estado (vehiculo_id, estado)
+    INDEX idx_mant_vehiculo_estado (vehiculo_placa, estado)
 );
 
 CREATE TABLE IF NOT EXISTS bitacora_vehiculo (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    vehiculo_id INT NOT NULL,
-    cliente_cedula VARCHAR(20) NOT NULL,
+    vehiculo_placa VARCHAR(20) NOT NULL,
     orden_venta_id INT DEFAULT NULL,
     servicio_id INT DEFAULT NULL,
     mecanico_cedula VARCHAR(20) DEFAULT NULL,
@@ -503,18 +504,16 @@ CREATE TABLE IF NOT EXISTS bitacora_vehiculo (
     modo_registro VARCHAR(20) DEFAULT 'manual',
     observaciones TEXT,
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_bitacora_vehiculo FOREIGN KEY (vehiculo_id) REFERENCES vehiculos(id) ON DELETE CASCADE,
-    CONSTRAINT fk_bitacora_cliente FOREIGN KEY (cliente_cedula) REFERENCES clientes(cedula) ON UPDATE CASCADE,
+    CONSTRAINT fk_bitacora_vehiculo FOREIGN KEY (vehiculo_placa) REFERENCES vehiculos(placa) ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT fk_bitacora_mecanico FOREIGN KEY (mecanico_cedula) REFERENCES mecanicos(cedula) ON UPDATE CASCADE ON DELETE SET NULL,
     CONSTRAINT fk_bitacora_orden FOREIGN KEY (orden_venta_id) REFERENCES ordenes_venta(id) ON DELETE SET NULL,
     CONSTRAINT fk_bitacora_servicio FOREIGN KEY (servicio_id) REFERENCES servicios(id) ON DELETE SET NULL,
-    INDEX idx_bitacora_vehiculo_fecha (vehiculo_id, fecha),
-    INDEX idx_bitacora_cliente_fecha (cliente_cedula, fecha)
+    INDEX idx_bitacora_vehiculo_fecha (vehiculo_placa, fecha)
 );
 
 CREATE TABLE IF NOT EXISTS consumo_combustible (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    vehiculo_id INT NOT NULL,
+    vehiculo_placa VARCHAR(20) NOT NULL,
     modo VARCHAR(20) DEFAULT 'manual',
     consumo_estimado_lkm DECIMAL(6,2),
     fuente_dato VARCHAR(500),
@@ -524,14 +523,14 @@ CREATE TABLE IF NOT EXISTS consumo_combustible (
     fecha DATE,
     observaciones TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_consumo_vehiculo FOREIGN KEY (vehiculo_id) REFERENCES vehiculos(id) ON DELETE CASCADE,
-    INDEX idx_consumo_vehiculo_fecha (vehiculo_id, fecha)
+    CONSTRAINT fk_consumo_vehiculo FOREIGN KEY (vehiculo_placa) REFERENCES vehiculos(placa) ON UPDATE CASCADE ON DELETE CASCADE,
+    INDEX idx_consumo_vehiculo_fecha (vehiculo_placa, fecha)
 );
 
 CREATE TABLE IF NOT EXISTS tickets_soporte (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cliente_cedula VARCHAR(20) NOT NULL,
-    vehiculo_id INT DEFAULT NULL,
+    vehiculo_placa VARCHAR(20) DEFAULT NULL,
     asunto VARCHAR(300) NOT NULL,
     descripcion TEXT,
     estado VARCHAR(30) NOT NULL DEFAULT 'abierto',
@@ -540,11 +539,9 @@ CREATE TABLE IF NOT EXISTS tickets_soporte (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_ticket_cliente FOREIGN KEY (cliente_cedula) REFERENCES clientes(cedula) ON UPDATE CASCADE,
-    CONSTRAINT fk_ticket_vehiculo FOREIGN KEY (vehiculo_id) REFERENCES vehiculos(id) ON DELETE SET NULL,
+    CONSTRAINT fk_ticket_vehiculo FOREIGN KEY (vehiculo_placa) REFERENCES vehiculos(placa) ON UPDATE CASCADE ON DELETE SET NULL,
     CONSTRAINT fk_ticket_asignado FOREIGN KEY (asignado_a) REFERENCES mecanicos(cedula) ON UPDATE CASCADE ON DELETE SET NULL,
-    INDEX idx_ticket_cliente (cliente_cedula),
-    INDEX idx_ticket_estado (estado),
-    INDEX idx_ticket_prioridad (prioridad)
+    INDEX idx_ticket_cliente (cliente_cedula)
 );
 
 CREATE TABLE IF NOT EXISTS ticket_respuestas (
@@ -596,15 +593,15 @@ CREATE TABLE IF NOT EXISTS cotizaciones (
 CREATE TABLE IF NOT EXISTS cotizacion_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cotizacion_id INT NOT NULL,
-    producto_codigo VARCHAR(50),
-    servicio_id INT,
+    producto_codigo VARCHAR(50) NOT NULL DEFAULT 'SIN_PRODUCTO',
+    servicio_id INT NOT NULL DEFAULT 0,
     tipo VARCHAR(20) NOT NULL DEFAULT 'producto',
     cantidad INT DEFAULT 1,
     precio_usd DECIMAL(10,2) NOT NULL,
     precio_bs DECIMAL(12,2) NOT NULL,
     CONSTRAINT fk_cotizacion_item_cotizacion FOREIGN KEY (cotizacion_id) REFERENCES cotizaciones(id) ON DELETE CASCADE,
-    CONSTRAINT fk_cotizacion_item_producto FOREIGN KEY (producto_codigo) REFERENCES productos(codigo) ON UPDATE CASCADE ON DELETE SET NULL,
-    CONSTRAINT fk_cotizacion_item_servicio FOREIGN KEY (servicio_id) REFERENCES servicios(id) ON DELETE SET NULL
+    CONSTRAINT fk_cotizacion_item_producto FOREIGN KEY (producto_codigo) REFERENCES productos(codigo) ON UPDATE CASCADE,
+    CONSTRAINT fk_cotizacion_item_servicio FOREIGN KEY (servicio_id) REFERENCES servicios(id)
 );
 
 CREATE TABLE IF NOT EXISTS notificaciones (
@@ -620,10 +617,8 @@ CREATE TABLE IF NOT EXISTS notificaciones (
     referencia_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_notif_cliente FOREIGN KEY (cliente_cedula) REFERENCES clientes(cedula) ON UPDATE CASCADE ON DELETE CASCADE,
-    INDEX idx_notif_usuario (usuario_id),
-    INDEX idx_notif_cliente (cliente_cedula),
-    INDEX idx_notif_leida (leida),
-    INDEX idx_notif_fecha (created_at)
+    INDEX idx_notif_usuario_leida (usuario_id, leida, created_at),
+    INDEX idx_notif_cliente_leida (cliente_cedula, leida, created_at)
 );
 
 INSERT INTO reglas_mantenimiento (nombre, tipo_servicio, intervalo_km, intervalo_dias, descripcion)

@@ -11,7 +11,7 @@ class TicketModel(Connection):
                "m.nombre as asignado_nombre, m.apellido as asignado_apellido "
                "FROM tickets_soporte t "
                "INNER JOIN clientes c ON t.cliente_cedula = c.cedula "
-               "LEFT JOIN vehiculos v ON t.vehiculo_id = v.id "
+               "LEFT JOIN vehiculos v ON t.vehiculo_placa = v.placa "
                "LEFT JOIN mecanicos m ON t.asignado_a = m.cedula "
                "WHERE 1=1")
         params = []
@@ -32,7 +32,7 @@ class TicketModel(Connection):
             "m.nombre as asignado_nombre, m.apellido as asignado_apellido "
             "FROM tickets_soporte t "
             "INNER JOIN clientes c ON t.cliente_cedula = c.cedula "
-            "LEFT JOIN vehiculos v ON t.vehiculo_id = v.id "
+            "LEFT JOIN vehiculos v ON t.vehiculo_placa = v.placa "
             "LEFT JOIN mecanicos m ON t.asignado_a = m.cedula "
             "WHERE t.id = %s", (ticket_id,))
         if ticket:
@@ -43,16 +43,20 @@ class TicketModel(Connection):
         return self.fetch_all("transalca",
             "SELECT t.*, v.placa as vehiculo_placa, v.marca as vehiculo_marca "
             "FROM tickets_soporte t "
-            "LEFT JOIN vehiculos v ON t.vehiculo_id = v.id "
+            "LEFT JOIN vehiculos v ON t.vehiculo_placa = v.placa "
             "WHERE t.cliente_cedula = %s ORDER BY t.created_at DESC",
             (cliente_cedula,))
 
     def create(self, data):
+        vehiculo_placa = None
+        if data.get('vehiculo_id'):
+            vehicle = self.fetch_one("transalca", "SELECT placa FROM vehiculos WHERE id=%s", (data.get('vehiculo_id'),))
+            vehiculo_placa = vehicle['placa'] if vehicle else None
         return self.insert("transalca",
-            "INSERT INTO tickets_soporte (cliente_cedula, vehiculo_id, asunto, "
+            "INSERT INTO tickets_soporte (cliente_cedula, vehiculo_placa, asunto, "
             "descripcion, prioridad) VALUES (%s, %s, %s, %s, %s)",
             (data['cliente_cedula'].strip(),
-             data.get('vehiculo_id') or None,
+             vehiculo_placa,
              data['asunto'].strip(),
              (data.get('descripcion') or '').strip(),
              data.get('prioridad', 'media')))

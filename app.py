@@ -20,6 +20,7 @@ from controller.inventory_controller import inventory_bp
 from controller.service_controller import service_bp
 from controller.promotion_controller import promotion_bp
 from controller.payment_controller import payment_bp
+from controller.payment_method_controller import payment_method_bp
 from controller.order_controller import order_bp
 from controller.qr_controller import qr_bp
 from controller.scanner_controller import scanner_bp
@@ -59,6 +60,7 @@ app.register_blueprint(inventory_bp, url_prefix='/api/inventory')
 app.register_blueprint(service_bp, url_prefix='/api/services')
 app.register_blueprint(promotion_bp, url_prefix='/api/promotions')
 app.register_blueprint(payment_bp, url_prefix='/api/payments')
+app.register_blueprint(payment_method_bp, url_prefix='/api/payment-methods')
 app.register_blueprint(order_bp, url_prefix='/api/orders')
 app.register_blueprint(qr_bp, url_prefix='/api/qr')
 app.register_blueprint(scanner_bp, url_prefix='/api/scanner')

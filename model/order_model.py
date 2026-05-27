@@ -7,6 +7,10 @@ def caracas_now():
     return datetime.utcnow() - timedelta(hours=4)
 
 
+SIN_PRODUCTO = 'SIN_PRODUCTO'
+SIN_SERVICIO = 0
+
+
 class OrderModel(Connection):
     def __init__(self):
         super().__init__()
@@ -59,6 +63,24 @@ class OrderModel(Connection):
             (cliente_cedula,))
         return items
 
+    def get_active_payment_methods(self):
+        try:
+            return self.fetch_all("mantenimiento",
+                "SELECT id, nombre, datos FROM metodos_pago WHERE estado = 1 ORDER BY nombre")
+        except Exception:
+            return [{'nombre': n, 'datos': ''} for n in ('transferencia', 'pago_movil', 'efectivo', 'zelle', 'binance', 'tarjeta')]
+
+    def is_valid_payment_method(self, nombre):
+        value = (nombre or '').strip()
+        if not value:
+            return False
+        try:
+            row = self.fetch_one("mantenimiento",
+                "SELECT id FROM metodos_pago WHERE nombre = %s AND estado = 1 LIMIT 1", (value,))
+            return row is not None
+        except Exception:
+            return value in {'transferencia', 'pago_movil', 'efectivo', 'zelle', 'binance', 'tarjeta'}
+
     def add_to_cart(self, cliente_cedula, item_id, tipo='producto', cantidad=1):
         if not self.ensure_client_exists(cliente_cedula):
             raise Exception("Cliente no encontrado")
@@ -74,8 +96,8 @@ class OrderModel(Connection):
                 return self.update("transalca",
                     "UPDATE carrito SET cantidad = cantidad + %s WHERE id = %s", (cantidad, existing['id']))
             return self.insert("transalca",
-                "INSERT INTO carrito (cliente_cedula, producto_codigo, tipo, cantidad) VALUES (%s, %s, 'producto', %s)",
-                (cliente_cedula, item_id, cantidad))
+                "INSERT INTO carrito (cliente_cedula, producto_codigo, servicio_id, tipo, cantidad) VALUES (%s, %s, %s, 'producto', %s)",
+                (cliente_cedula, item_id, SIN_SERVICIO, cantidad))
         else:
             service = self.fetch_one("transalca", "SELECT id FROM servicios WHERE id = %s AND estado = 1", (item_id,))
             if not service:
@@ -86,8 +108,8 @@ class OrderModel(Connection):
             if existing:
                 return existing['id']
             return self.insert("transalca",
-                "INSERT INTO carrito (cliente_cedula, servicio_id, tipo, cantidad) VALUES (%s, %s, 'servicio', 1)",
-                (cliente_cedula, item_id))
+                "INSERT INTO carrito (cliente_cedula, producto_codigo, servicio_id, tipo, cantidad) VALUES (%s, %s, %s, 'servicio', 1)",
+                (cliente_cedula, SIN_PRODUCTO, item_id))
 
     def update_cart_quantity(self, cart_id, cantidad):
         if cantidad <= 0:
@@ -131,12 +153,12 @@ class OrderModel(Connection):
                 if item['tipo'] == 'producto':
                     subtotal = item['precio'] * item['cantidad']
                     cursor.execute(
-                        "INSERT INTO detalle_orden_venta (orden_id, producto_codigo, tipo, cantidad, precio_unitario, subtotal) VALUES (%s, %s, 'producto', %s, %s, %s)",
-                        (order_id, item['producto_codigo'], item['cantidad'], item['precio'], subtotal))
+                        "INSERT INTO detalle_orden_venta (orden_id, producto_codigo, servicio_id, tipo, cantidad, precio_unitario, subtotal) VALUES (%s, %s, %s, 'producto', %s, %s, %s)",
+                        (order_id, item['producto_codigo'], SIN_SERVICIO, item['cantidad'], item['precio'], subtotal))
                 else:
                     cursor.execute(
-                        "INSERT INTO detalle_orden_venta (orden_id, servicio_id, tipo, cantidad, precio_unitario, subtotal) VALUES (%s, %s, 'servicio', 1, %s, %s)",
-                        (order_id, item['servicio_id'], item['precio'], item['precio']))
+                        "INSERT INTO detalle_orden_venta (orden_id, producto_codigo, servicio_id, tipo, cantidad, precio_unitario, subtotal) VALUES (%s, %s, %s, 'servicio', 1, %s, %s)",
+                        (order_id, SIN_PRODUCTO, item['servicio_id'], item['precio'], item['precio']))
                     if allow_unassigned_services:
                         cursor.execute(
                             "INSERT INTO servicio_mecanico (servicio_id, mecanico_cedula, orden_venta_id, observaciones) VALUES (%s, %s, %s, %s)",

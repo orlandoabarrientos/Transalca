@@ -35,12 +35,9 @@
                                 class="fs-4" style="color:var(--highlight);">$0.00</strong></div>
                         <form id="checkoutForm" enctype="multipart/form-data">
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Método de Pago</label>
+                                <label class="form-label fw-bold">Metodo de Pago</label>
                                 <select class="form-select" id="metodoPago">
-                                    <option value="transferencia">Transferencia Bancaria</option>
-                                    <option value="pago_movil">Pago Móvil</option>
-                                    <option value="efectivo">Efectivo</option>
-                                    <option value="zelle">Zelle</option>
+                                    <option value="">Cargando metodos...</option>
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -67,6 +64,7 @@
         $(document).ready(function () {
             $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
             $('#footerContainer').load('/components/client_footer.html');
+            loadPaymentMethods();
             loadCart();
             $('#checkoutForm').on('submit', function (e) {
                 e.preventDefault();
@@ -83,6 +81,31 @@
                 });
             });
         });
+        function formatPaymentMethodLabel(value) {
+            return String(value || '').replace(/_/g, ' ').replace(/\b\w/g, function (m) { return m.toUpperCase(); });
+        }
+        function loadPaymentMethods() {
+            $.get('/api/payment-methods/active', function (r) {
+                var select = $('#metodoPago');
+                select.empty();
+                var methods = r.data || [];
+                if (!methods.length) {
+                    select.append('<option value="">Sin metodos disponibles</option>');
+                    $('#btnCheckout').prop('disabled', true);
+                    return;
+                }
+                methods.forEach(function (m) {
+                    select.append('<option value="' + escapeHtml(m.nombre) + '">' + escapeHtml(formatPaymentMethodLabel(m.nombre)) + '</option>');
+                });
+            }).fail(function () {
+                var fallback = ['transferencia', 'pago_movil', 'efectivo', 'zelle'];
+                var select = $('#metodoPago');
+                select.empty();
+                fallback.forEach(function (m) {
+                    select.append('<option value="' + m + '">' + formatPaymentMethodLabel(m) + '</option>');
+                });
+            });
+        }
         function loadCart() {
             $.get('/api/orders/cart', function (r) {
                 var html = ''; var total = 0;

@@ -893,6 +893,7 @@ function getAdminModuleTitle() {
         orders_sales: 'Reporte Orden de Venta',
         tickets: 'Gestionar Tickets de Soporte',
         payments: 'Gestionar Comprobantes de Pago',
+        payment_methods: 'Gestionar Metodos de Pago',
         promotions: 'Gestionar Promociones',
         users: 'Gestionar Usuarios',
         roles: 'Gestionar Roles y Permisos',

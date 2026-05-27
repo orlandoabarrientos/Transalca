@@ -40,7 +40,7 @@ class VehicleModel(Connection):
             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (data['cliente_cedula'].strip(), data['marca'].strip(),
              data['modelo'].strip(), data.get('anio') or None,
-             (data.get('placa') or '').strip().upper() or None,
+             (data.get('placa') or '').strip().upper(),
              (data.get('color') or '').strip(),
              (data.get('tipo_vehiculo') or '').strip(),
              data.get('tipo_combustible', 'gasolina'),
@@ -60,7 +60,7 @@ class VehicleModel(Connection):
             "WHERE id=%s",
             (data['marca'].strip(), data['modelo'].strip(),
              data.get('anio') or None,
-             (data.get('placa') or '').strip().upper() or None,
+             (data.get('placa') or '').strip().upper(),
              (data.get('color') or '').strip(),
              (data.get('tipo_vehiculo') or '').strip(),
              data.get('tipo_combustible', 'gasolina'),
@@ -73,17 +73,15 @@ class VehicleModel(Connection):
     def update_kilometraje(self, vid, km):
         km = int(km)
         vehicle = self.fetch_one("transalca",
-            "SELECT kilometraje_actual FROM vehiculos WHERE id = %s", (vid,))
+            "SELECT placa, kilometraje_actual FROM vehiculos WHERE id = %s", (vid,))
         if vehicle and km < vehicle['kilometraje_actual']:
             return False
         self.update("transalca",
             "UPDATE vehiculos SET kilometraje_actual = %s WHERE id = %s", (km, vid))
         self.insert("transalca",
-            "INSERT INTO bitacora_vehiculo (vehiculo_id, cliente_cedula, tipo_registro, "
-            "descripcion, kilometraje, fecha) "
-            "SELECT %s, cliente_cedula, 'observacion', %s, %s, CURDATE() "
-            "FROM vehiculos WHERE id = %s",
-            (vid, f'Kilometraje actualizado a {km} km', km, vid))
+            "INSERT INTO bitacora_vehiculo (vehiculo_placa, tipo_registro, descripcion, kilometraje, fecha) "
+            "VALUES (%s, 'observacion', %s, %s, CURDATE())",
+            (vehicle['placa'], f'Kilometraje actualizado a {km} km', km))
         return True
 
     def update_carnet_image(self, vid, filename):
@@ -106,7 +104,7 @@ class VehicleModel(Connection):
 
     def get_km_history(self, vid):
         return self.fetch_all("transalca",
-            "SELECT * FROM bitacora_vehiculo WHERE vehiculo_id = %s "
+            "SELECT * FROM bitacora_vehiculo WHERE vehiculo_placa = (SELECT placa FROM vehiculos WHERE id = %s) "
             "AND kilometraje IS NOT NULL ORDER BY fecha DESC, id DESC LIMIT 50", (vid,))
 
     def search(self, query):
@@ -182,18 +180,18 @@ class VehicleModel(Connection):
 
     def get_history(self, vid, limit=50):
         return self.fetch_all("transalca",
-            "SELECT * FROM bitacora_vehiculo WHERE vehiculo_id = %s "
+            "SELECT * FROM bitacora_vehiculo WHERE vehiculo_placa = (SELECT placa FROM vehiculos WHERE id = %s) "
             "ORDER BY fecha DESC, id DESC LIMIT %s", (vid, limit))
 
     def add_history_entry(self, vid, data):
         vehicle = self.fetch_one("transalca",
-            "SELECT cliente_cedula FROM vehiculos WHERE id = %s", (vid,))
+            "SELECT placa FROM vehiculos WHERE id = %s", (vid,))
         if not vehicle:
             return None
         return self.insert("transalca",
-            "INSERT INTO bitacora_vehiculo (vehiculo_id, cliente_cedula, tipo_registro, "
-            "descripcion, kilometraje, fecha) VALUES (%s,%s,%s,%s,%s,%s)",
-            (vid, vehicle['cliente_cedula'],
+            "INSERT INTO bitacora_vehiculo (vehiculo_placa, tipo_registro, "
+            "descripcion, kilometraje, fecha) VALUES (%s,%s,%s,%s,%s)",
+            (vehicle['placa'],
              data.get('tipo_registro', 'observacion'),
              data.get('descripcion', ''),
              data.get('kilometraje'),

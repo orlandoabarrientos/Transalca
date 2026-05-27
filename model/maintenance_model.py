@@ -49,34 +49,38 @@ class MaintenanceModel(Connection):
         return self.fetch_all("transalca",
             "SELECT mp.*, r.nombre as regla_nombre FROM mantenimientos_programados mp "
             "LEFT JOIN reglas_mantenimiento r ON mp.regla_id = r.id "
-            "WHERE mp.vehiculo_id=%s ORDER BY mp.estado ASC, mp.fecha_proxima ASC", (vid,))
+            "WHERE mp.vehiculo_placa=(SELECT placa FROM vehiculos WHERE id=%s) "
+            "ORDER BY mp.estado ASC, mp.fecha_proxima ASC", (vid,))
 
     def get_scheduled_by_id(self, mid):
         return self.fetch_one("transalca",
             "SELECT mp.*, v.cliente_cedula FROM mantenimientos_programados mp "
-            "INNER JOIN vehiculos v ON mp.vehiculo_id = v.id WHERE mp.id=%s", (mid,))
+            "INNER JOIN vehiculos v ON mp.vehiculo_placa = v.placa WHERE mp.id=%s", (mid,))
 
     def get_pending(self, vid=None):
         sql = ("SELECT mp.*, r.nombre as regla_nombre, v.placa, v.marca, v.modelo, "
                "c.nombre as cliente_nombre, c.apellido as cliente_apellido "
                "FROM mantenimientos_programados mp "
                "LEFT JOIN reglas_mantenimiento r ON mp.regla_id = r.id "
-               "INNER JOIN vehiculos v ON mp.vehiculo_id = v.id "
+               "INNER JOIN vehiculos v ON mp.vehiculo_placa = v.placa "
                "INNER JOIN clientes c ON v.cliente_cedula = c.cedula "
                "WHERE mp.estado IN ('pendiente','proximo','vencido')")
         params = []
         if vid:
-            sql += " AND mp.vehiculo_id = %s"
+            sql += " AND mp.vehiculo_placa = (SELECT placa FROM vehiculos WHERE id=%s)"
             params.append(vid)
         sql += " ORDER BY mp.estado DESC, mp.fecha_proxima ASC"
         return self.fetch_all("transalca", sql, tuple(params) if params else None)
 
     def create_scheduled(self, data):
+        vehicle = self.fetch_one("transalca", "SELECT placa FROM vehiculos WHERE id=%s", (data['vehiculo_id'],))
+        if not vehicle:
+            return None
         return self.insert("transalca",
-            "INSERT INTO mantenimientos_programados (vehiculo_id, regla_id, "
+            "INSERT INTO mantenimientos_programados (vehiculo_placa, regla_id, "
             "tipo_mantenimiento, modo, km_proximo, fecha_proxima, registrado_por, observaciones) "
             "VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
-            (data['vehiculo_id'], data.get('regla_id'),
+            (vehicle['placa'], data.get('regla_id'),
              data['tipo_mantenimiento'].strip(), data.get('modo', 'manual'),
              data.get('km_proximo') or None, data.get('fecha_proxima') or None,
              data.get('registrado_por'), (data.get('observaciones') or '').strip()))
@@ -103,8 +107,8 @@ class MaintenanceModel(Connection):
 
             existing = self.fetch_one("transalca",
                 "SELECT id FROM mantenimientos_programados "
-                "WHERE vehiculo_id=%s AND regla_id=%s AND estado IN ('pendiente','proximo')",
-                (vid, rule['id']))
+                "WHERE vehiculo_placa=%s AND regla_id=%s AND estado IN ('pendiente','proximo')",
+                (vehicle['placa'], rule['id']))
             if existing:
                 continue
 
@@ -144,7 +148,7 @@ class MaintenanceModel(Connection):
         vehicles = self.fetch_all("transalca",
             "SELECT mp.id, mp.km_proximo, v.kilometraje_actual "
             "FROM mantenimientos_programados mp "
-            "INNER JOIN vehiculos v ON mp.vehiculo_id = v.id "
+            "INNER JOIN vehiculos v ON mp.vehiculo_placa = v.placa "
             "WHERE mp.estado IN ('pendiente','proximo') AND mp.km_proximo IS NOT NULL")
         for v in vehicles:
             if v['kilometraje_actual'] and v['km_proximo']:

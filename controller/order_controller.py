@@ -9,7 +9,6 @@ order_bp = Blueprint('orders', __name__)
 model = OrderModel()
 bitacora = BitacoraModel()
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'public', 'assets', 'comprobantes')
-METODOS_PAGO = {'transferencia', 'pago_movil', 'efectivo', 'zelle', 'binance', 'tarjeta'}
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
 TIPOS_ITEM = ['producto', 'servicio']
 
@@ -105,8 +104,8 @@ def checkout():
     try:
         if 'user_cedula' not in session:
             return jsonify({"status": "error", "message": "Debe iniciar sesion para comprar"}), 401
-        metodo_pago = request.form.get('metodo_pago', 'transferencia')
-        if metodo_pago not in METODOS_PAGO:
+        metodo_pago = (request.form.get('metodo_pago') or '').strip()
+        if not model.is_valid_payment_method(metodo_pago):
             return jsonify({"status": "error", "message": SELECT_TAMPER_MESSAGE}), 400
         sucursal_id = request.form.get('sucursal_id') or None
         comprobante_url = ''
