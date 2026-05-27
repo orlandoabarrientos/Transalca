@@ -268,14 +268,14 @@ CREATE TABLE carrito (
     FOREIGN KEY (servicio_id) REFERENCES servicios(id)
 );
 
-CREATE TABLE exchange_rates (
+CREATE TABLE tasas_cambio (
     id INT AUTO_INCREMENT PRIMARY KEY,
     fecha DATE NOT NULL,
     tipo VARCHAR(20) NOT NULL DEFAULT 'bcv',
     monto DECIMAL(12,4) NOT NULL,
     fuente VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_exchange_fecha_tipo (fecha, tipo)
+    INDEX idx_tasas_cambio_fecha_tipo (fecha, tipo)
 );
 
 
@@ -577,7 +577,7 @@ CREATE TABLE IF NOT EXISTS comisiones_mecanico (
 CREATE TABLE IF NOT EXISTS cotizaciones (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cliente_cedula VARCHAR(20) NOT NULL,
-    exchange_rate_id INT DEFAULT NULL,
+    tasa_cambio_id INT DEFAULT NULL,
     tasa_usada DECIMAL(12,4) NOT NULL,
     tipo_tasa VARCHAR(20) NOT NULL,
     total_usd DECIMAL(12,2) NOT NULL,
@@ -586,7 +586,7 @@ CREATE TABLE IF NOT EXISTS cotizaciones (
     estado VARCHAR(20) DEFAULT 'vigente',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_cotizacion_cliente FOREIGN KEY (cliente_cedula) REFERENCES clientes(cedula) ON UPDATE CASCADE,
-    CONSTRAINT fk_cotizacion_tasa FOREIGN KEY (exchange_rate_id) REFERENCES exchange_rates(id) ON DELETE SET NULL,
+    CONSTRAINT fk_cotizacion_tasa FOREIGN KEY (tasa_cambio_id) REFERENCES tasas_cambio(id) ON DELETE SET NULL,
     INDEX idx_cotizacion_cliente_estado (cliente_cedula, estado)
 );
 

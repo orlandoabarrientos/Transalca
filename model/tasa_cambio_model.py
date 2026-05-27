@@ -6,26 +6,11 @@ class TasaCambioModel(Connection):
     def __init__(self):
         super().__init__()
 
-    def _has_table(self, table):
-        row = self.fetch_one("transalca", "SHOW TABLES LIKE %s", (table,))
-        return row is not None
-
-    def _uses_exchange_rates(self):
-        return self._has_table('exchange_rates')
-
     def get_all(self, limit=30):
-        if self._uses_exchange_rates():
-            return self.fetch_all("transalca",
-                "SELECT id, fecha, monto, fuente, created_at FROM exchange_rates WHERE tipo='bcv' ORDER BY fecha DESC, id DESC LIMIT %s",
-                (limit,))
         return self.fetch_all("transalca",
             "SELECT * FROM tasas_cambio ORDER BY fecha DESC, id DESC LIMIT %s", (limit,))
 
     def get_by_date(self, fecha):
-        if self._uses_exchange_rates():
-            return self.fetch_one("transalca",
-                "SELECT id, fecha, monto, fuente, created_at FROM exchange_rates WHERE fecha = %s AND tipo='bcv' ORDER BY id DESC LIMIT 1",
-                (fecha,))
         return self.fetch_one("transalca",
             "SELECT * FROM tasas_cambio WHERE fecha = %s ORDER BY id DESC LIMIT 1", (fecha,))
 
@@ -33,9 +18,6 @@ class TasaCambioModel(Connection):
         return self.get_by_date(date.today().isoformat())
 
     def get_latest(self):
-        if self._uses_exchange_rates():
-            return self.fetch_one("transalca",
-                "SELECT id, fecha, monto, fuente, created_at FROM exchange_rates WHERE tipo='bcv' ORDER BY fecha DESC, id DESC LIMIT 1")
         return self.fetch_one("transalca",
             "SELECT * FROM tasas_cambio ORDER BY fecha DESC, id DESC LIMIT 1")
 
@@ -43,27 +25,17 @@ class TasaCambioModel(Connection):
         return self.get_today() is not None
 
     def create(self, data):
-        if self._uses_exchange_rates():
-            return self.insert("transalca",
-                "INSERT INTO exchange_rates (fecha, tipo, monto, fuente) VALUES (%s, %s, %s, %s)",
-                (data['fecha'], 'bcv', float(data['monto']), data['fuente'].strip()))
         return self.insert("transalca",
-            "INSERT INTO tasas_cambio (fecha, monto, fuente) VALUES (%s, %s, %s)",
-            (data['fecha'], float(data['monto']), data['fuente'].strip()))
+            "INSERT INTO tasas_cambio (fecha, tipo, monto, fuente) VALUES (%s, %s, %s, %s)",
+            (data['fecha'], 'bcv', float(data['monto']), data['fuente'].strip()))
 
     def update_tasa(self, tasa_id, data):
-        if self._uses_exchange_rates():
-            return self.update("transalca",
-                "UPDATE exchange_rates SET monto = %s, fuente = %s WHERE id = %s AND tipo='bcv'",
-                (float(data['monto']), data['fuente'].strip(), tasa_id))
         return self.update("transalca",
-            "UPDATE tasas_cambio SET monto = %s, fuente = %s WHERE id = %s",
+            "UPDATE tasas_cambio SET monto = %s, fuente = %s WHERE id = %s AND tipo='bcv'",
             (float(data['monto']), data['fuente'].strip(), tasa_id))
 
     def delete_tasa(self, tasa_id):
-        if self._uses_exchange_rates():
-            return self.delete("transalca", "DELETE FROM exchange_rates WHERE id = %s AND tipo='bcv'", (tasa_id,))
-        return self.delete("transalca", "DELETE FROM tasas_cambio WHERE id = %s", (tasa_id,))
+        return self.delete("transalca", "DELETE FROM tasas_cambio WHERE id = %s AND tipo='bcv'", (tasa_id,))
 
     def register_from_scraping(self, monto):
         if self.exists_today():

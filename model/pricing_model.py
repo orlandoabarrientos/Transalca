@@ -13,18 +13,18 @@ class PricingModel(Connection):
 
     def get_rates(self, limit=30):
         return self.fetch_all("transalca",
-            "SELECT * FROM exchange_rates ORDER BY fecha DESC, id DESC LIMIT %s", (limit,))
+            "SELECT * FROM tasas_cambio ORDER BY fecha DESC, id DESC LIMIT %s", (limit,))
 
     def get_rate_by_type(self, tipo, fecha=None):
         if not fecha:
             fecha = datetime.now().date().isoformat()
         return self.fetch_one("transalca",
-            "SELECT * FROM exchange_rates WHERE tipo=%s AND fecha=%s "
+            "SELECT * FROM tasas_cambio WHERE tipo=%s AND fecha=%s "
             "ORDER BY id DESC LIMIT 1", (tipo, fecha))
 
     def get_latest_rate(self, tipo='bcv'):
         return self.fetch_one("transalca",
-            "SELECT * FROM exchange_rates WHERE tipo=%s "
+            "SELECT * FROM tasas_cambio WHERE tipo=%s "
             "ORDER BY fecha DESC, id DESC LIMIT 1", (tipo,))
 
     def save_rate(self, tipo, monto, fuente):
@@ -32,10 +32,10 @@ class PricingModel(Connection):
         existing = self.get_rate_by_type(tipo, fecha)
         if existing:
             return self.update("transalca",
-                "UPDATE exchange_rates SET monto=%s, fuente=%s WHERE id=%s",
+                "UPDATE tasas_cambio SET monto=%s, fuente=%s WHERE id=%s",
                 (float(monto), fuente, existing['id']))
         return self.insert("transalca",
-            "INSERT INTO exchange_rates (fecha, tipo, monto, fuente) VALUES (%s,%s,%s,%s)",
+            "INSERT INTO tasas_cambio (fecha, tipo, monto, fuente) VALUES (%s,%s,%s,%s)",
             (fecha, tipo, float(monto), fuente))
 
     def get_setting(self, clave):
@@ -82,7 +82,7 @@ class PricingModel(Connection):
         rate = self.get_latest_rate(tipo)
         if not rate:
             rate = self.fetch_one("transalca",
-                "SELECT * FROM exchange_rates ORDER BY fecha DESC, id DESC LIMIT 1")
+                "SELECT * FROM tasas_cambio ORDER BY fecha DESC, id DESC LIMIT 1")
         if not rate:
             return None
 
@@ -114,7 +114,7 @@ class PricingModel(Connection):
             'tasa_con_margen': round(tasa_con_margen, 4),
             'margen_pct': margen,
             'tipo_tasa': rate_info['tipo'],
-            'exchange_rate_id': rate_info.get('id'),
+            'tasa_cambio_id': rate_info.get('id'),
             'frozen': rate_info['frozen']
         }
 
@@ -150,9 +150,9 @@ class PricingModel(Connection):
             total_bs = round(total_bs_raw, 2)
 
         quote_columns = self._columns("cotizaciones")
-        if "exchange_rate_id" in quote_columns:
+        if "tasa_cambio_id" in quote_columns:
             quote_id = self.insert("transalca",
-                "INSERT INTO cotizaciones (cliente_cedula, exchange_rate_id, tasa_usada, tipo_tasa, "
+                "INSERT INTO cotizaciones (cliente_cedula, tasa_cambio_id, tasa_usada, tipo_tasa, "
                 "total_usd, total_bs, vigente_hasta) VALUES (%s,%s,%s,%s,%s,%s,%s)",
                 (cliente_cedula, rate_info.get('id'), round(tasa, 4), rate_info['tipo'],
                  total_usd, total_bs, vigente_hasta))
