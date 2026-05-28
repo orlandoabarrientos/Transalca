@@ -48,7 +48,7 @@ async function loadHelpVehicles() {
         select.find('option:not(:first)').remove();
         helpState.vehicles.forEach(v => {
             const label = `${v.placa || 'S/P'} - ${v.marca || ''} ${v.modelo || ''}`.trim();
-            select.append(`<option value="${v.id}">${escapeHtml(label)}</option>`);
+            select.append(`<option value="${escapeHtml(v.placa || v.id || '')}">${escapeHtml(label)}</option>`);
         });
     } catch (e) { }
 }
@@ -204,7 +204,7 @@ async function createNewHelpTicket(event) {
         descripcion: ($('#newTicketDescription').val() || '').trim()
     };
     const vehiculoId = $('#newTicketVehicle').val();
-    if (vehiculoId) payload.vehiculo_id = parseInt(vehiculoId, 10);
+    if (vehiculoId) payload.vehiculo_id = vehiculoId;
 
     if (!payload.asunto || !payload.descripcion) {
         showToast('Asunto y descripcion son requeridos', 'error');

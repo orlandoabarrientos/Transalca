@@ -24,7 +24,6 @@ class SupplierModel(Connection):
         values = {
             'rif': data['rif'].strip(),
             'rif_prefijo': data.get('rif_prefijo'),
-            'rif_numero': data.get('rif_numero'),
             'nombre': data['nombre'].strip(),
             'telefono': data.get('telefono', '').strip(),
             'email': data.get('email', '').strip(),
@@ -40,7 +39,6 @@ class SupplierModel(Connection):
         values = {
             'rif': data['rif'].strip(),
             'rif_prefijo': data.get('rif_prefijo'),
-            'rif_numero': data.get('rif_numero'),
             'nombre': data['nombre'].strip(),
             'telefono': data.get('telefono', '').strip(),
             'email': data.get('email', '').strip(),

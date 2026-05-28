@@ -23,7 +23,6 @@ class MechanicModel(Connection):
         values = {
             'cedula': data['cedula'].strip(),
             'cedula_prefijo': data.get('cedula_prefijo'),
-            'cedula_numero': data.get('cedula_numero'),
             'nombre': data['nombre'].strip(),
             'apellido': data['apellido'].strip(),
             'telefono': data.get('telefono', '').strip(),
@@ -40,7 +39,6 @@ class MechanicModel(Connection):
         values = {
             'cedula': data['cedula'].strip(),
             'cedula_prefijo': data.get('cedula_prefijo'),
-            'cedula_numero': data.get('cedula_numero'),
             'nombre': data['nombre'].strip(),
             'apellido': data['apellido'].strip(),
             'telefono': data.get('telefono', '').strip(),

@@ -14,13 +14,12 @@ TIPOS_USUARIO = ['cliente', 'empleado']
 
 def _validate_user(data, require_password=False):
     errors = {}
-    cedula, cedula_prefijo, cedula_numero = normalize_cedula(errors, data)
+    cedula, cedula_prefijo, _ = normalize_cedula(errors, data)
     clean = {
         'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=60, person=True),
         'apellido': require_text(errors, 'apellido', data.get('apellido'), 'El apellido', min_len=2, max_len=60, person=True),
         'cedula': cedula,
         'cedula_prefijo': cedula_prefijo,
-        'cedula_numero': cedula_numero,
         'email': normalize_email(errors, data.get('email')),
         'telefono': normalize_phone(errors, data.get('telefono'), required=False),
         'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=255),

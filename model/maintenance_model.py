@@ -46,11 +46,12 @@ class MaintenanceModel(Connection):
             "UPDATE reglas_mantenimiento SET activo = NOT activo WHERE id=%s", (rid,))
 
     def get_by_vehicle(self, vid):
+        placa = (str(vid or '').strip().upper())
         return self.fetch_all("transalca",
             "SELECT mp.*, r.nombre as regla_nombre FROM mantenimientos_programados mp "
             "LEFT JOIN reglas_mantenimiento r ON mp.regla_id = r.id "
-            "WHERE mp.vehiculo_placa=(SELECT placa FROM vehiculos WHERE id=%s) "
-            "ORDER BY mp.estado ASC, mp.fecha_proxima ASC", (vid,))
+            "WHERE mp.vehiculo_placa=%s "
+            "ORDER BY mp.estado ASC, mp.fecha_proxima ASC", (placa,))
 
     def get_scheduled_by_id(self, mid):
         return self.fetch_one("transalca",
@@ -67,13 +68,13 @@ class MaintenanceModel(Connection):
                "WHERE mp.estado IN ('pendiente','proximo','vencido')")
         params = []
         if vid:
-            sql += " AND mp.vehiculo_placa = (SELECT placa FROM vehiculos WHERE id=%s)"
-            params.append(vid)
+            sql += " AND mp.vehiculo_placa = %s"
+            params.append(str(vid).strip().upper())
         sql += " ORDER BY mp.estado DESC, mp.fecha_proxima ASC"
         return self.fetch_all("transalca", sql, tuple(params) if params else None)
 
     def create_scheduled(self, data):
-        vehicle = self.fetch_one("transalca", "SELECT placa FROM vehiculos WHERE id=%s", (data['vehiculo_id'],))
+        vehicle = self.fetch_one("transalca", "SELECT placa FROM vehiculos WHERE placa=%s", (str(data['vehiculo_id']).strip().upper(),))
         if not vehicle:
             return None
         return self.insert("transalca",
@@ -92,8 +93,9 @@ class MaintenanceModel(Connection):
             (km_realizado, mid))
 
     def calculate_for_vehicle(self, vid):
+        placa = (str(vid or '').strip().upper())
         vehicle = self.fetch_one("transalca",
-            "SELECT * FROM vehiculos WHERE id=%s", (vid,))
+            "SELECT * FROM vehiculos WHERE placa=%s", (placa,))
         if not vehicle:
             return []
 

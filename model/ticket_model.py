@@ -49,8 +49,9 @@ class TicketModel(Connection):
 
     def create(self, data):
         vehiculo_placa = None
-        if data.get('vehiculo_id'):
-            vehicle = self.fetch_one("transalca", "SELECT placa FROM vehiculos WHERE id=%s", (data.get('vehiculo_id'),))
+        vehicle_key = data.get('vehiculo_placa') or data.get('vehiculo_id')
+        if vehicle_key:
+            vehicle = self.fetch_one("transalca", "SELECT placa FROM vehiculos WHERE placa=%s", (str(vehicle_key).strip().upper(),))
             vehiculo_placa = vehicle['placa'] if vehicle else None
         return self.insert("transalca",
             "INSERT INTO tickets_soporte (cliente_cedula, vehiculo_placa, asunto, "

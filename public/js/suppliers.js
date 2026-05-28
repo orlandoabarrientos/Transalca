@@ -107,7 +107,6 @@ function saveData() {
     const data = {
         nombre: document.getElementById('nombre').value,
         rif_prefijo: document.getElementById('rif_prefijo').value,
-        rif_numero: document.getElementById('rif').value,
         rif: buildRifValue('rif_prefijo', 'rif'),
         telefono: document.getElementById('telefono').value,
         email: document.getElementById('email').value,

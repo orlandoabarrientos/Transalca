@@ -44,7 +44,6 @@ class ClientModel(Connection):
         values = {
             'cedula': cedula,
             'cedula_prefijo': data.get('cedula_prefijo'),
-            'cedula_numero': data.get('cedula_numero'),
             'nombre': data['nombre'].strip(),
             'apellido': data['apellido'].strip(),
             'telefono': data.get('telefono', '').strip(),
@@ -78,7 +77,6 @@ class ClientModel(Connection):
         columns = self._columns("clientes")
         values = {
             'cedula_prefijo': data.get('cedula_prefijo'),
-            'cedula_numero': data.get('cedula_numero'),
             'nombre': data['nombre'].strip(),
             'apellido': data['apellido'].strip(),
             'telefono': data.get('telefono', '').strip(),
@@ -116,7 +114,7 @@ class ClientModel(Connection):
 
     def get_vehicles(self, cedula):
         return self.fetch_all("transalca",
-            "SELECT * FROM vehiculos WHERE cliente_cedula=%s AND estado=1 ORDER BY created_at DESC",
+            "SELECT v.*, v.placa as id FROM vehiculos v WHERE cliente_cedula=%s AND estado=1 ORDER BY created_at DESC",
             (cedula,))
 
     def get_services(self, cedula):

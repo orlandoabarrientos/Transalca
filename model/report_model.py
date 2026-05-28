@@ -14,7 +14,7 @@ class ReportModel(Connection):
         pending_payments = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM comprobantes_pago WHERE estado = 'pendiente'")
         total_sales = self.fetch_one("transalca", "SELECT COALESCE(SUM(total), 0) as total FROM ordenes_venta WHERE estado = 'aprobada'")
         total_orders = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM ordenes_venta WHERE estado != 'cancelada'")
-        low_stock = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM inventario WHERE stock <= stock_minimo")
+        low_stock = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM stock WHERE stock <= stock_minimo")
         active_promos = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM promociones WHERE estado = 1")
         return {
             "total_products": total_products['total'] if total_products else 0,
@@ -80,7 +80,7 @@ class ReportModel(Connection):
         return payments
 
     def get_inventory_kardex(self, start_date=None, end_date=None):
-        sql = "SELECT i.producto_codigo, 'Inventario Actual' as tipo, i.stock as cantidad, 'Ajuste Sistemico' as motivo, i.updated_at as fecha, p.nombre as producto, p.codigo FROM inventario i INNER JOIN productos p ON i.producto_codigo = p.codigo WHERE 1=1"
+        sql = "SELECT i.producto_codigo, 'Stock actual' as tipo, i.stock as cantidad, 'Ajuste sistemico' as motivo, i.updated_at as fecha, p.nombre as producto, p.codigo FROM stock i INNER JOIN productos p ON i.producto_codigo = p.codigo WHERE 1=1"
         params = []
         if start_date:
             sql += " AND DATE(i.updated_at) >= %s"

@@ -61,7 +61,6 @@ function setupRegister() {
             nombre: document.getElementById('regNombre').value,
             apellido: document.getElementById('regApellido').value,
             cedula_prefijo: document.getElementById('regCedulaPrefijo').value,
-            cedula_numero: document.getElementById('regCedula').value,
             cedula: buildDocumentValue('regCedulaPrefijo', 'regCedula'),
             telefono: document.getElementById('regTelefono').value,
             direccion: document.getElementById('regDireccion')?.value || '',

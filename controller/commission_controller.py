@@ -60,7 +60,7 @@ def create():
         if not is_employee():
             return deny()
         data = request.get_json()
-        required = ['mecanico_cedula', 'servicio_mecanico_id', 'orden_venta_id', 'precio_servicio']
+        required = ['servicio_mecanico_id', 'precio_servicio']
         if not data or not all(data.get(k) for k in required):
             return jsonify({"status": "error", "message": "Datos incompletos"}), 400
         cid = model.create(data)

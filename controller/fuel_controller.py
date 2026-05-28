@@ -20,7 +20,7 @@ def load_vehicle(vid):
     return vehicle, None
 
 
-@fuel_bp.route('/vehicle/<int:vid>', methods=['GET'])
+@fuel_bp.route('/vehicle/<path:vid>', methods=['GET'])
 def get_by_vehicle(vid):
     try:
         _, error = load_vehicle(vid)
@@ -40,7 +40,7 @@ def create():
         data = request.get_json() or {}
         if not data.get('vehiculo_id'):
             return jsonify({"status": "error", "message": "Vehiculo requerido"}), 400
-        _, error = load_vehicle(int(data['vehiculo_id']))
+        _, error = load_vehicle(data['vehiculo_id'])
         if error:
             return error
         rid = model.create(data)
@@ -49,7 +49,7 @@ def create():
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@fuel_bp.route('/average/<int:vid>', methods=['GET'])
+@fuel_bp.route('/average/<path:vid>', methods=['GET'])
 def average(vid):
     try:
         _, error = load_vehicle(vid)

@@ -35,7 +35,6 @@ class AuthModel(Connection):
                 'apellido': data['apellido'],
                 'cedula': data['cedula'],
                 'cedula_prefijo': data.get('cedula_prefijo'),
-                'cedula_numero': data.get('cedula_numero'),
                 'email': data['email'],
                 'telefono': data.get('telefono', ''),
                 'direccion': data.get('direccion', ''),
@@ -119,7 +118,6 @@ class AuthModel(Connection):
         values = {
             "cedula": data['cedula'],
             "cedula_prefijo": data.get('cedula_prefijo'),
-            "cedula_numero": data.get('cedula_numero'),
             "nombre": data['nombre'],
             "apellido": data['apellido'],
             "telefono": data.get('telefono', ''),

@@ -60,7 +60,7 @@ class RoleModel(Connection):
     def get_modules(self):
         return [
             'usuarios', 'roles', 'productos', 'categorias', 'marcas',
-            'proveedores', 'mecanicos', 'inventario', 'servicios',
+            'proveedores', 'mecanicos', 'stock', 'servicios',
             'promociones', 'ordenes', 'pagos', 'bitacora', 'reportes',
             'respaldos', 'qr', 'sucursales',
             'vehiculos', 'comisiones', 'tickets', 'notificaciones',

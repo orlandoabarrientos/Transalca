@@ -106,8 +106,8 @@ function showDetail(cedula) {
                     <td>${(v.kilometraje_actual || 0).toLocaleString()}</td>
                     <td>${v.tipo_combustible || '—'}</td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editVehicle(${v.id})" title="Modificar Vehículo"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle(${v.id})" title="Eliminar Vehículo"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editVehicle('${encodeURIComponent(v.placa || v.id || '')}')" title="Modificar Vehículo"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle('${encodeURIComponent(v.placa || v.id || '')}')" title="Eliminar Vehículo"><i class="bi bi-trash"></i></button>
                     </td>
                 </tr>`;
             });
@@ -225,7 +225,6 @@ function saveClient() {
     const cedula = $('#editCedula').val();
     const data = {
         cedula_prefijo: $('#fCedulaPrefijo').val(),
-        cedula_numero: $('#fCedula').val(),
         cedula: buildDocumentValue('fCedulaPrefijo', 'fCedula'),
         nombre: $('#fNombre').val(),
         apellido: $('#fApellido').val(),
@@ -272,7 +271,7 @@ function showVehicleModal(vehicleData) {
     $('#vCarnetFileName').text('No seleccionado');
     if (vehicleData) {
         $('#vehicleModalTitle').text('Modificar Vehículo');
-        $('#editVehicleId').val(vehicleData.id);
+        $('#editVehicleId').val(vehicleData.placa || vehicleData.id);
         $('#vMarca').val(vehicleData.marca);
         $('#vModelo').val(vehicleData.modelo);
         $('#vAnio').val(vehicleData.anio);
@@ -291,15 +290,17 @@ function showVehicleModal(vehicleData) {
 
 function editVehicle(vid) {
     if (!currentCedula) return;
-    $.get(`/api/vehicles/${vid}`, function (r) {
+    vid = decodeURIComponent(vid);
+    $.get(`/api/vehicles/${encodeURIComponent(vid)}`, function (r) {
         if (r.status === 'success') showVehicleModal(r.data);
     });
 }
 
 function deleteVehicle(vid) {
     if (!currentCedula) return;
+    vid = decodeURIComponent(vid);
     confirmAction('¿Estás seguro de que deseas eliminar este vehículo?', () => {
-        $.ajax({ url: `/api/clients/${currentCedula}/vehicles/${vid}`, type: 'DELETE',
+        $.ajax({ url: `/api/clients/${currentCedula}/vehicles/${encodeURIComponent(vid)}`, type: 'DELETE',
             success: function (r) {
                 showToast(r.message, 'success');
                 showDetail(currentCedula);
@@ -335,7 +336,7 @@ function saveVehicle() {
         return;
     }
 
-    const url = vid ? `/api/clients/${currentCedula}/vehicles/${vid}` : `/api/clients/${currentCedula}/vehicles`;
+    const url = vid ? `/api/clients/${currentCedula}/vehicles/${encodeURIComponent(vid)}` : `/api/clients/${currentCedula}/vehicles`;
     const method = vid ? 'PUT' : 'POST';
 
     $.ajax({
@@ -441,7 +442,7 @@ function uploadVehicleCarnet(vehicleId, file) {
         const formData = new FormData();
         formData.append('imagen', file);
         $.ajax({
-            url: `/api/vehicles/${vehicleId}/carnet`,
+            url: `/api/vehicles/${encodeURIComponent(vehicleId)}/carnet`,
             type: 'POST',
             data: formData,
             processData: false,

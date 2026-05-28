@@ -82,7 +82,6 @@ function saveData() {
     formData.append('nombre', document.getElementById('nombre').value);
     formData.append('apellido', document.getElementById('apellido').value);
     formData.append('cedula_prefijo', document.getElementById('cedula_prefijo').value);
-    formData.append('cedula_numero', document.getElementById('cedula').value);
     formData.append('cedula', buildDocumentValue('cedula_prefijo', 'cedula'));
     formData.append('telefono', document.getElementById('telefono').value);
     formData.append('especialidad', document.getElementById('especialidad').value);

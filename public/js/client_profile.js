@@ -229,8 +229,8 @@ function renderVehiclesTable() {
                 <td>${Number(v.kilometraje_actual || 0).toLocaleString()}</td>
                 <td>${carnetCell}</td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editVehicleFromProfile(${v.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteVehicleFromProfile(${v.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editVehicleFromProfile('${encodeURIComponent(v.placa || v.id || '')}')" title="Editar"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteVehicleFromProfile('${encodeURIComponent(v.placa || v.id || '')}')" title="Eliminar"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>
         `);
@@ -238,7 +238,7 @@ function renderVehiclesTable() {
 }
 
 function openVehicleModal(vehicle = null) {
-    clientProfileState.editingVehicleId = vehicle ? vehicle.id : null;
+    clientProfileState.editingVehicleId = vehicle ? (vehicle.placa || vehicle.id) : null;
     clientProfileState.pendingCarnetFile = null;
     $('#vehicleForm')[0].reset();
     $('#vCarnetFile').val('');
@@ -249,7 +249,7 @@ function openVehicleModal(vehicle = null) {
 
     if (vehicle) {
         $('#vehicleModalTitle').text('Editar Vehiculo');
-        $('#editVehicleId').val(vehicle.id);
+        $('#editVehicleId').val(vehicle.placa || vehicle.id);
         $('#vMarca').val(vehicle.marca || '');
         $('#vModelo').val(vehicle.modelo || '');
         $('#vAnio').val(vehicle.anio || '');
@@ -272,7 +272,8 @@ function openVehicleModal(vehicle = null) {
 }
 
 function editVehicleFromProfile(vehicleId) {
-    const vehicle = clientProfileState.vehicles.find(v => Number(v.id) === Number(vehicleId));
+    vehicleId = decodeURIComponent(vehicleId);
+    const vehicle = clientProfileState.vehicles.find(v => String(v.placa || v.id) === String(vehicleId));
     if (!vehicle) {
         return;
     }
@@ -280,9 +281,10 @@ function editVehicleFromProfile(vehicleId) {
 }
 
 async function deleteVehicleFromProfile(vehicleId) {
+    vehicleId = decodeURIComponent(vehicleId);
     confirmAction('Desea eliminar este vehiculo?', async () => {
         try {
-            const res = await fetch(`/api/vehicles/${vehicleId}`, {
+            const res = await fetch(`/api/vehicles/${encodeURIComponent(vehicleId)}`, {
                 method: 'DELETE',
                 credentials: 'same-origin'
             });
@@ -362,7 +364,7 @@ async function saveVehicleFromProfile() {
     }
 
     const vehicleId = clientProfileState.editingVehicleId;
-    const url = vehicleId ? `/api/vehicles/${vehicleId}` : '/api/vehicles/';
+    const url = vehicleId ? `/api/vehicles/${encodeURIComponent(vehicleId)}` : '/api/vehicles/';
     const method = vehicleId ? 'PUT' : 'POST';
 
     try {
@@ -403,7 +405,7 @@ async function uploadVehicleCarnet(vehicleId, file) {
     const formData = new FormData();
     formData.append('imagen', file);
     try {
-        const res = await fetch(`/api/vehicles/${vehicleId}/carnet`, {
+        const res = await fetch(`/api/vehicles/${encodeURIComponent(vehicleId)}/carnet`, {
             method: 'POST',
             credentials: 'same-origin',
             body: formData

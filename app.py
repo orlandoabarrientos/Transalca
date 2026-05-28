@@ -39,6 +39,7 @@ from controller.pricing_controller import pricing_bp
 from controller.client_controller import client_bp
 from controller.fuel_controller import fuel_bp
 from controller.vehicle_log_controller import vehicle_log_bp
+from componente_ia.api_asistente import asistente_bp
 from model.bcv_sync_model import start_bcv_auto_sync_scheduler
 
 app = Flask(__name__, static_folder='public', template_folder='views')
@@ -79,6 +80,7 @@ app.register_blueprint(pricing_bp, url_prefix='/api/pricing')
 app.register_blueprint(client_bp, url_prefix='/api/clients')
 app.register_blueprint(fuel_bp, url_prefix='/api/fuel')
 app.register_blueprint(vehicle_log_bp, url_prefix='/api/vehicle-log')
+app.register_blueprint(asistente_bp, url_prefix='/api/asistente')
 
 
 PUBLIC_CLIENT_PAGES = {'home', 'catalog'}
@@ -88,6 +90,7 @@ PUBLIC_API_PREFIXES = (
     '/api/sucursales/active',
     '/api/services/active',
     '/api/rates',
+    '/api/asistente',
 )
 
 
@@ -170,7 +173,7 @@ def server_error(e):
 @app.after_request
 def disable_asset_cache(response):
     path = request.path or ''
-    if path.startswith('/public/') or path.startswith('/components/') or path.startswith('/admin/') or path.startswith('/client/') or path.startswith('/auth/'):
+    if path.startswith('/public/') or path.startswith('/components/') or path.startswith('/admin/') or path.startswith('/client/') or path.startswith('/auth/') or path.startswith('/api/') or path.startswith('/componente_ia/'):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'

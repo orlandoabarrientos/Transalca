@@ -27,10 +27,9 @@ def _validate_client(data, require_cedula=True):
     clean['email'] = normalize_email(errors, data.get('email'), required=False)
     clean['direccion'] = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=300)
     if require_cedula:
-        cedula, prefijo, numero = normalize_cedula(errors, data)
+        cedula, prefijo, _ = normalize_cedula(errors, data)
         clean['cedula'] = cedula
         clean['cedula_prefijo'] = prefijo
-        clean['cedula_numero'] = numero
     return clean, errors
 
 
@@ -222,13 +221,15 @@ def add_vehicle(cedula):
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         clean['cliente_cedula'] = cedula
+        if clean.get('placa') and vehicle_model.placa_exists(clean['placa']):
+            return jsonify({"status": "error", "message": "Esta placa ya esta registrada.", "errors": {"placa": "Esta placa ya esta registrada."}}), 400
         vid = vehicle_model.create(clean)
         return jsonify({"status": "success", "message": "Vehiculo registrado correctamente.", "id": vid}), 201
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@client_bp.route('/<cedula>/vehicles/<int:vid>', methods=['PUT'])
+@client_bp.route('/<cedula>/vehicles/<path:vid>', methods=['PUT'])
 def update_vehicle(cedula, vid):
     try:
         auth = require_login()
@@ -243,13 +244,15 @@ def update_vehicle(cedula, vid):
         vehicle = vehicle_model.get_by_id(vid)
         if not vehicle or vehicle.get('cliente_cedula') != cedula:
             return jsonify({"status": "error", "message": "Vehiculo no encontrado"}), 404
+        if clean.get('placa') and vehicle_model.placa_exists(clean['placa'], exclude_id=vid):
+            return jsonify({"status": "error", "message": "Esta placa ya esta registrada.", "errors": {"placa": "Esta placa ya esta registrada."}}), 400
         vehicle_model.update_vehicle(vid, clean)
         return jsonify({"status": "success", "message": "Vehiculo modificado correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@client_bp.route('/<cedula>/vehicles/<int:vid>', methods=['DELETE'])
+@client_bp.route('/<cedula>/vehicles/<path:vid>', methods=['DELETE'])
 def delete_vehicle(cedula, vid):
     try:
         auth = require_login()

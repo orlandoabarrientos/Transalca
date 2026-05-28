@@ -12,39 +12,39 @@ class InventoryModel(Connection):
 
     def get_all(self):
         return self.fetch_all("transalca",
-            "SELECT i.*, p.nombre as producto_nombre, p.codigo, p.precio, p.categoria as categoria_nombre, s.nombre as sucursal_nombre FROM inventario i INNER JOIN productos p ON i.producto_codigo = p.codigo LEFT JOIN sucursales s ON i.sucursal_id = s.id ORDER BY p.nombre")
+            "SELECT i.*, p.nombre as producto_nombre, p.codigo, p.precio, p.categoria as categoria_nombre, s.nombre as sucursal_nombre FROM stock i INNER JOIN productos p ON i.producto_codigo = p.codigo LEFT JOIN sucursales s ON i.sucursal_id = s.id ORDER BY p.nombre")
 
     def get_by_sucursal(self, sucursal_id):
         return self.fetch_all("transalca",
-            "SELECT i.*, p.nombre as producto_nombre, p.codigo, p.precio, p.categoria as categoria_nombre, s.nombre as sucursal_nombre FROM inventario i INNER JOIN productos p ON i.producto_codigo = p.codigo LEFT JOIN sucursales s ON i.sucursal_id = s.id WHERE i.sucursal_id = %s ORDER BY p.nombre", (sucursal_id,))
+            "SELECT i.*, p.nombre as producto_nombre, p.codigo, p.precio, p.categoria as categoria_nombre, s.nombre as sucursal_nombre FROM stock i INNER JOIN productos p ON i.producto_codigo = p.codigo LEFT JOIN sucursales s ON i.sucursal_id = s.id WHERE i.sucursal_id = %s ORDER BY p.nombre", (sucursal_id,))
 
     def get_low_stock(self):
         return self.fetch_all("transalca",
-            "SELECT i.*, p.nombre as producto_nombre, p.codigo, s.nombre as sucursal_nombre FROM inventario i INNER JOIN productos p ON i.producto_codigo = p.codigo LEFT JOIN sucursales s ON i.sucursal_id = s.id WHERE i.stock <= i.stock_minimo ORDER BY i.stock ASC")
+            "SELECT i.*, p.nombre as producto_nombre, p.codigo, s.nombre as sucursal_nombre FROM stock i INNER JOIN productos p ON i.producto_codigo = p.codigo LEFT JOIN sucursales s ON i.sucursal_id = s.id WHERE i.stock <= i.stock_minimo ORDER BY i.stock ASC")
 
     def update_stock(self, producto_codigo, stock, sucursal_id=None):
         if sucursal_id:
             existing = self.fetch_one("transalca",
-                "SELECT producto_codigo FROM inventario WHERE producto_codigo = %s AND sucursal_id = %s",
+                "SELECT producto_codigo FROM stock WHERE producto_codigo = %s AND sucursal_id = %s",
                 (producto_codigo, sucursal_id))
             if existing:
                 return self.update("transalca",
-                    "UPDATE inventario SET stock = %s WHERE producto_codigo = %s AND sucursal_id = %s",
+                    "UPDATE stock SET stock = %s WHERE producto_codigo = %s AND sucursal_id = %s",
                     (stock, producto_codigo, sucursal_id))
             else:
                 return self.insert("transalca",
-                    "INSERT INTO inventario (producto_codigo, sucursal_id, stock) VALUES (%s, %s, %s)",
+                    "INSERT INTO stock (producto_codigo, sucursal_id, stock) VALUES (%s, %s, %s)",
                     (producto_codigo, sucursal_id, stock))
         return self.update("transalca",
-            "UPDATE inventario SET stock = %s WHERE producto_codigo = %s", (stock, producto_codigo))
+            "UPDATE stock SET stock = %s WHERE producto_codigo = %s", (stock, producto_codigo))
 
     def update_min_stock(self, producto_codigo, stock_minimo, sucursal_id=None):
         if sucursal_id:
             return self.update("transalca",
-                "UPDATE inventario SET stock_minimo = %s WHERE producto_codigo = %s AND sucursal_id = %s",
+                "UPDATE stock SET stock_minimo = %s WHERE producto_codigo = %s AND sucursal_id = %s",
                 (stock_minimo, producto_codigo, sucursal_id))
         return self.update("transalca",
-            "UPDATE inventario SET stock_minimo = %s WHERE producto_codigo = %s",
+            "UPDATE stock SET stock_minimo = %s WHERE producto_codigo = %s",
             (stock_minimo, producto_codigo))
 
     def create_purchase_order(self, data, details):

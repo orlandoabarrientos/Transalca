@@ -86,7 +86,7 @@ def get_scheduled():
             return auth
         vid = request.args.get('vehiculo_id')
         if vid and not is_employee():
-            _, error = load_vehicle(int(vid))
+            _, error = load_vehicle(vid)
             if error:
                 return error
         if not is_employee() and not vid:
@@ -105,7 +105,7 @@ def create_scheduled():
         data = request.get_json()
         if not data or not data.get('vehiculo_id') or not data.get('tipo_mantenimiento'):
             return jsonify({"status": "error", "message": "Datos incompletos"}), 400
-        _, error = load_vehicle(int(data['vehiculo_id']))
+        _, error = load_vehicle(data['vehiculo_id'])
         if error:
             return error
         mid = model.create_scheduled(data)
@@ -132,7 +132,7 @@ def complete(mid):
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@maintenance_bp.route('/calculate/<int:vid>', methods=['POST'])
+@maintenance_bp.route('/calculate/<path:vid>', methods=['POST'])
 def calculate(vid):
     try:
         _, error = load_vehicle(vid)
@@ -158,7 +158,7 @@ def check_overdue():
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@maintenance_bp.route('/vehicle/<int:vid>', methods=['GET'])
+@maintenance_bp.route('/vehicle/<path:vid>', methods=['GET'])
 def get_vehicle_maintenance(vid):
     try:
         _, error = load_vehicle(vid)

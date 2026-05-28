@@ -128,7 +128,10 @@
             let filtered = allProducts.filter(p => {
                 if (q && !p.nombre.toLowerCase().includes(q) && !(p.codigo || '').toLowerCase().includes(q)) return false;
                 if (cat && p.categoria != cat) return false;
-                if (branch && p.sucursal_id && p.sucursal_id != branch) return false;
+                if (branch) {
+                    const branches = String(p.sucursal_ids || '').split(',').filter(Boolean);
+                    if (!branches.includes(String(branch))) return false;
+                }
                 return true;
             });
 
@@ -150,7 +153,8 @@
             const grid = document.getElementById('productGrid');
             grid.innerHTML = '';
             products.forEach(p => {
-                const img = p.imagen ? `<img src="/public/assets/images/${p.imagen}" alt="${p.nombre}">` : `<div class="no-image"><i class="bi bi-image"></i><span>Sin imagen</span></div>`;
+                const imgName = p.imagen && p.imagen !== 'default_product.png' ? p.imagen : 'no-image.png';
+                const img = `<img src="/public/assets/images/${imgName}" alt="${p.nombre}" onerror="this.parentElement.innerHTML='<div class=&quot;no-image&quot;><i class=&quot;bi bi-image&quot;></i><span>Sin imagen</span></div>'">`;
                 grid.innerHTML += `<div class="col-6 col-md-4 col-lg-3 fade-in-up"><div class="product-card">
             <div class="product-img">${img}</div>
             <div class="product-info">

@@ -102,7 +102,7 @@ def get_all():
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@vehicle_bp.route('/<int:vid>', methods=['GET'])
+@vehicle_bp.route('/<path:vid>', methods=['GET'])
 def get_one(vid):
     try:
         v, error = load_owned_vehicle(vid)
@@ -140,7 +140,7 @@ def create():
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@vehicle_bp.route('/<int:vid>', methods=['PUT'])
+@vehicle_bp.route('/<path:vid>', methods=['PUT'])
 def update(vid):
     try:
         _, error = load_owned_vehicle(vid)
@@ -161,7 +161,7 @@ def update(vid):
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@vehicle_bp.route('/<int:vid>/km', methods=['PUT'])
+@vehicle_bp.route('/<path:vid>/km', methods=['PUT'])
 def update_km(vid):
     try:
         _, error = load_owned_vehicle(vid)
@@ -178,7 +178,7 @@ def update_km(vid):
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@vehicle_bp.route('/<int:vid>', methods=['DELETE'])
+@vehicle_bp.route('/<path:vid>', methods=['DELETE'])
 def delete(vid):
     try:
         _, error = load_owned_vehicle(vid)
@@ -190,7 +190,7 @@ def delete(vid):
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@vehicle_bp.route('/<int:vid>/carnet', methods=['POST'])
+@vehicle_bp.route('/<path:vid>/carnet', methods=['POST'])
 def upload_carnet(vid):
     try:
         _, error = load_owned_vehicle(vid)
@@ -217,7 +217,7 @@ def upload_carnet(vid):
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@vehicle_bp.route('/<int:vid>/cauchos', methods=['GET'])
+@vehicle_bp.route('/<path:vid>/cauchos', methods=['GET'])
 def get_cauchos(vid):
     try:
         _, error = load_owned_vehicle(vid)
@@ -228,7 +228,7 @@ def get_cauchos(vid):
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@vehicle_bp.route('/<int:vid>/cauchos', methods=['POST'])
+@vehicle_bp.route('/<path:vid>/cauchos', methods=['POST'])
 def add_caucho(vid):
     try:
         _, error = load_owned_vehicle(vid)

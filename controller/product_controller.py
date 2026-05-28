@@ -19,21 +19,12 @@ def _validate_product(data):
         'descripcion': optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=500, allow_serial=True),
         'precio': normalize_decimal(errors, 'precio', data.get('precio'), 'El precio'),
         'categoria': (data.get('categoria') or None),
-        'marca': (data.get('marca') or None),
-        'sucursal_id': data.get('sucursal_id') or None
+        'marca': (data.get('marca') or None)
     }
     if clean['categoria'] and not model.category_exists(clean['categoria']):
         errors['categoria'] = SELECT_TAMPER_MESSAGE
     if clean['marca'] and not model.brand_exists(clean['marca']):
         errors['marca'] = SELECT_TAMPER_MESSAGE
-    if clean['sucursal_id']:
-        try:
-            clean['sucursal_id'] = int(clean['sucursal_id'])
-        except (TypeError, ValueError):
-            errors['sucursal_id'] = SELECT_TAMPER_MESSAGE
-        else:
-            if not model.sucursal_exists(clean['sucursal_id']):
-                errors['sucursal_id'] = SELECT_TAMPER_MESSAGE
     return clean, errors
 
 

@@ -15,7 +15,6 @@ CREATE TABLE usuarios (
     apellido VARCHAR(100) NOT NULL,
     cedula VARCHAR(20) UNIQUE NOT NULL,
     cedula_prefijo VARCHAR(2),
-    cedula_numero VARCHAR(12),
     email VARCHAR(150) UNIQUE NOT NULL,
     telefono VARCHAR(20) NOT NULL,
     direccion TEXT,
@@ -129,7 +128,7 @@ END //
 DELIMITER ;
 
 INSERT INTO roles (nombre, descripcion) VALUES ('Administrador', 'Acceso total al sistema');
-INSERT INTO roles (nombre, descripcion) VALUES ('Vendedor', 'Acceso a ventas e inventario');
+INSERT INTO roles (nombre, descripcion) VALUES ('Vendedor', 'Acceso a ventas y stock');
 INSERT INTO roles (nombre, descripcion) VALUES ('Cliente', 'Acceso al portal de compras');
 
 INSERT INTO usuarios (nombre, apellido, cedula, email, telefono, direccion, password_hash, tipo)
@@ -137,8 +136,7 @@ VALUES ('Admin', 'Sistema', 'V-00000000', 'admin@transalca.com', '04240000000', 
 'scrypt:32768:8:1$NP7iU10YgSPJPmAh$a2320143ce75e7daa2bf829c27fde8a333c63b4f7b39ebd454d526818ae66be465d09334da3fd829335a11f6a7ff2ef3281c89929f965754d79d22a5f74d8f37', 'empleado');
 
 ALTER TABLE usuarios
-    ADD COLUMN IF NOT EXISTS cedula_prefijo VARCHAR(2) AFTER cedula,
-    ADD COLUMN IF NOT EXISTS cedula_numero VARCHAR(12) AFTER cedula_prefijo;
+    ADD COLUMN IF NOT EXISTS cedula_prefijo VARCHAR(2) AFTER cedula;
 
 INSERT INTO usuario_rol (usuario_id, rol_id) VALUES (1, 1);
 
@@ -150,7 +148,7 @@ INSERT INTO permisos (rol_id, modulo, crear, leer, actualizar, eliminar) VALUES
 (1, 'marcas', 1, 1, 1, 1),
 (1, 'proveedores', 1, 1, 1, 1),
 (1, 'mecanicos', 1, 1, 1, 1),
-(1, 'inventario', 1, 1, 1, 1),
+(1, 'stock', 1, 1, 1, 1),
 (1, 'servicios', 1, 1, 1, 1),
 (1, 'promociones', 1, 1, 1, 1),
 (1, 'ordenes', 1, 1, 1, 1),
@@ -164,7 +162,7 @@ INSERT INTO permisos (rol_id, modulo, crear, leer, actualizar, eliminar) VALUES
 (2, 'productos', 0, 1, 0, 0),
 (2, 'categorias', 0, 1, 0, 0),
 (2, 'marcas', 0, 1, 0, 0),
-(2, 'inventario', 0, 1, 1, 0),
+(2, 'stock', 0, 1, 1, 0),
 (2, 'servicios', 0, 1, 1, 0),
 (2, 'ordenes', 1, 1, 1, 0),
 (2, 'pagos', 0, 1, 1, 0),

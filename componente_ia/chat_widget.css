@@ -289,6 +289,11 @@
     background: rgba(255,255,255,0.08);
 }
 
+.chat-input:disabled {
+    opacity: 0.8;
+    cursor: wait;
+}
+
 .chat-send-btn {
     width: 40px;
     height: 40px;

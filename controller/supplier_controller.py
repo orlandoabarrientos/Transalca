@@ -10,11 +10,10 @@ bitacora = BitacoraModel()
 
 def _validate_supplier(data):
     errors = {}
-    rif, rif_prefijo, rif_numero = normalize_rif(errors, data)
+    rif, rif_prefijo, _ = normalize_rif(errors, data)
     clean = {
         'rif': rif,
         'rif_prefijo': rif_prefijo,
-        'rif_numero': rif_numero,
         'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=150, allow_serial=False),
         'telefono': normalize_phone(errors, data.get('telefono'), required=False),
         'email': normalize_email(errors, data.get('email'), required=False),

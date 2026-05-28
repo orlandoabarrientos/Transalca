@@ -71,7 +71,6 @@ async function loadCombos() {
             brandSel.innerHTML = '<option value="">Sin marca</option>';
             (brands.data || []).forEach(b => brandSel.innerHTML += `<option value="${escapeHtml(b.nombre)}">${escapeHtml(b.nombre)}</option>`);
         }
-        await loadSucursales('sucursal_id', true);
     } catch(e) {}
 }
 
@@ -98,8 +97,6 @@ function editData(codigo) {
         if (catSel) catSel.value = p.categoria || '';
         const brandSel = document.getElementById('marca');
         if (brandSel) brandSel.value = p.marca || '';
-        const sucSel = document.getElementById('sucursal_id');
-        if (sucSel) sucSel.value = p.sucursal_id || '';
         document.getElementById('modalTitle').textContent = 'Modificar Producto';
         new bootstrap.Modal(document.getElementById('productModal')).show();
         Validator.initTracking('productForm');
@@ -115,8 +112,7 @@ function saveData() {
         descripcion: document.getElementById('descripcion').value,
         precio: document.getElementById('precio').value,
         categoria: document.getElementById('categoria')?.value || null,
-        marca: document.getElementById('marca')?.value || null,
-        sucursal_id: document.getElementById('sucursal_id')?.value || null
+        marca: document.getElementById('marca')?.value || null
     };
     const saveBtn = document.querySelector('#productModal .btn-orange');
     const url = oldCodigo ? '/api/products/update' : '/api/products/';

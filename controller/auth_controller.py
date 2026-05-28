@@ -82,7 +82,7 @@ def do_register():
         errors = {}
         nombre = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=100, person=True)
         apellido = require_text(errors, 'apellido', data.get('apellido'), 'El apellido', min_len=2, max_len=100, person=True)
-        cedula, cedula_prefijo, cedula_numero = normalize_cedula(errors, data)
+        cedula, cedula_prefijo, _ = normalize_cedula(errors, data)
         telefono = normalize_phone(errors, data.get('telefono'))
         email = normalize_email(errors, data.get('email'))
         direccion = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=300)
@@ -97,7 +97,6 @@ def do_register():
             'apellido': apellido,
             'cedula': cedula,
             'cedula_prefijo': cedula_prefijo,
-            'cedula_numero': cedula_numero,
             'telefono': telefono,
             'email': email,
             'direccion': direccion

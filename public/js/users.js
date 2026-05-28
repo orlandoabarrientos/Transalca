@@ -104,7 +104,6 @@ function saveData() {
         nombre: document.getElementById('nombre').value,
         apellido: document.getElementById('apellido').value,
         cedula_prefijo: document.getElementById('cedula_prefijo').value,
-        cedula_numero: document.getElementById('cedula').value,
         cedula: buildDocumentValue('cedula_prefijo', 'cedula'),
         email: document.getElementById('email').value,
         telefono: document.getElementById('telefono').value,

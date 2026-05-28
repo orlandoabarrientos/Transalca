@@ -6,22 +6,24 @@ class FuelModel(Connection):
         super().__init__()
 
     def get_by_vehicle(self, vid):
+        placa = (str(vid or '').strip().upper())
         return self.fetch_all("transalca",
-            "SELECT * FROM consumo_combustible WHERE vehiculo_placa=(SELECT placa FROM vehiculos WHERE id=%s) "
-            "ORDER BY fecha DESC, id DESC", (vid,))
+            "SELECT * FROM consumo_combustible WHERE vehiculo_placa=%s "
+            "ORDER BY fecha DESC, id DESC", (placa,))
 
     def get_latest(self, vid):
+        placa = (str(vid or '').strip().upper())
         return self.fetch_one("transalca",
-            "SELECT * FROM consumo_combustible WHERE vehiculo_placa=(SELECT placa FROM vehiculos WHERE id=%s) "
-            "ORDER BY fecha DESC, id DESC LIMIT 1", (vid,))
+            "SELECT * FROM consumo_combustible WHERE vehiculo_placa=%s "
+            "ORDER BY fecha DESC, id DESC LIMIT 1", (placa,))
 
     def get_by_id(self, rid):
         return self.fetch_one("transalca",
-            "SELECT cc.*, v.id as vehiculo_id FROM consumo_combustible cc "
+            "SELECT cc.*, v.placa as vehiculo_id FROM consumo_combustible cc "
             "INNER JOIN vehiculos v ON cc.vehiculo_placa = v.placa WHERE cc.id=%s", (rid,))
 
     def create(self, data):
-        vehicle = self.fetch_one("transalca", "SELECT placa FROM vehiculos WHERE id=%s", (data['vehiculo_id'],))
+        vehicle = self.fetch_one("transalca", "SELECT placa FROM vehiculos WHERE placa=%s", (str(data['vehiculo_id']).strip().upper(),))
         if not vehicle:
             return None
         return self.insert("transalca",
@@ -38,10 +40,11 @@ class FuelModel(Connection):
              (data.get('observaciones') or '').strip()))
 
     def get_average_consumption(self, vid):
+        placa = (str(vid or '').strip().upper())
         result = self.fetch_one("transalca",
             "SELECT AVG(consumo_estimado_lkm) as promedio "
-            "FROM consumo_combustible WHERE vehiculo_placa=(SELECT placa FROM vehiculos WHERE id=%s) "
-            "AND consumo_estimado_lkm IS NOT NULL AND consumo_estimado_lkm > 0", (vid,))
+            "FROM consumo_combustible WHERE vehiculo_placa=%s "
+            "AND consumo_estimado_lkm IS NOT NULL AND consumo_estimado_lkm > 0", (placa,))
         return float(result['promedio']) if result and result['promedio'] else None
 
     def delete_record(self, rid):

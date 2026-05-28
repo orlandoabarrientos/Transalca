@@ -20,7 +20,7 @@ def load_vehicle(vid):
     return vehicle, None
 
 
-@vehicle_log_bp.route('/vehicle/<int:vid>', methods=['GET'])
+@vehicle_log_bp.route('/vehicle/<path:vid>', methods=['GET'])
 def get_by_vehicle(vid):
     try:
         _, error = load_vehicle(vid)
@@ -71,7 +71,7 @@ def create():
             return jsonify({"status": "error", "message": "Datos incompletos"}), 400
         if not can_access_client(data.get('cliente_cedula')):
             return jsonify({"status": "error", "message": "No autorizado"}), 403
-        vehicle, error = load_vehicle(int(data['vehiculo_id']))
+        vehicle, error = load_vehicle(data['vehiculo_id'])
         if error:
             return error
         if vehicle.get('cliente_cedula') != data.get('cliente_cedula'):
@@ -82,7 +82,7 @@ def create():
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@vehicle_log_bp.route('/oil-changes/<int:vid>', methods=['GET'])
+@vehicle_log_bp.route('/oil-changes/<path:vid>', methods=['GET'])
 def oil_changes(vid):
     try:
         _, error = load_vehicle(vid)
