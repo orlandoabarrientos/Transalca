@@ -6,10 +6,23 @@ class ReportModel(Connection):
     def __init__(self):
         super().__init__()
 
+    def _client_name(self, cedula):
+        client = self.fetch_one(
+            "transalca",
+            "SELECT c.nombre, c.apellido, c.tipo_cliente, e.razon_social "
+            "FROM clientes c LEFT JOIN empresas e ON e.cliente_cedula = c.cedula "
+            "WHERE c.cedula = %s",
+            (cedula,))
+        if not client:
+            return 'N/A'
+        if client.get('tipo_cliente') == 'empresa':
+            return client.get('razon_social') or client.get('nombre') or 'N/A'
+        return f"{client.get('nombre', '')} {client.get('apellido', '')}".strip() or 'N/A'
+
     def get_dashboard_stats(self):
         total_products = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM productos WHERE estado = 1")
         total_categories = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM categorias WHERE estado = 1")
-        total_clients = self.fetch_one("mantenimiento", "SELECT COUNT(*) as total FROM usuarios WHERE tipo = 'cliente' AND estado = 1")
+        total_clients = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM clientes WHERE tipo_cliente = 'persona' AND estado = 1")
         total_employees = self.fetch_one("mantenimiento", "SELECT COUNT(*) as total FROM usuarios WHERE tipo IN ('admin','vendedor','mecanico','soporte','empleado') AND estado = 1")
         pending_payments = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM comprobantes_pago WHERE estado = 'pendiente'")
         total_sales = self.fetch_one("transalca", "SELECT COALESCE(SUM(total), 0) as total FROM ordenes_venta WHERE estado = 'aprobada'")
@@ -31,8 +44,7 @@ class ReportModel(Connection):
     def get_recent_orders(self, limit=10):
         orders = self.fetch_all("transalca", "SELECT * FROM ordenes_venta ORDER BY fecha DESC LIMIT %s", (limit,))
         for order in orders:
-            client = self.fetch_one("mantenimiento", "SELECT nombre, apellido FROM usuarios WHERE cedula = %s", (order['cliente_cedula'],))
-            order['cliente_nombre'] = f"{client['nombre']} {client['apellido']}" if client else 'N/A'
+            order['cliente_nombre'] = self._client_name(order['cliente_cedula'])
             order['fecha'] = order['fecha'].isoformat() if hasattr(order['fecha'], 'isoformat') else order['fecha']
         return orders
 
@@ -53,8 +65,7 @@ class ReportModel(Connection):
         orders = self.fetch_all("transalca", sql, tuple(params) if params else None)
 
         for order in orders:
-            client = self.fetch_one("mantenimiento", "SELECT nombre, apellido FROM usuarios WHERE cedula = %s", (order['cliente_cedula'],))
-            order['cliente'] = f"{client['nombre']} {client['apellido']}" if client else 'N/A'
+            order['cliente'] = self._client_name(order['cliente_cedula'])
             order['fecha'] = order['fecha'].isoformat() if hasattr(order['fecha'], 'isoformat') else order['fecha']
         return orders
 
@@ -74,8 +85,7 @@ class ReportModel(Connection):
 
         payments = self.fetch_all("transalca", sql, tuple(params) if params else None)
         for p in payments:
-            client = self.fetch_one("mantenimiento", "SELECT nombre, apellido FROM usuarios WHERE cedula = %s", (p['cliente_cedula'],))
-            p['cliente'] = f"{client['nombre']} {client['apellido']}" if client else 'N/A'
+            p['cliente'] = self._client_name(p['cliente_cedula'])
             p['fecha'] = p['fecha'].isoformat() if hasattr(p['fecha'], 'isoformat') else p['fecha']
         return payments
 

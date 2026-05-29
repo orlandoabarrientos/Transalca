@@ -14,13 +14,16 @@ class ClientModel(Connection):
             "SELECT id, nombre, apellido, cedula, email, telefono, direccion, tipo FROM usuarios WHERE cedula = %s",
             (cedula,))
 
-    def get_all(self, search=None, estado=None):
+    def get_all(self, search=None, estado=None, tipo_cliente='persona'):
         sql = (
             "SELECT c.*, "
             "(SELECT COUNT(*) FROM vehiculos v WHERE v.cliente_cedula = c.cedula AND v.estado = 1) as vehiculos_count "
             "FROM clientes c WHERE 1=1"
         )
         params = []
+        if tipo_cliente:
+            sql += " AND COALESCE(c.tipo_cliente, 'persona') = %s"
+            params.append(tipo_cliente)
         if search:
             sql += " AND (c.nombre LIKE %s OR c.apellido LIKE %s OR c.cedula LIKE %s OR c.email LIKE %s OR c.telefono LIKE %s)"
             q = f"%{search}%"
@@ -44,6 +47,7 @@ class ClientModel(Connection):
         values = {
             'cedula': cedula,
             'cedula_prefijo': data.get('cedula_prefijo'),
+            'tipo_cliente': data.get('tipo_cliente', 'persona'),
             'nombre': data['nombre'].strip(),
             'apellido': data['apellido'].strip(),
             'telefono': data.get('telefono', '').strip(),
@@ -104,9 +108,11 @@ class ClientModel(Connection):
         client = self.get_by_cedula(cedula)
         return int(client.get('estado') or 0) if client else 0
 
-    def get_stats(self):
-        total = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM clientes")
-        activos = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM clientes WHERE estado=1")
+    def get_stats(self, tipo_cliente='persona'):
+        params = (tipo_cliente,) if tipo_cliente else None
+        where = "WHERE COALESCE(tipo_cliente, 'persona') = %s" if tipo_cliente else ""
+        total = self.fetch_one("transalca", f"SELECT COUNT(*) as total FROM clientes {where}", params)
+        activos = self.fetch_one("transalca", f"SELECT COUNT(*) as total FROM clientes {where} AND estado=1" if tipo_cliente else "SELECT COUNT(*) as total FROM clientes WHERE estado=1", params)
         return {
             'total': total['total'] if total else 0,
             'activos': activos['total'] if activos else 0

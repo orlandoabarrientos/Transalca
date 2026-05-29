@@ -61,6 +61,7 @@ class RoleModel(Connection):
         return [
             'usuarios', 'roles', 'productos', 'categorias', 'marcas',
             'proveedores', 'mecanicos', 'stock', 'servicios',
+            'empresas', 'creditos', 'metodos_pago',
             'promociones', 'ordenes', 'pagos', 'bitacora', 'reportes',
             'respaldos', 'qr', 'sucursales',
             'vehiculos', 'comisiones', 'tickets', 'notificaciones',

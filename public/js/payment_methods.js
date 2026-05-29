@@ -58,6 +58,7 @@ function renderPaymentMethods() {
         tbody.innerHTML += `<tr>
             <td><strong>${escapeHtml(item.nombre)}</strong></td>
             <td>${escapeHtml(item.datos)}</td>
+            <td>${item.permite_credito ? '<span class="badge bg-success">Si</span>' : '<span class="badge bg-secondary">No</span>'}</td>
             <td>${escapeHtml(`${item.usuario_nombre || ''} ${item.usuario_apellido || ''}`.trim() || '-')}</td>
             <td>${statusBadge(item.estado)}</td>
             <td>
@@ -67,13 +68,14 @@ function renderPaymentMethods() {
         </tr>`;
     });
     if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-wallet2"></i><p>No hay metodos de pago registrados</p></div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-wallet2"></i><p>No hay metodos de pago registrados</p></div></td></tr>';
     }
 }
 
 function openPaymentMethodModal() {
     Validator.clearForm('paymentMethodForm');
     document.getElementById('paymentMethodId').value = '';
+    document.getElementById('permite_credito').checked = false;
     document.getElementById('paymentMethodModalTitle').textContent = 'Registrar Metodo de Pago';
     document.getElementById('btnSavePaymentMethod').innerHTML = '<i class="bi bi-plus-circle me-1"></i>Registrar';
     new bootstrap.Modal(document.getElementById('paymentMethodModal')).show();
@@ -87,6 +89,7 @@ function editPaymentMethod(id) {
         document.getElementById('paymentMethodId').value = item.id;
         document.getElementById('nombre').value = item.nombre || '';
         document.getElementById('datos').value = item.datos || '';
+        document.getElementById('permite_credito').checked = !!item.permite_credito;
         document.getElementById('paymentMethodModalTitle').textContent = 'Modificar Metodo de Pago';
         document.getElementById('btnSavePaymentMethod').innerHTML = '<i class="bi bi-pencil-square me-1"></i>Modificar';
         new bootstrap.Modal(document.getElementById('paymentMethodModal')).show();
@@ -99,7 +102,8 @@ function savePaymentMethod() {
     const id = document.getElementById('paymentMethodId').value;
     const data = {
         nombre: document.getElementById('nombre').value,
-        datos: document.getElementById('datos').value
+        datos: document.getElementById('datos').value,
+        permite_credito: document.getElementById('permite_credito').checked ? 1 : 0
     };
     const method = id ? 'PUT' : 'POST';
     const url = id ? `/api/payment-methods/${id}` : '/api/payment-methods/';

@@ -41,7 +41,7 @@ class VehicleModel(Connection):
         self.insert("transalca",
             "INSERT INTO vehiculos (cliente_cedula, marca, modelo, anio, placa, color, "
             "tipo_vehiculo, tipo_combustible, kilometraje_actual, aceite_usado, "
-            "filtros_info, refrigerante_info, observaciones, imagen_carnet) "
+            "filtros_info, refrigerante_info, observaciones, titulo_vehiculo) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (data['cliente_cedula'].strip(), data['marca'].strip(),
              data['modelo'].strip(), data.get('anio') or None,
@@ -54,7 +54,7 @@ class VehicleModel(Connection):
              (data.get('filtros_info') or '').strip(),
              (data.get('refrigerante_info') or '').strip(),
              (data.get('observaciones') or '').strip(),
-             data.get('imagen_carnet') or None))
+             data.get('titulo_vehiculo') or None))
         return placa
 
     def update_vehicle(self, vid, data):
@@ -96,7 +96,7 @@ class VehicleModel(Connection):
 
     def update_carnet_image(self, vid, filename):
         return self.update("transalca",
-            "UPDATE vehiculos SET imagen_carnet = %s WHERE placa = %s", (filename, self._plate(vid)))
+            "UPDATE vehiculos SET titulo_vehiculo = %s WHERE placa = %s", (filename, self._plate(vid)))
 
     def soft_delete(self, vid):
         return self.update("transalca",

@@ -57,7 +57,7 @@ def get_all():
             return deny()
         search = request.args.get('q')
         estado = request.args.get('estado')
-        return jsonify({"status": "success", "data": model.get_all(search, estado)})
+        return jsonify({"status": "success", "data": model.get_all(search, estado, 'persona')})
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
@@ -72,7 +72,7 @@ def get_stats():
             return auth
         if not is_employee():
             return deny()
-        return jsonify({"status": "success", "data": model.get_stats()})
+        return jsonify({"status": "success", "data": model.get_stats('persona')})
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
@@ -144,6 +144,7 @@ def create():
             return deny()
         data = request.get_json() or {}
         clean, errors = _validate_client(data, True)
+        clean['tipo_cliente'] = 'persona'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         existing = model.get_by_cedula(clean['cedula'])

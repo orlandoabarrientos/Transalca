@@ -141,7 +141,7 @@ function renderAdminTicketDetail(ticket) {
             <div>
                 <h6 class="mb-1">#${ticket.id} ${escapeHtml(ticket.asunto || '')}</h6>
                 <div class="small text-muted">Cliente: ${escapeHtml((ticket.cliente_nombre || '') + ' ' + (ticket.cliente_apellido || ''))}</div>
-                <div class="small text-muted">Vehículo: ${escapeHtml(`${ticket.vehiculo_placa || 'N/A'} ${ticket.vehiculo_marca || ''} ${ticket.vehiculo_modelo || ''}`.trim())}</div>
+                <div class="small text-muted">Referencia: ${escapeHtml(ticketReferenceLabel(ticket))}</div>
             </div>
             <div class="text-end">
                 ${estadoBadge(ticket.prioridad || 'media')}
@@ -159,6 +159,14 @@ function renderAdminTicketDetail(ticket) {
     $('#adminReplyForm button[type="submit"]').prop('disabled', isClosed);
     $('#adminTicketStatusSelect').prop('disabled', false).val(ticket.estado || 'abierto');
     $('#adminTicketStatusBtn').prop('disabled', false);
+}
+
+function ticketReferenceLabel(ticket) {
+    const type = (ticket.referencia_tipo || 'general').toLowerCase();
+    if (type === 'vehiculo') return `${ticket.vehiculo_placa || 'N/A'} ${ticket.vehiculo_marca || ''} ${ticket.vehiculo_modelo || ''}`.trim();
+    if (type === 'producto') return `Producto ${ticket.producto_nombre || ticket.referencia_id || 'N/A'}`;
+    if (type === 'servicio') return `Servicio ${ticket.servicio_nombre || ticket.referencia_id || 'N/A'}`;
+    return 'General';
 }
 
 async function sendAdminReply(event) {

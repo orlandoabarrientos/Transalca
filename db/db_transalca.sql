@@ -54,14 +54,35 @@ CREATE TABLE mecanicos (
 CREATE TABLE clientes (
     cedula VARCHAR(20) PRIMARY KEY,
     cedula_prefijo VARCHAR(2),
+    tipo_cliente VARCHAR(20) NOT NULL DEFAULT 'persona',
     nombre VARCHAR(100) NOT NULL,
     apellido VARCHAR(100) NOT NULL,
     telefono VARCHAR(20) NOT NULL,
     email VARCHAR(150),
     direccion VARCHAR(300),
     estado TINYINT(1) DEFAULT 1,
+    origen_registro VARCHAR(20) DEFAULT 'admin',
+    usuario_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE empresas (
+    cliente_cedula VARCHAR(20) PRIMARY KEY,
+    rif VARCHAR(20) NOT NULL UNIQUE,
+    rif_prefijo VARCHAR(2),
+    razon_social VARCHAR(200) NOT NULL,
+    nombre_comercial VARCHAR(200),
+    representante_nombre VARCHAR(150),
+    representante_cedula VARCHAR(20),
+    representante_telefono VARCHAR(20),
+    representante_email VARCHAR(150),
+    sector VARCHAR(150),
+    limite_credito DECIMAL(10,2) DEFAULT 0.00,
+    dias_credito INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_cedula) REFERENCES clientes(cedula) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE configuracion (
@@ -90,10 +111,8 @@ CREATE TABLE servicios (
     descripcion TEXT,
     precio DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     duracion_estimada VARCHAR(50),
-    sucursal_id INT,
     estado TINYINT(1) DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE SET NULL
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 INSERT IGNORE INTO productos (codigo, nombre, descripcion, precio, estado)
@@ -104,6 +123,16 @@ SET SQL_MODE = IF(@@SQL_MODE = '', 'NO_AUTO_VALUE_ON_ZERO', CONCAT(@@SQL_MODE, '
 INSERT IGNORE INTO servicios (id, nombre, descripcion, precio, duracion_estimada, estado)
 VALUES (0, 'Sin servicio', 'Registro interno para compras sin servicio', 0.00, '0', 0);
 SET SQL_MODE = @old_sql_mode;
+
+CREATE TABLE servicio_sucursal (
+    servicio_id INT NOT NULL,
+    sucursal_id INT NOT NULL,
+    estado TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (servicio_id, sucursal_id),
+    FOREIGN KEY (servicio_id) REFERENCES servicios(id) ON DELETE CASCADE,
+    FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE CASCADE
+);
 
 CREATE TABLE stock (
     producto_codigo VARCHAR(50) NOT NULL,
@@ -131,18 +160,15 @@ CREATE TABLE promociones (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
-CREATE TABLE ordenes_compra (
+CREATE TABLE metodos_pago (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    proveedor_rif VARCHAR(20) NOT NULL,
-    usuario_cedula VARCHAR(20) NOT NULL,
-    sucursal_id INT,
-    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    total DECIMAL(12,2) DEFAULT 0.00,
-    estado VARCHAR(30) NOT NULL DEFAULT 'pendiente',
-    observaciones VARCHAR(1000),
-    FOREIGN KEY (proveedor_rif) REFERENCES proveedores(rif) ON UPDATE CASCADE,
-    FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE SET NULL
+    usuario_id INT,
+    nombre VARCHAR(100) NOT NULL,
+    datos TEXT NOT NULL,
+    permite_credito TINYINT(1) DEFAULT 0,
+    estado TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 CREATE TABLE ordenes_venta (
@@ -153,37 +179,46 @@ CREATE TABLE ordenes_venta (
     total DECIMAL(12,2) DEFAULT 0.00,
     estado VARCHAR(30) NOT NULL DEFAULT 'pendiente',
     metodo_pago VARCHAR(100),
+    metodo_pago_id INT,
+    tipo_pago VARCHAR(20) NOT NULL DEFAULT 'contado',
+    credito_estado VARCHAR(30) DEFAULT 'sin_credito',
+    fecha_vencimiento_credito DATE,
     comprobante_url VARCHAR(255),
     observaciones VARCHAR(1000),
     FOREIGN KEY (cliente_cedula) REFERENCES clientes(cedula) ON UPDATE CASCADE,
-    FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE SET NULL
+    FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE SET NULL,
+    FOREIGN KEY (metodo_pago_id) REFERENCES metodos_pago(id) ON DELETE SET NULL
 );
 
 
-CREATE TABLE detalle_orden_compra (
-    orden_id INT NOT NULL,
-    producto_codigo VARCHAR(50) NOT NULL,
-    cantidad INT NOT NULL,
-    precio_unitario DECIMAL(10,2) NOT NULL,
-    subtotal DECIMAL(12,2) NOT NULL,
-    PRIMARY KEY (orden_id, producto_codigo),
-    FOREIGN KEY (orden_id) REFERENCES ordenes_compra(id) ON DELETE CASCADE,
-    FOREIGN KEY (producto_codigo) REFERENCES productos(codigo) ON UPDATE CASCADE
-);
-
-CREATE TABLE detalle_orden_venta (
+CREATE TABLE detalle_orden_venta_productos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     orden_id INT NOT NULL,
-    producto_codigo VARCHAR(50) NOT NULL DEFAULT 'SIN_PRODUCTO',
-    servicio_id INT NOT NULL DEFAULT 0,
-    tipo VARCHAR(20) NOT NULL DEFAULT 'producto',
+    producto_codigo VARCHAR(50) NOT NULL,
     cantidad INT NOT NULL DEFAULT 1,
     precio_unitario DECIMAL(10,2) NOT NULL,
     subtotal DECIMAL(12,2) NOT NULL,
     FOREIGN KEY (orden_id) REFERENCES ordenes_venta(id) ON DELETE CASCADE,
-    FOREIGN KEY (producto_codigo) REFERENCES productos(codigo) ON UPDATE CASCADE,
+    FOREIGN KEY (producto_codigo) REFERENCES productos(codigo) ON UPDATE CASCADE
+);
+
+CREATE TABLE detalle_orden_venta_servicios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    orden_id INT NOT NULL,
+    servicio_id INT NOT NULL,
+    cantidad INT NOT NULL DEFAULT 1,
+    precio_unitario DECIMAL(10,2) NOT NULL,
+    subtotal DECIMAL(12,2) NOT NULL,
+    FOREIGN KEY (orden_id) REFERENCES ordenes_venta(id) ON DELETE CASCADE,
     FOREIGN KEY (servicio_id) REFERENCES servicios(id)
 );
+
+CREATE OR REPLACE VIEW detalle_orden_venta AS
+SELECT id, orden_id, producto_codigo, NULL AS servicio_id, 'producto' AS tipo, cantidad, precio_unitario, subtotal
+FROM detalle_orden_venta_productos
+UNION ALL
+SELECT id, orden_id, NULL AS producto_codigo, servicio_id, 'servicio' AS tipo, cantidad, precio_unitario, subtotal
+FROM detalle_orden_venta_servicios;
 
 CREATE TABLE servicio_mecanico (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -278,33 +313,14 @@ CREATE INDEX idx_ordenes_venta_cliente ON ordenes_venta (cliente_cedula);
 
 
 DELIMITER //
-CREATE TRIGGER trg_stock_compra_recibida
-AFTER INSERT ON detalle_orden_compra
-FOR EACH ROW
-BEGIN
-    DECLARE v_suc INT;
-    SELECT sucursal_id INTO v_suc FROM ordenes_compra WHERE id = NEW.orden_id LIMIT 1;
-    IF EXISTS (SELECT 1 FROM stock WHERE producto_codigo = NEW.producto_codigo AND sucursal_id = v_suc) THEN
-        UPDATE stock SET stock = stock + NEW.cantidad
-        WHERE producto_codigo = NEW.producto_codigo AND sucursal_id = v_suc;
-    ELSE
-        INSERT INTO stock (producto_codigo, sucursal_id, stock)
-        VALUES (NEW.producto_codigo, v_suc, NEW.cantidad);
-    END IF;
-END //
-DELIMITER ;
-
-DELIMITER //
 CREATE TRIGGER trg_stock_venta_aprobada
-AFTER INSERT ON detalle_orden_venta
+AFTER INSERT ON detalle_orden_venta_productos
 FOR EACH ROW
 BEGIN
     DECLARE v_suc INT;
-    IF NEW.tipo = 'producto' AND NEW.producto_codigo <> 'SIN_PRODUCTO' THEN
-        SELECT sucursal_id INTO v_suc FROM ordenes_venta WHERE id = NEW.orden_id LIMIT 1;
-        UPDATE stock SET stock = stock - NEW.cantidad
-        WHERE producto_codigo = NEW.producto_codigo AND sucursal_id = v_suc;
-    END IF;
+    SELECT sucursal_id INTO v_suc FROM ordenes_venta WHERE id = NEW.orden_id LIMIT 1;
+    UPDATE stock SET stock = stock - NEW.cantidad
+    WHERE producto_codigo = NEW.producto_codigo AND sucursal_id = v_suc;
 END //
 DELIMITER ;
 
@@ -329,11 +345,7 @@ RETURNS DECIMAL(12,2)
 DETERMINISTIC
 BEGIN
     DECLARE v_total DECIMAL(12,2) DEFAULT 0.00;
-    IF p_tipo = 'compra' THEN
-        SELECT COALESCE(SUM(subtotal), 0) INTO v_total FROM detalle_orden_compra WHERE orden_id = p_orden_id;
-    ELSE
-        SELECT COALESCE(SUM(subtotal), 0) INTO v_total FROM detalle_orden_venta WHERE orden_id = p_orden_id;
-    END IF;
+    SELECT COALESCE(SUM(subtotal), 0) INTO v_total FROM detalle_orden_venta WHERE orden_id = p_orden_id;
     RETURN v_total;
 END //
 DELIMITER ;
@@ -1202,100 +1214,102 @@ ON DUPLICATE KEY UPDATE stock = VALUES(stock), stock_minimo = VALUES(stock_minim
 
 UPDATE servicios SET estado = 0 WHERE id <> 0;
 
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'ALINEACION AUTOMOVIL', 'ALINEACION AUTOMOVIL', 10.50, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ALINEACION AUTOMOVIL');
-UPDATE servicios SET descripcion = 'ALINEACION AUTOMOVIL', precio = 10.50, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'ALINEACION AUTOMOVIL';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'ALINEACION AUTO GRA.', 'ALINEACION AUTO GRA.', 13.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ALINEACION AUTO GRA.');
-UPDATE servicios SET descripcion = 'ALINEACION AUTO GRA.', precio = 13.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'ALINEACION AUTO GRA.';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'ALINEACION CAMIONETA PEQ.', 'ALINEACION CAMIONETA PEQ.', 15.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ALINEACION CAMIONETA PEQ.');
-UPDATE servicios SET descripcion = 'ALINEACION CAMIONETA PEQ.', precio = 15.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'ALINEACION CAMIONETA PEQ.';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'ALINEACION CAMIONETA GRANDE', 'ALINEACION CAMIONETA GRANDE', 17.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ALINEACION CAMIONETA GRANDE');
-UPDATE servicios SET descripcion = 'ALINEACION CAMIONETA GRANDE', precio = 17.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'ALINEACION CAMIONETA GRANDE';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'ALINEACION CAMIONETA GRAND.PLUS', 'ALINEACION CAMIONETA GRAND.PLUS', 20.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ALINEACION CAMIONETA GRAND.PLUS');
-UPDATE servicios SET descripcion = 'ALINEACION CAMIONETA GRAND.PLUS', precio = 20.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'ALINEACION CAMIONETA GRAND.PLUS';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'ALINEACION CAMION (16 17.5 )', 'ALINEACION CAMION (16 17.5 )', 20.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ALINEACION CAMION (16 17.5 )');
-UPDATE servicios SET descripcion = 'ALINEACION CAMION (16 17.5 )', precio = 20.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'ALINEACION CAMION (16 17.5 )';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'ALINEACION CAMION (22.5 )', 'ALINEACION CAMION (22.5 )', 20.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ALINEACION CAMION (22.5 )');
-UPDATE servicios SET descripcion = 'ALINEACION CAMION (22.5 )', precio = 20.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'ALINEACION CAMION (22.5 )';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'MONTURA AUTOMOVIL (POR RUEDA)', 'MONTURA AUTOMOVIL (POR RUEDA)', 3.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'MONTURA AUTOMOVIL (POR RUEDA)');
-UPDATE servicios SET descripcion = 'MONTURA AUTOMOVIL (POR RUEDA)', precio = 3.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'MONTURA AUTOMOVIL (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'MONTURA CAMIONETA (POR RUEDA)', 'MONTURA CAMIONETA (POR RUEDA)', 2.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'MONTURA CAMIONETA (POR RUEDA)');
-UPDATE servicios SET descripcion = 'MONTURA CAMIONETA (POR RUEDA)', precio = 2.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'MONTURA CAMIONETA (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'MONTURA CAMION (16 17.5 ) (POR RUEDA )', 'MONTURA CAMION (16 17.5 ) (POR RUEDA )', 3.50, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'MONTURA CAMION (16 17.5 ) (POR RUEDA )');
-UPDATE servicios SET descripcion = 'MONTURA CAMION (16 17.5 ) (POR RUEDA )', precio = 3.50, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'MONTURA CAMION (16 17.5 ) (POR RUEDA )';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'MONTURA CAMION (22.5 20 ) (POR RUEDA)', 'MONTURA CAMION (22.5 20 ) (POR RUEDA)', 5.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'MONTURA CAMION (22.5 20 ) (POR RUEDA)');
-UPDATE servicios SET descripcion = 'MONTURA CAMION (22.5 20 ) (POR RUEDA)', precio = 5.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'MONTURA CAMION (22.5 20 ) (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'BALANCEO AUTOMOVIL (POR RUEDA)', 'BALANCEO AUTOMOVIL (POR RUEDA)', 2.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO AUTOMOVIL (POR RUEDA)');
-UPDATE servicios SET descripcion = 'BALANCEO AUTOMOVIL (POR RUEDA)', precio = 2.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'BALANCEO AUTOMOVIL (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'BALANCEO AUTOMOVIL ADHESIVO (POR RUEDA)', 'BALANCEO AUTOMOVIL ADHESIVO (POR RUEDA)', 5.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO AUTOMOVIL ADHESIVO (POR RUEDA)');
-UPDATE servicios SET descripcion = 'BALANCEO AUTOMOVIL ADHESIVO (POR RUEDA)', precio = 5.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'BALANCEO AUTOMOVIL ADHESIVO (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'BALANCEO CAMIONETA (POR RUEDA)', 'BALANCEO CAMIONETA (POR RUEDA)', 2.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO CAMIONETA (POR RUEDA)');
-UPDATE servicios SET descripcion = 'BALANCEO CAMIONETA (POR RUEDA)', precio = 2.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'BALANCEO CAMIONETA (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'BALANCEO CAMIONETA ADHESIVO (POR RUEDA)', 'BALANCEO CAMIONETA ADHESIVO (POR RUEDA)', 6.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO CAMIONETA ADHESIVO (POR RUEDA)');
-UPDATE servicios SET descripcion = 'BALANCEO CAMIONETA ADHESIVO (POR RUEDA)', precio = 6.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'BALANCEO CAMIONETA ADHESIVO (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'BALANCEO CAMION (16" 17.5") (POR RUEDA)', 'BALANCEO CAMION (16" 17.5") (POR RUEDA)', 8.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO CAMION (16" 17.5") (POR RUEDA)');
-UPDATE servicios SET descripcion = 'BALANCEO CAMION (16" 17.5") (POR RUEDA)', precio = 8.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'BALANCEO CAMION (16" 17.5") (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'BALANCEO DINAMICO AUTO/CAMIONETA (POR RUEDA)', 'BALANCEO DINAMICO AUTO/CAMIONETA (POR RUEDA)', 8.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO DINAMICO AUTO/CAMIONETA (POR RUEDA)');
-UPDATE servicios SET descripcion = 'BALANCEO DINAMICO AUTO/CAMIONETA (POR RUEDA)', precio = 8.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'BALANCEO DINAMICO AUTO/CAMIONETA (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'BALANCEO DINAMICO CAMION (16 17.5 ) (POR RUEDA)', 'BALANCEO DINAMICO CAMION (16 17.5 ) (POR RUEDA)', 15.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO DINAMICO CAMION (16 17.5 ) (POR RUEDA)');
-UPDATE servicios SET descripcion = 'BALANCEO DINAMICO CAMION (16 17.5 ) (POR RUEDA)', precio = 15.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'BALANCEO DINAMICO CAMION (16 17.5 ) (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'BALANCEO DINAMICO CAMION (20 22.5 ) (POR RUEDA)', 'BALANCEO DINAMICO CAMION (20 22.5 ) (POR RUEDA)', 10.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO DINAMICO CAMION (20 22.5 ) (POR RUEDA)');
-UPDATE servicios SET descripcion = 'BALANCEO DINAMICO CAMION (20 22.5 ) (POR RUEDA)', precio = 10.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'BALANCEO DINAMICO CAMION (20 22.5 ) (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'ROTACION AUTOMOVIL', 'ROTACION AUTOMOVIL', 2.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ROTACION AUTOMOVIL');
-UPDATE servicios SET descripcion = 'ROTACION AUTOMOVIL', precio = 2.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'ROTACION AUTOMOVIL';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'ROTACION CAMIONETA', 'ROTACION CAMIONETA', 3.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ROTACION CAMIONETA');
-UPDATE servicios SET descripcion = 'ROTACION CAMIONETA', precio = 3.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'ROTACION CAMIONETA';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'ROTACION CAMION (MOROCHA)', 'ROTACION CAMION (MOROCHA)', 4.50, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ROTACION CAMION (MOROCHA)');
-UPDATE servicios SET descripcion = 'ROTACION CAMION (MOROCHA)', precio = 4.50, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'ROTACION CAMION (MOROCHA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'REVISION AUTOMOVIL PEQUENO', 'REVISION AUTOMOVIL PEQUENO', 2.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'REVISION AUTOMOVIL PEQUENO');
-UPDATE servicios SET descripcion = 'REVISION AUTOMOVIL PEQUENO', precio = 2.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'REVISION AUTOMOVIL PEQUENO';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'REVISION AUTOMOVIL GRANDE', 'REVISION AUTOMOVIL GRANDE', 3.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'REVISION AUTOMOVIL GRANDE');
-UPDATE servicios SET descripcion = 'REVISION AUTOMOVIL GRANDE', precio = 3.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'REVISION AUTOMOVIL GRANDE';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'REVISION CAMIONETA', 'REVISION CAMIONETA', 3.50, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'REVISION CAMIONETA');
-UPDATE servicios SET descripcion = 'REVISION CAMIONETA', precio = 3.50, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'REVISION CAMIONETA';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'REVISION CAMION', 'REVISION CAMION', 4.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'REVISION CAMION');
-UPDATE servicios SET descripcion = 'REVISION CAMION', precio = 4.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'REVISION CAMION';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'REPARACION SENCILLA', 'REPARACION SENCILLA', 6.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'REPARACION SENCILLA');
-UPDATE servicios SET descripcion = 'REPARACION SENCILLA', precio = 6.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'REPARACION SENCILLA';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'VALVULA TR413 N', 'VALVULA TR413 N', 1.50, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA TR413 N');
-UPDATE servicios SET descripcion = 'VALVULA TR413 N', precio = 1.50, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'VALVULA TR413 N';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'VALVULA TR413 HIERRO', 'VALVULA TR413 HIERRO', 5.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA TR413 HIERRO');
-UPDATE servicios SET descripcion = 'VALVULA TR413 HIERRO', precio = 5.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'VALVULA TR413 HIERRO';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'VALVULA TR413 HIERRO CURVA', 'VALVULA TR413 HIERRO CURVA', 5.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA TR413 HIERRO CURVA');
-UPDATE servicios SET descripcion = 'VALVULA TR413 HIERRO CURVA', precio = 5.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'VALVULA TR413 HIERRO CURVA';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'VALVULA TR415 N', 'VALVULA TR415 N', 3.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA TR415 N');
-UPDATE servicios SET descripcion = 'VALVULA TR415 N', precio = 3.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'VALVULA TR415 N';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'VALVULA TR415 HIERRO', 'VALVULA TR415 HIERRO', 5.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA TR415 HIERRO');
-UPDATE servicios SET descripcion = 'VALVULA TR415 HIERRO', precio = 5.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'VALVULA TR415 HIERRO';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'VALVULA 17.5 BRONCE', 'VALVULA 17.5 BRONCE', 8.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA 17.5 BRONCE');
-UPDATE servicios SET descripcion = 'VALVULA 17.5 BRONCE', precio = 8.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'VALVULA 17.5 BRONCE';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'VALVULA 22.5 BRONCE', 'VALVULA 22.5 BRONCE', 10.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA 22.5 BRONCE');
-UPDATE servicios SET descripcion = 'VALVULA 22.5 BRONCE', precio = 10.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'VALVULA 22.5 BRONCE';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'CAMBIO DE ACEITE', 'CAMBIO DE ACEITE', 50.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'CAMBIO DE ACEITE');
-UPDATE servicios SET descripcion = 'CAMBIO DE ACEITE', precio = 50.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'CAMBIO DE ACEITE';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'COMPACTO BASICO', 'BAL GANCHO, CALIBRACION AIRE, ROTACION', 10.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'COMPACTO BASICO');
-UPDATE servicios SET descripcion = 'BAL GANCHO, CALIBRACION AIRE, ROTACION', precio = 10.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'COMPACTO BASICO';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'COMPACTO FULL', 'BAL PEGA, CALIBRACION AIRE, ROTACION, VALVULAS 5 RUEDAS, MANT. PESTANAS', 15.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'COMPACTO FULL');
-UPDATE servicios SET descripcion = 'BAL PEGA, CALIBRACION AIRE, ROTACION, VALVULAS 5 RUEDAS, MANT. PESTANAS', precio = 15.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'COMPACTO FULL';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'CARRO GRANDE-CAMIONETA PEQ BASICO', 'BAL GANCHO, CALIBRACION AIRE, ROTACION', 12.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'CARRO GRANDE-CAMIONETA PEQ BASICO');
-UPDATE servicios SET descripcion = 'BAL GANCHO, CALIBRACION AIRE, ROTACION', precio = 12.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'CARRO GRANDE-CAMIONETA PEQ BASICO';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'CARRO GRANDE-CAMIONETA PEQ FULL', 'BAL PEGA, CALIBRACION AIRE, ROTACION, VALVULAS 5 RUEDAS, MANT. PESTANAS', 20.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'CARRO GRANDE-CAMIONETA PEQ FULL');
-UPDATE servicios SET descripcion = 'BAL PEGA, CALIBRACION AIRE, ROTACION, VALVULAS 5 RUEDAS, MANT. PESTANAS', precio = 20.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'CARRO GRANDE-CAMIONETA PEQ FULL';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'CAMIONETA GRANDE BASICO', 'BAL GANCHO, CALIBRACION AIRE, ROTACION', 16.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'CAMIONETA GRANDE BASICO');
-UPDATE servicios SET descripcion = 'BAL GANCHO, CALIBRACION AIRE, ROTACION', precio = 16.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'CAMIONETA GRANDE BASICO';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'CAMIONETA GRANDE FULL', 'BAL PEGA, CALIBRACION AIRE, ROTACION, VALVULAS 5 RUEDAS, MANT. PESTANAS', 35.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'CAMIONETA GRANDE FULL');
-UPDATE servicios SET descripcion = 'BAL PEGA, CALIBRACION AIRE, ROTACION, VALVULAS 5 RUEDAS, MANT. PESTANAS', precio = 35.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'CAMIONETA GRANDE FULL';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'BALANCEO CAMIONETA PEQ. (POR RUEDA)', 'BALANCEO CAMIONETA PEQ. (POR RUEDA)', 4.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO CAMIONETA PEQ. (POR RUEDA)');
-UPDATE servicios SET descripcion = 'BALANCEO CAMIONETA PEQ. (POR RUEDA)', precio = 4.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'BALANCEO CAMIONETA PEQ. (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'BALANCEO CAMIONETA PEQ. ADHESIVO (POR RUEDA)', 'BALANCEO CAMIONETA PEQ. ADHESIVO (POR RUEDA)', 6.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO CAMIONETA PEQ. ADHESIVO (POR RUEDA)');
-UPDATE servicios SET descripcion = 'BALANCEO CAMIONETA PEQ. ADHESIVO (POR RUEDA)', precio = 6.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'BALANCEO CAMIONETA PEQ. ADHESIVO (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'BALANCEO CAMIONETA GRANDE (POR RUEDA)', 'BALANCEO CAMIONETA GRANDE (POR RUEDA)', 8.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO CAMIONETA GRANDE (POR RUEDA)');
-UPDATE servicios SET descripcion = 'BALANCEO CAMIONETA GRANDE (POR RUEDA)', precio = 8.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'BALANCEO CAMIONETA GRANDE (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'BALANCEO CAMIONETA GR. ADHESIVO (POR RUEDA)', 'BALANCEO CAMIONETA GR. ADHESIVO (POR RUEDA)', 10.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO CAMIONETA GR. ADHESIVO (POR RUEDA)');
-UPDATE servicios SET descripcion = 'BALANCEO CAMIONETA GR. ADHESIVO (POR RUEDA)', precio = 10.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'BALANCEO CAMIONETA GR. ADHESIVO (POR RUEDA)';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'VALVULA TR413 NEGRA', 'VALVULA TR413 NEGRA', 1.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA TR413 NEGRA');
-UPDATE servicios SET descripcion = 'VALVULA TR413 NEGRA', precio = 1.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'VALVULA TR413 NEGRA';
-INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, sucursal_id, estado) SELECT 'VALVULA TR415 NEGRA', 'VALVULA TR415 NEGRA', 3.00, '60', 1, 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA TR415 NEGRA');
-UPDATE servicios SET descripcion = 'VALVULA TR415 NEGRA', precio = 3.00, duracion_estimada = '60', sucursal_id = 1, estado = 1 WHERE nombre = 'VALVULA TR415 NEGRA';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'ALINEACION AUTOMOVIL', 'ALINEACION AUTOMOVIL', 10.50, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ALINEACION AUTOMOVIL');
+UPDATE servicios SET descripcion = 'ALINEACION AUTOMOVIL', precio = 10.50, duracion_estimada = '60', estado = 1 WHERE nombre = 'ALINEACION AUTOMOVIL';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'ALINEACION AUTO GRA.', 'ALINEACION AUTO GRA.', 13.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ALINEACION AUTO GRA.');
+UPDATE servicios SET descripcion = 'ALINEACION AUTO GRA.', precio = 13.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'ALINEACION AUTO GRA.';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'ALINEACION CAMIONETA PEQ.', 'ALINEACION CAMIONETA PEQ.', 15.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ALINEACION CAMIONETA PEQ.');
+UPDATE servicios SET descripcion = 'ALINEACION CAMIONETA PEQ.', precio = 15.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'ALINEACION CAMIONETA PEQ.';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'ALINEACION CAMIONETA GRANDE', 'ALINEACION CAMIONETA GRANDE', 17.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ALINEACION CAMIONETA GRANDE');
+UPDATE servicios SET descripcion = 'ALINEACION CAMIONETA GRANDE', precio = 17.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'ALINEACION CAMIONETA GRANDE';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'ALINEACION CAMIONETA GRAND.PLUS', 'ALINEACION CAMIONETA GRAND.PLUS', 20.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ALINEACION CAMIONETA GRAND.PLUS');
+UPDATE servicios SET descripcion = 'ALINEACION CAMIONETA GRAND.PLUS', precio = 20.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'ALINEACION CAMIONETA GRAND.PLUS';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'ALINEACION CAMION (16 17.5 )', 'ALINEACION CAMION (16 17.5 )', 20.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ALINEACION CAMION (16 17.5 )');
+UPDATE servicios SET descripcion = 'ALINEACION CAMION (16 17.5 )', precio = 20.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'ALINEACION CAMION (16 17.5 )';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'ALINEACION CAMION (22.5 )', 'ALINEACION CAMION (22.5 )', 20.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ALINEACION CAMION (22.5 )');
+UPDATE servicios SET descripcion = 'ALINEACION CAMION (22.5 )', precio = 20.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'ALINEACION CAMION (22.5 )';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'MONTURA AUTOMOVIL (POR RUEDA)', 'MONTURA AUTOMOVIL (POR RUEDA)', 3.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'MONTURA AUTOMOVIL (POR RUEDA)');
+UPDATE servicios SET descripcion = 'MONTURA AUTOMOVIL (POR RUEDA)', precio = 3.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'MONTURA AUTOMOVIL (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'MONTURA CAMIONETA (POR RUEDA)', 'MONTURA CAMIONETA (POR RUEDA)', 2.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'MONTURA CAMIONETA (POR RUEDA)');
+UPDATE servicios SET descripcion = 'MONTURA CAMIONETA (POR RUEDA)', precio = 2.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'MONTURA CAMIONETA (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'MONTURA CAMION (16 17.5 ) (POR RUEDA )', 'MONTURA CAMION (16 17.5 ) (POR RUEDA )', 3.50, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'MONTURA CAMION (16 17.5 ) (POR RUEDA )');
+UPDATE servicios SET descripcion = 'MONTURA CAMION (16 17.5 ) (POR RUEDA )', precio = 3.50, duracion_estimada = '60', estado = 1 WHERE nombre = 'MONTURA CAMION (16 17.5 ) (POR RUEDA )';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'MONTURA CAMION (22.5 20 ) (POR RUEDA)', 'MONTURA CAMION (22.5 20 ) (POR RUEDA)', 5.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'MONTURA CAMION (22.5 20 ) (POR RUEDA)');
+UPDATE servicios SET descripcion = 'MONTURA CAMION (22.5 20 ) (POR RUEDA)', precio = 5.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'MONTURA CAMION (22.5 20 ) (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'BALANCEO AUTOMOVIL (POR RUEDA)', 'BALANCEO AUTOMOVIL (POR RUEDA)', 2.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO AUTOMOVIL (POR RUEDA)');
+UPDATE servicios SET descripcion = 'BALANCEO AUTOMOVIL (POR RUEDA)', precio = 2.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'BALANCEO AUTOMOVIL (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'BALANCEO AUTOMOVIL ADHESIVO (POR RUEDA)', 'BALANCEO AUTOMOVIL ADHESIVO (POR RUEDA)', 5.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO AUTOMOVIL ADHESIVO (POR RUEDA)');
+UPDATE servicios SET descripcion = 'BALANCEO AUTOMOVIL ADHESIVO (POR RUEDA)', precio = 5.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'BALANCEO AUTOMOVIL ADHESIVO (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'BALANCEO CAMIONETA (POR RUEDA)', 'BALANCEO CAMIONETA (POR RUEDA)', 2.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO CAMIONETA (POR RUEDA)');
+UPDATE servicios SET descripcion = 'BALANCEO CAMIONETA (POR RUEDA)', precio = 2.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'BALANCEO CAMIONETA (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'BALANCEO CAMIONETA ADHESIVO (POR RUEDA)', 'BALANCEO CAMIONETA ADHESIVO (POR RUEDA)', 6.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO CAMIONETA ADHESIVO (POR RUEDA)');
+UPDATE servicios SET descripcion = 'BALANCEO CAMIONETA ADHESIVO (POR RUEDA)', precio = 6.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'BALANCEO CAMIONETA ADHESIVO (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'BALANCEO CAMION (16" 17.5") (POR RUEDA)', 'BALANCEO CAMION (16" 17.5") (POR RUEDA)', 8.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO CAMION (16" 17.5") (POR RUEDA)');
+UPDATE servicios SET descripcion = 'BALANCEO CAMION (16" 17.5") (POR RUEDA)', precio = 8.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'BALANCEO CAMION (16" 17.5") (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'BALANCEO DINAMICO AUTO/CAMIONETA (POR RUEDA)', 'BALANCEO DINAMICO AUTO/CAMIONETA (POR RUEDA)', 8.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO DINAMICO AUTO/CAMIONETA (POR RUEDA)');
+UPDATE servicios SET descripcion = 'BALANCEO DINAMICO AUTO/CAMIONETA (POR RUEDA)', precio = 8.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'BALANCEO DINAMICO AUTO/CAMIONETA (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'BALANCEO DINAMICO CAMION (16 17.5 ) (POR RUEDA)', 'BALANCEO DINAMICO CAMION (16 17.5 ) (POR RUEDA)', 15.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO DINAMICO CAMION (16 17.5 ) (POR RUEDA)');
+UPDATE servicios SET descripcion = 'BALANCEO DINAMICO CAMION (16 17.5 ) (POR RUEDA)', precio = 15.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'BALANCEO DINAMICO CAMION (16 17.5 ) (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'BALANCEO DINAMICO CAMION (20 22.5 ) (POR RUEDA)', 'BALANCEO DINAMICO CAMION (20 22.5 ) (POR RUEDA)', 10.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO DINAMICO CAMION (20 22.5 ) (POR RUEDA)');
+UPDATE servicios SET descripcion = 'BALANCEO DINAMICO CAMION (20 22.5 ) (POR RUEDA)', precio = 10.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'BALANCEO DINAMICO CAMION (20 22.5 ) (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'ROTACION AUTOMOVIL', 'ROTACION AUTOMOVIL', 2.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ROTACION AUTOMOVIL');
+UPDATE servicios SET descripcion = 'ROTACION AUTOMOVIL', precio = 2.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'ROTACION AUTOMOVIL';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'ROTACION CAMIONETA', 'ROTACION CAMIONETA', 3.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ROTACION CAMIONETA');
+UPDATE servicios SET descripcion = 'ROTACION CAMIONETA', precio = 3.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'ROTACION CAMIONETA';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'ROTACION CAMION (MOROCHA)', 'ROTACION CAMION (MOROCHA)', 4.50, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'ROTACION CAMION (MOROCHA)');
+UPDATE servicios SET descripcion = 'ROTACION CAMION (MOROCHA)', precio = 4.50, duracion_estimada = '60', estado = 1 WHERE nombre = 'ROTACION CAMION (MOROCHA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'REVISION AUTOMOVIL PEQUENO', 'REVISION AUTOMOVIL PEQUENO', 2.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'REVISION AUTOMOVIL PEQUENO');
+UPDATE servicios SET descripcion = 'REVISION AUTOMOVIL PEQUENO', precio = 2.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'REVISION AUTOMOVIL PEQUENO';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'REVISION AUTOMOVIL GRANDE', 'REVISION AUTOMOVIL GRANDE', 3.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'REVISION AUTOMOVIL GRANDE');
+UPDATE servicios SET descripcion = 'REVISION AUTOMOVIL GRANDE', precio = 3.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'REVISION AUTOMOVIL GRANDE';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'REVISION CAMIONETA', 'REVISION CAMIONETA', 3.50, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'REVISION CAMIONETA');
+UPDATE servicios SET descripcion = 'REVISION CAMIONETA', precio = 3.50, duracion_estimada = '60', estado = 1 WHERE nombre = 'REVISION CAMIONETA';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'REVISION CAMION', 'REVISION CAMION', 4.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'REVISION CAMION');
+UPDATE servicios SET descripcion = 'REVISION CAMION', precio = 4.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'REVISION CAMION';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'REPARACION SENCILLA', 'REPARACION SENCILLA', 6.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'REPARACION SENCILLA');
+UPDATE servicios SET descripcion = 'REPARACION SENCILLA', precio = 6.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'REPARACION SENCILLA';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'VALVULA TR413 N', 'VALVULA TR413 N', 1.50, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA TR413 N');
+UPDATE servicios SET descripcion = 'VALVULA TR413 N', precio = 1.50, duracion_estimada = '60', estado = 1 WHERE nombre = 'VALVULA TR413 N';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'VALVULA TR413 HIERRO', 'VALVULA TR413 HIERRO', 5.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA TR413 HIERRO');
+UPDATE servicios SET descripcion = 'VALVULA TR413 HIERRO', precio = 5.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'VALVULA TR413 HIERRO';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'VALVULA TR413 HIERRO CURVA', 'VALVULA TR413 HIERRO CURVA', 5.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA TR413 HIERRO CURVA');
+UPDATE servicios SET descripcion = 'VALVULA TR413 HIERRO CURVA', precio = 5.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'VALVULA TR413 HIERRO CURVA';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'VALVULA TR415 N', 'VALVULA TR415 N', 3.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA TR415 N');
+UPDATE servicios SET descripcion = 'VALVULA TR415 N', precio = 3.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'VALVULA TR415 N';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'VALVULA TR415 HIERRO', 'VALVULA TR415 HIERRO', 5.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA TR415 HIERRO');
+UPDATE servicios SET descripcion = 'VALVULA TR415 HIERRO', precio = 5.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'VALVULA TR415 HIERRO';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'VALVULA 17.5 BRONCE', 'VALVULA 17.5 BRONCE', 8.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA 17.5 BRONCE');
+UPDATE servicios SET descripcion = 'VALVULA 17.5 BRONCE', precio = 8.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'VALVULA 17.5 BRONCE';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'VALVULA 22.5 BRONCE', 'VALVULA 22.5 BRONCE', 10.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA 22.5 BRONCE');
+UPDATE servicios SET descripcion = 'VALVULA 22.5 BRONCE', precio = 10.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'VALVULA 22.5 BRONCE';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'CAMBIO DE ACEITE', 'CAMBIO DE ACEITE', 50.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'CAMBIO DE ACEITE');
+UPDATE servicios SET descripcion = 'CAMBIO DE ACEITE', precio = 50.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'CAMBIO DE ACEITE';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'COMPACTO BASICO', 'BAL GANCHO, CALIBRACION AIRE, ROTACION', 10.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'COMPACTO BASICO');
+UPDATE servicios SET descripcion = 'BAL GANCHO, CALIBRACION AIRE, ROTACION', precio = 10.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'COMPACTO BASICO';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'COMPACTO FULL', 'BAL PEGA, CALIBRACION AIRE, ROTACION, VALVULAS 5 RUEDAS, MANT. PESTANAS', 15.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'COMPACTO FULL');
+UPDATE servicios SET descripcion = 'BAL PEGA, CALIBRACION AIRE, ROTACION, VALVULAS 5 RUEDAS, MANT. PESTANAS', precio = 15.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'COMPACTO FULL';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'CARRO GRANDE-CAMIONETA PEQ BASICO', 'BAL GANCHO, CALIBRACION AIRE, ROTACION', 12.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'CARRO GRANDE-CAMIONETA PEQ BASICO');
+UPDATE servicios SET descripcion = 'BAL GANCHO, CALIBRACION AIRE, ROTACION', precio = 12.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'CARRO GRANDE-CAMIONETA PEQ BASICO';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'CARRO GRANDE-CAMIONETA PEQ FULL', 'BAL PEGA, CALIBRACION AIRE, ROTACION, VALVULAS 5 RUEDAS, MANT. PESTANAS', 20.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'CARRO GRANDE-CAMIONETA PEQ FULL');
+UPDATE servicios SET descripcion = 'BAL PEGA, CALIBRACION AIRE, ROTACION, VALVULAS 5 RUEDAS, MANT. PESTANAS', precio = 20.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'CARRO GRANDE-CAMIONETA PEQ FULL';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'CAMIONETA GRANDE BASICO', 'BAL GANCHO, CALIBRACION AIRE, ROTACION', 16.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'CAMIONETA GRANDE BASICO');
+UPDATE servicios SET descripcion = 'BAL GANCHO, CALIBRACION AIRE, ROTACION', precio = 16.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'CAMIONETA GRANDE BASICO';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'CAMIONETA GRANDE FULL', 'BAL PEGA, CALIBRACION AIRE, ROTACION, VALVULAS 5 RUEDAS, MANT. PESTANAS', 35.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'CAMIONETA GRANDE FULL');
+UPDATE servicios SET descripcion = 'BAL PEGA, CALIBRACION AIRE, ROTACION, VALVULAS 5 RUEDAS, MANT. PESTANAS', precio = 35.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'CAMIONETA GRANDE FULL';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'BALANCEO CAMIONETA PEQ. (POR RUEDA)', 'BALANCEO CAMIONETA PEQ. (POR RUEDA)', 4.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO CAMIONETA PEQ. (POR RUEDA)');
+UPDATE servicios SET descripcion = 'BALANCEO CAMIONETA PEQ. (POR RUEDA)', precio = 4.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'BALANCEO CAMIONETA PEQ. (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'BALANCEO CAMIONETA PEQ. ADHESIVO (POR RUEDA)', 'BALANCEO CAMIONETA PEQ. ADHESIVO (POR RUEDA)', 6.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO CAMIONETA PEQ. ADHESIVO (POR RUEDA)');
+UPDATE servicios SET descripcion = 'BALANCEO CAMIONETA PEQ. ADHESIVO (POR RUEDA)', precio = 6.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'BALANCEO CAMIONETA PEQ. ADHESIVO (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'BALANCEO CAMIONETA GRANDE (POR RUEDA)', 'BALANCEO CAMIONETA GRANDE (POR RUEDA)', 8.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO CAMIONETA GRANDE (POR RUEDA)');
+UPDATE servicios SET descripcion = 'BALANCEO CAMIONETA GRANDE (POR RUEDA)', precio = 8.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'BALANCEO CAMIONETA GRANDE (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'BALANCEO CAMIONETA GR. ADHESIVO (POR RUEDA)', 'BALANCEO CAMIONETA GR. ADHESIVO (POR RUEDA)', 10.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'BALANCEO CAMIONETA GR. ADHESIVO (POR RUEDA)');
+UPDATE servicios SET descripcion = 'BALANCEO CAMIONETA GR. ADHESIVO (POR RUEDA)', precio = 10.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'BALANCEO CAMIONETA GR. ADHESIVO (POR RUEDA)';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'VALVULA TR413 NEGRA', 'VALVULA TR413 NEGRA', 1.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA TR413 NEGRA');
+UPDATE servicios SET descripcion = 'VALVULA TR413 NEGRA', precio = 1.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'VALVULA TR413 NEGRA';
+INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada, estado) SELECT 'VALVULA TR415 NEGRA', 'VALVULA TR415 NEGRA', 3.00, '60', 1 WHERE NOT EXISTS (SELECT 1 FROM servicios WHERE nombre = 'VALVULA TR415 NEGRA');
+UPDATE servicios SET descripcion = 'VALVULA TR415 NEGRA', precio = 3.00, duracion_estimada = '60', estado = 1 WHERE nombre = 'VALVULA TR415 NEGRA';
+
+INSERT IGNORE INTO servicio_sucursal (servicio_id, sucursal_id, estado) SELECT id, 1, 1 FROM servicios WHERE estado = 1;
 
 INSERT INTO configuracion (clave, valor) VALUES
 ('nombre_empresa', 'Transalca C.A.'),
@@ -1308,6 +1322,7 @@ ON DUPLICATE KEY UPDATE valor = VALUES(valor);
 
 ALTER TABLE clientes
     ADD COLUMN IF NOT EXISTS cedula_prefijo VARCHAR(2) AFTER cedula,
+    ADD COLUMN IF NOT EXISTS tipo_cliente VARCHAR(20) NOT NULL DEFAULT 'persona' AFTER cedula_prefijo,
     ADD COLUMN IF NOT EXISTS origen_registro VARCHAR(20) DEFAULT 'cliente' AFTER estado,
     ADD COLUMN IF NOT EXISTS usuario_id INT DEFAULT NULL AFTER origen_registro;
 
@@ -1350,7 +1365,7 @@ CREATE TABLE IF NOT EXISTS vehiculos (
     refrigerante_info VARCHAR(200),
     observaciones TEXT,
     cauchos_json JSON,
-    imagen_carnet VARCHAR(255),
+    titulo_vehiculo VARCHAR(255),
     estado TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -1432,16 +1447,16 @@ CREATE TABLE IF NOT EXISTS consumo_combustible (
 CREATE TABLE IF NOT EXISTS tickets_soporte (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cliente_cedula VARCHAR(20) NOT NULL,
-    vehiculo_placa VARCHAR(20) DEFAULT NULL,
     asunto VARCHAR(300) NOT NULL,
     descripcion TEXT,
     estado VARCHAR(30) NOT NULL DEFAULT 'abierto',
     prioridad VARCHAR(20) DEFAULT 'media',
+    referencia_tipo VARCHAR(30) DEFAULT 'general',
+    referencia_id VARCHAR(50) DEFAULT NULL,
     asignado_a VARCHAR(20) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_ticket_cliente FOREIGN KEY (cliente_cedula) REFERENCES clientes(cedula) ON UPDATE CASCADE,
-    CONSTRAINT fk_ticket_vehiculo FOREIGN KEY (vehiculo_placa) REFERENCES vehiculos(placa) ON UPDATE CASCADE ON DELETE SET NULL,
     CONSTRAINT fk_ticket_asignado FOREIGN KEY (asignado_a) REFERENCES mecanicos(cedula) ON UPDATE CASCADE ON DELETE SET NULL,
     INDEX idx_ticket_cliente (cliente_cedula)
 );

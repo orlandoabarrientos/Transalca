@@ -882,6 +882,7 @@ function getAdminModuleTitle() {
     const titles = {
         dashboard: 'Dashboard',
         clients: 'Gestionar Clientes',
+        companies: 'Gestionar Empresas',
         products: 'Gestionar Productos',
         categories: 'Gestionar Categorías',
         brands: 'Gestionar Marcas',
@@ -891,6 +892,7 @@ function getAdminModuleTitle() {
         service_mechanics: 'Gestionar Servicio Mecánico',
         mechanics: 'Gestionar Mecánicos',
         orders_sales: 'Reporte Orden de Venta',
+        credit: 'Gestionar Credito',
         tickets: 'Gestionar Tickets de Soporte',
         payments: 'Gestionar Comprobantes de Pago',
         payment_methods: 'Gestionar Metodos de Pago',

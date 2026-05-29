@@ -4,7 +4,7 @@ $(document).ready(function() {
     });
     $('#navbarContainer').load('/components/admin_navbar.html');
     loadData();
-    loadSucursales('sucursal_id', true);
+    loadSucursales('sucursal_id', false).then(() => enhanceSearchableSelects(document.getElementById('serviceModal')));
     Validator.setRules('serviceForm', {
         nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'Mínimo 3 caracteres' },
         precio: { required: true, min: 0.01, requiredMsg: 'El precio es obligatorio', minMsg: 'Debe ser mayor a 0' },
@@ -58,7 +58,11 @@ function editData(id) {
         document.getElementById('precio').value = s.precio;
         document.getElementById('duracion_estimada').value = s.duracion_estimada || 60;
         const sucSel = document.getElementById('sucursal_id');
-        if(sucSel) sucSel.value = s.sucursal_id || '';
+        if(sucSel) {
+            const ids = String(s.sucursal_ids || '').split(',').filter(Boolean);
+            Array.from(sucSel.options).forEach(opt => { opt.selected = ids.includes(opt.value); });
+            if (window.jQuery?.fn?.select2) window.jQuery(sucSel).trigger('change.select2');
+        }
         document.getElementById('modalTitle').textContent = 'Modificar Servicio';
         new bootstrap.Modal(document.getElementById('serviceModal')).show();
         Validator.initTracking('serviceForm');
@@ -74,7 +78,7 @@ function saveData() {
         tipo: document.getElementById('tipo').value,
         precio: parseFloat(document.getElementById('precio').value),
         duracion_estimada: parseInt(document.getElementById('duracion_estimada').value) || 60,
-        sucursal_id: document.getElementById('sucursal_id')?.value || null
+        sucursal_ids: Array.from(document.getElementById('sucursal_id')?.selectedOptions || []).map(o => o.value)
     };
     const url = id ? `/api/services/${id}` : '/api/services/';
     const method = id ? 'PUT' : 'POST';

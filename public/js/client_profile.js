@@ -217,8 +217,9 @@ function renderVehiclesTable() {
         return;
     }
     clientProfileState.vehicles.forEach(v => {
-        const carnetCell = v.imagen_carnet
-            ? `<a href="/public/assets/images/${v.imagen_carnet}" target="_blank" rel="noopener">Ver</a>`
+        const tituloVehiculo = v.titulo_vehiculo;
+        const carnetCell = tituloVehiculo
+            ? `<a href="/public/assets/images/${tituloVehiculo}" target="_blank" rel="noopener">Ver</a>`
             : '<span class="text-muted">No</span>';
         tbody.append(`
             <tr>

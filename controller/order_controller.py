@@ -127,6 +127,8 @@ def checkout():
                 f"Orden de venta creada ID: {order_id}", request.remote_addr)
             return jsonify({"status": "success", "message": "Orden registrada correctamente", "id": order_id})
         return jsonify({"status": "error", "message": "Carrito vacio o error al crear orden"}), 400
+    except ValueError as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar la orden"}), 500
 

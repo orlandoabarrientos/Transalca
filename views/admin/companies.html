@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transalca Admin | Gestionar Empresas</title>
+    <link rel="icon" type="image/png" href="/public/img/logo.png">
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="mb-3">
+                <h4 class="fw-bold mb-1">Gestionar Empresas</h4>
+                <p class="text-muted mb-0">Administracion de empresas, flotas y credito.</p>
+            </div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:var(--primary-soft);color:var(--primary);"><i class="bi bi-buildings"></i></div><div><div class="stat-value" id="totalCompanies">0</div><div class="stat-label">Total Empresas</div></div></div></div>
+                <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#dcfce7;color:#16a34a;"><i class="bi bi-building-check"></i></div><div><div class="stat-value" id="activeCompanies">0</div><div class="stat-label">Activas</div></div></div></div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body filter-bar compact-filter-card mb-0">
+                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                        <input type="text" class="form-control" id="searchInput" placeholder="Buscar por RIF, razon social, email..." style="width:320px;max-width:320px;">
+                        <select class="form-select" id="filterEstado" style="width:180px;max-width:180px;">
+                            <option value="">Todos</option>
+                            <option value="1">Activos</option>
+                            <option value="0">Inactivos</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-success ms-auto" onclick="showCreateCompanyModal()"><i class="bi bi-plus-circle me-1"></i>Registrar Empresa</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>RIF</th>
+                                    <th>Razon social</th>
+                                    <th>Telefono</th>
+                                    <th>Email</th>
+                                    <th>Flota</th>
+                                    <th>Credito</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="companiesTableBody">
+                                <tr><td colspan="8" class="text-center py-4 text-muted">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4" id="detailPanel" style="display:none;">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-buildings me-2"></i>Detalle de la empresa</span>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="hideCompanyDetail()"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-2"><strong>RIF:</strong> <span id="detRif"></span></div>
+                        <div class="col-md-3"><strong>Razon social:</strong> <span id="detRazon"></span></div>
+                        <div class="col-md-2"><strong>Telefono:</strong> <span id="detTelefono"></span></div>
+                        <div class="col-md-3"><strong>Email:</strong> <span id="detEmail"></span></div>
+                        <div class="col-md-2"><strong>Direccion:</strong> <span id="detDireccion"></span></div>
+                    </div>
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabFlota"><i class="bi bi-truck-front me-1"></i>Flota</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabOrdenes"><i class="bi bi-cart me-1"></i>Ordenes</a></li>
+                    </ul>
+                    <div class="tab-content p-3 border border-top-0 rounded-bottom">
+                        <div class="tab-pane fade show active" id="tabFlota">
+                            <div class="d-flex justify-content-between mb-2">
+                                <h6 class="mb-0">Flota de la empresa</h6>
+                                <button class="btn btn-sm btn-success" onclick="showFleetModal()"><i class="bi bi-plus me-1"></i>Registrar vehiculo</button>
+                            </div>
+                            <div id="fleetList"></div>
+                        </div>
+                        <div class="tab-pane fade" id="tabOrdenes"><div id="ordersList"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="companyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="companyModalTitle">Registrar Empresa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="companyForm">
+                    <input type="hidden" id="editRif">
+                    <div class="row">
+                        <div class="col-md-5 mb-3">
+                            <label class="form-label">RIF <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <select class="form-select" id="fRifPrefijo" name="rif_prefijo" style="max-width:90px;">
+                                    <option value="J">J</option>
+                                    <option value="G">G</option>
+                                    <option value="V">V</option>
+                                    <option value="E">E</option>
+                                    <option value="P">P</option>
+                                </select>
+                                <input type="text" class="form-control" id="fRif" name="rif" placeholder="123456789" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-7 mb-3"><label class="form-label">Razon social <span class="text-danger">*</span></label><input type="text" class="form-control" id="fRazonSocial" name="razon_social" required></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label class="form-label">Nombre comercial</label><input type="text" class="form-control" id="fNombreComercial" name="nombre_comercial"></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Sector</label><input type="text" class="form-control" id="fSector" name="sector"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3"><label class="form-label">Telefono <span class="text-danger">*</span></label><input type="text" class="form-control" id="fTelefono" name="telefono" placeholder="04121234567" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Email</label><input type="email" class="form-control" id="fEmail" name="email"></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Direccion</label><input type="text" class="form-control" id="fDireccion" name="direccion"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3"><label class="form-label">Representante</label><input type="text" class="form-control" id="fRepresentante" name="representante_nombre"></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Cedula representante</label><input type="text" class="form-control" id="fRepresentanteCedula" name="representante_cedula" placeholder="V-12345678"></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Telefono representante</label><input type="text" class="form-control" id="fRepresentanteTelefono" name="representante_telefono" placeholder="04121234567"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3"><label class="form-label">Email representante</label><input type="email" class="form-control" id="fRepresentanteEmail" name="representante_email"></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Limite de credito</label><input type="number" class="form-control" id="fLimiteCredito" name="limite_credito" min="0" step="0.01" value="0"></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Dias de credito</label><input type="number" class="form-control" id="fDiasCredito" name="dias_credito" min="0" max="365" value="0"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="saveCompany()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="fleetModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="fleetModalTitle">Registrar vehiculo de flota</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="fleetForm">
+                    <input type="hidden" id="editVehicleId">
+                    <div class="row">
+                        <div class="col-6 mb-3"><label class="form-label">Marca <span class="text-danger">*</span></label><input type="text" class="form-control" id="vMarca" name="marca" required></div>
+                        <div class="col-6 mb-3"><label class="form-label">Modelo <span class="text-danger">*</span></label><input type="text" class="form-control" id="vModelo" name="modelo" required></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-4 mb-3"><label class="form-label">Ano</label><input type="number" class="form-control" id="vAnio" name="anio" min="1980" max="2030"></div>
+                        <div class="col-4 mb-3"><label class="form-label">Placa</label><input type="text" class="form-control" id="vPlaca" name="placa"></div>
+                        <div class="col-4 mb-3"><label class="form-label">Color</label><input type="text" class="form-control" id="vColor" name="color"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3"><label class="form-label">Tipo vehiculo</label><input type="text" class="form-control" id="vTipo" name="tipo_vehiculo"></div>
+                        <div class="col-6 mb-3"><label class="form-label">Combustible</label><select class="form-select" id="vCombustible" name="tipo_combustible"><option value="gasolina">Gasolina</option><option value="gasoil">Gasoil</option><option value="otro">Otro</option></select></div>
+                    </div>
+                    <div class="mb-3"><label class="form-label">Kilometraje actual</label><input type="number" class="form-control" id="vKm" name="kilometraje_actual" min="0" value="0"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="saveFleetVehicle()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/companies.js"></script>
+</body>
+</html>

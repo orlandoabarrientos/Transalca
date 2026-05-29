@@ -65,21 +65,29 @@ class OrderModel(Connection):
 
     def get_active_payment_methods(self):
         try:
-            return self.fetch_all("mantenimiento",
-                "SELECT id, nombre, datos FROM metodos_pago WHERE estado = 1 ORDER BY nombre")
+            return self.fetch_all("transalca",
+                "SELECT id, nombre, datos, permite_credito FROM metodos_pago WHERE estado = 1 ORDER BY nombre")
         except Exception:
-            return [{'nombre': n, 'datos': ''} for n in ('transferencia', 'pago_movil', 'efectivo', 'zelle', 'binance', 'tarjeta')]
+            return [{'id': 0, 'nombre': n, 'datos': '', 'permite_credito': 0} for n in ('transferencia', 'pago_movil', 'efectivo', 'zelle', 'binance', 'tarjeta')]
 
-    def is_valid_payment_method(self, nombre):
-        value = (nombre or '').strip()
+    def get_payment_method(self, value):
+        value = (value or '').strip()
         if not value:
-            return False
+            return None
         try:
-            row = self.fetch_one("mantenimiento",
-                "SELECT id FROM metodos_pago WHERE nombre = %s AND estado = 1 LIMIT 1", (value,))
-            return row is not None
+            if value.isdigit():
+                return self.fetch_one("transalca",
+                    "SELECT id, nombre, permite_credito FROM metodos_pago WHERE id = %s AND estado = 1 LIMIT 1",
+                    (int(value),))
+            return self.fetch_one("transalca",
+                "SELECT id, nombre, permite_credito FROM metodos_pago WHERE nombre = %s AND estado = 1 LIMIT 1", (value,))
         except Exception:
-            return value in {'transferencia', 'pago_movil', 'efectivo', 'zelle', 'binance', 'tarjeta'}
+            if value in {'transferencia', 'pago_movil', 'efectivo', 'zelle', 'binance', 'tarjeta'}:
+                return {'id': None, 'nombre': value, 'permite_credito': 0}
+            return None
+
+    def is_valid_payment_method(self, value):
+        return self.get_payment_method(value) is not None
 
     def add_to_cart(self, cliente_cedula, item_id, tipo='producto', cantidad=1):
         if not self.ensure_client_exists(cliente_cedula):
@@ -144,21 +152,36 @@ class OrderModel(Connection):
         try:
             conn.begin()
             cursor = conn.cursor()
+            payment_method = self.get_payment_method(metodo_pago)
+            if not payment_method:
+                raise ValueError("El metodo de pago no es valido.")
+            client = self.fetch_one("transalca",
+                "SELECT c.tipo_cliente, e.dias_credito FROM clientes c LEFT JOIN empresas e ON e.cliente_cedula = c.cedula WHERE c.cedula = %s",
+                (cliente_cedula,))
+            if int(payment_method.get('permite_credito') or 0) and (not client or client.get('tipo_cliente') != 'empresa'):
+                raise ValueError("Las compras a credito solo estan disponibles para empresas.")
+            metodo_nombre = payment_method.get('nombre')
+            metodo_id = payment_method.get('id')
+            tipo_pago = 'credito' if int(payment_method.get('permite_credito') or 0) else 'contado'
+            credito_estado = 'pendiente' if tipo_pago == 'credito' else 'sin_credito'
+            fecha_vencimiento = None
+            if tipo_pago == 'credito':
+                fecha_vencimiento = caracas_now() + timedelta(days=int(client.get('dias_credito') or 0))
             total = sum(item['precio'] * item['cantidad'] for item in cart_items)
             cursor.execute(
-                "INSERT INTO ordenes_venta (cliente_cedula, sucursal_id, fecha, total, metodo_pago, comprobante_url) VALUES (%s, %s, %s, %s, %s, %s)",
-                (cliente_cedula, sucursal_id, caracas_now(), total, metodo_pago, comprobante_url))
+                "INSERT INTO ordenes_venta (cliente_cedula, sucursal_id, fecha, total, metodo_pago, metodo_pago_id, tipo_pago, credito_estado, fecha_vencimiento_credito, comprobante_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (cliente_cedula, sucursal_id, caracas_now(), total, metodo_nombre, metodo_id, tipo_pago, credito_estado, fecha_vencimiento, comprobante_url))
             order_id = cursor.lastrowid
             for item in cart_items:
                 if item['tipo'] == 'producto':
                     subtotal = item['precio'] * item['cantidad']
                     cursor.execute(
-                        "INSERT INTO detalle_orden_venta (orden_id, producto_codigo, servicio_id, tipo, cantidad, precio_unitario, subtotal) VALUES (%s, %s, %s, 'producto', %s, %s, %s)",
-                        (order_id, item['producto_codigo'], SIN_SERVICIO, item['cantidad'], item['precio'], subtotal))
+                        "INSERT INTO detalle_orden_venta_productos (orden_id, producto_codigo, cantidad, precio_unitario, subtotal) VALUES (%s, %s, %s, %s, %s)",
+                        (order_id, item['producto_codigo'], item['cantidad'], item['precio'], subtotal))
                 else:
                     cursor.execute(
-                        "INSERT INTO detalle_orden_venta (orden_id, producto_codigo, servicio_id, tipo, cantidad, precio_unitario, subtotal) VALUES (%s, %s, %s, 'servicio', 1, %s, %s)",
-                        (order_id, SIN_PRODUCTO, item['servicio_id'], item['precio'], item['precio']))
+                        "INSERT INTO detalle_orden_venta_servicios (orden_id, servicio_id, cantidad, precio_unitario, subtotal) VALUES (%s, %s, 1, %s, %s)",
+                        (order_id, item['servicio_id'], item['precio'], item['precio']))
                     if allow_unassigned_services:
                         cursor.execute(
                             "INSERT INTO servicio_mecanico (servicio_id, mecanico_cedula, orden_venta_id, observaciones) VALUES (%s, %s, %s, %s)",
@@ -184,6 +207,9 @@ class OrderModel(Connection):
             cursor.execute("DELETE FROM carrito WHERE cliente_cedula = %s", (cliente_cedula,))
             conn.commit()
             return order_id
+        except ValueError:
+            conn.rollback()
+            raise
         except Exception:
             conn.rollback()
             return None

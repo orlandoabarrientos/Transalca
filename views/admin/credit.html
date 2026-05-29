@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transalca Admin | Gestionar Credito</title>
+    <link rel="icon" type="image/png" href="/public/img/logo.png">
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="mb-3">
+                <h4 class="fw-bold mb-1">Gestionar Credito</h4>
+                <p class="text-muted mb-0">Control de compras a credito de empresas.</p>
+            </div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:var(--primary-soft);color:var(--primary);"><i class="bi bi-receipt"></i></div><div><div class="stat-value" id="totalCredits">0</div><div class="stat-label">Creditos</div></div></div></div>
+                <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#fff7ed;color:#ea580c;"><i class="bi bi-hourglass-split"></i></div><div><div class="stat-value" id="pendingCredits">0</div><div class="stat-label">Pendientes</div></div></div></div>
+                <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#dcfce7;color:#16a34a;"><i class="bi bi-check2-circle"></i></div><div><div class="stat-value" id="paidCredits">0</div><div class="stat-label">Pagados</div></div></div></div>
+                <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#e0f2fe;color:#0284c7;"><i class="bi bi-cash-stack"></i></div><div><div class="stat-value" id="creditBalance" data-usd-price="0">$0.00</div><div class="stat-label">Saldo</div></div></div></div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body filter-bar compact-filter-card mb-0">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Buscar por empresa, RIF u orden..." style="width:320px;max-width:320px;">
+                    <select class="form-select" id="filterEstado" style="width:190px;max-width:190px;">
+                        <option value="">Todos</option>
+                        <option value="pendiente">Pendiente</option>
+                        <option value="aprobado">Aprobado</option>
+                        <option value="pagado">Pagado</option>
+                        <option value="vencido">Vencido</option>
+                        <option value="anulado">Anulado</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Orden</th>
+                                    <th>Empresa</th>
+                                    <th>RIF</th>
+                                    <th>Total</th>
+                                    <th>Metodo</th>
+                                    <th>Estado credito</th>
+                                    <th>Vencimiento</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="creditTableBody">
+                                <tr><td colspan="8" class="text-center py-4 text-muted">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/credit.js"></script>
+</body>
+</html>

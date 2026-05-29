@@ -8,10 +8,13 @@ class TicketModel(Connection):
     def get_all(self, estado=None, prioridad=None):
         sql = ("SELECT t.*, c.nombre as cliente_nombre, c.apellido as cliente_apellido, "
                "v.placa as vehiculo_placa, v.marca as vehiculo_marca, v.modelo as vehiculo_modelo, "
+               "p.nombre as producto_nombre, s.nombre as servicio_nombre, "
                "m.nombre as asignado_nombre, m.apellido as asignado_apellido "
                "FROM tickets_soporte t "
                "INNER JOIN clientes c ON t.cliente_cedula = c.cedula "
-               "LEFT JOIN vehiculos v ON t.vehiculo_placa = v.placa "
+               "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa "
+               "LEFT JOIN productos p ON t.referencia_tipo = 'producto' AND t.referencia_id = p.codigo "
+               "LEFT JOIN servicios s ON t.referencia_tipo = 'servicio' AND t.referencia_id = CAST(s.id AS CHAR) "
                "LEFT JOIN mecanicos m ON t.asignado_a = m.cedula "
                "WHERE 1=1")
         params = []
@@ -29,10 +32,13 @@ class TicketModel(Connection):
             "SELECT t.*, c.nombre as cliente_nombre, c.apellido as cliente_apellido, "
             "c.telefono as cliente_telefono, c.email as cliente_email, "
             "v.placa as vehiculo_placa, v.marca as vehiculo_marca, v.modelo as vehiculo_modelo, "
+            "p.nombre as producto_nombre, s.nombre as servicio_nombre, "
             "m.nombre as asignado_nombre, m.apellido as asignado_apellido "
             "FROM tickets_soporte t "
             "INNER JOIN clientes c ON t.cliente_cedula = c.cedula "
-            "LEFT JOIN vehiculos v ON t.vehiculo_placa = v.placa "
+            "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa "
+            "LEFT JOIN productos p ON t.referencia_tipo = 'producto' AND t.referencia_id = p.codigo "
+            "LEFT JOIN servicios s ON t.referencia_tipo = 'servicio' AND t.referencia_id = CAST(s.id AS CHAR) "
             "LEFT JOIN mecanicos m ON t.asignado_a = m.cedula "
             "WHERE t.id = %s", (ticket_id,))
         if ticket:
@@ -43,21 +49,32 @@ class TicketModel(Connection):
         return self.fetch_all("transalca",
             "SELECT t.*, v.placa as vehiculo_placa, v.marca as vehiculo_marca "
             "FROM tickets_soporte t "
-            "LEFT JOIN vehiculos v ON t.vehiculo_placa = v.placa "
+            "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa "
             "WHERE t.cliente_cedula = %s ORDER BY t.created_at DESC",
             (cliente_cedula,))
 
     def create(self, data):
-        vehiculo_placa = None
-        vehicle_key = data.get('vehiculo_placa') or data.get('vehiculo_id')
-        if vehicle_key:
+        referencia_tipo = (data.get('referencia_tipo') or 'general').strip().lower()
+        referencia_id = None
+        if data.get('vehiculo_placa') or data.get('vehiculo_id'):
+            referencia_tipo = 'vehiculo'
+            vehicle_key = data.get('vehiculo_placa') or data.get('vehiculo_id')
             vehicle = self.fetch_one("transalca", "SELECT placa FROM vehiculos WHERE placa=%s", (str(vehicle_key).strip().upper(),))
-            vehiculo_placa = vehicle['placa'] if vehicle else None
+            referencia_id = vehicle['placa'] if vehicle else None
+        elif referencia_tipo == 'producto' and data.get('referencia_id'):
+            product = self.fetch_one("transalca", "SELECT codigo FROM productos WHERE codigo=%s AND estado=1", (data.get('referencia_id'),))
+            referencia_id = product['codigo'] if product else None
+        elif referencia_tipo == 'servicio' and data.get('referencia_id'):
+            service = self.fetch_one("transalca", "SELECT id FROM servicios WHERE id=%s AND estado=1", (data.get('referencia_id'),))
+            referencia_id = str(service['id']) if service else None
+        else:
+            referencia_tipo = 'general'
         return self.insert("transalca",
-            "INSERT INTO tickets_soporte (cliente_cedula, vehiculo_placa, asunto, "
-            "descripcion, prioridad) VALUES (%s, %s, %s, %s, %s)",
+            "INSERT INTO tickets_soporte (cliente_cedula, referencia_tipo, referencia_id, asunto, "
+            "descripcion, prioridad) VALUES (%s, %s, %s, %s, %s, %s)",
             (data['cliente_cedula'].strip(),
-             vehiculo_placa,
+             referencia_tipo,
+             referencia_id,
              data['asunto'].strip(),
              (data.get('descripcion') or '').strip(),
              data.get('prioridad', 'media')))

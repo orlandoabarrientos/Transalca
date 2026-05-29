@@ -37,6 +37,8 @@ from controller.commission_controller import commission_bp
 from controller.maintenance_controller import maintenance_bp
 from controller.pricing_controller import pricing_bp
 from controller.client_controller import client_bp
+from controller.company_controller import company_bp
+from controller.credit_controller import credit_bp
 from controller.fuel_controller import fuel_bp
 from controller.vehicle_log_controller import vehicle_log_bp
 from componente_ia.api_asistente import asistente_bp
@@ -78,6 +80,8 @@ app.register_blueprint(commission_bp, url_prefix='/api/commissions')
 app.register_blueprint(maintenance_bp, url_prefix='/api/maintenance')
 app.register_blueprint(pricing_bp, url_prefix='/api/pricing')
 app.register_blueprint(client_bp, url_prefix='/api/clients')
+app.register_blueprint(company_bp, url_prefix='/api/companies')
+app.register_blueprint(credit_bp, url_prefix='/api/credit')
 app.register_blueprint(fuel_bp, url_prefix='/api/fuel')
 app.register_blueprint(vehicle_log_bp, url_prefix='/api/vehicle-log')
 app.register_blueprint(asistente_bp, url_prefix='/api/asistente')

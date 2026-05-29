@@ -1,11 +1,4 @@
 from model.connection import Connection
-from datetime import datetime, timedelta
-
-
-def caracas_now():
-    return datetime.utcnow() - timedelta(hours=4)
-
-
 class InventoryModel(Connection):
     def __init__(self):
         super().__init__()
@@ -46,56 +39,6 @@ class InventoryModel(Connection):
         return self.update("transalca",
             "UPDATE stock SET stock_minimo = %s WHERE producto_codigo = %s",
             (stock_minimo, producto_codigo))
-
-    def create_purchase_order(self, data, details):
-        conn = self.con_transalca()
-        try:
-            conn.begin()
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO ordenes_compra (proveedor_rif, usuario_cedula, sucursal_id, fecha, total, observaciones) VALUES (%s, %s, %s, %s, %s, %s)",
-                (data['proveedor_rif'], data['usuario_cedula'], data.get('sucursal_id'),
-                 caracas_now(), data['total'], data.get('observaciones', '')))
-            order_id = cursor.lastrowid
-            for item in details:
-                subtotal = int(item['cantidad']) * float(item['precio_unitario'])
-                cursor.execute(
-                    "INSERT INTO detalle_orden_compra (orden_id, producto_codigo, cantidad, precio_unitario, subtotal) VALUES (%s, %s, %s, %s, %s)",
-                    (order_id, item['producto_codigo'], item['cantidad'], item['precio_unitario'], subtotal))
-            cursor.execute(
-                "UPDATE ordenes_compra SET total = (SELECT SUM(subtotal) FROM detalle_orden_compra WHERE orden_id = %s) WHERE id = %s",
-                (order_id, order_id))
-            conn.commit()
-            return order_id
-        except Exception:
-            conn.rollback()
-            return None
-
-    def get_purchase_orders(self):
-        orders = self.fetch_all("transalca",
-            "SELECT oc.*, p.nombre as proveedor_nombre, s.nombre as sucursal_nombre FROM ordenes_compra oc INNER JOIN proveedores p ON oc.proveedor_rif = p.rif LEFT JOIN sucursales s ON oc.sucursal_id = s.id ORDER BY oc.fecha DESC")
-        for order in orders:
-            user = self.fetch_one("mantenimiento",
-                "SELECT nombre, apellido FROM usuarios WHERE cedula = %s", (order['usuario_cedula'],))
-            order['usuario_nombre'] = f"{user['nombre']} {user['apellido']}" if user else 'N/A'
-        return orders
-
-    def get_purchase_order_detail(self, order_id):
-        order = self.fetch_one("transalca",
-            "SELECT oc.*, p.nombre as proveedor_nombre, s.nombre as sucursal_nombre FROM ordenes_compra oc INNER JOIN proveedores p ON oc.proveedor_rif = p.rif LEFT JOIN sucursales s ON oc.sucursal_id = s.id WHERE oc.id = %s",
-            (order_id,))
-        if order:
-            order['detalles'] = self.fetch_all("transalca",
-                "SELECT d.*, p.nombre as producto_nombre, p.codigo FROM detalle_orden_compra d INNER JOIN productos p ON d.producto_codigo = p.codigo WHERE d.orden_id = %s",
-                (order_id,))
-            user = self.fetch_one("mantenimiento",
-                "SELECT nombre, apellido FROM usuarios WHERE cedula = %s", (order['usuario_cedula'],))
-            order['usuario_nombre'] = f"{user['nombre']} {user['apellido']}" if user else 'N/A'
-        return order
-
-    def update_purchase_order_status(self, order_id, estado):
-        return self.update("transalca",
-            "UPDATE ordenes_compra SET estado = %s WHERE id = %s", (estado, order_id))
 
     def get_sales_orders(self):
         orders = self.fetch_all("transalca",

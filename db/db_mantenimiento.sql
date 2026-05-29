@@ -68,17 +68,6 @@ CREATE TABLE tokens_recuperacion (
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
 
-CREATE TABLE metodos_pago (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    usuario_id INT NOT NULL,
-    nombre VARCHAR(100) NOT NULL,
-    datos TEXT NOT NULL,
-    estado TINYINT(1) DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE RESTRICT
-);
-
 DELIMITER //
 CREATE FUNCTION fn_verificar_credenciales(p_email VARCHAR(150), p_password VARCHAR(255))
 RETURNS INT
@@ -147,13 +136,15 @@ INSERT INTO permisos (rol_id, modulo, crear, leer, actualizar, eliminar) VALUES
 (1, 'categorias', 1, 1, 1, 1),
 (1, 'marcas', 1, 1, 1, 1),
 (1, 'proveedores', 1, 1, 1, 1),
+(1, 'empresas', 1, 1, 1, 1),
 (1, 'mecanicos', 1, 1, 1, 1),
 (1, 'stock', 1, 1, 1, 1),
 (1, 'servicios', 1, 1, 1, 1),
+(1, 'creditos', 1, 1, 1, 1),
+(1, 'metodos_pago', 1, 1, 1, 1),
 (1, 'promociones', 1, 1, 1, 1),
 (1, 'ordenes', 1, 1, 1, 1),
 (1, 'pagos', 1, 1, 1, 1),
-(1, 'metodos_pago', 1, 1, 1, 1),
 (1, 'bitacora', 0, 1, 0, 0),
 (1, 'reportes', 0, 1, 0, 0),
 (1, 'respaldos', 1, 1, 0, 0),
@@ -166,13 +157,6 @@ INSERT INTO permisos (rol_id, modulo, crear, leer, actualizar, eliminar) VALUES
 (2, 'servicios', 0, 1, 1, 0),
 (2, 'ordenes', 1, 1, 1, 0),
 (2, 'pagos', 0, 1, 1, 0),
+(2, 'creditos', 0, 1, 1, 0),
 (2, 'metodos_pago', 0, 1, 0, 0),
 (2, 'reportes', 0, 1, 0, 0);
-
-INSERT INTO metodos_pago (usuario_id, nombre, datos) VALUES
-(1, 'transferencia', 'Datos de transferencia bancaria'),
-(1, 'pago_movil', 'Datos de pago movil'),
-(1, 'efectivo', 'Pago en tienda'),
-(1, 'zelle', 'Datos de Zelle'),
-(1, 'binance', 'Datos de Binance'),
-(1, 'tarjeta', 'Pago con tarjeta');

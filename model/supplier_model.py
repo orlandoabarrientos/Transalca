@@ -11,7 +11,7 @@ class SupplierModel(Connection):
 
     def get_all(self):
         return self.fetch_all("transalca",
-            "SELECT p.*, (SELECT COUNT(*) FROM ordenes_compra WHERE proveedor_rif = p.rif) as total_ordenes FROM proveedores p WHERE p.estado = 1 ORDER BY p.nombre")
+            "SELECT p.*, 0 as total_ordenes FROM proveedores p WHERE p.estado = 1 ORDER BY p.nombre")
 
     def get_active(self):
         return self.fetch_all("transalca",
