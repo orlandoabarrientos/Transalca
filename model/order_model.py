@@ -7,10 +7,6 @@ def caracas_now():
     return datetime.utcnow() - timedelta(hours=4)
 
 
-SIN_PRODUCTO = 'SIN_PRODUCTO'
-SIN_SERVICIO = 0
-
-
 class OrderModel(Connection):
     def __init__(self):
         super().__init__()
@@ -105,7 +101,7 @@ class OrderModel(Connection):
                     "UPDATE carrito SET cantidad = cantidad + %s WHERE id = %s", (cantidad, existing['id']))
             return self.insert("transalca",
                 "INSERT INTO carrito (cliente_cedula, producto_codigo, servicio_id, tipo, cantidad) VALUES (%s, %s, %s, 'producto', %s)",
-                (cliente_cedula, item_id, SIN_SERVICIO, cantidad))
+                (cliente_cedula, item_id, None, cantidad))
         else:
             service = self.fetch_one("transalca", "SELECT id FROM servicios WHERE id = %s AND estado = 1", (item_id,))
             if not service:
@@ -117,7 +113,7 @@ class OrderModel(Connection):
                 return existing['id']
             return self.insert("transalca",
                 "INSERT INTO carrito (cliente_cedula, producto_codigo, servicio_id, tipo, cantidad) VALUES (%s, %s, %s, 'servicio', 1)",
-                (cliente_cedula, SIN_PRODUCTO, item_id))
+                (cliente_cedula, None, item_id))
 
     def update_cart_quantity(self, cart_id, cantidad):
         if cantidad <= 0:

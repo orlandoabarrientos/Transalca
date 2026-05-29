@@ -39,6 +39,7 @@ function loadData() {
                 <td><strong>${escapeHtml(p.nombre)}</strong><br><small class="text-muted">${escapeHtml(p.codigo)}</small></td>
                 <td>${escapeHtml(p.categoria_nombre || '-')}</td>
                 <td>${escapeHtml(p.marca_nombre || '-')}</td>
+                <td>${escapeHtml(p.proveedor_nombre || '-')}</td>
                 <td>${escapeHtml(p.sucursal_nombre || 'Todas')}</td>
                 <td class="fw-bold" style="color:var(--primary);" data-usd-price="${p.precio}">${formatUsdBs(p.precio)}</td>
                 <td>${p.stock !== undefined ? p.stock : '-'}</td>
@@ -50,19 +51,21 @@ function loadData() {
             </tr>`;
         });
         if (!res.data?.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="empty-state"><i class="bi bi-box"></i><p>No hay productos registrados</p></div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="empty-state"><i class="bi bi-box"></i><p>No hay productos registrados</p></div></td></tr>';
         }
     });
 }
 
 async function loadCombos() {
     try {
-        const [cats, brands] = await Promise.all([
+        const [cats, brands, suppliers] = await Promise.all([
             apiCall('/api/categories/active'),
-            apiCall('/api/brands/active')
+            apiCall('/api/brands/active'),
+            apiCall('/api/suppliers/active')
         ]);
         const catSel = document.getElementById('categoria');
         const brandSel = document.getElementById('marca');
+        const supplierSel = document.getElementById('proveedor_rif');
         if (catSel) {
             catSel.innerHTML = '<option value="">Sin categoría</option>';
             (cats.data || []).forEach(c => catSel.innerHTML += `<option value="${escapeHtml(c.nombre)}">${escapeHtml(c.nombre)}</option>`);
@@ -70,6 +73,10 @@ async function loadCombos() {
         if (brandSel) {
             brandSel.innerHTML = '<option value="">Sin marca</option>';
             (brands.data || []).forEach(b => brandSel.innerHTML += `<option value="${escapeHtml(b.nombre)}">${escapeHtml(b.nombre)}</option>`);
+        }
+        if (supplierSel) {
+            supplierSel.innerHTML = '<option value="">Sin proveedor</option>';
+            (suppliers.data || []).forEach(s => supplierSel.innerHTML += `<option value="${escapeHtml(s.rif)}">${escapeHtml(s.nombre)} (${escapeHtml(s.rif)})</option>`);
         }
     } catch(e) {}
 }
@@ -97,6 +104,8 @@ function editData(codigo) {
         if (catSel) catSel.value = p.categoria || '';
         const brandSel = document.getElementById('marca');
         if (brandSel) brandSel.value = p.marca || '';
+        const supplierSel = document.getElementById('proveedor_rif');
+        if (supplierSel) supplierSel.value = p.proveedor_rif || '';
         document.getElementById('modalTitle').textContent = 'Modificar Producto';
         new bootstrap.Modal(document.getElementById('productModal')).show();
         Validator.initTracking('productForm');
@@ -112,7 +121,8 @@ function saveData() {
         descripcion: document.getElementById('descripcion').value,
         precio: document.getElementById('precio').value,
         categoria: document.getElementById('categoria')?.value || null,
-        marca: document.getElementById('marca')?.value || null
+        marca: document.getElementById('marca')?.value || null,
+        proveedor_rif: document.getElementById('proveedor_rif')?.value || null
     };
     const saveBtn = document.querySelector('#productModal .btn-orange');
     const url = oldCodigo ? '/api/products/update' : '/api/products/';

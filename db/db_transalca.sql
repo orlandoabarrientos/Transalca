@@ -97,12 +97,14 @@ CREATE TABLE productos (
     precio DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     categoria VARCHAR(150),
     marca VARCHAR(150),
+    proveedor_rif VARCHAR(20),
     imagen VARCHAR(200) DEFAULT 'default_product.png',
     estado TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (categoria) REFERENCES categorias(nombre) ON UPDATE CASCADE ON DELETE SET NULL,
-    FOREIGN KEY (marca) REFERENCES marcas(nombre) ON UPDATE CASCADE ON DELETE SET NULL
+    FOREIGN KEY (marca) REFERENCES marcas(nombre) ON UPDATE CASCADE ON DELETE SET NULL,
+    FOREIGN KEY (proveedor_rif) REFERENCES proveedores(rif) ON UPDATE CASCADE ON DELETE SET NULL
 );
 
 CREATE TABLE servicios (
@@ -114,15 +116,6 @@ CREATE TABLE servicios (
     estado TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-INSERT IGNORE INTO productos (codigo, nombre, descripcion, precio, estado)
-VALUES ('SIN_PRODUCTO', 'Sin producto', 'Registro interno para compras sin producto', 0.00, 0);
-
-SET @old_sql_mode = @@SQL_MODE;
-SET SQL_MODE = IF(@@SQL_MODE = '', 'NO_AUTO_VALUE_ON_ZERO', CONCAT(@@SQL_MODE, ',NO_AUTO_VALUE_ON_ZERO'));
-INSERT IGNORE INTO servicios (id, nombre, descripcion, precio, duracion_estimada, estado)
-VALUES (0, 'Sin servicio', 'Registro interno para compras sin servicio', 0.00, '0', 0);
-SET SQL_MODE = @old_sql_mode;
 
 CREATE TABLE servicio_sucursal (
     servicio_id INT NOT NULL,
@@ -288,14 +281,14 @@ CREATE TABLE qr_codes (
 CREATE TABLE carrito (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cliente_cedula VARCHAR(20) NOT NULL,
-    producto_codigo VARCHAR(50) NOT NULL DEFAULT 'SIN_PRODUCTO',
-    servicio_id INT NOT NULL DEFAULT 0,
+    producto_codigo VARCHAR(50),
+    servicio_id INT,
     tipo VARCHAR(20) NOT NULL DEFAULT 'producto',
     cantidad INT DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (cliente_cedula) REFERENCES clientes(cedula) ON UPDATE CASCADE,
-    FOREIGN KEY (producto_codigo) REFERENCES productos(codigo) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (servicio_id) REFERENCES servicios(id)
+    FOREIGN KEY (producto_codigo) REFERENCES productos(codigo) ON UPDATE CASCADE ON DELETE SET NULL,
+    FOREIGN KEY (servicio_id) REFERENCES servicios(id) ON DELETE SET NULL
 );
 
 CREATE TABLE tasas_cambio (
@@ -558,7 +551,7 @@ INSERT INTO marcas (nombre, descripcion, estado) VALUES
 ('WOLF', 'Marca importada del catalogo real: WOLF', 1)
 ON DUPLICATE KEY UPDATE descripcion = VALUES(descripcion), estado = VALUES(estado);
 
-UPDATE productos SET estado = 0 WHERE codigo <> 'SIN_PRODUCTO';
+UPDATE productos SET estado = 0;
 
 INSERT INTO productos (codigo, nombre, descripcion, precio, categoria, marca, imagen, estado) VALUES
 ('NEU-000013', '165/65R13 HILO GENESYS', 'Caucho 165/65R13. HILO GENESYS. seccion RIN 13 PCR', 35.00, 'Cauchos', 'HILO GENESYS', 'default_product.png', 1),
@@ -885,7 +878,7 @@ INSERT INTO productos (codigo, nombre, descripcion, precio, categoria, marca, im
 ('CMB-000053', 'ACEITE 20W50 MINERAL MOTUL', 'Combo de producto y servicio. WOLF / MEXLUB / ROSHFRANS', 10.62, 'Combos', 'ACEITE 20W50 MINERAL MOTUL', 'default_product.png', 1)
 ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), descripcion = VALUES(descripcion), precio = VALUES(precio), categoria = VALUES(categoria), marca = VALUES(marca), imagen = VALUES(imagen), estado = VALUES(estado);
 
-DELETE FROM stock WHERE producto_codigo <> 'SIN_PRODUCTO';
+DELETE FROM stock;
 
 INSERT INTO stock (producto_codigo, sucursal_id, stock, stock_minimo, ubicacion) VALUES
 ('NEU-000013', 1, 7, 2, 'RIN 13 PCR'),
@@ -1506,15 +1499,15 @@ CREATE TABLE IF NOT EXISTS cotizaciones (
 CREATE TABLE IF NOT EXISTS cotizacion_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cotizacion_id INT NOT NULL,
-    producto_codigo VARCHAR(50) NOT NULL DEFAULT 'SIN_PRODUCTO',
-    servicio_id INT NOT NULL DEFAULT 0,
+    producto_codigo VARCHAR(50),
+    servicio_id INT,
     tipo VARCHAR(20) NOT NULL DEFAULT 'producto',
     cantidad INT DEFAULT 1,
     precio_usd DECIMAL(10,2) NOT NULL,
     precio_bs DECIMAL(12,2) NOT NULL,
     CONSTRAINT fk_cotizacion_item_cotizacion FOREIGN KEY (cotizacion_id) REFERENCES cotizaciones(id) ON DELETE CASCADE,
-    CONSTRAINT fk_cotizacion_item_producto FOREIGN KEY (producto_codigo) REFERENCES productos(codigo) ON UPDATE CASCADE,
-    CONSTRAINT fk_cotizacion_item_servicio FOREIGN KEY (servicio_id) REFERENCES servicios(id)
+    CONSTRAINT fk_cotizacion_item_producto FOREIGN KEY (producto_codigo) REFERENCES productos(codigo) ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT fk_cotizacion_item_servicio FOREIGN KEY (servicio_id) REFERENCES servicios(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS notificaciones (

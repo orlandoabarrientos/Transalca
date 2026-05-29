@@ -170,7 +170,7 @@ class PricingModel(Connection):
             self.insert("transalca",
                 "INSERT INTO cotizacion_items (cotizacion_id, producto_codigo, servicio_id, "
                 "tipo, cantidad, precio_usd, precio_bs) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-                (quote_id, item.get('producto_codigo') or 'SIN_PRODUCTO', item.get('servicio_id') or 0,
+                (quote_id, item.get('producto_codigo') or None, item.get('servicio_id') or None,
                  item.get('tipo', 'producto'), int(item.get('cantidad', 1)), p_usd, p_bs))
         return quote_id
 

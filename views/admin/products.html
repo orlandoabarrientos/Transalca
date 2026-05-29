@@ -27,6 +27,7 @@
                                 <th>Producto</th>
                                 <th>Categoría</th>
                                 <th>Marca</th>
+                                <th>Proveedor</th>
                                 <th>Sucursal</th>
                                 <th>Precio</th>
                                 <th>Stock</th>
@@ -70,18 +71,22 @@
                         <div class="invalid-feedback"></div>
                     </div>
                     <div class="row">
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             <label class="form-label">Precio <span class="required">*</span></label>
                             <input type="number" class="form-control" id="precio" name="precio" step="0.01" min="0.01">
                             <div class="invalid-feedback"></div>
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             <label class="form-label">Categoría</label>
                             <select class="form-select" id="categoria" name="categoria"></select>
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             <label class="form-label">Marca</label>
                             <select class="form-select" id="marca" name="marca"></select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Proveedor</label>
+                            <select class="form-select" id="proveedor_rif" name="proveedor_rif"></select>
                         </div>
                     </div>
                 </form>

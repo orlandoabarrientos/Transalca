@@ -19,12 +19,15 @@ def _validate_product(data):
         'descripcion': optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=500, allow_serial=True),
         'precio': normalize_decimal(errors, 'precio', data.get('precio'), 'El precio'),
         'categoria': (data.get('categoria') or None),
-        'marca': (data.get('marca') or None)
+        'marca': (data.get('marca') or None),
+        'proveedor_rif': (data.get('proveedor_rif') or None)
     }
     if clean['categoria'] and not model.category_exists(clean['categoria']):
         errors['categoria'] = SELECT_TAMPER_MESSAGE
     if clean['marca'] and not model.brand_exists(clean['marca']):
         errors['marca'] = SELECT_TAMPER_MESSAGE
+    if clean['proveedor_rif'] and not model.supplier_exists(clean['proveedor_rif']):
+        errors['proveedor_rif'] = SELECT_TAMPER_MESSAGE
     return clean, errors
 
 
