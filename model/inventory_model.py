@@ -42,7 +42,9 @@ class InventoryModel(Connection):
 
     def get_sales_orders(self):
         orders = self.fetch_all("transalca",
-            "SELECT ov.*, s.nombre as sucursal_nombre FROM ordenes_venta ov LEFT JOIN sucursales s ON ov.sucursal_id = s.id ORDER BY ov.fecha DESC")
+            "SELECT ov.*, mp.nombre AS metodo_pago, mp.nombre AS metodo_pago_nombre, s.nombre as sucursal_nombre "
+            "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
+            "LEFT JOIN sucursales s ON ov.sucursal_id = s.id ORDER BY ov.fecha DESC")
         for order in orders:
             client = self.fetch_one("mantenimiento",
                 "SELECT nombre, apellido FROM usuarios WHERE cedula = %s", (order['cliente_cedula'],))
@@ -51,7 +53,9 @@ class InventoryModel(Connection):
 
     def get_sales_order_detail(self, order_id):
         order = self.fetch_one("transalca",
-            "SELECT ov.*, s.nombre as sucursal_nombre FROM ordenes_venta ov LEFT JOIN sucursales s ON ov.sucursal_id = s.id WHERE ov.id = %s", (order_id,))
+            "SELECT ov.*, mp.nombre AS metodo_pago, mp.nombre AS metodo_pago_nombre, s.nombre as sucursal_nombre "
+            "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
+            "LEFT JOIN sucursales s ON ov.sucursal_id = s.id WHERE ov.id = %s", (order_id,))
         if order:
             order['detalles'] = self.fetch_all("transalca",
                 "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre ELSE sv.nombre END as item_nombre FROM detalle_orden_venta d LEFT JOIN productos p ON d.producto_codigo = p.codigo LEFT JOIN servicios sv ON d.servicio_id = sv.id WHERE d.orden_id = %s",

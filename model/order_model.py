@@ -156,7 +156,6 @@ class OrderModel(Connection):
                 (cliente_cedula,))
             if int(payment_method.get('permite_credito') or 0) and (not client or client.get('tipo_cliente') != 'empresa'):
                 raise ValueError("Las compras a credito solo estan disponibles para empresas.")
-            metodo_nombre = payment_method.get('nombre')
             metodo_id = payment_method.get('id')
             tipo_pago = 'credito' if int(payment_method.get('permite_credito') or 0) else 'contado'
             credito_estado = 'pendiente' if tipo_pago == 'credito' else 'sin_credito'
@@ -165,8 +164,8 @@ class OrderModel(Connection):
                 fecha_vencimiento = caracas_now() + timedelta(days=int(client.get('dias_credito') or 0))
             total = sum(item['precio'] * item['cantidad'] for item in cart_items)
             cursor.execute(
-                "INSERT INTO ordenes_venta (cliente_cedula, sucursal_id, fecha, total, metodo_pago, metodo_pago_id, tipo_pago, credito_estado, fecha_vencimiento_credito, comprobante_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                (cliente_cedula, sucursal_id, caracas_now(), total, metodo_nombre, metodo_id, tipo_pago, credito_estado, fecha_vencimiento, comprobante_url))
+                "INSERT INTO ordenes_venta (cliente_cedula, sucursal_id, fecha, total, metodo_pago_id, tipo_pago, credito_estado, fecha_vencimiento_credito, comprobante_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (cliente_cedula, sucursal_id, caracas_now(), total, metodo_id, tipo_pago, credito_estado, fecha_vencimiento, comprobante_url))
             order_id = cursor.lastrowid
             for item in cart_items:
                 if item['tipo'] == 'producto':
@@ -212,10 +211,15 @@ class OrderModel(Connection):
 
     def get_client_orders(self, cliente_cedula):
         return self.fetch_all("transalca",
-            "SELECT * FROM ordenes_venta WHERE cliente_cedula = %s ORDER BY fecha DESC", (cliente_cedula,))
+            "SELECT ov.*, mp.nombre AS metodo_pago, mp.nombre AS metodo_pago_nombre "
+            "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
+            "WHERE ov.cliente_cedula = %s ORDER BY ov.fecha DESC", (cliente_cedula,))
 
     def get_order_detail(self, order_id):
-        order = self.fetch_one("transalca", "SELECT * FROM ordenes_venta WHERE id = %s", (order_id,))
+        order = self.fetch_one("transalca",
+            "SELECT ov.*, mp.nombre AS metodo_pago, mp.nombre AS metodo_pago_nombre "
+            "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
+            "WHERE ov.id = %s", (order_id,))
         if order:
             order['detalles'] = self.fetch_all("transalca",
                 "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre ELSE s.nombre END as item_nombre FROM detalle_orden_venta d LEFT JOIN productos p ON d.producto_codigo = p.codigo LEFT JOIN servicios s ON d.servicio_id = s.id WHERE d.orden_id = %s",

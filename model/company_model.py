@@ -125,5 +125,7 @@ class CompanyModel(Connection):
 
     def get_orders(self, rif):
         return self.fetch_all("transalca",
-            "SELECT * FROM ordenes_venta WHERE cliente_cedula=%s ORDER BY id DESC LIMIT 50",
+            "SELECT ov.*, mp.nombre AS metodo_pago, mp.nombre AS metodo_pago_nombre "
+            "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
+            "WHERE ov.cliente_cedula=%s ORDER BY ov.id DESC LIMIT 50",
             (rif,))

@@ -7,7 +7,10 @@ class PaymentModel(Connection):
 
     def get_pending(self):
         comprobantes = self.fetch_all("transalca",
-            "SELECT cp.*, ov.total, ov.fecha as orden_fecha FROM comprobantes_pago cp INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id WHERE cp.estado = 'pendiente' ORDER BY cp.fecha DESC")
+            "SELECT cp.*, ov.total, ov.fecha as orden_fecha, mp.nombre AS metodo_pago "
+            "FROM comprobantes_pago cp INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id "
+            "LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
+            "WHERE cp.estado = 'pendiente' ORDER BY cp.fecha DESC")
         for comp in comprobantes:
             order = self.fetch_one("transalca", "SELECT cliente_cedula FROM ordenes_venta WHERE id = %s", (comp['orden_venta_id'],))
             if order:
@@ -21,11 +24,17 @@ class PaymentModel(Connection):
     def get_all(self, estado=None):
         if estado:
             comprobantes = self.fetch_all("transalca",
-                "SELECT cp.*, ov.total, ov.fecha as orden_fecha FROM comprobantes_pago cp INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id WHERE cp.estado = %s ORDER BY cp.fecha DESC",
+                "SELECT cp.*, ov.total, ov.fecha as orden_fecha, mp.nombre AS metodo_pago "
+                "FROM comprobantes_pago cp INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id "
+                "LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
+                "WHERE cp.estado = %s ORDER BY cp.fecha DESC",
                 (estado,))
         else:
             comprobantes = self.fetch_all("transalca",
-                "SELECT cp.*, ov.total, ov.fecha as orden_fecha FROM comprobantes_pago cp INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id ORDER BY cp.fecha DESC")
+                "SELECT cp.*, ov.total, ov.fecha as orden_fecha, mp.nombre AS metodo_pago "
+                "FROM comprobantes_pago cp INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id "
+                "LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
+                "ORDER BY cp.fecha DESC")
         for comp in comprobantes:
             order = self.fetch_one("transalca", "SELECT cliente_cedula FROM ordenes_venta WHERE id = %s", (comp['orden_venta_id'],))
             if order:
@@ -65,7 +74,9 @@ class PaymentModel(Connection):
 
     def get_by_id(self, comprobante_id):
         comp = self.fetch_one("transalca",
-            "SELECT cp.*, ov.total, ov.fecha as orden_fecha, ov.cliente_cedula FROM comprobantes_pago cp INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id WHERE cp.id = %s",
+            "SELECT cp.*, ov.total, ov.fecha as orden_fecha, ov.cliente_cedula, mp.nombre AS metodo_pago "
+            "FROM comprobantes_pago cp INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id "
+            "LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id WHERE cp.id = %s",
             (comprobante_id,))
         if comp:
             client = self.fetch_one("mantenimiento",
@@ -78,7 +89,10 @@ class PaymentModel(Connection):
         return comp
 
     def get_order_info_for_email(self, orden_venta_id):
-        order = self.fetch_one("transalca", "SELECT * FROM ordenes_venta WHERE id = %s", (orden_venta_id,))
+        order = self.fetch_one("transalca",
+            "SELECT ov.*, mp.nombre AS metodo_pago, mp.nombre AS metodo_pago_nombre "
+            "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
+            "WHERE ov.id = %s", (orden_venta_id,))
         if order:
             client = self.fetch_one("mantenimiento",
                 "SELECT * FROM usuarios WHERE cedula = %s", (order['cliente_cedula'],))

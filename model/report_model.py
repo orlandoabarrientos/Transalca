@@ -42,7 +42,10 @@ class ReportModel(Connection):
         }
 
     def get_recent_orders(self, limit=10):
-        orders = self.fetch_all("transalca", "SELECT * FROM ordenes_venta ORDER BY fecha DESC LIMIT %s", (limit,))
+        orders = self.fetch_all("transalca",
+            "SELECT ov.*, mp.nombre AS metodo_pago, mp.nombre AS metodo_pago_nombre "
+            "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
+            "ORDER BY ov.fecha DESC LIMIT %s", (limit,))
         for order in orders:
             order['cliente_nombre'] = self._client_name(order['cliente_cedula'])
             order['fecha'] = order['fecha'].isoformat() if hasattr(order['fecha'], 'isoformat') else order['fecha']
@@ -70,7 +73,7 @@ class ReportModel(Connection):
         return orders
 
     def get_payments_history(self, start_date=None, end_date=None, status=None):
-        sql = "SELECT c.id, o.cliente_cedula, c.orden_venta_id as orden_id, CONCAT('IMG-', c.id) as referencia, o.total as monto, 'USD' as moneda, o.metodo_pago as metodo, c.fecha, c.estado FROM comprobantes_pago c INNER JOIN ordenes_venta o ON c.orden_venta_id = o.id WHERE 1=1"
+        sql = "SELECT c.id, o.cliente_cedula, c.orden_venta_id as orden_id, CONCAT('IMG-', c.id) as referencia, o.total as monto, 'USD' as moneda, mp.nombre as metodo, c.fecha, c.estado FROM comprobantes_pago c INNER JOIN ordenes_venta o ON c.orden_venta_id = o.id LEFT JOIN metodos_pago mp ON mp.id = o.metodo_pago_id WHERE 1=1"
         params = []
         if start_date:
             sql += " AND DATE(c.fecha) >= %s"

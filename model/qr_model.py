@@ -150,7 +150,10 @@ class QRModel(Connection):
         elif qr['tipo'] == 'servicio':
             try:
                 content = json.loads(qr['contenido'])
-                order = self.fetch_one("transalca", "SELECT * FROM ordenes_venta WHERE id = %s", (content.get('orden_id'),))
+                order = self.fetch_one("transalca",
+                    "SELECT ov.*, mp.nombre AS metodo_pago, mp.nombre AS metodo_pago_nombre "
+                    "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
+                    "WHERE ov.id = %s", (content.get('orden_id'),))
                 if order:
                     order['detalles'] = self.fetch_all("transalca",
                         "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre ELSE s.nombre END as item_nombre FROM detalle_orden_venta d LEFT JOIN productos p ON d.producto_codigo = p.codigo LEFT JOIN servicios s ON d.servicio_id = s.id WHERE d.orden_id = %s",

@@ -28,7 +28,11 @@ class StatsModel(Connection):
         return {"labels": labels, "data": data}
 
     def get_payments_distribution(self):
-        sql = "SELECT metodo_pago as metodo, COUNT(*) as cantidad FROM ordenes_venta WHERE metodo_pago IS NOT NULL GROUP BY metodo_pago"
+        sql = (
+            "SELECT mp.nombre as metodo, COUNT(*) as cantidad "
+            "FROM ordenes_venta ov INNER JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
+            "GROUP BY mp.nombre"
+        )
         records = self.fetch_all("transalca", sql)
         labels = [str(r['metodo']).capitalize() for r in records]
         data = [int(r['cantidad']) for r in records]

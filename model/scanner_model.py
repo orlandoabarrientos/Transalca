@@ -164,7 +164,10 @@ class ScannerModel(Connection):
             "SELECT cedula, nombre, apellido, email, telefono FROM clientes WHERE cedula = %s", (cliente_cedula,))
 
     def get_order_full(self, order_id):
-        order = self.fetch_one("transalca", "SELECT * FROM ordenes_venta WHERE id = %s", (order_id,))
+        order = self.fetch_one("transalca",
+            "SELECT ov.*, mp.nombre AS metodo_pago, mp.nombre AS metodo_pago_nombre "
+            "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
+            "WHERE ov.id = %s", (order_id,))
         if not order:
             return None
 
@@ -176,7 +179,7 @@ class ScannerModel(Connection):
 
     def get_latest_order_full(self, cliente_cedula):
         order = self.fetch_one("transalca",
-            "SELECT * FROM ordenes_venta WHERE cliente_cedula = %s ORDER BY fecha DESC, id DESC LIMIT 1",
+            "SELECT id FROM ordenes_venta WHERE cliente_cedula = %s ORDER BY fecha DESC, id DESC LIMIT 1",
             (cliente_cedula,))
         if not order:
             return None

@@ -171,7 +171,6 @@ CREATE TABLE ordenes_venta (
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     total DECIMAL(12,2) DEFAULT 0.00,
     estado VARCHAR(30) NOT NULL DEFAULT 'pendiente',
-    metodo_pago VARCHAR(100),
     metodo_pago_id INT,
     tipo_pago VARCHAR(20) NOT NULL DEFAULT 'contado',
     credito_estado VARCHAR(30) DEFAULT 'sin_credito',
