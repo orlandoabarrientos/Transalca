@@ -17,8 +17,8 @@ $(document).ready(function () {
         fEmail: { email: true },
         fRepresentanteTelefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 digitos y comenzar por 04' },
         fRepresentanteEmail: { email: true },
-        fLimiteCredito: { min: 0, minMsg: 'El limite no puede ser negativo' },
-        fDiasCredito: { min: 0, minMsg: 'Los dias no pueden ser negativos' }
+        fLimiteCredito: { min: 0, minMsg: 'El límite no puede ser negativo' },
+        fDiasCredito: { min: 0, minMsg: 'Los días no pueden ser negativos' }
     });
     Validator.setRules('fleetForm', {
         vMarca: { required: true, minLength: 2, requiredMsg: 'Marca requerida' },
@@ -97,8 +97,8 @@ function loadCompanies() {
 function companyCreditBadge(value) {
     const status = String(value || 'al_dia').toLowerCase();
     if (status === 'deudora') return '<span class="badge-status badge-inactive">Deudora</span>';
-    if (status === 'credito_activo') return '<span class="badge-status badge-pending">Credito activo</span>';
-    return '<span class="badge-status badge-active">Al dia</span>';
+    if (status === 'credito_activo') return '<span class="badge-status badge-pending">Crédito activo</span>';
+    return '<span class="badge-status badge-active">Al día</span>';
 }
 
 function formatCompanyDate(value) {
@@ -231,7 +231,7 @@ function hideCompanyDetail() {
 
 function renderFleet(items) {
     if (!items.length) {
-        $('#fleetList').html('<p class="text-muted text-center py-3">Sin vehiculos registrados</p>');
+        $('#fleetList').html('<p class="text-muted text-center py-3">Sin vehículos registrados</p>');
         return;
     }
     let html = '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Placa</th><th>Marca</th><th>Modelo</th><th>Ano</th><th>Km</th><th>Acciones</th></tr></thead><tbody>';
@@ -244,10 +244,10 @@ function renderFleet(items) {
 
 function renderCompanyOrders(items) {
     if (!items.length) {
-        $('#ordersList').html('<p class="text-muted text-center py-3">Sin ordenes registradas</p>');
+        $('#ordersList').html('<p class="text-muted text-center py-3">Sin órdenes registradas</p>');
         return;
     }
-    let html = '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>ID</th><th>Total</th><th>Estado</th><th>Credito</th><th>Fecha</th></tr></thead><tbody>';
+    let html = '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>ID</th><th>Total</th><th>Estado</th><th>Crédito</th><th>Fecha</th></tr></thead><tbody>';
     items.forEach(o => {
         html += `<tr><td>#${o.id}</td><td data-usd-price="${o.total || 0}">${formatUsdBs(o.total || 0)}</td><td>${statusBadge(o.estado)}</td><td>${statusBadge(o.credito_estado || o.tipo_pago || '')}</td><td>${formatDate(o.fecha)}</td></tr>`;
     });

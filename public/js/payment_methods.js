@@ -23,8 +23,8 @@ $(document).ready(function() {
                     .then(r => r.json())
                     .then(data => {
                         if (data.status === 'success' && !data.unique) {
-                            nameInput.dataset.externalError = 'Este metodo de pago ya esta registrado';
-                            setFieldError(nameInput, 'Este metodo de pago ya esta registrado');
+                            nameInput.dataset.externalError = 'Este método de pago ya está registrado.';
+                            setFieldError(nameInput, 'Este método de pago ya está registrado.');
                         } else {
                             delete nameInput.dataset.externalError;
                             if (nameInput.classList.contains('is-invalid')) clearFieldError(nameInput);
@@ -58,17 +58,17 @@ function renderPaymentMethods() {
         tbody.innerHTML += `<tr>
             <td><strong>${escapeHtml(item.nombre)}</strong></td>
             <td>${escapeHtml(item.datos)}</td>
-            <td>${item.permite_credito ? '<span class="badge bg-success">Si</span>' : '<span class="badge bg-secondary">No</span>'}</td>
+            <td>${item.permite_credito ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-secondary">No</span>'}</td>
             <td>${escapeHtml(`${item.usuario_nombre || ''} ${item.usuario_apellido || ''}`.trim() || '-')}</td>
             <td>${statusBadge(item.estado)}</td>
             <td>
-                <button class="btn btn-icon btn-sm btn-warning" onclick="editPaymentMethod(${item.id})" title="Modificar metodo de pago"><i class="bi bi-pencil-square"></i></button>
-                <button class="btn btn-icon btn-sm btn-danger" onclick="deletePaymentMethod(${item.id})" title="Eliminar metodo de pago"><i class="bi bi-trash"></i></button>
+                <button class="btn btn-icon btn-sm btn-warning" onclick="editPaymentMethod(${item.id})" title="Modificar método de pago"><i class="bi bi-pencil-square"></i></button>
+                <button class="btn btn-icon btn-sm btn-danger" onclick="deletePaymentMethod(${item.id})" title="Eliminar método de pago"><i class="bi bi-trash"></i></button>
             </td>
         </tr>`;
     });
     if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-wallet2"></i><p>No hay metodos de pago registrados</p></div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-wallet2"></i><p>No hay métodos de pago registrados</p></div></td></tr>';
     }
 }
 
@@ -76,7 +76,7 @@ function openPaymentMethodModal() {
     Validator.clearForm('paymentMethodForm');
     document.getElementById('paymentMethodId').value = '';
     document.getElementById('permite_credito').checked = false;
-    document.getElementById('paymentMethodModalTitle').textContent = 'Registrar Metodo de Pago';
+    document.getElementById('paymentMethodModalTitle').textContent = 'Registrar Método de Pago';
     document.getElementById('btnSavePaymentMethod').innerHTML = '<i class="bi bi-plus-circle me-1"></i>Registrar';
     new bootstrap.Modal(document.getElementById('paymentMethodModal')).show();
     Validator.initTracking('paymentMethodForm');
@@ -90,7 +90,7 @@ function editPaymentMethod(id) {
         document.getElementById('nombre').value = item.nombre || '';
         document.getElementById('datos').value = item.datos || '';
         document.getElementById('permite_credito').checked = !!item.permite_credito;
-        document.getElementById('paymentMethodModalTitle').textContent = 'Modificar Metodo de Pago';
+        document.getElementById('paymentMethodModalTitle').textContent = 'Modificar Método de Pago';
         document.getElementById('btnSavePaymentMethod').innerHTML = '<i class="bi bi-pencil-square me-1"></i>Modificar';
         new bootstrap.Modal(document.getElementById('paymentMethodModal')).show();
         Validator.initTracking('paymentMethodForm');
@@ -119,7 +119,7 @@ function savePaymentMethod() {
 }
 
 function deletePaymentMethod(id) {
-    confirmAction('Estas seguro de que deseas eliminar este metodo de pago?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar este método de pago?', () => {
         apiCall(`/api/payment-methods/${id}`, 'DELETE').then(res => {
             showToast(res.message, res.status === 'success' ? 'success' : 'error');
             loadPaymentMethods();

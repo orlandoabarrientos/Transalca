@@ -13,7 +13,7 @@ def _validate(data):
     errors = {}
     clean = {}
     clean['nombre'] = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=100, allow_serial=True)
-    clean['datos'] = require_text(errors, 'datos', data.get('datos'), 'Los datos del metodo de pago', min_len=3, max_len=1000, allow_serial=True)
+    clean['datos'] = require_text(errors, 'datos', data.get('datos'), 'Los datos del método de pago', min_len=3, max_len=1000, allow_serial=True)
     clean['permite_credito'] = 1 if data.get('permite_credito') in (1, '1', True, 'true', 'on') else 0
     return clean, errors
 
@@ -39,7 +39,7 @@ def get_active():
             return auth
         return jsonify({"status": "success", "data": model.get_active()})
     except Exception:
-        return jsonify({"status": "error", "message": "No se pudo cargar los metodos de pago."}), 500
+        return jsonify({"status": "error", "message": "No se pudieron cargar los métodos de pago."}), 500
 
 
 @payment_method_bp.route('/check-unique', methods=['GET'])
@@ -67,7 +67,7 @@ def get_one(method_id):
             return deny()
         item = model.get_by_id(method_id)
         if not item:
-            return jsonify({"status": "error", "message": "Metodo de pago no encontrado."}), 404
+            return jsonify({"status": "error", "message": "Método de pago no encontrado."}), 404
         return jsonify({"status": "success", "data": item})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -83,13 +83,13 @@ def create():
             return deny()
         clean, errors = _validate(request.get_json() or {})
         if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+            return jsonify({"status": "error", "message": "Errores de validación.", "errors": errors}), 400
         if model.name_exists(clean['nombre']):
-            return jsonify({"status": "error", "message": "Este metodo de pago ya esta registrado.", "errors": {"nombre": "Este metodo de pago ya esta registrado."}}), 400
+            return jsonify({"status": "error", "message": "Este método de pago ya está registrado.", "errors": {"nombre": "Este método de pago ya está registrado."}}), 400
         clean['usuario_id'] = session['user_id']
         method_id = model.create(clean)
-        bitacora.log_action(session['user_id'], 'CREAR', 'METODOS_PAGO', f"Metodo de pago creado: {clean['nombre']}", request.remote_addr)
-        return jsonify({"status": "success", "message": "Metodo de pago registrado correctamente.", "id": method_id}), 201
+        bitacora.log_action(session['user_id'], 'CREAR', 'METODOS_PAGO', f"Método de pago creado: {clean['nombre']}", request.remote_addr)
+        return jsonify({"status": "success", "message": "Método de pago registrado correctamente.", "id": method_id}), 201
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -103,15 +103,15 @@ def update(method_id):
         if not is_employee():
             return deny()
         if not model.get_by_id(method_id):
-            return jsonify({"status": "error", "message": "Metodo de pago no encontrado."}), 404
+            return jsonify({"status": "error", "message": "Método de pago no encontrado."}), 404
         clean, errors = _validate(request.get_json() or {})
         if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+            return jsonify({"status": "error", "message": "Errores de validación.", "errors": errors}), 400
         if model.name_exists(clean['nombre'], method_id):
-            return jsonify({"status": "error", "message": "Este metodo de pago ya esta registrado.", "errors": {"nombre": "Este metodo de pago ya esta registrado."}}), 400
+            return jsonify({"status": "error", "message": "Este método de pago ya está registrado.", "errors": {"nombre": "Este método de pago ya está registrado."}}), 400
         model.update_method(method_id, clean)
-        bitacora.log_action(session['user_id'], 'MODIFICAR', 'METODOS_PAGO', f"Metodo de pago modificado: {clean['nombre']}", request.remote_addr)
-        return jsonify({"status": "success", "message": "Metodo de pago modificado correctamente."})
+        bitacora.log_action(session['user_id'], 'MODIFICAR', 'METODOS_PAGO', f"Método de pago modificado: {clean['nombre']}", request.remote_addr)
+        return jsonify({"status": "success", "message": "Método de pago modificado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -126,9 +126,9 @@ def delete(method_id):
             return deny()
         item = model.get_by_id(method_id)
         if not item:
-            return jsonify({"status": "error", "message": "Metodo de pago no encontrado."}), 404
+            return jsonify({"status": "error", "message": "Método de pago no encontrado."}), 404
         model.soft_delete(method_id)
-        bitacora.log_action(session['user_id'], 'ELIMINAR', 'METODOS_PAGO', f"Metodo de pago eliminado: {item['nombre']}", request.remote_addr)
-        return jsonify({"status": "success", "message": "Metodo de pago eliminado correctamente."})
+        bitacora.log_action(session['user_id'], 'ELIMINAR', 'METODOS_PAGO', f"Método de pago eliminado: {item['nombre']}", request.remote_addr)
+        return jsonify({"status": "success", "message": "Método de pago eliminado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transalca Admin | Gestionar Credito</title>
+    <title>Transalca Admin | Gestionar Crédito</title>
     <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
@@ -17,24 +17,24 @@
         <div id="navbarContainer"></div>
         <div class="content-area">
             <div class="mb-3">
-                <h4 class="fw-bold mb-1">Gestionar Credito</h4>
-                <p class="text-muted mb-0">Control de compras a credito, vencimientos y estados de empresas.</p>
+                <h4 class="fw-bold mb-1">Gestionar Crédito</h4>
+                <p class="text-muted mb-0">Control de compras a crédito, abonos, vencimientos y estados de empresas.</p>
             </div>
             <div class="row g-3 mb-4">
-                <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:var(--primary-soft);color:var(--primary);"><i class="bi bi-receipt"></i></div><div><div class="stat-value" id="totalCredits">0</div><div class="stat-label">Creditos</div></div></div></div>
+                <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:var(--primary-soft);color:var(--primary);"><i class="bi bi-receipt"></i></div><div><div class="stat-value" id="totalCredits">0</div><div class="stat-label">Créditos</div></div></div></div>
                 <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#fff7ed;color:#ea580c;"><i class="bi bi-hourglass-split"></i></div><div><div class="stat-value" id="pendingCredits">0</div><div class="stat-label">Activos</div></div></div></div>
                 <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#dcfce7;color:#16a34a;"><i class="bi bi-check2-circle"></i></div><div><div class="stat-value" id="paidCredits">0</div><div class="stat-label">Pagados</div></div></div></div>
                 <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#fee2e2;color:#dc2626;"><i class="bi bi-exclamation-octagon"></i></div><div><div class="stat-value" id="expiredCredits">0</div><div class="stat-label">Vencidos</div></div></div></div>
             </div>
             <div class="row g-3 mb-4">
-                <div class="col-md-4"><div class="stat-card"><div class="stat-icon" style="background:#e0f2fe;color:#0284c7;"><i class="bi bi-cash-stack"></i></div><div><div class="stat-value" id="creditBalance" data-usd-price="0">$0.00</div><div class="stat-label">Saldo pendiente</div></div></div></div>
+                <div class="col-md-4"><div class="stat-card"><div class="stat-icon" style="background:#e0f2fe;color:#0284c7;"><i class="bi bi-cash-stack"></i></div><div><div class="stat-value" id="creditBalance" data-usd-price="0">$0.00</div><div class="stat-label">Deuda pendiente</div></div></div></div>
                 <div class="col-md-8">
                     <div class="card h-100">
                         <div class="card-body d-flex align-items-center gap-3">
                             <div class="stat-icon" style="background:#fef3c7;color:#d97706;"><i class="bi bi-bell"></i></div>
                             <div>
-                                <h6 class="fw-bold mb-1">Alertas automaticas</h6>
-                                <p class="text-muted mb-0">El sistema notifica una semana antes, dos dias antes y al vencer el credito. Al vencer, la empresa queda como deudora.</p>
+                                <h6 class="fw-bold mb-1">Alertas automáticas</h6>
+                                <p class="text-muted mb-0">El sistema notifica una semana antes, dos días antes y al vencer el crédito. Al vencer, la empresa queda como deudora si mantiene deuda pendiente.</p>
                             </div>
                         </div>
                     </div>
@@ -64,16 +64,17 @@
                                     <th>Empresa</th>
                                     <th>RIF</th>
                                     <th>Total</th>
-                                    <th>Metodo</th>
+                                    <th>Deuda</th>
+                                    <th>Método</th>
                                     <th>Inicio</th>
                                     <th>Fin</th>
-                                    <th>Dias</th>
-                                    <th>Estado credito</th>
+                                    <th>Días</th>
+                                    <th>Estado crédito</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="creditTableBody">
-                                <tr><td colspan="10" class="text-center py-4 text-muted">Cargando...</td></tr>
+                                <tr><td colspan="11" class="text-center py-4 text-muted">Cargando...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -87,7 +88,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Modificar fechas de credito</h5>
+                <h5 class="modal-title">Modificar fechas de crédito</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -101,12 +102,42 @@
                         <label class="form-label">Fecha de fin <span class="text-danger">*</span></label>
                         <input type="date" class="form-control" id="creditEndDate" name="fecha_fin" required>
                     </div>
-                    <small class="text-muted">Al modificar las fechas se reinician las alertas pendientes de este credito.</small>
+                    <small class="text-muted">Al modificar las fechas se reinician las alertas pendientes de este crédito.</small>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-warning" onclick="saveCreditDates()"><i class="bi bi-pencil-square me-1"></i>Modificar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="creditPaymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar abono</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="creditPaymentForm">
+                    <input type="hidden" id="creditPaymentOrderId">
+                    <input type="hidden" id="creditPaymentDebt">
+                    <div class="alert alert-info mb-3">
+                        Deuda actual: <strong id="creditPaymentDebtLabel">$0.00</strong>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Monto del abono <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="creditPaymentAmount" name="monto" min="0.01" step="0.01" required>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <small class="text-muted">Si el abono cubre toda la deuda, el crédito quedará pagado automáticamente.</small>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="saveCreditPayment()"><i class="bi bi-cash-coin me-1"></i>Registrar abono</button>
             </div>
         </div>
     </div>

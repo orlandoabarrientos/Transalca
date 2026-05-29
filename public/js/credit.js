@@ -9,7 +9,16 @@ $(document).ready(function () {
         creditStartDate: { required: true, requiredMsg: 'Fecha de inicio requerida' },
         creditEndDate: { required: true, requiredMsg: 'Fecha de fin requerida' }
     });
+    Validator.setRules('creditPaymentForm', {
+        creditPaymentAmount: {
+            required: true,
+            requiredMsg: 'El monto del abono es obligatorio',
+            min: 0.01,
+            minMsg: 'El monto del abono debe ser mayor a cero'
+        }
+    });
     Validator.setupRealtime('creditDatesForm');
+    Validator.setupRealtime('creditPaymentForm');
     loadCreditStats();
     loadCredits();
 });
@@ -31,7 +40,7 @@ function loadCreditStats() {
 
 function loadCredits() {
     const tbody = $('#creditTableBody');
-    tbody.html('<tr><td colspan="10" class="text-center py-4"><div class="spinner-border text-warning" role="status"></div></td></tr>');
+    tbody.html('<tr><td colspan="11" class="text-center py-4"><div class="spinner-border text-warning" role="status"></div></td></tr>');
     const q = $('#searchInput').val();
     const estado = $('#filterEstado').val();
     let url = '/api/credit/?';
@@ -40,31 +49,35 @@ function loadCredits() {
     $.get(url, function (r) {
         tbody.empty();
         if (r.status !== 'success') {
-            tbody.html('<tr><td colspan="10" class="text-center py-4 text-danger">No se pudieron cargar los creditos.</td></tr>');
+            tbody.html('<tr><td colspan="11" class="text-center py-4 text-danger">No se pudieron cargar los créditos.</td></tr>');
             return;
         }
         if (!r.data || !r.data.length) {
-            tbody.html('<tr><td colspan="10" class="text-center py-4 text-muted">No hay creditos registrados.</td></tr>');
+            tbody.html('<tr><td colspan="11" class="text-center py-4 text-muted">No hay créditos registrados.</td></tr>');
             return;
         }
         r.data.forEach(o => {
             const startDate = dateOnly(o.fecha_inicio_credito || o.fecha);
             const endDate = dateOnly(o.fecha_vencimiento_credito || '');
             const days = daysUntil(endDate);
+            const debt = Number(o.monto_deuda ?? o.total ?? 0);
+            const paid = String(o.credito_estado || '').toLowerCase() === 'pagado' || debt <= 0;
             tbody.append(`
                 <tr>
                     <td>#${o.id}</td>
                     <td>${escapeHtml(o.razon_social || o.nombre || '')}</td>
                     <td>${escapeHtml(o.rif || '')}</td>
                     <td data-usd-price="${o.total || 0}">${formatUsdBs(o.total || 0)}</td>
+                    <td data-usd-price="${debt}">${formatUsdBs(debt)}</td>
                     <td>${escapeHtml(o.metodo_pago_nombre || o.metodo_pago || '')}</td>
                     <td>${startDate ? formatCreditDate(startDate) : 'N/A'}</td>
                     <td>${endDate ? formatCreditDate(endDate) : 'N/A'}</td>
                     <td>${renderDaysLeft(days)}</td>
                     <td>${creditStatusBadge(o.credito_estado || 'activo')}</td>
                     <td>
-                        <button class="btn btn-sm btn-warning me-1" title="Modificar credito" onclick="showCreditDatesModal(${o.id}, '${startDate || ''}', '${endDate || ''}')"><i class="bi bi-pencil-square"></i></button>
-                        <button class="btn btn-sm btn-success" title="Pagado" onclick="markCreditPaid(${o.id})" ${o.credito_estado === 'pagado' ? 'disabled' : ''}><i class="bi bi-check2-circle"></i> Pagado</button>
+                        <button class="btn btn-sm btn-warning me-1" title="Modificar crédito" onclick="showCreditDatesModal(${o.id}, '${startDate || ''}', '${endDate || ''}')"><i class="bi bi-pencil-square"></i></button>
+                        <button class="btn btn-sm btn-success me-1" title="Registrar abono" onclick="showCreditPaymentModal(${o.id}, ${debt})" ${paid ? 'disabled' : ''}><i class="bi bi-cash-coin"></i> Abonar</button>
+                        <button class="btn btn-sm btn-success" title="Pagado" onclick="markCreditPaid(${o.id})" ${paid ? 'disabled' : ''}><i class="bi bi-check2-circle"></i> Pagado</button>
                     </td>
                 </tr>
             `);
@@ -96,26 +109,26 @@ function daysUntil(dateValue) {
 function renderDaysLeft(days) {
     if (days === null) return '<span class="text-muted">N/A</span>';
     if (days <= 0) return '<span class="badge-status badge-inactive">Vencido</span>';
-    if (days <= 2) return `<span class="badge-status badge-pending">${days} dias</span>`;
-    return `<span class="badge-status badge-info">${days} dias</span>`;
+    if (days <= 2) return `<span class="badge-status badge-pending">${days} días</span>`;
+    return `<span class="badge-status badge-info">${days} días</span>`;
 }
 
 function creditStatusBadge(status) {
     const normalized = String(status || '').toLowerCase();
     const labels = {
-        activo: 'Credito activo',
-        pendiente: 'Credito activo',
-        aprobado: 'Credito activo',
-        pagado: 'Al dia',
+        activo: 'Crédito activo',
+        pendiente: 'Crédito activo',
+        aprobado: 'Crédito activo',
+        pagado: 'Al día',
         vencido: 'Deudora',
         anulado: 'Anulado'
     };
     if (['activo', 'pendiente', 'aprobado'].includes(normalized)) {
-        return '<span class="badge-status badge-pending">Credito activo</span>';
+        return '<span class="badge-status badge-pending">Crédito activo</span>';
     }
-    if (normalized === 'pagado') return '<span class="badge-status badge-active">Al dia</span>';
+    if (normalized === 'pagado') return '<span class="badge-status badge-active">Al día</span>';
     if (normalized === 'vencido') return '<span class="badge-status badge-inactive">Deudora</span>';
-    return statusBadge(labels[normalized] || status || 'Sin credito');
+    return statusBadge(labels[normalized] || status || 'Sin crédito');
 }
 
 function updateCreditStatus(id, estado) {
@@ -126,7 +139,7 @@ function updateCreditStatus(id, estado) {
             loadCredits();
             return;
         }
-        showToast(r.message || 'No se pudo modificar el credito', 'error');
+        showToast(r.message || 'No se pudo modificar el crédito', 'error');
     });
 }
 
@@ -162,12 +175,12 @@ function saveCreditDates() {
             return;
         }
         if (r.errors) Validator.showServerErrors('creditDatesForm', r.errors);
-        showToast(r.message || 'No se pudo modificar el credito', 'error');
+        showToast(r.message || 'No se pudo modificar el crédito', 'error');
     }).finally(() => setButtonLoading(btn, false));
 }
 
 function markCreditPaid(id) {
-    confirmAction('Estas seguro de marcar este credito como pagado?', () => {
+    confirmAction('¿Estás seguro de marcar este crédito como pagado?', () => {
         apiCall(`/api/credit/${id}/paid`, 'PUT').then(r => {
             if (r.status === 'success') {
                 showToast(r.message, 'success');
@@ -175,7 +188,45 @@ function markCreditPaid(id) {
                 loadCredits();
                 return;
             }
-            showToast(r.message || 'No se pudo marcar el credito como pagado', 'error');
+            showToast(r.message || 'No se pudo marcar el crédito como pagado', 'error');
         });
     }, { type: 'question', confirmText: 'Pagado', confirmColor: '#16a34a' });
+}
+
+function showCreditPaymentModal(id, debt) {
+    Validator.clearForm('creditPaymentForm');
+    $('#creditPaymentOrderId').val(id);
+    $('#creditPaymentDebt').val(Number(debt || 0).toFixed(2));
+    $('#creditPaymentDebtLabel').attr('data-usd-price', debt || 0).text(formatUsdBs(debt || 0));
+    $('#creditPaymentAmount').val('').attr('max', Number(debt || 0).toFixed(2));
+    new bootstrap.Modal('#creditPaymentModal').show();
+    Validator.initTracking('creditPaymentForm');
+    hydrateDualPrices();
+}
+
+function saveCreditPayment() {
+    if (!Validator.validate('creditPaymentForm')) {
+        showToast('Corrija los errores del formulario', 'warning');
+        return;
+    }
+    const id = $('#creditPaymentOrderId').val();
+    const amount = Number($('#creditPaymentAmount').val() || 0);
+    const debt = Number($('#creditPaymentDebt').val() || 0);
+    if (amount > debt) {
+        setFieldError(document.getElementById('creditPaymentAmount'), 'El abono no puede ser mayor a la deuda.');
+        return;
+    }
+    const btn = document.querySelector('#creditPaymentModal .btn-success');
+    setButtonLoading(btn, true, 'Registrando...');
+    apiCall(`/api/credit/${id}/payment`, 'PUT', { monto: amount }).then(r => {
+        if (r.status === 'success') {
+            showToast(r.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('creditPaymentModal'))?.hide();
+            loadCreditStats();
+            loadCredits();
+            return;
+        }
+        if (r.errors) Validator.showServerErrors('creditPaymentForm', r.errors);
+        showToast(r.message || 'No se pudo registrar el abono.', 'error');
+    }).finally(() => setButtonLoading(btn, false));
 }

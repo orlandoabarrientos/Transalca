@@ -170,6 +170,7 @@ CREATE TABLE ordenes_venta (
     sucursal_id INT,
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     total DECIMAL(12,2) DEFAULT 0.00,
+    monto_deuda DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     estado VARCHAR(30) NOT NULL DEFAULT 'pendiente',
     metodo_pago_id INT,
     tipo_pago VARCHAR(20) NOT NULL DEFAULT 'contado',

@@ -866,7 +866,7 @@ function statusBadge(estado) {
     const normalized = raw.toLowerCase();
     const label = raw || 'Inactivo';
     if (['al dia', 'al día'].includes(normalized)) {
-        return '<span class="badge-status badge-active">Al dia</span>';
+        return '<span class="badge-status badge-active">Al día</span>';
     }
     if (estado === 1 || estado === true || ['activo', 'activa'].includes(normalized)) {
         return '<span class="badge-status badge-active">Activo</span>';
@@ -878,7 +878,7 @@ function statusBadge(estado) {
         return `<span class="badge-status badge-pending">${escapeHtml(label)}</span>`;
     }
     if (['credito_activo', 'credito activo', 'crédito activo'].includes(normalized)) {
-        return '<span class="badge-status badge-pending">Credito activo</span>';
+        return '<span class="badge-status badge-pending">Crédito activo</span>';
     }
     if (['deudora', 'vencido', 'vencida'].includes(normalized)) {
         return `<span class="badge-status badge-inactive">${escapeHtml(label)}</span>`;
@@ -901,16 +901,16 @@ function getAdminModuleTitle() {
         service_mechanics: 'Gestionar Servicio Mecánico',
         mechanics: 'Gestionar Mecánicos',
         orders_sales: 'Reporte Orden de Venta',
-        credit: 'Gestionar Credito',
+        credit: 'Gestionar Crédito',
         tickets: 'Gestionar Tickets de Soporte',
         payments: 'Gestionar Comprobantes de Pago',
-        payment_methods: 'Gestionar Metodos de Pago',
+        payment_methods: 'Gestionar Métodos de Pago',
         promotions: 'Gestionar Promociones',
         users: 'Gestionar Usuarios',
         roles: 'Gestionar Roles y Permisos',
         qr: 'Gestionar Códigos QR',
         reports: 'Reportes',
-        report_stats: 'Reportes estadísticos',
+        report_stats: 'Reportes Estadísticos',
         tasas: 'Gestionar Tasa de Cambio',
         bitacora: 'Gestionar Bitácora',
         backup: 'Gestionar Respaldos',

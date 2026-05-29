@@ -165,9 +165,10 @@ class OrderModel(Connection):
                 fecha_inicio_credito = caracas_now().date()
                 fecha_vencimiento = fecha_inicio_credito + timedelta(days=int(client.get('dias_credito') or 0))
             total = sum(item['precio'] * item['cantidad'] for item in cart_items)
+            monto_deuda = total if tipo_pago == 'credito' else 0
             cursor.execute(
-                "INSERT INTO ordenes_venta (cliente_cedula, sucursal_id, fecha, total, metodo_pago_id, tipo_pago, credito_estado, fecha_inicio_credito, fecha_vencimiento_credito, comprobante_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                (cliente_cedula, sucursal_id, caracas_now(), total, metodo_id, tipo_pago, credito_estado, fecha_inicio_credito, fecha_vencimiento, comprobante_url))
+                "INSERT INTO ordenes_venta (cliente_cedula, sucursal_id, fecha, total, monto_deuda, metodo_pago_id, tipo_pago, credito_estado, fecha_inicio_credito, fecha_vencimiento_credito, comprobante_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (cliente_cedula, sucursal_id, caracas_now(), total, monto_deuda, metodo_id, tipo_pago, credito_estado, fecha_inicio_credito, fecha_vencimiento, comprobante_url))
             order_id = cursor.lastrowid
             for item in cart_items:
                 if item['tipo'] == 'producto':
