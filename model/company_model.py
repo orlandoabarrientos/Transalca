@@ -5,11 +5,28 @@ class CompanyModel(Connection):
     def __init__(self):
         super().__init__()
 
+    def _credit_status_sql(self):
+        return (
+            "CASE "
+            "WHEN EXISTS (SELECT 1 FROM ordenes_venta ov WHERE ov.cliente_cedula = c.cedula "
+            "AND ov.tipo_pago = 'credito' AND COALESCE(ov.credito_estado,'') NOT IN ('pagado','anulado','sin_credito') "
+            "AND (ov.credito_estado = 'vencido' OR (ov.fecha_vencimiento_credito IS NOT NULL AND ov.fecha_vencimiento_credito <= CURDATE()))) "
+            "THEN 'deudora' "
+            "WHEN EXISTS (SELECT 1 FROM ordenes_venta ov WHERE ov.cliente_cedula = c.cedula "
+            "AND ov.tipo_pago = 'credito' AND COALESCE(ov.credito_estado,'') IN ('pendiente','aprobado','activo') "
+            "AND (ov.fecha_vencimiento_credito IS NULL OR ov.fecha_vencimiento_credito > CURDATE())) "
+            "THEN 'credito_activo' "
+            "ELSE 'al_dia' END"
+        )
+
     def get_all(self, search=None, estado=None):
         sql = (
             "SELECT c.*, e.rif, e.rif_prefijo, e.razon_social, e.nombre_comercial, "
             "e.representante_nombre, e.representante_cedula, e.representante_telefono, "
             "e.representante_email, e.sector, e.limite_credito, e.dias_credito, "
+            f"{self._credit_status_sql()} AS estado_credito, "
+            "(SELECT MIN(ov.fecha_vencimiento_credito) FROM ordenes_venta ov WHERE ov.cliente_cedula = c.cedula "
+            "AND ov.tipo_pago='credito' AND COALESCE(ov.credito_estado,'') NOT IN ('pagado','anulado','sin_credito')) AS credito_vencimiento, "
             "(SELECT COUNT(*) FROM vehiculos v WHERE v.cliente_cedula = c.cedula AND v.estado = 1) as flota_count "
             "FROM clientes c INNER JOIN empresas e ON e.cliente_cedula = c.cedula "
             "WHERE c.tipo_cliente = 'empresa'"
@@ -31,7 +48,10 @@ class CompanyModel(Connection):
         return self.fetch_one("transalca",
             "SELECT c.*, e.rif, e.rif_prefijo, e.razon_social, e.nombre_comercial, "
             "e.representante_nombre, e.representante_cedula, e.representante_telefono, "
-            "e.representante_email, e.sector, e.limite_credito, e.dias_credito "
+            "e.representante_email, e.sector, e.limite_credito, e.dias_credito, "
+            f"{self._credit_status_sql()} AS estado_credito, "
+            "(SELECT MIN(ov.fecha_vencimiento_credito) FROM ordenes_venta ov WHERE ov.cliente_cedula = c.cedula "
+            "AND ov.tipo_pago='credito' AND COALESCE(ov.credito_estado,'') NOT IN ('pagado','anulado','sin_credito')) AS credito_vencimiento "
             "FROM clientes c INNER JOIN empresas e ON e.cliente_cedula = c.cedula "
             "WHERE e.rif = %s OR c.cedula = %s", (rif, rif))
 

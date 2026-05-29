@@ -5,12 +5,23 @@ notification_bp = Blueprint('notification_bp', __name__)
 model = NotificationModel()
 
 
+def sync_credit_notifications_if_needed():
+    if session.get('user_tipo') not in ('empleado', 'admin', 'vendedor', 'soporte'):
+        return
+    try:
+        from model.credit_model import CreditModel
+        CreditModel().sync_credit_statuses()
+    except Exception:
+        pass
+
+
 @notification_bp.route('/', methods=['GET'])
 def get_notifications():
     try:
         uid = session.get('user_id')
         if not uid:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
+        sync_credit_notifications_if_needed()
         return jsonify({"status": "success", "data": model.get_by_user(uid, session.get('user_cedula'))})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -23,6 +34,7 @@ def get_unread():
         if not uid:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         cedula = session.get('user_cedula')
+        sync_credit_notifications_if_needed()
         return jsonify({"status": "success",
                         "data": model.get_unread(uid, cedula),
                         "count": model.count_unread(uid, cedula)})
@@ -36,6 +48,7 @@ def count_unread():
         uid = session.get('user_id')
         if not uid:
             return jsonify({"status": "success", "count": 0})
+        sync_credit_notifications_if_needed()
         return jsonify({"status": "success", "count": model.count_unread(uid, session.get('user_cedula'))})
     except Exception as e:
         return jsonify({"status": "success", "count": 0})

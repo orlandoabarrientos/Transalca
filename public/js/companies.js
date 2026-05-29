@@ -72,6 +72,8 @@ function loadCompanies() {
         }
         r.data.forEach(c => {
             const estado = c.estado ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>';
+            const credito = companyCreditBadge(c.estado_credito);
+            const vencimiento = c.credito_vencimiento ? `<small class="d-block text-muted">Fin: ${formatCompanyDate(c.credito_vencimiento)}</small>` : '';
             tbody.append(`
                 <tr style="cursor:pointer" onclick="showCompanyDetail('${encodeURIComponent(c.rif)}')">
                     <td><strong>${escapeHtml(c.rif || '')}</strong></td>
@@ -79,7 +81,7 @@ function loadCompanies() {
                     <td>${escapeHtml(c.telefono || '')}</td>
                     <td>${escapeHtml(c.email || '')}</td>
                     <td><span class="badge bg-info">${c.flota_count || 0}</span></td>
-                    <td data-usd-price="${c.limite_credito || 0}">${formatUsdBs(c.limite_credito || 0)}</td>
+                    <td>${credito}${vencimiento}</td>
                     <td>${estado}</td>
                     <td>
                         <button class="btn btn-sm btn-warning me-1" onclick="event.stopPropagation(); editCompany('${encodeURIComponent(c.rif)}')" title="Modificar Empresa"><i class="bi bi-pencil-square"></i></button>
@@ -90,6 +92,19 @@ function loadCompanies() {
         });
         hydrateDualPrices();
     });
+}
+
+function companyCreditBadge(value) {
+    const status = String(value || 'al_dia').toLowerCase();
+    if (status === 'deudora') return '<span class="badge-status badge-inactive">Deudora</span>';
+    if (status === 'credito_activo') return '<span class="badge-status badge-pending">Credito activo</span>';
+    return '<span class="badge-status badge-active">Al dia</span>';
+}
+
+function formatCompanyDate(value) {
+    const date = String(value || '').slice(0, 10);
+    const [y, m, d] = date.split('-');
+    return y && m && d ? `${d}/${m}/${y}` : '-';
 }
 
 function showCreateCompanyModal() {

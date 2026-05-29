@@ -865,6 +865,9 @@ function statusBadge(estado) {
     const raw = String(estado ?? '').trim();
     const normalized = raw.toLowerCase();
     const label = raw || 'Inactivo';
+    if (['al dia', 'al día'].includes(normalized)) {
+        return '<span class="badge-status badge-active">Al dia</span>';
+    }
     if (estado === 1 || estado === true || ['activo', 'activa'].includes(normalized)) {
         return '<span class="badge-status badge-active">Activo</span>';
     }
@@ -873,6 +876,12 @@ function statusBadge(estado) {
     }
     if (['pendiente', 'procesando', 'enviado', 'enviada', 'abierto', 'abierta', 'media'].includes(normalized)) {
         return `<span class="badge-status badge-pending">${escapeHtml(label)}</span>`;
+    }
+    if (['credito_activo', 'credito activo', 'crédito activo'].includes(normalized)) {
+        return '<span class="badge-status badge-pending">Credito activo</span>';
+    }
+    if (['deudora', 'vencido', 'vencida'].includes(normalized)) {
+        return `<span class="badge-status badge-inactive">${escapeHtml(label)}</span>`;
     }
     return `<span class="badge-status badge-inactive">${escapeHtml(label)}</span>`;
 }

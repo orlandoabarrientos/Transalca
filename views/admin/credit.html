@@ -7,6 +7,7 @@
     <link rel="icon" type="image/png" href="/public/img/logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
     <link href="/public/css/styles.css" rel="stylesheet">
 </head>
 <body>
@@ -17,13 +18,27 @@
         <div class="content-area">
             <div class="mb-3">
                 <h4 class="fw-bold mb-1">Gestionar Credito</h4>
-                <p class="text-muted mb-0">Control de compras a credito de empresas.</p>
+                <p class="text-muted mb-0">Control de compras a credito, vencimientos y estados de empresas.</p>
             </div>
             <div class="row g-3 mb-4">
                 <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:var(--primary-soft);color:var(--primary);"><i class="bi bi-receipt"></i></div><div><div class="stat-value" id="totalCredits">0</div><div class="stat-label">Creditos</div></div></div></div>
-                <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#fff7ed;color:#ea580c;"><i class="bi bi-hourglass-split"></i></div><div><div class="stat-value" id="pendingCredits">0</div><div class="stat-label">Pendientes</div></div></div></div>
+                <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#fff7ed;color:#ea580c;"><i class="bi bi-hourglass-split"></i></div><div><div class="stat-value" id="pendingCredits">0</div><div class="stat-label">Activos</div></div></div></div>
                 <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#dcfce7;color:#16a34a;"><i class="bi bi-check2-circle"></i></div><div><div class="stat-value" id="paidCredits">0</div><div class="stat-label">Pagados</div></div></div></div>
-                <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#e0f2fe;color:#0284c7;"><i class="bi bi-cash-stack"></i></div><div><div class="stat-value" id="creditBalance" data-usd-price="0">$0.00</div><div class="stat-label">Saldo</div></div></div></div>
+                <div class="col-md-3"><div class="stat-card"><div class="stat-icon" style="background:#fee2e2;color:#dc2626;"><i class="bi bi-exclamation-octagon"></i></div><div><div class="stat-value" id="expiredCredits">0</div><div class="stat-label">Vencidos</div></div></div></div>
+            </div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4"><div class="stat-card"><div class="stat-icon" style="background:#e0f2fe;color:#0284c7;"><i class="bi bi-cash-stack"></i></div><div><div class="stat-value" id="creditBalance" data-usd-price="0">$0.00</div><div class="stat-label">Saldo pendiente</div></div></div></div>
+                <div class="col-md-8">
+                    <div class="card h-100">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div class="stat-icon" style="background:#fef3c7;color:#d97706;"><i class="bi bi-bell"></i></div>
+                            <div>
+                                <h6 class="fw-bold mb-1">Alertas automaticas</h6>
+                                <p class="text-muted mb-0">El sistema notifica una semana antes, dos dias antes y al vencer el credito. Al vencer, la empresa queda como deudora.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="card mb-4">
@@ -31,8 +46,7 @@
                     <input type="text" class="form-control" id="searchInput" placeholder="Buscar por empresa, RIF u orden..." style="width:320px;max-width:320px;">
                     <select class="form-select" id="filterEstado" style="width:190px;max-width:190px;">
                         <option value="">Todos</option>
-                        <option value="pendiente">Pendiente</option>
-                        <option value="aprobado">Aprobado</option>
+                        <option value="activo">Activo</option>
                         <option value="pagado">Pagado</option>
                         <option value="vencido">Vencido</option>
                         <option value="anulado">Anulado</option>
@@ -51,13 +65,15 @@
                                     <th>RIF</th>
                                     <th>Total</th>
                                     <th>Metodo</th>
+                                    <th>Inicio</th>
+                                    <th>Fin</th>
+                                    <th>Dias</th>
                                     <th>Estado credito</th>
-                                    <th>Vencimiento</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="creditTableBody">
-                                <tr><td colspan="8" class="text-center py-4 text-muted">Cargando...</td></tr>
+                                <tr><td colspan="10" class="text-center py-4 text-muted">Cargando...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -67,8 +83,38 @@
     </div>
 </div>
 
+<div class="modal fade" id="creditDatesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Modificar fechas de credito</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="creditDatesForm">
+                    <input type="hidden" id="creditOrderId">
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de inicio <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="creditStartDate" name="fecha_inicio" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de fin <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="creditEndDate" name="fecha_fin" required>
+                    </div>
+                    <small class="text-muted">Al modificar las fechas se reinician las alertas pendientes de este credito.</small>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" onclick="saveCreditDates()"><i class="bi bi-pencil-square me-1"></i>Modificar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="/public/jquery/jquery.min.js"></script>
 <script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
 <script src="/public/js/admin_common.js"></script>
 <script src="/public/js/credit.js"></script>
 </body>
