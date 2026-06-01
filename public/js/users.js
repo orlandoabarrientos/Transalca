@@ -15,7 +15,8 @@ $(document).ready(function() {
         cedula: { required: true, pattern: /^\d{7,8}$/, requiredMsg: 'La cédula es obligatoria.', patternMsg: 'La cédula debe tener 7 u 8 dígitos.' },
         email: { required: true, email: true, requiredMsg: 'El correo es obligatorio' },
         telefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 dígitos y comenzar por 04' },
-        tipo: { required: true, custom: v => ['cliente', 'empleado'].includes(v), customMsg: 'El valor seleccionado no es válido. Recargue la página e inténtelo nuevamente' }
+        tipo: { required: true, custom: v => ['cliente', 'empleado'].includes(v), customMsg: 'El valor seleccionado no es válido. Recargue la página e inténtelo nuevamente' },
+        rol_id: { required: true, requiredMsg: 'El rol es obligatorio' }
     });
     Validator.setupRealtime('userForm');
     document.getElementById('cedula')?.addEventListener('input', () => validateUniqueUser('cedula'));
@@ -55,7 +56,7 @@ async function loadRoles() {
         const res = await apiCall('/api/roles/');
         const sel = document.getElementById('rol_id');
         if (sel) {
-            sel.innerHTML = '<option value="">Sin rol</option>';
+            sel.innerHTML = '<option value="">Seleccione un rol...</option>';
             (res.data || []).filter(r => Number(r.estado) === 1).forEach(r => sel.innerHTML += `<option value="${r.id}">${escapeHtml(r.nombre)}</option>`);
         }
     } catch(e) {}

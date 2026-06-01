@@ -53,7 +53,8 @@
                 <div class="modal-body">
                     <form id="qrForm"><input type="hidden" id="qrId">
                         <div class="mb-3"><label class="form-label">Tipo <span class="required">*</span></label><select
-                                class="form-select" id="tipo" name="tipo">
+                                class="form-select" id="tipo" name="tipo" required>
+                                <option value="">Seleccione tipo...</option>
                                 <option value="info">Informacion</option>
                                 <option value="promocion">Promocion</option>
                                 <option value="servicio">Servicio</option>
@@ -66,12 +67,12 @@
                             <div class="invalid-feedback"></div>
                         </div>
                         <div class="row g-3 mb-3">
-                            <div class="col-md-4"><label class="form-label">Utilidad asignada</label><select
-                                    class="form-select" id="utilidadTipo" name="utilidad_tipo">
-                                    <option value="">Sin utilidad</option>
+                            <div class="col-md-4"><label class="form-label">Utilidad asignada <span class="required">*</span></label><select
+                                    class="form-select" id="utilidadTipo" name="utilidad_tipo" required>
+                                    <option value="">Seleccione utilidad...</option>
                                     <option value="promocion">Promocion</option>
                                     <option value="validar_pago">Validar pago</option>
-                                </select></div>
+                                </select><div class="invalid-feedback"></div></div>
                             <div class="col-md-4" id="promoRefWrap" style="display:none;"><label class="form-label">Promocion
                                     Activa</label><select class="form-select" id="promocionRefSelect" name="promocion_id"></select><small
                                     id="promoRefHint" class="text-muted"></small></div>

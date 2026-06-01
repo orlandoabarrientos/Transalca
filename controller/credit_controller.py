@@ -163,3 +163,48 @@ def register_payment(order_id):
         })
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
+
+
+@credit_bp.route('/', methods=['POST'])
+def create_credit():
+    try:
+        auth = require_login()
+        if auth:
+            return auth
+        if not is_employee():
+            return deny()
+        data = request.get_json() or {}
+        errors = {}
+        cliente_cedula = (data.get('cliente_cedula') or '').strip()
+        if not cliente_cedula:
+            errors['cliente_cedula'] = "La empresa es obligatoria."
+        monto_raw = data.get('total')
+        if monto_raw is None or str(monto_raw).strip() == '':
+            errors['total'] = "El monto es obligatorio."
+        else:
+            try:
+                total = Decimal(str(monto_raw).replace(',', '.')).quantize(Decimal("0.01"))
+                if total <= 0:
+                    errors['total'] = "El monto debe ser mayor a cero."
+            except (InvalidOperation, ValueError):
+                errors['total'] = "El monto no es válido."
+        fecha_inicio = _parse_date(data.get('fecha_inicio'), 'fecha_inicio', errors)
+        fecha_fin = _parse_date(data.get('fecha_fin'), 'fecha_fin', errors)
+        if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
+            errors['fecha_fin'] = "La fecha fin no puede ser menor a la fecha inicio."
+        if errors:
+            return jsonify({"status": "error", "message": "Errores de validación.", "errors": errors}), 400
+        result = model.create_credit({
+            'cliente_cedula': cliente_cedula,
+            'total': total,
+            'fecha_inicio': fecha_inicio,
+            'fecha_fin': fecha_fin,
+            'observaciones': data.get('observaciones', '')
+        })
+        if not result.get('ok'):
+            return jsonify({"status": "error", "message": result.get('message')}), 400
+        if session.get('user_id'):
+            bitacora.log_action(session['user_id'], 'CREAR', 'CREDITO', f"Crédito registrado para la empresa {cliente_cedula} por ${total}", request.remote_addr)
+        return jsonify({"status": "success", "message": result.get('message'), "data": {"id": result.get('id')}})
+    except Exception:
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

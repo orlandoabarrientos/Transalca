@@ -50,11 +50,10 @@ def create():
         if not data.get('tipo'):
             errors['tipo'] = 'Seleccione un tipo de QR'
         utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
-        if utilidad_tipo:
-            if utilidad_tipo in ('promocion', 'validar_pago', 'mesa') and not str(data.get('referencia_id') or '').strip():
-                errors['referencia_id'] = 'Seleccione una referencia para esta utilidad'
-        elif not data.get('contenido') or len(data.get('contenido', '').strip()) < 3:
-            errors['contenido'] = 'El contenido es requerido (min 3 caracteres)'
+        if not utilidad_tipo:
+            errors['utilidad_tipo'] = 'La utilidad es obligatoria'
+        elif utilidad_tipo in ('promocion', 'validar_pago', 'mesa') and not str(data.get('referencia_id') or '').strip():
+            errors['referencia_id'] = 'Seleccione una referencia para esta utilidad'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         data['usuario_cedula'] = session['user_cedula']
@@ -73,11 +72,13 @@ def update(qr_id):
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         data = request.get_json() or {}
         errors = {}
+        if not data.get('tipo'):
+            errors['tipo'] = 'Seleccione un tipo de QR'
         utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
-        if utilidad_tipo and utilidad_tipo in ('promocion', 'validar_pago', 'mesa') and not str(data.get('referencia_id') or '').strip():
+        if not utilidad_tipo:
+            errors['utilidad_tipo'] = 'La utilidad es obligatoria'
+        elif utilidad_tipo in ('promocion', 'validar_pago', 'mesa') and not str(data.get('referencia_id') or '').strip():
             errors['referencia_id'] = 'Seleccione una referencia para esta utilidad'
-        elif not utilidad_tipo and (not data.get('contenido') or len(data.get('contenido', '').strip()) < 3):
-            errors['contenido'] = 'El contenido es requerido (min 3 caracteres)'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         model.update_qr(qr_id, data)

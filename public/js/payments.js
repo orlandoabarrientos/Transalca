@@ -39,11 +39,15 @@ function loadAll() {
         (res.data || []).forEach(p => {
             const stateLower = String(p.estado || '').toLowerCase();
             const badge = ['aprobado', 'aprobada', 'verificado', 'verificada', 'pagado', 'activo'].includes(stateLower) ? 'badge-active' : ['pendiente', 'procesando'].includes(stateLower) ? 'badge-pending' : 'badge-inactive';
+            let stateHtml = `<span class="badge-status ${badge}">${escapeHtml(p.estado || '-')}</span>`;
+            if (stateLower === 'rechazado' || stateLower === 'rechazada') {
+                stateHtml += ` <button class="btn btn-xs btn-outline-danger ms-1 py-0 px-1" title="Ver motivo de rechazo" data-reason="${escapeHtml(p.observaciones || 'No se especificó un motivo')}" onclick="showRejectionReason(this)" style="font-size: 0.75rem;"><i class="bi bi-info-circle"></i></button>`;
+            }
             tbody.innerHTML += `<tr class="fade-in-up">
                 <td>#${p.id}</td>
                 <td>#${p.orden_venta_id}</td>
                 <td>${escapeHtml(p.metodo_pago || '-')}</td>
-                <td><span class="badge-status ${badge}">${escapeHtml(p.estado || '-')}</span></td>
+                <td>${stateHtml}</td>
                 <td>${formatDate(p.fecha)}</td>
                 <td>${escapeHtml(p.revisado_por_nombre || p.revisado_por || '-')}</td>
             </tr>`;
@@ -130,5 +134,16 @@ function rejectPayment() {
             loadPending();
             loadAll();
         });
+    });
+}
+
+function showRejectionReason(btn) {
+    const reason = $(btn).data('reason');
+    Swal.fire({
+        icon: 'info',
+        title: 'Motivo del rechazo',
+        text: reason,
+        confirmButtonText: 'Cerrar',
+        confirmButtonColor: '#ea580c'
     });
 }

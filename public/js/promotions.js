@@ -7,7 +7,7 @@ $(document).ready(function () {
     loadCards();
     Validator.setRules('promoForm', {
         nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'El nombre debe tener al menos 3 caracteres' },
-        tipo: { required: true, allowed: ['puntos', 'descuento', 'gratis'], requiredMsg: 'Seleccione un tipo válido' },
+        tipo: { required: true, requiredMsg: 'El tipo de promoción es obligatorio' },
         puntos_requeridos: { required: true, min: 1, requiredMsg: 'Los puntos son obligatorios', minMsg: 'Los puntos deben ser mayores a 0' }
     });
     Validator.setupRealtime('promoForm');
@@ -184,7 +184,7 @@ function openModal() {
     document.getElementById('modalTitle').textContent = 'Registrar Promoción';
     document.getElementById('nombre').value = '';
     document.getElementById('descripcion').value = '';
-    document.getElementById('tipo').value = 'puntos';
+    document.getElementById('tipo').value = '';
     document.getElementById('puntos_requeridos').value = 5;
     document.getElementById('recompensa').value = '';
     document.getElementById('fecha_inicio').value = '';

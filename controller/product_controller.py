@@ -18,15 +18,15 @@ def _validate_product(data):
         'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=150, allow_serial=False),
         'descripcion': optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=500, allow_serial=True),
         'precio': normalize_decimal(errors, 'precio', data.get('precio'), 'El precio'),
-        'categoria': (data.get('categoria') or None),
-        'marca': (data.get('marca') or None),
-        'proveedor_rif': (data.get('proveedor_rif') or None)
+        'categoria': require_text(errors, 'categoria', data.get('categoria'), 'La categoria', min_len=1, max_len=150, allow_serial=True),
+        'marca': require_text(errors, 'marca', data.get('marca'), 'La marca', min_len=1, max_len=150, allow_serial=True),
+        'proveedor_rif': require_text(errors, 'proveedor_rif', data.get('proveedor_rif'), 'El proveedor', min_len=1, max_len=20, allow_serial=True)
     }
-    if clean['categoria'] and not model.category_exists(clean['categoria']):
+    if clean['categoria'] and not errors.get('categoria') and not model.category_exists(clean['categoria']):
         errors['categoria'] = SELECT_TAMPER_MESSAGE
-    if clean['marca'] and not model.brand_exists(clean['marca']):
+    if clean['marca'] and not errors.get('marca') and not model.brand_exists(clean['marca']):
         errors['marca'] = SELECT_TAMPER_MESSAGE
-    if clean['proveedor_rif'] and not model.supplier_exists(clean['proveedor_rif']):
+    if clean['proveedor_rif'] and not errors.get('proveedor_rif') and not model.supplier_exists(clean['proveedor_rif']):
         errors['proveedor_rif'] = SELECT_TAMPER_MESSAGE
     return clean, errors
 

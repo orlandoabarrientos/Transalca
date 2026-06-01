@@ -42,15 +42,18 @@
             </div>
 
             <div class="card mb-4">
-                <div class="card-body filter-bar compact-filter-card mb-0">
-                    <input type="text" class="form-control" id="searchInput" placeholder="Buscar por empresa, RIF u orden..." style="width:320px;max-width:320px;">
-                    <select class="form-select" id="filterEstado" style="width:190px;max-width:190px;">
-                        <option value="">Todos</option>
-                        <option value="activo">Activo</option>
-                        <option value="pagado">Pagado</option>
-                        <option value="vencido">Vencido</option>
-                        <option value="anulado">Anulado</option>
-                    </select>
+                <div class="card-body filter-bar compact-filter-card mb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex gap-2">
+                        <input type="text" class="form-control" id="searchInput" placeholder="Buscar por empresa, RIF u orden..." style="width:320px;max-width:320px;">
+                        <select class="form-select" id="filterEstado" style="width:190px;max-width:190px;">
+                            <option value="">Todos</option>
+                            <option value="activo">Activo</option>
+                            <option value="pagado">Pagado</option>
+                            <option value="vencido">Vencido</option>
+                            <option value="anulado">Anulado</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-orange" onclick="showRegisterCreditModal()"><i class="bi bi-plus-circle me-1"></i>Registrar Crédito</button>
                 </div>
             </div>
 
@@ -138,6 +141,48 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success" onclick="saveCreditPayment()"><i class="bi bi-cash-coin me-1"></i>Registrar abono</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="registerCreditModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar Crédito</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="registerCreditForm">
+                    <div class="mb-3">
+                        <label class="form-label">Empresa <span class="text-danger">*</span></label>
+                        <select class="form-select" id="creditCompanySelect" name="cliente_cedula" required>
+                            <option value="">Cargando empresas...</option>
+                        </select>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Monto del crédito ($) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="creditTotalAmount" name="total" min="0.01" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de inicio <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="registerCreditStartDate" name="fecha_inicio" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de fin (Vencimiento) <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="registerCreditEndDate" name="fecha_fin" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="creditObservaciones" name="observaciones" rows="2" maxlength="1000"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-orange" onclick="saveNewCredit()"><i class="bi bi-check-circle me-1"></i>Registrar</button>
             </div>
         </div>
     </div>

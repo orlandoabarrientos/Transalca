@@ -23,7 +23,10 @@ $(document).ready(function() {
             maxLength: 250,
             maxLengthMsg: 'La descripción no puede superar los 250 caracteres'
         },
-        precio: { required: true, min: 0.01, requiredMsg: 'El precio es obligatorio', minMsg: 'El precio debe ser mayor a 0' }
+        precio: { required: true, min: 0.01, requiredMsg: 'El precio es obligatorio', minMsg: 'El precio debe ser mayor a 0' },
+        categoria: { required: true, requiredMsg: 'Debe seleccionar una categoría' },
+        marca: { required: true, requiredMsg: 'Debe seleccionar una marca' },
+        proveedor_rif: { required: true, requiredMsg: 'Debe seleccionar un proveedor' }
     });
     Validator.setupRealtime('productForm');
     document.getElementById('codigo')?.addEventListener('input', validateUniqueProductCodigo);
@@ -67,15 +70,15 @@ async function loadCombos() {
         const brandSel = document.getElementById('marca');
         const supplierSel = document.getElementById('proveedor_rif');
         if (catSel) {
-            catSel.innerHTML = '<option value="">Sin categoría</option>';
+            catSel.innerHTML = '<option value="">Seleccione categoría...</option>';
             (cats.data || []).forEach(c => catSel.innerHTML += `<option value="${escapeHtml(c.nombre)}">${escapeHtml(c.nombre)}</option>`);
         }
         if (brandSel) {
-            brandSel.innerHTML = '<option value="">Sin marca</option>';
+            brandSel.innerHTML = '<option value="">Seleccione marca...</option>';
             (brands.data || []).forEach(b => brandSel.innerHTML += `<option value="${escapeHtml(b.nombre)}">${escapeHtml(b.nombre)}</option>`);
         }
         if (supplierSel) {
-            supplierSel.innerHTML = '<option value="">Sin proveedor</option>';
+            supplierSel.innerHTML = '<option value="">Seleccione proveedor...</option>';
             (suppliers.data || []).forEach(s => supplierSel.innerHTML += `<option value="${escapeHtml(s.rif)}">${escapeHtml(s.nombre)} (${escapeHtml(s.rif)})</option>`);
         }
     } catch(e) {}

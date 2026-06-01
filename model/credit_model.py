@@ -216,6 +216,31 @@ class CreditModel(Connection):
             "WHERE id=%s AND tipo_pago='credito'",
             (order_id,))
 
+    def create_credit(self, data):
+        client = self.fetch_one("transalca",
+            "SELECT c.cedula, e.dias_credito FROM clientes c INNER JOIN empresas e ON e.cliente_cedula = c.cedula WHERE c.cedula = %s AND c.estado = 1",
+            (data['cliente_cedula'],))
+        if not client:
+            return {'ok': False, 'message': 'La empresa no existe o esta inactiva.'}
+        total = self._as_money(data.get('total'))
+        if total <= 0:
+            return {'ok': False, 'message': 'El monto del credito debe ser mayor a cero.'}
+        fecha_inicio = data.get('fecha_inicio') or self._today()
+        dias = int(client.get('dias_credito') or 0)
+        fecha_fin = data.get('fecha_fin') or (self._as_date(fecha_inicio) + timedelta(days=dias))
+        observaciones = data.get('observaciones', '')
+        sql = (
+            "INSERT INTO ordenes_venta (cliente_cedula, total, monto_deuda, tipo_pago, credito_estado, fecha_inicio_credito, fecha_vencimiento_credito, observaciones) "
+            "VALUES (%s, %s, %s, 'credito', 'activo', %s, %s, %s)"
+        )
+        try:
+            order_id = self.insert("transalca", sql, (
+                data['cliente_cedula'], total, total, fecha_inicio, fecha_fin, observaciones
+            ))
+            return {'ok': True, 'id': order_id, 'message': 'Credito registrado correctamente.'}
+        except Exception as e:
+            return {'ok': False, 'message': f'Error al registrar el credito: {str(e)}'}
+
     def register_payment(self, order_id, amount):
         amount = self._as_money(amount)
         if amount <= 0:

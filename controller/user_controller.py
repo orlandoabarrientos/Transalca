@@ -26,7 +26,9 @@ def _validate_user(data, require_password=False):
         'tipo': validate_choice(errors, 'tipo', data.get('tipo') or 'empleado', TIPOS_USUARIO)
     }
     rol_id = data.get('rol_id')
-    if rol_id not in (None, ''):
+    if rol_id in (None, '', 0, '0'):
+        errors['rol_id'] = "El rol es obligatorio."
+    else:
         try:
             clean['rol_id'] = int(rol_id)
         except (TypeError, ValueError):
@@ -34,8 +36,6 @@ def _validate_user(data, require_password=False):
         else:
             if not model.role_exists(clean['rol_id']):
                 errors['rol_id'] = SELECT_TAMPER_MESSAGE
-    else:
-        clean['rol_id'] = None
     if require_password:
         password = data.get('password') or ''
         if not re.match(PASSWORD_REGEX, password):

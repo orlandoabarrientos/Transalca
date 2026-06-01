@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transalca Admin | Orden de Compra</title>
+    <link rel="icon" type="image/png" href="/public/img/logo.png">
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="mb-3">
+                <h4 class="fw-bold mb-1">Orden de Compra</h4>
+                <p class="text-muted mb-0">Gestión de compras a proveedores e ingresos a stock.</p>
+            </div>
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background:var(--primary-soft);color:var(--primary);"><i class="bi bi-cart"></i></div>
+                        <div>
+                            <div class="stat-value" id="totalOrders">0</div>
+                            <div class="stat-label">Total Órdenes</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background:#fff7ed;color:#ea580c;"><i class="bi bi-hourglass-split"></i></div>
+                        <div>
+                            <div class="stat-value" id="pendingOrders">0</div>
+                            <div class="stat-label">Pendientes</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background:#dcfce7;color:#16a34a;"><i class="bi bi-check2-circle"></i></div>
+                        <div>
+                            <div class="stat-value" id="boughtOrders">0</div>
+                            <div class="stat-label">Compradas</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background:#e0f2fe;color:#0284c7;"><i class="bi bi-currency-dollar"></i></div>
+                        <div>
+                            <div class="stat-value" id="totalInverted" data-usd-price="0">$0.00</div>
+                            <div class="stat-label">Total Invertido</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body filter-bar compact-filter-card mb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex gap-2">
+                        <input type="text" class="form-control" id="searchInput" placeholder="Buscar por proveedor, RIF u orden..." style="width:320px;max-width:320px;">
+                        <select class="form-select" id="filterEstado" style="width:190px;max-width:190px;">
+                            <option value="">Todos los estados</option>
+                            <option value="pendiente">Pendientes</option>
+                            <option value="comprado">Compradas</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-orange" onclick="showCreateOrderModal()"><i class="bi bi-plus-circle me-1"></i>Registrar Compra</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Orden ID</th>
+                                    <th>Proveedor</th>
+                                    <th>RIF</th>
+                                    <th>Sucursal destino</th>
+                                    <th>Total ($)</th>
+                                    <th>Fecha</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTableBody">
+                                <tr><td colspan="8" class="text-center py-4 text-muted">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Registrar Orden de Compra -->
+<div class="modal fade" id="createOrderModal" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar Orden de Compra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createOrderForm">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Proveedor <span class="text-danger">*</span></label>
+                            <select class="form-select" id="poSupplierSelect" name="proveedor_rif" required>
+                                <option value="">Seleccione proveedor...</option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Sucursal destino (Stock) <span class="text-danger">*</span></label>
+                            <select class="form-select" id="poSucursalSelect" name="sucursal_id" required>
+                                <option value="">Seleccione sucursal...</option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                            <span class="fw-bold"><i class="bi bi-box-seam me-2"></i>Productos a Comprar</span>
+                            <button type="button" class="btn btn-sm btn-outline-orange" onclick="addProductRow()"><i class="bi bi-plus-circle me-1"></i>Añadir producto</button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table mb-0 align-middle">
+                                    <thead>
+                                        <tr class="table-light">
+                                            <th>Producto <span class="text-danger">*</span></th>
+                                            <th style="width: 140px;">Cantidad <span class="text-danger">*</span></th>
+                                            <th style="width: 160px;">Precio Unitario ($) <span class="text-danger">*</span></th>
+                                            <th style="width: 160px;">Subtotal ($)</th>
+                                            <th style="width: 60px;">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="poItemsBody">
+                                        <!-- Dynamic product rows here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-light d-flex justify-content-end align-items-center py-2">
+                            <h5 class="mb-0 me-2">Total Compra ($):</h5>
+                            <h4 class="mb-0 fw-bold text-orange" id="poTotalLabel">$0.00</h4>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="poObservaciones" name="observaciones" rows="2" maxlength="1000" placeholder="Opcional..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-orange" onclick="savePurchaseOrder()"><i class="bi bi-check-circle me-1"></i>Registrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Detalle de Orden de Compra -->
+<div class="modal fade" id="detailOrderModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalle de Orden de Compra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailOrderContent">
+                <!-- Dynamic content -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/purchase_orders.js"></script>
+</body>
+</html>

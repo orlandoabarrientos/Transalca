@@ -49,14 +49,16 @@
                             <div class="invalid-feedback"></div>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Tipo</label>
-                            <select class="form-select" id="tipo" name="tipo">
+                            <label class="form-label">Tipo <span class="required">*</span></label>
+                            <select class="form-select" id="tipo" name="tipo" required>
+                                <option value="">Seleccione tipo...</option>
                                 <option value="alineacion">Alineación</option>
                                 <option value="rotacion">Rotación</option>
                                 <option value="balanceo">Balanceo</option>
                                 <option value="cambio_aceite">Cambio de Aceite</option>
                                 <option value="general">General</option>
                             </select>
+                            <div class="invalid-feedback"></div>
                         </div>
                     </div>
                     <div class="mb-3">
@@ -74,8 +76,9 @@
                             <input type="number" class="form-control" id="duracion_estimada" name="duracion_estimada" value="60">
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Sucursales</label>
-                            <select class="form-select" id="sucursal_id" name="sucursal_id" multiple></select>
+                            <label class="form-label">Sucursales <span class="required">*</span></label>
+                            <select class="form-select" id="sucursal_id" name="sucursal_id" multiple required></select>
+                            <div class="invalid-feedback"></div>
                         </div>
                     </div>
                 </form>

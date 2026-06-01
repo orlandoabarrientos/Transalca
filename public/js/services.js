@@ -8,7 +8,9 @@ $(document).ready(function() {
     Validator.setRules('serviceForm', {
         nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'Mínimo 3 caracteres' },
         precio: { required: true, min: 0.01, requiredMsg: 'El precio es obligatorio', minMsg: 'Debe ser mayor a 0' },
-        duracion_estimada: { required: true, min: 1, requiredMsg: 'La duración es obligatoria', minMsg: 'Debe ser mayor a 0' }
+        duracion_estimada: { required: true, min: 1, requiredMsg: 'La duración es obligatoria', minMsg: 'Debe ser mayor a 0' },
+        tipo: { required: true, requiredMsg: 'Seleccione un tipo de servicio' },
+        sucursal_id: { required: true, requiredMsg: 'Seleccione al menos una sucursal' }
     });
     Validator.setupRealtime('serviceForm');
 });

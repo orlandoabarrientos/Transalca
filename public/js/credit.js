@@ -17,8 +17,32 @@ $(document).ready(function () {
             minMsg: 'El monto del abono debe ser mayor a cero'
         }
     });
+    Validator.setRules('registerCreditForm', {
+        creditCompanySelect: { required: true, requiredMsg: 'Debe seleccionar una empresa' },
+        creditTotalAmount: {
+            required: true,
+            requiredMsg: 'El monto es obligatorio',
+            min: 0.01,
+            minMsg: 'El monto debe ser mayor a cero'
+        },
+        registerCreditStartDate: { required: true, requiredMsg: 'Fecha de inicio requerida' },
+        registerCreditEndDate: { required: true, requiredMsg: 'Fecha de fin requerida' }
+    });
     Validator.setupRealtime('creditDatesForm');
     Validator.setupRealtime('creditPaymentForm');
+    Validator.setupRealtime('registerCreditForm');
+
+    $(document).on('change', '#creditCompanySelect, #registerCreditStartDate', function() {
+        const selected = $('#creditCompanySelect option:selected');
+        const dias = parseInt(selected.data('dias') || 0);
+        const startDateVal = $('#registerCreditStartDate').val();
+        if (startDateVal && dias > 0) {
+            const start = new Date(`${startDateVal}T00:00:00`);
+            start.setDate(start.getDate() + dias);
+            $('#registerCreditEndDate').val(start.toISOString().slice(0, 10));
+        }
+    });
+
     loadCreditStats();
     loadCredits();
 });
@@ -228,5 +252,61 @@ function saveCreditPayment() {
         }
         if (r.errors) Validator.showServerErrors('creditPaymentForm', r.errors);
         showToast(r.message || 'No se pudo registrar el abono.', 'error');
+    }).finally(() => setButtonLoading(btn, false));
+}
+
+function showRegisterCreditModal() {
+    Validator.clearForm('registerCreditForm');
+    $('#creditCompanySelect').html('<option value="">Cargando empresas...</option>');
+    $.get('/api/companies/', function(r) {
+        if (r.status === 'success') {
+            let options = '<option value="">Seleccione una empresa...</option>';
+            (r.data || []).forEach(c => {
+                options += `<option value="${c.cedula}" data-dias="${c.dias_credito || 0}">${escapeHtml(c.razon_social)} (${escapeHtml(c.rif)})</option>`;
+            });
+            $('#creditCompanySelect').html(options);
+        } else {
+            $('#creditCompanySelect').html('<option value="">Error al cargar empresas</option>');
+        }
+    });
+    const todayStr = new Date().toISOString().slice(0, 10);
+    $('#registerCreditStartDate').val(todayStr);
+    $('#registerCreditEndDate').val('');
+    $('#creditTotalAmount').val('');
+    $('#creditObservaciones').val('');
+    new bootstrap.Modal('#registerCreditModal').show();
+    Validator.initTracking('registerCreditForm');
+}
+
+function saveNewCredit() {
+    if (!Validator.validate('registerCreditForm')) {
+        showToast('Corrija los errores del formulario', 'warning');
+        return;
+    }
+    const start = $('#registerCreditStartDate').val();
+    const end = $('#registerCreditEndDate').val();
+    if (end < start) {
+        setFieldError(document.getElementById('registerCreditEndDate'), 'La fecha fin no puede ser menor a la fecha inicio.');
+        return;
+    }
+    const btn = document.querySelector('#registerCreditModal .btn-orange');
+    setButtonLoading(btn, true, 'Registrando...');
+    const payload = {
+        cliente_cedula: $('#creditCompanySelect').val(),
+        total: $('#creditTotalAmount').val(),
+        fecha_inicio: start,
+        fecha_fin: end,
+        observaciones: $('#creditObservaciones').val()
+    };
+    apiCall('/api/credit/', 'POST', payload).then(r => {
+        if (r.status === 'success') {
+            showToast(r.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('registerCreditModal'))?.hide();
+            loadCreditStats();
+            loadCredits();
+            return;
+        }
+        if (r.errors) Validator.showServerErrors('registerCreditForm', r.errors);
+        showToast(r.message || 'No se pudo registrar el crédito', 'error');
     }).finally(() => setButtonLoading(btn, false));
 }

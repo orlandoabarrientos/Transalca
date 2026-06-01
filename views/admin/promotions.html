@@ -309,15 +309,16 @@
                             <textarea class="form-control" id="descripcion" name="descripcion" rows="2"></textarea>
                         </div>
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Tipo <span class="required">*</span></label>
-                                <select class="form-select" id="tipo" name="tipo">
-                                    <option value="puntos">Puntos</option>
-                                    <option value="descuento">Descuento</option>
-                                    <option value="gratis">Gratis</option>
-                                </select>
-                                <div class="invalid-feedback"></div>
-                            </div>
+                             <div class="col-md-6 mb-3">
+                                 <label class="form-label">Tipo <span class="required">*</span></label>
+                                 <select class="form-select" id="tipo" name="tipo" required>
+                                     <option value="">Seleccione tipo...</option>
+                                     <option value="puntos">Puntos</option>
+                                     <option value="descuento">Descuento</option>
+                                     <option value="gratis">Gratis</option>
+                                 </select>
+                                 <div class="invalid-feedback"></div>
+                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Puntos requeridos</label>
                                 <input type="number" class="form-control" id="puntos_requeridos" name="puntos_requeridos" min="1" value="5">

@@ -15,6 +15,13 @@ def _validate_service(data):
     clean['descripcion'] = optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=1000)
     clean['precio'] = normalize_decimal(errors, 'precio', data.get('precio'), 'El precio')
     clean['duracion_estimada'] = normalize_int(errors, 'duracion_estimada', data.get('duracion_estimada') or 60, 'La duracion', min_value=1, max_value=1440)
+    
+    tipo = (data.get('tipo') or '').strip().lower()
+    if not tipo:
+        errors['tipo'] = 'El tipo de servicio es obligatorio.'
+    elif tipo not in ('alineacion', 'rotacion', 'balanceo', 'cambio_aceite', 'general'):
+        errors['tipo'] = SELECT_TAMPER_MESSAGE
+
     raw_ids = data.get('sucursal_ids')
     if raw_ids is None:
         raw_ids = [data.get('sucursal_id')] if data.get('sucursal_id') else []
@@ -25,12 +32,16 @@ def _validate_service(data):
         try:
             sucursal_id = int(raw_id)
         except (TypeError, ValueError):
-            errors['sucursal_ids'] = SELECT_TAMPER_MESSAGE
+            errors['sucursal_id'] = SELECT_TAMPER_MESSAGE
         else:
             if not model.sucursal_exists(sucursal_id):
-                errors['sucursal_ids'] = SELECT_TAMPER_MESSAGE
+                errors['sucursal_id'] = SELECT_TAMPER_MESSAGE
             elif sucursal_id not in clean['sucursal_ids']:
                 clean['sucursal_ids'].append(sucursal_id)
+                
+    if not clean['sucursal_ids'] and not errors.get('sucursal_id'):
+        errors['sucursal_id'] = 'Debe seleccionar al menos una sucursal.'
+        
     return clean, errors
 
 
