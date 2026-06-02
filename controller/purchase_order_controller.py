@@ -105,6 +105,24 @@ def create():
         return jsonify({"status": "error", "message": "No se pudo registrar la orden de compra."}), 500
 
 
+@purchase_order_bp.route('/<int:order_id>', methods=['GET'])
+def get_one_order(order_id):
+    try:
+        auth = require_login()
+        if auth:
+            return auth
+        if not is_employee():
+            return deny()
+            
+        order = model.get_by_id(order_id)
+        if not order:
+            return jsonify({"status": "error", "message": "Orden de compra no encontrada."}), 404
+            
+        return jsonify({"status": "success", "data": order})
+    except Exception:
+        return jsonify({"status": "error", "message": "No se pudo obtener la orden de compra."}), 500
+
+
 @purchase_order_bp.route('/<int:order_id>/buy', methods=['POST'])
 def mark_as_bought(order_id):
     try:
