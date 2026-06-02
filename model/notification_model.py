@@ -77,6 +77,10 @@ class NotificationModel(Connection):
             "DELETE FROM notificaciones WHERE id = %s AND usuario_id = %s",
             (notif_id, usuario_id))
 
+    def clean_old_read_notifications(self):
+        return self.delete("transalca",
+            "DELETE FROM notificaciones WHERE leida = 1 AND created_at < NOW() - INTERVAL 48 HOUR")
+
     def create_bulk(self, notifications):
         for n in notifications:
             self.create(n)

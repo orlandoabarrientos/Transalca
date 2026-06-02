@@ -40,14 +40,13 @@ function loadData() {
                 <td>${escapeHtml(u.email || '-')}</td>
                 <td>${tipoBadge}</td>
                 <td>${escapeHtml(u.roles || '-')}</td>
-                <td>${statusBadge(u.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${u.id})" title="Modificar Usuario"><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${u.id})" title="Eliminar Usuario"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
-        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="empty-state"><i class="bi bi-people"></i><p>No hay usuarios registrados</p></div></td></tr>';
+        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-people"></i><p>No hay usuarios registrados</p></div></td></tr>';
     });
 }
 

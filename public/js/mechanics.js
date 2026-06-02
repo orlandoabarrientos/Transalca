@@ -24,6 +24,9 @@ function loadData() {
         if (!tbody) return;
         tbody.innerHTML = '';
         (res.data || []).forEach(m => {
+            const actionBtn = m.total_servicios > 0 
+                ? `<button class="btn btn-icon btn-sm btn-outline-danger" onclick="deleteData('${encodeURIComponent(m.cedula)}', true)" title="Desactivar Mecánico"><i class="bi bi-slash-circle"></i></button>`
+                : `<button class="btn btn-icon btn-sm btn-warning" onclick="deleteData('${encodeURIComponent(m.cedula)}', false)" title="Eliminar Mecánico"><i class="bi bi-trash"></i></button>`;
             tbody.innerHTML += `<tr class="fade-in-up">
                 <td>
                     <div class="d-flex align-items-center gap-4 py-2">
@@ -39,7 +42,7 @@ function loadData() {
                 <td>${statusBadge(m.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(m.cedula)}')" title="Modificar Mecánico"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="deleteData('${encodeURIComponent(m.cedula)}')" title="Eliminar Mecánico"><i class="bi bi-trash"></i></button>
+                    ${actionBtn}
                 </td>
             </tr>`;
         });
@@ -105,9 +108,12 @@ function saveData() {
     });
 }
 
-function deleteData(cedula) {
+function deleteData(cedula, deactivateOnly = false) {
     cedula = decodeURIComponent(cedula);
-    confirmAction('¿Estás seguro de que deseas eliminar este mecánico?', () => {
+    const msg = deactivateOnly 
+        ? '¿Estás seguro de que deseas desactivar este mecánico?' 
+        : '¿Estás seguro de que deseas eliminar este mecánico?';
+    confirmAction(msg, () => {
         apiCall('/api/mechanics/delete', 'DELETE', { cedula }).then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message);

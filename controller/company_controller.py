@@ -33,12 +33,9 @@ def _validate_company(data, require_rif=True):
     clean['email'] = normalize_email(errors, data.get('email'), required=False)
     clean['direccion'] = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=300)
     clean['representante_nombre'] = optional_text(errors, 'representante_nombre', data.get('representante_nombre'), 'El representante', max_len=150, allow_serial=False)
-    rep_cedula_raw = data.get('representante_cedula')
-    if rep_cedula_raw:
-        rep_cedula, _, _ = normalize_cedula(errors, {'representante_cedula': rep_cedula_raw}, field='representante_cedula', required=False)
-        clean['representante_cedula'] = rep_cedula
-    else:
-        clean['representante_cedula'] = ''
+    rep_cedula, rep_prefijo, _ = normalize_cedula(errors, data, field='representante_cedula', required=False)
+    clean['representante_cedula'] = rep_cedula
+    clean['representante_cedula_prefijo'] = rep_prefijo
     clean['representante_telefono'] = normalize_phone(errors, data.get('representante_telefono'), 'representante_telefono', required=False)
     clean['representante_email'] = normalize_email(errors, data.get('representante_email'), 'representante_email', required=False)
     clean['sector'] = optional_text(errors, 'sector', data.get('sector'), 'El sector', max_len=150)

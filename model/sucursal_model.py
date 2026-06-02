@@ -43,3 +43,6 @@ class SucursalModel(Connection):
             result = self.fetch_one("transalca",
                 "SELECT id FROM sucursales WHERE nombre = %s", (nombre,))
         return result is not None
+
+    def get_by_nombre(self, nombre):
+        return self.fetch_one("transalca", "SELECT * FROM sucursales WHERE nombre = %s", (nombre,))

@@ -108,3 +108,34 @@ def update_status(aid):
         return jsonify(response)
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el estado"}), 500
+
+
+@service_mechanic_bp.route('/<int:aid>', methods=['PUT'])
+def update(aid):
+    try:
+        if 'user_id' not in session:
+            return jsonify({"status": "error", "message": "No autorizado"}), 401
+        if not model.get_by_id(aid):
+            return jsonify({"status": "error", "message": "Asignacion no encontrada"}), 404
+        data, errors = _validate_assignment(request.get_json() or {})
+        if errors:
+            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
+        model.update_assignment(aid, data)
+        bitacora.log_action(session['user_id'], 'MODIFICAR', 'SERVICIO_MECANICO', f"Servicio mecanico modificado ID: {aid}", request.remote_addr)
+        return jsonify({"status": "success", "message": "Servicio mecanico modificado correctamente"})
+    except Exception:
+        return jsonify({"status": "error", "message": "No se pudo modificar el servicio mecanico"}), 500
+
+
+@service_mechanic_bp.route('/<int:aid>', methods=['DELETE'])
+def delete(aid):
+    try:
+        if 'user_id' not in session:
+            return jsonify({"status": "error", "message": "No autorizado"}), 401
+        if not model.get_by_id(aid):
+            return jsonify({"status": "error", "message": "Asignacion no encontrada"}), 404
+        model.delete_assignment(aid)
+        bitacora.log_action(session['user_id'], 'ELIMINAR', 'SERVICIO_MECANICO', f"Servicio mecanico eliminado ID: {aid}", request.remote_addr)
+        return jsonify({"status": "success", "message": "Servicio mecanico eliminado correctamente"})
+    except Exception:
+        return jsonify({"status": "error", "message": "No se pudo eliminar el servicio mecanico"}), 500

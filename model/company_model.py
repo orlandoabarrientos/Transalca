@@ -24,7 +24,7 @@ class CompanyModel(Connection):
     def get_all(self, search=None, estado=None):
         sql = (
             "SELECT c.*, e.rif, e.rif_prefijo, e.razon_social, e.nombre_comercial, "
-            "e.representante_nombre, e.representante_cedula, e.representante_telefono, "
+            "e.representante_nombre, e.representante_cedula_prefijo, e.representante_cedula, e.representante_telefono, "
             "e.representante_email, e.sector, e.limite_credito, e.dias_credito, "
             f"{self._credit_status_sql()} AS estado_credito, "
             "(SELECT MIN(ov.fecha_vencimiento_credito) FROM ordenes_venta ov WHERE ov.cliente_cedula = c.cedula "
@@ -50,7 +50,7 @@ class CompanyModel(Connection):
     def get_by_rif(self, rif):
         return self.fetch_one("transalca",
             "SELECT c.*, e.rif, e.rif_prefijo, e.razon_social, e.nombre_comercial, "
-            "e.representante_nombre, e.representante_cedula, e.representante_telefono, "
+            "e.representante_nombre, e.representante_cedula_prefijo, e.representante_cedula, e.representante_telefono, "
             "e.representante_email, e.sector, e.limite_credito, e.dias_credito, "
             f"{self._credit_status_sql()} AS estado_credito, "
             "(SELECT MIN(ov.fecha_vencimiento_credito) FROM ordenes_venta ov WHERE ov.cliente_cedula = c.cedula "
@@ -75,10 +75,10 @@ class CompanyModel(Connection):
                 )
                 cursor.execute(
                     "UPDATE empresas SET rif_prefijo=%s, razon_social=%s, nombre_comercial=%s, "
-                    "representante_nombre=%s, representante_cedula=%s, representante_telefono=%s, "
+                    "representante_nombre=%s, representante_cedula_prefijo=%s, representante_cedula=%s, representante_telefono=%s, "
                     "representante_email=%s, sector=%s, limite_credito=%s, dias_credito=%s WHERE cliente_cedula=%s",
                     (data.get('rif_prefijo'), data['razon_social'], data.get('nombre_comercial', ''),
-                     data.get('representante_nombre', ''), data.get('representante_cedula', ''),
+                     data.get('representante_nombre', ''), data.get('representante_cedula_prefijo'), data.get('representante_cedula'),
                      data.get('representante_telefono', ''), data.get('representante_email', ''),
                      data.get('sector', ''), data.get('limite_credito') or 0,
                      data.get('dias_credito') or 0, rif)
@@ -93,10 +93,10 @@ class CompanyModel(Connection):
             )
             cursor.execute(
                 "INSERT INTO empresas (cliente_cedula, rif, rif_prefijo, razon_social, nombre_comercial, "
-                "representante_nombre, representante_cedula, representante_telefono, representante_email, "
-                "sector, limite_credito, dias_credito) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                "representante_nombre, representante_cedula_prefijo, representante_cedula, representante_telefono, representante_email, "
+                "sector, limite_credito, dias_credito) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                 (rif, rif, data.get('rif_prefijo'), data['razon_social'], data.get('nombre_comercial', ''),
-                 data.get('representante_nombre', ''), data.get('representante_cedula', ''),
+                 data.get('representante_nombre', ''), data.get('representante_cedula_prefijo'), data.get('representante_cedula'),
                  data.get('representante_telefono', ''), data.get('representante_email', ''),
                  data.get('sector', ''), data.get('limite_credito') or 0, data.get('dias_credito') or 0)
             )
@@ -119,10 +119,10 @@ class CompanyModel(Connection):
             )
             cursor.execute(
                 "UPDATE empresas SET razon_social=%s, nombre_comercial=%s, representante_nombre=%s, "
-                "representante_cedula=%s, representante_telefono=%s, representante_email=%s, sector=%s, "
+                "representante_cedula_prefijo=%s, representante_cedula=%s, representante_telefono=%s, representante_email=%s, sector=%s, "
                 "limite_credito=%s, dias_credito=%s WHERE cliente_cedula=%s",
                 (data['razon_social'], data.get('nombre_comercial', ''), data.get('representante_nombre', ''),
-                 data.get('representante_cedula', ''), data.get('representante_telefono', ''),
+                 data.get('representante_cedula_prefijo'), data.get('representante_cedula'), data.get('representante_telefono', ''),
                  data.get('representante_email', ''), data.get('sector', ''),
                  data.get('limite_credito') or 0, data.get('dias_credito') or 0, rif)
             )

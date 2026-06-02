@@ -106,7 +106,7 @@ function loadActivePromotions() {
     const hint = document.getElementById('promoRefHint');
     if (!select) return;
 
-    apiCall('/api/promotions/active').then(res => {
+    apiCall('/api/promotions/').then(res => {
         const rows = res.data || [];
         select.innerHTML = '<option value="">Seleccione promocion</option>';
         if (!rows.length) {

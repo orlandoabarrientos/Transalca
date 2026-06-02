@@ -15,6 +15,7 @@ $(document).ready(function () {
         fRazonSocial: { required: true, minLength: 2, maxLength: 200, requiredMsg: 'Razon social requerida' },
         fTelefono: { required: true, pattern: /^04\d{9}$/, requiredMsg: 'Telefono requerido', patternMsg: 'Debe tener 11 digitos y comenzar por 04' },
         fEmail: { email: true },
+        fRepresentanteCedula: { pattern: /^$|^\d{7,8}$/, patternMsg: 'La cédula debe tener 7 u 8 dígitos' },
         fRepresentanteTelefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 digitos y comenzar por 04' },
         fRepresentanteEmail: { email: true },
         fLimiteCredito: { min: 0, minMsg: 'El límite no puede ser negativo' },
@@ -67,11 +68,10 @@ function loadCompanies() {
         const tbody = $('#companiesTableBody');
         tbody.empty();
         if (!r.data || !r.data.length) {
-            tbody.html('<tr><td colspan="8" class="text-center py-4 text-muted">No se encontraron empresas</td></tr>');
+            tbody.html('<tr><td colspan="7" class="text-center py-4 text-muted">No se encontraron empresas</td></tr>');
             return;
         }
         r.data.forEach(c => {
-            const estado = c.estado ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>';
             const credito = companyCreditBadge(c.estado_credito);
             const vencimiento = c.credito_vencimiento ? `<small class="d-block text-muted">Fin: ${formatCompanyDate(c.credito_vencimiento)}</small>` : '';
             tbody.append(`
@@ -82,7 +82,6 @@ function loadCompanies() {
                     <td>${escapeHtml(c.email || '')}</td>
                     <td><span class="badge bg-info">${c.flota_count || 0}</span></td>
                     <td>${credito}${vencimiento}</td>
-                    <td>${estado}</td>
                     <td>
                         <button class="btn btn-sm btn-warning me-1" onclick="event.stopPropagation(); editCompany('${encodeURIComponent(c.rif)}')" title="Modificar Empresa"><i class="bi bi-pencil-square"></i></button>
                         <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteCompany('${encodeURIComponent(c.rif)}')" title="Eliminar Empresa"><i class="bi bi-trash"></i></button>
@@ -113,6 +112,7 @@ function showCreateCompanyModal() {
     $('#editRif').val('');
     $('#fRifPrefijo').val('J').prop('disabled', false);
     $('#fRif').prop('disabled', false);
+    $('#fRepresentanteCedulaPrefijo').val('V');
     new bootstrap.Modal('#companyModal').show();
     Validator.initTracking('companyForm');
 }
@@ -125,7 +125,9 @@ function companyPayload(includeRif = true) {
         email: $('#fEmail').val(),
         direccion: $('#fDireccion').val(),
         representante_nombre: $('#fRepresentante').val(),
-        representante_cedula: $('#fRepresentanteCedula').val(),
+        representante_cedula_prefijo: $('#fRepresentanteCedulaPrefijo').val(),
+        representante_cedula_numero: $('#fRepresentanteCedula').val(),
+        representante_cedula: buildDocumentValue('fRepresentanteCedulaPrefijo', 'fRepresentanteCedula'),
         representante_telefono: $('#fRepresentanteTelefono').val(),
         representante_email: $('#fRepresentanteEmail').val(),
         sector: $('#fSector').val(),
@@ -184,7 +186,7 @@ function editCompany(rif) {
         $('#fEmail').val(c.email);
         $('#fDireccion').val(c.direccion);
         $('#fRepresentante').val(c.representante_nombre);
-        $('#fRepresentanteCedula').val(c.representante_cedula);
+        setDocumentFields('fRepresentanteCedulaPrefijo', 'fRepresentanteCedula', c.representante_cedula, 'V');
         $('#fRepresentanteTelefono').val(c.representante_telefono);
         $('#fRepresentanteEmail').val(c.representante_email);
         $('#fLimiteCredito').val(c.limite_credito || 0);

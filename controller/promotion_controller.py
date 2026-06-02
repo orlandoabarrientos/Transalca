@@ -34,6 +34,19 @@ def _validate_promo(data):
     return clean, errors
 
 
+@promotion_bp.route('/check-unique', methods=['GET'])
+def check_unique():
+    try:
+        value = request.args.get('value', '').strip()
+        exclude = request.args.get('exclude', '').strip()
+        if not value:
+            return jsonify({"status": "success", "unique": True})
+        exists = model.nombre_exists(value, exclude if exclude else None)
+        return jsonify({"status": "success", "unique": not exists})
+    except Exception as e:
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
+
+
 @promotion_bp.route('/', methods=['GET'])
 def get_all():
     try:
@@ -69,6 +82,15 @@ def create():
         data, errors = _validate_promo(request.get_json() or {})
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+        existing = model.get_by_nombre(data['nombre'])
+        if existing:
+            if existing['estado'] == 1:
+                return jsonify({"status": "error", "message": "Ya existe una promocion con ese nombre.", "errors": {"nombre": "Ya existe una promocion con ese nombre."}}), 400
+            else:
+                model.update_promotion(existing['id'], data)
+                model.update("transalca", "UPDATE promociones SET estado = 1 WHERE id = %s", (existing['id'],))
+                bitacora.log_action(session['user_id'], 'CREAR', 'PROMOCIONES', f"Promocion creada: {data['nombre']}", request.remote_addr)
+                return jsonify({"status": "success", "message": "Promocion registrada correctamente.", "id": existing['id']})
         promo_id = model.create(data)
         bitacora.log_action(session['user_id'], 'CREAR', 'PROMOCIONES', f"Promocion creada: {data['nombre']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Promocion registrada correctamente.", "id": promo_id})
@@ -84,6 +106,8 @@ def update(promo_id):
         data, errors = _validate_promo(request.get_json() or {})
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+        if model.nombre_exists(data['nombre'], promo_id):
+            return jsonify({"status": "error", "message": "Ya existe una promocion con ese nombre.", "errors": {"nombre": "Ya existe una promocion con ese nombre."}}), 400
         model.update_promotion(promo_id, data)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'PROMOCIONES', f"Promocion modificada ID: {promo_id}", request.remote_addr)
         return jsonify({"status": "success", "message": "Promocion modificada correctamente."})

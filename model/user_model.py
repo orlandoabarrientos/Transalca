@@ -127,3 +127,9 @@ class UserModel(Connection):
         return self.fetch_all("mantenimiento",
             "SELECT * FROM usuarios WHERE nombre LIKE %s OR apellido LIKE %s OR cedula LIKE %s OR email LIKE %s",
             (search, search, search, search))
+
+    def get_by_cedula(self, cedula):
+        return self.fetch_one("mantenimiento", "SELECT * FROM usuarios WHERE cedula = %s", (cedula,))
+
+    def get_by_email(self, email):
+        return self.fetch_one("mantenimiento", "SELECT * FROM usuarios WHERE email = %s", (email,))

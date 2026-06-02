@@ -248,7 +248,13 @@ const Validator = {
         const el = document.getElementById(field);
         if (!el) return true;
 
-        const value = el.value.trim();
+        let value = '';
+        if (el.tagName === 'SELECT' && el.multiple) {
+            const selectedOptions = Array.from(el.selectedOptions).map(opt => opt.value).filter(val => val !== '');
+            value = selectedOptions.join(',');
+        } else {
+            value = el.value.trim();
+        }
         let error = '';
 
         if (el.dataset.externalError) {
@@ -421,7 +427,11 @@ async function loadSucursales(selectId, includeAll = true) {
         const res = await apiCall('/api/sucursales/active');
         const select = document.getElementById(selectId);
         if (!select) return;
-        select.innerHTML = includeAll ? '<option value="">Todas las sucursales</option>' : '<option value="">Seleccione sucursal</option>';
+        if (select.multiple) {
+            select.innerHTML = '';
+        } else {
+            select.innerHTML = includeAll ? '<option value="">Todas las sucursales</option>' : '<option value="">Seleccione sucursal</option>';
+        }
         (res.data || []).forEach(s => {
             select.innerHTML += `<option value="${s.id}">${s.nombre}</option>`;
         });
@@ -903,7 +913,7 @@ function getAdminModuleTitle() {
         orders_sales: 'Reporte Orden de Venta',
         credit: 'Gestionar Crédito',
         tickets: 'Gestionar Tickets de Soporte',
-        payments: 'Gestionar Comprobantes de Pago',
+        payments: 'Gestionar Pagos',
         payment_methods: 'Gestionar Métodos de Pago',
         promotions: 'Gestionar Promociones',
         users: 'Gestionar Usuarios',

@@ -74,6 +74,7 @@ CREATE TABLE empresas (
     razon_social VARCHAR(200) NOT NULL,
     nombre_comercial VARCHAR(200),
     representante_nombre VARCHAR(150),
+    representante_cedula_prefijo VARCHAR(2),
     representante_cedula VARCHAR(20),
     representante_telefono VARCHAR(20),
     representante_email VARCHAR(150),
@@ -97,14 +98,12 @@ CREATE TABLE productos (
     precio DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     categoria VARCHAR(150),
     marca VARCHAR(150),
-    proveedor_rif VARCHAR(20),
     imagen VARCHAR(200) DEFAULT 'default_product.png',
     estado TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (categoria) REFERENCES categorias(nombre) ON UPDATE CASCADE ON DELETE SET NULL,
-    FOREIGN KEY (marca) REFERENCES marcas(nombre) ON UPDATE CASCADE ON DELETE SET NULL,
-    FOREIGN KEY (proveedor_rif) REFERENCES proveedores(rif) ON UPDATE CASCADE ON DELETE SET NULL
+    FOREIGN KEY (marca) REFERENCES marcas(nombre) ON UPDATE CASCADE ON DELETE SET NULL
 );
 
 CREATE TABLE servicios (
@@ -155,7 +154,6 @@ CREATE TABLE promociones (
 
 CREATE TABLE metodos_pago (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    usuario_id INT,
     nombre VARCHAR(100) NOT NULL,
     datos TEXT NOT NULL,
     permite_credito TINYINT(1) DEFAULT 0,

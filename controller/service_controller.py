@@ -45,6 +45,19 @@ def _validate_service(data):
     return clean, errors
 
 
+@service_bp.route('/check-unique', methods=['GET'])
+def check_unique():
+    try:
+        value = request.args.get('value', '').strip()
+        exclude = request.args.get('exclude', '').strip()
+        if not value:
+            return jsonify({"status": "success", "unique": True})
+        exists = model.nombre_exists(value, exclude if exclude else None)
+        return jsonify({"status": "success", "unique": not exists})
+    except Exception as e:
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
+
+
 @service_bp.route('/', methods=['GET'])
 def get_all():
     try:
@@ -89,6 +102,15 @@ def create():
         clean, errors = _validate_service(data)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+        existing = model.get_by_nombre(clean['nombre'])
+        if existing:
+            if existing['estado'] == 1:
+                return jsonify({"status": "error", "message": "Ya existe un servicio con ese nombre.", "errors": {"nombre": "Ya existe un servicio con ese nombre."}}), 400
+            else:
+                model.update_service(existing['id'], clean)
+                model.update("transalca", "UPDATE servicios SET estado = 1 WHERE id = %s", (existing['id'],))
+                bitacora.log_action(session['user_id'], 'CREAR', 'SERVICIOS', f"Servicio creado: {clean['nombre']}", request.remote_addr)
+                return jsonify({"status": "success", "message": "Servicio registrado correctamente.", "id": existing['id']})
         sid = model.create(clean)
         bitacora.log_action(session['user_id'], 'CREAR', 'SERVICIOS',
             f"Servicio creado: {clean['nombre']}", request.remote_addr)
@@ -106,6 +128,8 @@ def update(sid):
         clean, errors = _validate_service(data)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+        if model.nombre_exists(clean['nombre'], sid):
+            return jsonify({"status": "error", "message": "Ya existe un servicio con ese nombre.", "errors": {"nombre": "Ya existe un servicio con ese nombre."}}), 400
         model.update_service(sid, clean)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'SERVICIOS',
             f"Servicio modificado ID: {sid}", request.remote_addr)

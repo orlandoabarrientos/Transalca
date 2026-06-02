@@ -49,7 +49,6 @@ function loadData() {
                 <td><strong>${escapeHtml(c.nombre)}</strong></td>
                 <td>${escapeHtml(c.descripcion || '-')}</td>
                 <td>${c.total_productos || 0}</td>
-                <td>${statusBadge(c.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${escape(c.nombre)}')" title="Modificar Categoría"><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${escape(c.nombre)}')" title="Eliminar Categoría"><i class="bi bi-trash"></i></button>
@@ -57,7 +56,7 @@ function loadData() {
             </tr>`;
         });
         if (!res.data?.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-tags"></i><p>No hay categorías registradas</p></div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-tags"></i><p>No hay categorías registradas</p></div></td></tr>';
         }
     });
 }

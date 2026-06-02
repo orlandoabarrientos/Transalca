@@ -21,6 +21,10 @@ def get_notifications():
         uid = session.get('user_id')
         if not uid:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
+        try:
+            model.clean_old_read_notifications()
+        except Exception:
+            pass
         sync_credit_notifications_if_needed()
         return jsonify({"status": "success", "data": model.get_by_user(uid, session.get('user_cedula'))})
     except Exception as e:
@@ -33,6 +37,10 @@ def get_unread():
         uid = session.get('user_id')
         if not uid:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
+        try:
+            model.clean_old_read_notifications()
+        except Exception:
+            pass
         cedula = session.get('user_cedula')
         sync_credit_notifications_if_needed()
         return jsonify({"status": "success",

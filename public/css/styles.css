@@ -1510,3 +1510,7 @@ a:hover {
 .accordion-button:focus {
     box-shadow: 0 0 0 3px var(--primary-glow);
 }
+
+.select2-container {
+    width: 100% !important;
+}

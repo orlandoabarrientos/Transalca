@@ -95,7 +95,6 @@ def get_one(user_id):
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cargar el usuario."}), 500
 
-
 @user_bp.route('/', methods=['POST'])
 def create():
     try:
@@ -104,11 +103,46 @@ def create():
         data, errors = _validate_user(request.get_json() or {}, require_password=True)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+        existing_by_cedula = model.get_by_cedula(data['cedula'])
+        existing_by_email = model.get_by_email(data['email'])
+        if existing_by_cedula and existing_by_cedula['estado'] == 1:
+            return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
+        if existing_by_email and existing_by_email['estado'] == 1:
+            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
+        
+        existing = existing_by_cedula or existing_by_email
+        if existing:
+            email_exclude = {"usuario_id": existing['id'], "cliente_cedula": data['cedula']}
+            if model.email_exists_globally(data['email'], email_exclude):
+                return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
+            
+            from werkzeug.security import generate_password_hash
+            password_hash = generate_password_hash(data['password'])
+            update_data = {
+                'nombre': data['nombre'],
+                'apellido': data['apellido'],
+                'cedula': data['cedula'],
+                'cedula_prefijo': data['cedula_prefijo'],
+                'email': data['email'],
+                'telefono': data.get('telefono'),
+                'direccion': data.get('direccion'),
+                'tipo': data['tipo']
+            }
+            model.update_info(existing['id'], update_data)
+            model.update("mantenimiento", "UPDATE usuarios SET password_hash = %s, estado = 1 WHERE id = %s", (password_hash, existing['id']))
+            
+            current_roles = model.get_user_roles(existing['id'])
+            for role in current_roles:
+                model.remove_role(existing['id'], role['id'])
+            if data.get('rol_id'):
+                model.assign_role(existing['id'], data['rol_id'])
+                
+            bitacora.log_action(session['user_id'], 'CREAR', 'USUARIOS', f"Usuario creado: {data['nombre']} {data['apellido']}", request.remote_addr)
+            return jsonify({"status": "success", "message": "Usuario registrado correctamente.", "id": existing['id']})
+
         email_exclude = {"cliente_cedula": data['cedula']} if data.get('tipo') == 'cliente' else {}
         if model.email_exists_globally(data['email'], email_exclude):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        if model.cedula_exists(data['cedula']):
-            return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
         user_id = model.create(data)
         if user_id:
             if data.get('rol_id'):

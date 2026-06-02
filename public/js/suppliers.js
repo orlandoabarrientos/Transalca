@@ -26,6 +26,9 @@ function loadData() {
         if (!tbody) return;
         tbody.innerHTML = '';
         (res.data || []).forEach(s => {
+            const actionBtn = s.total_ordenes > 0 
+                ? `<button class="btn btn-icon btn-sm btn-outline-danger" onclick="toggleEstado('${encodeURIComponent(s.rif)}', true)" title="Desactivar Proveedor"><i class="bi bi-slash-circle"></i></button>`
+                : `<button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${encodeURIComponent(s.rif)}', false)" title="Eliminar Proveedor"><i class="bi bi-trash"></i></button>`;
             tbody.innerHTML += `<tr class="fade-in-up">
                 <td><strong>${escapeHtml(s.nombre)}</strong></td>
                 <td>${escapeHtml(s.rif)}</td>
@@ -34,7 +37,7 @@ function loadData() {
                 <td>${statusBadge(s.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(s.rif)}')" title="Modificar Proveedor"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${encodeURIComponent(s.rif)}')" title="Eliminar Proveedor"><i class="bi bi-trash"></i></button>
+                    ${actionBtn}
                 </td>
             </tr>`;
         });
@@ -129,9 +132,12 @@ function saveData() {
     });
 }
 
-function toggleEstado(rif) {
+function toggleEstado(rif, deactivateOnly = false) {
     rif = decodeURIComponent(rif);
-    confirmAction('¿Estás seguro de que deseas eliminar este proveedor?', () => {
+    const msg = deactivateOnly 
+        ? '¿Estás seguro de que deseas desactivar este proveedor?' 
+        : '¿Estás seguro de que deseas eliminar este proveedor?';
+    confirmAction(msg, () => {
         apiCall('/api/suppliers/toggle', 'PUT', { rif }).then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message);

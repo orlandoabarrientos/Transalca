@@ -93,7 +93,7 @@ class ReportModel(Connection):
         return payments
 
     def get_inventory_kardex(self, start_date=None, end_date=None):
-        sql = "SELECT i.producto_codigo, 'Stock actual' as tipo, i.stock as cantidad, 'Ajuste sistemico' as motivo, i.updated_at as fecha, p.nombre as producto, p.codigo FROM stock i INNER JOIN productos p ON i.producto_codigo = p.codigo WHERE 1=1"
+        sql = "SELECT i.producto_codigo as id, i.producto_codigo, 'Stock actual' as tipo, i.stock as cantidad, 'Ajuste sistemico' as motivo, i.updated_at as fecha, p.nombre as producto, p.codigo FROM stock i INNER JOIN productos p ON i.producto_codigo = p.codigo WHERE 1=1"
         params = []
         if start_date:
             sql += " AND DATE(i.updated_at) >= %s"
@@ -109,13 +109,18 @@ class ReportModel(Connection):
         return moves
 
     def get_mechanics_performance(self, start_date=None, end_date=None):
-        sql = "SELECT s.mecanico_cedula, m.nombre as servicio_nombre, o.estado, o.fecha, d.cantidad, d.subtotal FROM detalle_orden_venta d INNER JOIN ordenes_venta o ON d.orden_id = o.id INNER JOIN servicios m ON d.servicio_id = m.id INNER JOIN servicio_mecanico s ON s.orden_venta_id = o.id AND s.servicio_id = m.id WHERE d.tipo = 'servicio'"
+        sql = (
+            "SELECT sm.mecanico_cedula, sm.estado as asignacion_estado, sm.fecha, s.precio as subtotal "
+            "FROM servicio_mecanico sm "
+            "INNER JOIN servicios s ON sm.servicio_id = s.id "
+            "WHERE sm.mecanico_cedula IS NOT NULL"
+        )
         params = []
         if start_date:
-            sql += " AND DATE(o.fecha) >= %s"
+            sql += " AND DATE(sm.fecha) >= %s"
             params.append(start_date)
         if end_date:
-            sql += " AND DATE(o.fecha) <= %s"
+            sql += " AND DATE(sm.fecha) <= %s"
             params.append(end_date)
 
         records = self.fetch_all("transalca", sql, tuple(params) if params else None)
@@ -137,9 +142,9 @@ class ReportModel(Connection):
                     "ingreso_generado": 0.0
                 }
             mecanicos_stats[mid]["total_asignados"] += 1
-            if r['estado'] == 'entregada':
+            if r['asignacion_estado'] == 'completado':
                 mecanicos_stats[mid]["total_completados"] += 1
-            mecanicos_stats[mid]["ingreso_generado"] += float(r['subtotal'])
+                mecanicos_stats[mid]["ingreso_generado"] += float(r['subtotal'])
 
         return list(mecanicos_stats.values())
 

@@ -58,8 +58,15 @@ def create():
             errors['nombre'] = 'El nombre debe tener al menos 2 caracteres'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        if model.nombre_exists(data['nombre'].strip()):
-            return jsonify({"status": "error", "message": "La marca ya existe", "errors": {"nombre": "La marca ya existe"}}), 400
+        existing = model.get_by_nombre(data['nombre'].strip())
+        if existing:
+            if existing['estado'] == 1:
+                return jsonify({"status": "error", "message": "La marca ya existe", "errors": {"nombre": "La marca ya existe"}}), 400
+            else:
+                model.update_brand(existing['nombre'], data)
+                model.update("transalca", "UPDATE marcas SET estado = 1 WHERE nombre = %s", (existing['nombre'],))
+                bitacora.log_action(session['user_id'], 'CREAR', 'MARCAS', f"Marca creada: {data['nombre']}", request.remote_addr)
+                return jsonify({"status": "success", "message": "Marca registrada correctamente.", "nombre": existing['nombre']})
         model.create(data)
         bitacora.log_action(session['user_id'], 'CREAR', 'MARCAS',
             f"Marca creada: {data['nombre']}", request.remote_addr)

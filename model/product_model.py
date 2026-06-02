@@ -12,12 +12,10 @@ class ProductModel(Connection):
     def _product_select(self, where="p.estado = 1"):
         return (
             "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, "
-            "pr.nombre as proveedor_nombre, "
             "COALESCE(GROUP_CONCAT(DISTINCT su.nombre ORDER BY su.nombre SEPARATOR ', '), 'Sin stock') as sucursal_nombre, "
             "GROUP_CONCAT(DISTINCT st.sucursal_id ORDER BY st.sucursal_id SEPARATOR ',') as sucursal_ids, "
             "COALESCE(SUM(st.stock),0) as stock "
             "FROM productos p "
-            "LEFT JOIN proveedores pr ON p.proveedor_rif = pr.rif "
             "LEFT JOIN stock st ON p.codigo = st.producto_codigo "
             "LEFT JOIN sucursales su ON st.sucursal_id = su.id "
             f"WHERE {where} GROUP BY p.codigo ORDER BY p.nombre"
@@ -35,11 +33,10 @@ class ProductModel(Connection):
     def get_by_codigo(self, codigo):
         return self.fetch_one("transalca",
             "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, "
-            "pr.nombre as proveedor_nombre, "
             "COALESCE(GROUP_CONCAT(DISTINCT su.nombre ORDER BY su.nombre SEPARATOR ', '), 'Sin stock') as sucursal_nombre, "
             "GROUP_CONCAT(DISTINCT st.sucursal_id ORDER BY st.sucursal_id SEPARATOR ',') as sucursal_ids, "
             "COALESCE(SUM(st.stock),0) as stock "
-            "FROM productos p LEFT JOIN proveedores pr ON p.proveedor_rif = pr.rif "
+            "FROM productos p "
             "LEFT JOIN stock st ON p.codigo = st.producto_codigo "
             "LEFT JOIN sucursales su ON st.sucursal_id = su.id WHERE p.codigo = %s GROUP BY p.codigo", (codigo,))
 
@@ -71,6 +68,25 @@ class ProductModel(Connection):
             "WHERE (p.nombre LIKE %s OR p.codigo LIKE %s OR p.descripcion LIKE %s) AND p.estado = 1 "
             "GROUP BY p.codigo ORDER BY p.nombre", (q, q, q))
 
+    def _sync_sucursales(self, codigo, sucursal_ids):
+        ids = []
+        for value in sucursal_ids or []:
+            try:
+                parsed = int(value)
+            except (TypeError, ValueError):
+                continue
+            if parsed not in ids:
+                ids.append(parsed)
+        if ids:
+            placeholders = ", ".join(["%s"] * len(ids))
+            self.update("transalca", f"DELETE FROM stock WHERE producto_codigo = %s AND sucursal_id NOT IN ({placeholders})", (codigo, *ids))
+        else:
+            self.update("transalca", "DELETE FROM stock WHERE producto_codigo = %s", (codigo,))
+        for sucursal_id in ids:
+            existing = self.fetch_one("transalca", "SELECT 1 FROM stock WHERE producto_codigo = %s AND sucursal_id = %s", (codigo, sucursal_id))
+            if not existing:
+                self.insert("transalca", "INSERT INTO stock (producto_codigo, sucursal_id, stock) VALUES (%s, %s, 0)", (codigo, sucursal_id))
+
     def create(self, data):
         columns = self._columns()
         values = {
@@ -79,13 +95,14 @@ class ProductModel(Connection):
             'descripcion': data.get('descripcion', '').strip(),
             'precio': float(data['precio']),
             'categoria': data.get('categoria') or None,
-            'marca': data.get('marca') or None,
-            'proveedor_rif': data.get('proveedor_rif') or None
+            'marca': data.get('marca') or None
         }
         keys = [k for k in values if k in columns]
-        return self.insert("transalca",
+        pid = self.insert("transalca",
             f"INSERT INTO productos ({', '.join(keys)}) VALUES ({', '.join(['%s'] * len(keys))})",
             tuple(values[k] for k in keys))
+        self._sync_sucursales(values['codigo'], data.get('sucursal_ids') or [])
+        return pid
 
     def update_product(self, old_codigo, data):
         columns = self._columns()
@@ -95,14 +112,15 @@ class ProductModel(Connection):
             'descripcion': data.get('descripcion', '').strip(),
             'precio': float(data['precio']),
             'categoria': data.get('categoria') or None,
-            'marca': data.get('marca') or None,
-            'proveedor_rif': data.get('proveedor_rif') or None
+            'marca': data.get('marca') or None
         }
         keys = [k for k in values if k in columns]
         params = [values[k] for k in keys] + [old_codigo]
-        return self.update("transalca",
+        res = self.update("transalca",
             f"UPDATE productos SET {', '.join([f'{k} = %s' for k in keys])} WHERE codigo = %s",
             tuple(params))
+        self._sync_sucursales(values['codigo'], data.get('sucursal_ids') or [])
+        return res
 
     def soft_delete(self, codigo):
         return self.update("transalca", "UPDATE productos SET estado = 0 WHERE codigo = %s", (codigo,))

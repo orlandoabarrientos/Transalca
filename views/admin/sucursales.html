@@ -30,7 +30,6 @@
                                 <th>Dirección</th>
                                 <th>Teléfono</th>
                                 <th>Email</th>
-                                <th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -118,7 +117,6 @@ function loadData() {
                 <td>${s.direccion || '-'}</td>
                 <td>${s.telefono || '-'}</td>
                 <td>${s.email || '-'}</td>
-                <td>${statusBadge(s.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${s.id})" title="Modificar Sucursal"><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${s.id})" title="Eliminar Sucursal"><i class="bi bi-trash"></i></button>
@@ -126,7 +124,7 @@ function loadData() {
             </tr>`;
         });
         if (!res.data?.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-building"></i><p>No hay sucursales registradas</p></div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-building"></i><p>No hay sucursales registradas</p></div></td></tr>';
         }
     });
 }

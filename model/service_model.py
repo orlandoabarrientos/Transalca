@@ -80,3 +80,13 @@ class ServiceModel(Connection):
 
     def toggle_estado(self, sid):
         return self.soft_delete(sid)
+
+    def nombre_exists(self, nombre, exclude_id=None):
+        if exclude_id:
+            result = self.fetch_one("transalca", "SELECT id FROM servicios WHERE nombre = %s AND id != %s", (nombre, exclude_id))
+        else:
+            result = self.fetch_one("transalca", "SELECT id FROM servicios WHERE nombre = %s", (nombre,))
+        return result is not None
+
+    def get_by_nombre(self, nombre):
+        return self.fetch_one("transalca", "SELECT * FROM servicios WHERE nombre = %s", (nombre,))

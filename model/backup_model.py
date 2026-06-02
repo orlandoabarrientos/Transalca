@@ -14,15 +14,21 @@ class BackupModel(Connection):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         mysqldump = self._find_mysqldump()
         files = []
+        os.makedirs(self.backup_folder, exist_ok=True)
         for db_config, db_name in [(DB_CONFIG_MANTENIMIENTO, 'db_mantenimiento'), (DB_CONFIG_TRANSALCA, 'db_transalca')]:
             filename = f"{db_name}_{timestamp}.sql"
             filepath = os.path.join(self.backup_folder, filename)
-            cmd = f'"{mysqldump}" -h {db_config["host"]} -P {db_config["port"]} -u {db_config["user"]} {db_config["database"]} > "{filepath}"'
+            args = [mysqldump, "-h", db_config["host"], "-P", str(db_config["port"]), "-u", db_config["user"]]
             if db_config["password"]:
-                cmd = f'"{mysqldump}" -h {db_config["host"]} -P {db_config["port"]} -u {db_config["user"]} -p{db_config["password"]} {db_config["database"]} > "{filepath}"'
-            os.system(cmd)
-            if os.path.exists(filepath):
-                files.append({"filename": filename, "path": filepath, "size": os.path.getsize(filepath)})
+                args.append(f"-p{db_config['password']}")
+            args.append(db_config["database"])
+            try:
+                with open(filepath, 'wb') as f:
+                    subprocess.run(args, stdout=f, check=True)
+                if os.path.exists(filepath):
+                    files.append({"filename": filename, "path": filepath, "size": os.path.getsize(filepath)})
+            except Exception as e:
+                print(f"Error creating backup for {db_name}: {e}")
         return files
 
     def _find_mysqldump(self):

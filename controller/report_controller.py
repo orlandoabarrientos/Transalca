@@ -105,10 +105,10 @@ def export_reports():
         
         if format_type == 'csv':
             output = io.StringIO()
-            writer = csv.writer(output)
+            writer = csv.writer(output, lineterminator='\n')
             writer.writerow(headers)
             writer.writerows(rows)
-            return Response(output.getvalue(), mimetype="text/csv", headers={"Content-Disposition": f"attachment;filename={filename}.csv"})
+            return Response(output.getvalue().encode('utf-8'), mimetype="text/csv", headers={"Content-Disposition": f"attachment;filename={filename}.csv"})
             
         
         elif format_type == 'excel':

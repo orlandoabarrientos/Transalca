@@ -61,11 +61,10 @@ function loadClients() {
         const tbody = $('#clientsTableBody');
         tbody.empty();
         if (!r.data || r.data.length === 0) {
-            tbody.html('<tr><td colspan="7" class="text-center py-4 text-muted">No se encontraron clientes</td></tr>');
+            tbody.html('<tr><td colspan="6" class="text-center py-4 text-muted">No se encontraron clientes</td></tr>');
             return;
         }
         r.data.forEach(c => {
-            const estado = c.estado ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>';
             tbody.append(`
                 <tr style="cursor:pointer" onclick="showDetail('${c.cedula}')">
                     <td><strong>${c.cedula}</strong></td>
@@ -73,7 +72,6 @@ function loadClients() {
                     <td>${c.telefono || '<span class="text-muted">—</span>'}</td>
                     <td>${c.email || '<span class="text-muted">—</span>'}</td>
                     <td><span class="badge bg-info">${c.vehiculos_count || 0}</span></td>
-                    <td>${estado}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); editClient('${c.cedula}')" title="Modificar Cliente"><i class="bi bi-pencil"></i></button>
                         <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); toggleClient('${c.cedula}')" title="Eliminar Cliente"><i class="bi bi-trash"></i></button>

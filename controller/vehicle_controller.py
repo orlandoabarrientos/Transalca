@@ -130,8 +130,14 @@ def create():
         if not can_access_client(clean.get('cliente_cedula')):
             return deny()
         placa = clean.get('placa')
-        if placa and model.placa_exists(placa):
-            return jsonify({"status": "error", "message": "Esta placa ya esta registrada.", "errors": {"placa": "Esta placa ya esta registrada."}}), 400
+        existing = model.get_by_placa(placa)
+        if existing:
+            if existing['estado'] == 1:
+                return jsonify({"status": "error", "message": "Esta placa ya esta registrada.", "errors": {"placa": "Esta placa ya esta registrada."}}), 400
+            else:
+                model.update_vehicle(existing['placa'], clean)
+                model.update("transalca", "UPDATE vehiculos SET estado = 1 WHERE placa = %s", (existing['placa'],))
+                return jsonify({"status": "success", "message": "Vehiculo registrado correctamente.", "id": existing['placa']}), 201
         vid = model.create(clean)
         return jsonify({"status": "success", "message": "Vehiculo registrado correctamente.", "id": vid}), 201
     except ValueError as e:

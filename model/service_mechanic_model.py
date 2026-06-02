@@ -69,5 +69,11 @@ class ServiceMechanicModel(Connection):
         return self.update("transalca",
             "UPDATE servicio_mecanico SET estado = %s WHERE id = %s", (estado, aid))
 
+    def update_assignment(self, aid, data):
+        mecanico_cedula = (data.get('mecanico_cedula') or '').strip() or None
+        return self.update("transalca",
+            "UPDATE servicio_mecanico SET servicio_id = %s, mecanico_cedula = %s, orden_venta_id = %s, observaciones = %s WHERE id = %s",
+            (data['servicio_id'], mecanico_cedula, data.get('orden_venta_id') or None, data.get('observaciones', '').strip(), aid))
+
     def delete_assignment(self, aid):
         return self.delete("transalca", "DELETE FROM servicio_mecanico WHERE id = %s", (aid,))

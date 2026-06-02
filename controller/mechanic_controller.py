@@ -87,8 +87,20 @@ def create():
         data, errors = _validate_mechanic(request.form.to_dict())
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if model.cedula_exists(data['cedula']):
-            return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
+        existing = model.get_by_cedula(data['cedula'])
+        if existing:
+            if existing['estado'] == 1:
+                return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
+            else:
+                filename, file_error = _save_photo(request.files.get('foto_perfil'), data['cedula'])
+                if file_error:
+                    return jsonify({"status": "error", "message": file_error, "errors": {"foto_perfil": file_error}}), 400
+                if filename:
+                    data['foto_perfil'] = filename
+                model.update_mechanic(existing['cedula'], data)
+                model.update("transalca", "UPDATE mecanicos SET estado = 1 WHERE cedula = %s", (existing['cedula'],))
+                bitacora.log_action(session['user_id'], 'CREAR', 'MECANICOS', f"Mecanico creado: {data['cedula']}", request.remote_addr)
+                return jsonify({"status": "success", "message": "Mecanico registrado correctamente.", "cedula": existing['cedula']})
         filename, file_error = _save_photo(request.files.get('foto_perfil'), data['cedula'])
         if file_error:
             return jsonify({"status": "error", "message": file_error, "errors": {"foto_perfil": file_error}}), 400

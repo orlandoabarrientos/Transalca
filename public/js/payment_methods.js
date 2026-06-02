@@ -48,7 +48,7 @@ function loadPaymentMethods() {
 function renderPaymentMethods() {
     const q = ($('#paymentMethodSearch').val() || '').toLowerCase().trim();
     const rows = paymentMethodsCache.filter(item => {
-        const text = `${item.nombre || ''} ${item.datos || ''} ${item.usuario_nombre || ''} ${item.usuario_apellido || ''}`.toLowerCase();
+        const text = `${item.nombre || ''} ${item.datos || ''}`.toLowerCase();
         return !q || text.includes(q);
     });
     const tbody = document.getElementById('paymentMethodBody');
@@ -59,8 +59,6 @@ function renderPaymentMethods() {
             <td><strong>${escapeHtml(item.nombre)}</strong></td>
             <td>${escapeHtml(item.datos)}</td>
             <td>${item.permite_credito ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-secondary">No</span>'}</td>
-            <td>${escapeHtml(`${item.usuario_nombre || ''} ${item.usuario_apellido || ''}`.trim() || '-')}</td>
-            <td>${statusBadge(item.estado)}</td>
             <td>
                 <button class="btn btn-icon btn-sm btn-warning" onclick="editPaymentMethod(${item.id})" title="Modificar método de pago"><i class="bi bi-pencil-square"></i></button>
                 <button class="btn btn-icon btn-sm btn-danger" onclick="deletePaymentMethod(${item.id})" title="Eliminar método de pago"><i class="bi bi-trash"></i></button>
@@ -68,7 +66,7 @@ function renderPaymentMethods() {
         </tr>`;
     });
     if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-wallet2"></i><p>No hay métodos de pago registrados</p></div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-wallet2"></i><p>No hay métodos de pago registrados</p></div></td></tr>';
     }
 }
 

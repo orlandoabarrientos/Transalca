@@ -77,8 +77,15 @@ def create():
         data, errors = _validate_supplier(request.get_json() or {})
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if model.rif_exists(data['rif']):
-            return jsonify({"status": "error", "message": "Este rif ya esta registrado.", "errors": {"rif": "Este rif ya esta registrado."}}), 400
+        existing = model.get_by_rif(data['rif'])
+        if existing:
+            if existing['estado'] == 1:
+                return jsonify({"status": "error", "message": "Este rif ya esta registrado.", "errors": {"rif": "Este rif ya esta registrado."}}), 400
+            else:
+                model.update_supplier(existing['rif'], data)
+                model.update("transalca", "UPDATE proveedores SET estado = 1 WHERE rif = %s", (existing['rif'],))
+                bitacora.log_action(session['user_id'], 'CREAR', 'PROVEEDORES', f"Proveedor creado: {data['nombre']}", request.remote_addr)
+                return jsonify({"status": "success", "message": "Proveedor registrado correctamente.", "rif": existing['rif']})
         if data.get('email') and model.email_exists_globally(data['email'], {"proveedor_rif": data['rif']}):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         model.create(data)

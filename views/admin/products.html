@@ -27,11 +27,9 @@
                                 <th>Producto</th>
                                 <th>Categoría</th>
                                 <th>Marca</th>
-                                <th>Proveedor</th>
                                 <th>Sucursal</th>
                                 <th>Precio</th>
                                 <th>Stock</th>
-                                <th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -71,26 +69,26 @@
                         <div class="invalid-feedback"></div>
                     </div>
                     <div class="row">
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Precio <span class="required">*</span></label>
                             <input type="number" class="form-control" id="precio" name="precio" step="0.01" min="0.01">
                             <div class="invalid-feedback"></div>
                         </div>
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Categoría <span class="required">*</span></label>
                             <select class="form-select" id="categoria" name="categoria" required></select>
                             <div class="invalid-feedback"></div>
                         </div>
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Marca <span class="required">*</span></label>
                             <select class="form-select" id="marca" name="marca" required></select>
                             <div class="invalid-feedback"></div>
                         </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Proveedor <span class="required">*</span></label>
-                            <select class="form-select" id="proveedor_rif" name="proveedor_rif" required></select>
-                            <div class="invalid-feedback"></div>
-                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sucursales <span class="required">*</span></label>
+                        <select class="form-select" id="sucursal_id" name="sucursal_id" multiple required></select>
+                        <div class="invalid-feedback"></div>
                     </div>
                 </form>
             </div>

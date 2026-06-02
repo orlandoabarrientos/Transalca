@@ -10,7 +10,10 @@ class MechanicModel(Connection):
         return {r['Field'] for r in rows}
 
     def get_all(self):
-        return self.fetch_all("transalca", "SELECT * FROM mecanicos WHERE estado = 1 ORDER BY nombre, apellido")
+        return self.fetch_all("transalca",
+            "SELECT m.*, "
+            "(SELECT COUNT(*) FROM servicio_mecanico WHERE mecanico_cedula = m.cedula) as total_servicios "
+            "FROM mecanicos m WHERE m.estado = 1 ORDER BY m.nombre, m.apellido")
 
     def get_by_cedula(self, cedula):
         return self.fetch_one("transalca", "SELECT * FROM mecanicos WHERE cedula = %s", (cedula,))

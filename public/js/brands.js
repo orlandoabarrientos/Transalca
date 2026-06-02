@@ -49,7 +49,6 @@ function loadData() {
                 <td><strong>${escapeHtml(b.nombre)}</strong></td>
                 <td>${escapeHtml(b.descripcion || '-')}</td>
                 <td>${b.total_productos || 0}</td>
-                <td>${statusBadge(b.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${escape(b.nombre)}')" title="Modificar Marca"><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${escape(b.nombre)}')" title="Eliminar Marca"><i class="bi bi-trash"></i></button>
@@ -57,7 +56,7 @@ function loadData() {
             </tr>`;
         });
         if (!res.data?.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-award"></i><p>No hay marcas registradas</p></div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-award"></i><p>No hay marcas registradas</p></div></td></tr>';
         }
     });
 }

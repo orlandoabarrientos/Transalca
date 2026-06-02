@@ -86,6 +86,8 @@ async function loadAssignments() {
                 <td>${a.observaciones || '-'}</td>
                 <td>
                     ${!hasMechanic ? `<button class="btn btn-icon btn-outline-orange btn-sm" title="Asignar Mecánico" onclick="openMechanicModal(${a.id})"><i class="bi bi-person-plus"></i></button>` : ''}
+                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editAssignment(${a.id})" title="Modificar"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-icon btn-sm btn-warning" onclick="deleteAssignment(${a.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -114,8 +116,12 @@ function statusSelect(id, current) {
 
 function openAssignmentModal() {
     Validator.clearForm('assignmentForm');
+    const idInput = document.getElementById('assignmentId');
+    if (idInput) idInput.value = '';
     document.getElementById('assignmentModalTitle').textContent = 'Registrar Servicio Mecánico';
     document.getElementById('orden_venta_id').value = '';
+    document.getElementById('mecanico_cedula').value = '';
+    document.getElementById('observaciones').value = '';
     assignmentModal.show();
     Validator.initTracking('assignmentForm');
 }
@@ -125,6 +131,9 @@ async function saveAssignment() {
         showToast('Corrija los errores del formulario', 'warning');
         return;
     }
+
+    const idInput = document.getElementById('assignmentId');
+    const id = idInput ? idInput.value : '';
 
     const data = {
         servicio_id: parseInt(document.getElementById('servicio_id').value, 10),
@@ -136,7 +145,9 @@ async function saveAssignment() {
 
     try {
         setButtonLoading(saveBtn, true, 'Guardando...');
-        const res = await apiCall('/api/service-mechanics/', 'POST', data);
+        const url = id ? `/api/service-mechanics/${id}` : '/api/service-mechanics/';
+        const method = id ? 'PUT' : 'POST';
+        const res = await apiCall(url, method, data);
         setButtonLoading(saveBtn, false);
         if (res.status === 'error') {
             Validator.showServerErrors('assignmentForm', res.errors);
@@ -146,6 +157,36 @@ async function saveAssignment() {
         showToast(res.message || 'Servicio mecánico registrado correctamente', 'success');
         loadAssignments();
     } catch (e) { }
+}
+
+function editAssignment(id) {
+    apiCall(`/api/service-mechanics/${id}`).then(res => {
+        if (res.status === 'error') return showToast(res.message, 'error');
+        const a = res.data;
+        Validator.clearForm('assignmentForm');
+        
+        const idInput = document.getElementById('assignmentId');
+        if (idInput) idInput.value = a.id;
+        
+        document.getElementById('servicio_id').value = a.servicio_id || '';
+        document.getElementById('mecanico_cedula').value = a.mecanico_cedula || '';
+        document.getElementById('orden_venta_id').value = a.orden_venta_id || '';
+        document.getElementById('observaciones').value = a.observaciones || '';
+        
+        document.getElementById('assignmentModalTitle').textContent = 'Modificar Servicio Mecánico';
+        assignmentModal.show();
+        Validator.initTracking('assignmentForm');
+    });
+}
+
+function deleteAssignment(id) {
+    confirmAction('¿Estás seguro de que deseas eliminar este registro de servicio mecánico?', () => {
+        apiCall(`/api/service-mechanics/${id}`, 'DELETE').then(res => {
+            if (res.status === 'error') return showToast(res.message, 'error');
+            showToast(res.message);
+            loadAssignments();
+        });
+    });
 }
 
 function openMechanicModal(assignmentId) {

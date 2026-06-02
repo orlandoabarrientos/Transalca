@@ -79,8 +79,15 @@ def create():
         data, errors = _validate_sucursal(request.get_json() or {})
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if model.nombre_exists(data['nombre']):
-            return jsonify({"status": "error", "message": "Ya existe una sucursal con ese nombre.", "errors": {"nombre": "Ya existe una sucursal con ese nombre."}}), 400
+        existing = model.get_by_nombre(data['nombre'])
+        if existing:
+            if existing['estado'] == 1:
+                return jsonify({"status": "error", "message": "Ya existe una sucursal con ese nombre.", "errors": {"nombre": "Ya existe una sucursal con ese nombre."}}), 400
+            else:
+                model.update_sucursal(existing['id'], data)
+                model.update("transalca", "UPDATE sucursales SET estado = 1 WHERE id = %s", (existing['id'],))
+                bitacora.log_action(session['user_id'], 'CREAR', 'SUCURSALES', f"Sucursal creada: {data['nombre']}", request.remote_addr)
+                return jsonify({"status": "success", "message": "Sucursal registrada correctamente.", "id": existing['id']})
         if data.get('email') and model.email_exists_globally(data['email']):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         sid = model.create(data)

@@ -13,6 +13,34 @@ $(document).ready(function() {
         sucursal_id: { required: true, requiredMsg: 'Seleccione al menos una sucursal' }
     });
     Validator.setupRealtime('serviceForm');
+
+    let checkTimeout = null;
+    const nameInput = document.getElementById('nombre');
+    if (nameInput) {
+        nameInput.addEventListener('input', () => {
+            clearTimeout(checkTimeout);
+            const val = nameInput.value.trim();
+            const exclude = document.getElementById('serviceId').value.trim();
+            if (val.length < 3) return;
+            checkTimeout = setTimeout(() => {
+                fetch(`/api/services/check-unique?value=${encodeURIComponent(val)}&exclude=${encodeURIComponent(exclude)}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'success' && !data.unique) {
+                            nameInput.dataset.externalError = 'El servicio ya existe';
+                            setFieldError(nameInput, 'El servicio ya existe');
+                        } else {
+                            delete nameInput.dataset.externalError;
+                            if (nameInput.classList.contains('is-invalid') && getFieldFeedback(nameInput).textContent === 'El servicio ya existe') {
+                                clearFieldError(nameInput);
+                                nameInput.classList.add('is-valid');
+                            }
+                        }
+                        updateFormSubmitState('serviceForm');
+                    });
+            }, 350);
+        });
+    }
 });
 
 function loadData() {
@@ -28,7 +56,6 @@ function loadData() {
                 <td>${s.sucursal_nombre || 'Todas'}</td>
                 <td class="fw-bold" style="color:var(--primary);" data-usd-price="${s.precio}">${formatUsdBs(s.precio)}</td>
                 <td>${s.duracion_estimada || '-'} min</td>
-                <td>${statusBadge(s.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${s.id})" title="Modificar Servicio"><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${s.id})" title="Eliminar Servicio"><i class="bi bi-trash"></i></button>
@@ -36,7 +63,7 @@ function loadData() {
             </tr>`;
         });
         if (!res.data?.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="empty-state"><i class="bi bi-wrench-adjustable"></i><p>No hay servicios registrados</p></div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-wrench-adjustable"></i><p>No hay servicios registrados</p></div></td></tr>';
         }
     });
 }

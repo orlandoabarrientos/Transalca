@@ -7,9 +7,8 @@ class PaymentMethodModel(Connection):
 
     def get_all(self):
         return self.fetch_all("transalca",
-            "SELECT mp.*, u.nombre as usuario_nombre, u.apellido as usuario_apellido "
+            "SELECT mp.* "
             "FROM metodos_pago mp "
-            "LEFT JOIN db_mantenimiento.usuarios u ON mp.usuario_id = u.id "
             "WHERE mp.estado = 1 ORDER BY mp.created_at DESC")
 
     def get_active(self):
@@ -32,10 +31,16 @@ class PaymentMethodModel(Connection):
             "SELECT id FROM metodos_pago WHERE LOWER(nombre) = LOWER(%s) AND estado = 1",
             (value,)) is not None
 
+    def get_by_name(self, name):
+        value = (name or '').strip()
+        if not value:
+            return None
+        return self.fetch_one("transalca", "SELECT * FROM metodos_pago WHERE LOWER(nombre) = LOWER(%s)", (value,))
+
     def create(self, data):
         return self.insert("transalca",
-            "INSERT INTO metodos_pago (usuario_id, nombre, datos, permite_credito) VALUES (%s,%s,%s,%s)",
-            (data['usuario_id'], data['nombre'].strip(), data['datos'].strip(), int(data.get('permite_credito') or 0)))
+            "INSERT INTO metodos_pago (nombre, datos, permite_credito) VALUES (%s,%s,%s)",
+            (data['nombre'].strip(), data['datos'].strip(), int(data.get('permite_credito') or 0)))
 
     def update_method(self, method_id, data):
         return self.update("transalca",

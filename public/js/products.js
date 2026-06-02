@@ -7,6 +7,7 @@ $(document).ready(function() {
     $('#navbarContainer').load('/components/admin_navbar.html');
     loadData();
     loadCombos();
+    loadSucursales('sucursal_id', false).then(() => enhanceSearchableSelects(document.getElementById('productModal')));
     Validator.setRules('productForm', {
         codigo: { required: true, minLength: 2, requiredMsg: 'El código es obligatorio' },
         nombre: { 
@@ -26,7 +27,7 @@ $(document).ready(function() {
         precio: { required: true, min: 0.01, requiredMsg: 'El precio es obligatorio', minMsg: 'El precio debe ser mayor a 0' },
         categoria: { required: true, requiredMsg: 'Debe seleccionar una categoría' },
         marca: { required: true, requiredMsg: 'Debe seleccionar una marca' },
-        proveedor_rif: { required: true, requiredMsg: 'Debe seleccionar un proveedor' }
+        sucursal_id: { required: true, requiredMsg: 'Seleccione al menos una sucursal' }
     });
     Validator.setupRealtime('productForm');
     document.getElementById('codigo')?.addEventListener('input', validateUniqueProductCodigo);
@@ -42,11 +43,9 @@ function loadData() {
                 <td><strong>${escapeHtml(p.nombre)}</strong><br><small class="text-muted">${escapeHtml(p.codigo)}</small></td>
                 <td>${escapeHtml(p.categoria_nombre || '-')}</td>
                 <td>${escapeHtml(p.marca_nombre || '-')}</td>
-                <td>${escapeHtml(p.proveedor_nombre || '-')}</td>
                 <td>${escapeHtml(p.sucursal_nombre || 'Todas')}</td>
                 <td class="fw-bold" style="color:var(--primary);" data-usd-price="${p.precio}">${formatUsdBs(p.precio)}</td>
                 <td>${p.stock !== undefined ? p.stock : '-'}</td>
-                <td>${statusBadge(p.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(p.codigo)}')" title="Modificar Producto"><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${encodeURIComponent(p.codigo)}')" title="Eliminar Producto"><i class="bi bi-trash"></i></button>
@@ -54,21 +53,19 @@ function loadData() {
             </tr>`;
         });
         if (!res.data?.length) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="empty-state"><i class="bi bi-box"></i><p>No hay productos registrados</p></div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-box"></i><p>No hay productos registrados</p></div></td></tr>';
         }
     });
 }
 
 async function loadCombos() {
     try {
-        const [cats, brands, suppliers] = await Promise.all([
+        const [cats, brands] = await Promise.all([
             apiCall('/api/categories/active'),
-            apiCall('/api/brands/active'),
-            apiCall('/api/suppliers/active')
+            apiCall('/api/brands/active')
         ]);
         const catSel = document.getElementById('categoria');
         const brandSel = document.getElementById('marca');
-        const supplierSel = document.getElementById('proveedor_rif');
         if (catSel) {
             catSel.innerHTML = '<option value="">Seleccione categoría...</option>';
             (cats.data || []).forEach(c => catSel.innerHTML += `<option value="${escapeHtml(c.nombre)}">${escapeHtml(c.nombre)}</option>`);
@@ -76,10 +73,6 @@ async function loadCombos() {
         if (brandSel) {
             brandSel.innerHTML = '<option value="">Seleccione marca...</option>';
             (brands.data || []).forEach(b => brandSel.innerHTML += `<option value="${escapeHtml(b.nombre)}">${escapeHtml(b.nombre)}</option>`);
-        }
-        if (supplierSel) {
-            supplierSel.innerHTML = '<option value="">Seleccione proveedor...</option>';
-            (suppliers.data || []).forEach(s => supplierSel.innerHTML += `<option value="${escapeHtml(s.rif)}">${escapeHtml(s.nombre)} (${escapeHtml(s.rif)})</option>`);
         }
     } catch(e) {}
 }
@@ -107,8 +100,12 @@ function editData(codigo) {
         if (catSel) catSel.value = p.categoria || '';
         const brandSel = document.getElementById('marca');
         if (brandSel) brandSel.value = p.marca || '';
-        const supplierSel = document.getElementById('proveedor_rif');
-        if (supplierSel) supplierSel.value = p.proveedor_rif || '';
+        const sucSel = document.getElementById('sucursal_id');
+        if (sucSel) {
+            const ids = String(p.sucursal_ids || '').split(',').filter(Boolean);
+            Array.from(sucSel.options).forEach(opt => { opt.selected = ids.includes(opt.value); });
+            if (window.jQuery?.fn?.select2) window.jQuery(sucSel).trigger('change.select2');
+        }
         document.getElementById('modalTitle').textContent = 'Modificar Producto';
         new bootstrap.Modal(document.getElementById('productModal')).show();
         Validator.initTracking('productForm');
@@ -125,7 +122,7 @@ function saveData() {
         precio: document.getElementById('precio').value,
         categoria: document.getElementById('categoria')?.value || null,
         marca: document.getElementById('marca')?.value || null,
-        proveedor_rif: document.getElementById('proveedor_rif')?.value || null
+        sucursal_ids: Array.from(document.getElementById('sucursal_id')?.selectedOptions || []).map(o => o.value)
     };
     const saveBtn = document.querySelector('#productModal .btn-orange');
     const url = oldCodigo ? '/api/products/update' : '/api/products/';

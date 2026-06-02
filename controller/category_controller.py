@@ -58,8 +58,15 @@ def create():
             errors['nombre'] = 'El nombre debe tener al menos 3 caracteres'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        if model.nombre_exists(data['nombre'].strip()):
-            return jsonify({"status": "error", "message": "La categoria ya existe", "errors": {"nombre": "La categoria ya existe"}}), 400
+        existing = model.get_by_nombre(data['nombre'].strip())
+        if existing:
+            if existing['estado'] == 1:
+                return jsonify({"status": "error", "message": "La categoria ya existe", "errors": {"nombre": "La categoria ya existe"}}), 400
+            else:
+                model.update_category(existing['nombre'], data)
+                model.update("transalca", "UPDATE categorias SET estado = 1 WHERE nombre = %s", (existing['nombre'],))
+                bitacora.log_action(session['user_id'], 'CREAR', 'CATEGORIAS', f"Categoria creada: {data['nombre']}", request.remote_addr)
+                return jsonify({"status": "success", "message": "Categoria registrada correctamente.", "nombre": existing['nombre']})
         model.create(data)
         bitacora.log_action(session['user_id'], 'CREAR', 'CATEGORIAS',
             f"Categoria creada: {data['nombre']}", request.remote_addr)

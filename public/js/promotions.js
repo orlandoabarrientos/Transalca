@@ -13,6 +13,34 @@ $(document).ready(function () {
     Validator.setupRealtime('promoForm');
     bindModalValidationReset();
     document.getElementById('imagen_tarjeta')?.addEventListener('change', onPromoImageSelected);
+
+    let checkTimeout = null;
+    const nameInput = document.getElementById('nombre');
+    if (nameInput) {
+        nameInput.addEventListener('input', () => {
+            clearTimeout(checkTimeout);
+            const val = nameInput.value.trim();
+            const exclude = document.getElementById('promoId').value.trim();
+            if (val.length < 3) return;
+            checkTimeout = setTimeout(() => {
+                fetch(`/api/promotions/check-unique?value=${encodeURIComponent(val)}&exclude=${encodeURIComponent(exclude)}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'success' && !data.unique) {
+                            nameInput.dataset.externalError = 'La promoción ya existe';
+                            setFieldError(nameInput, 'La promoción ya existe');
+                        } else {
+                            delete nameInput.dataset.externalError;
+                            if (nameInput.classList.contains('is-invalid') && getFieldFeedback(nameInput).textContent === 'La promoción ya existe') {
+                                clearFieldError(nameInput);
+                                nameInput.classList.add('is-valid');
+                            }
+                        }
+                        updateFormSubmitState('promoForm');
+                    });
+            }, 350);
+        });
+    }
 });
 
 function loadPromos() {
@@ -27,7 +55,6 @@ function loadPromos() {
                 <td><span class="badge-status badge-info">${escapeHtml(p.tipo)}</span></td>
                 <td>${escapeHtml(p.puntos_requeridos)}</td>
                 <td>${escapeHtml(p.recompensa || '-')}</td>
-                <td>${statusBadge(p.estado)}</td>
                 <td>
                     <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${Number(p.id)})" title="Modificar Promoción"><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-icon btn-sm btn-warning" onclick="deletePromo(${Number(p.id)})" title="Eliminar Promoción"><i class="bi bi-trash"></i></button>
@@ -35,7 +62,7 @@ function loadPromos() {
             </tr>`;
         });
         if (!res.data?.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-gift"></i><p>No hay promociones registradas</p></div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-gift"></i><p>No hay promociones registradas</p></div></td></tr>';
         }
     });
 }

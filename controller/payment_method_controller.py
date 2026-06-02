@@ -84,9 +84,15 @@ def create():
         clean, errors = _validate(request.get_json() or {})
         if errors:
             return jsonify({"status": "error", "message": "Errores de validación.", "errors": errors}), 400
-        if model.name_exists(clean['nombre']):
-            return jsonify({"status": "error", "message": "Este método de pago ya está registrado.", "errors": {"nombre": "Este método de pago ya está registrado."}}), 400
-        clean['usuario_id'] = session['user_id']
+        existing = model.get_by_name(clean['nombre'])
+        if existing:
+            if existing['estado'] == 1:
+                return jsonify({"status": "error", "message": "Este método de pago ya está registrado.", "errors": {"nombre": "Este método de pago ya está registrado."}}), 400
+            else:
+                model.update_method(existing['id'], clean)
+                model.update("transalca", "UPDATE metodos_pago SET estado = 1 WHERE id = %s", (existing['id'],))
+                bitacora.log_action(session['user_id'], 'CREAR', 'METODOS_PAGO', f"Método de pago creado: {clean['nombre']}", request.remote_addr)
+                return jsonify({"status": "success", "message": "Método de pago registrado correctamente.", "id": existing['id']}), 201
         method_id = model.create(clean)
         bitacora.log_action(session['user_id'], 'CREAR', 'METODOS_PAGO', f"Método de pago creado: {clean['nombre']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Método de pago registrado correctamente.", "id": method_id}), 201
