@@ -164,4 +164,6 @@ def export_reports():
         return jsonify({"status": "error", "message": "Formato de exportacion invalido"}), 400
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
