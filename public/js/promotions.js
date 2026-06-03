@@ -101,6 +101,62 @@ function getCardBackground(imagenTarjeta) {
     return 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)';
 }
 
+function dateFromValue(value) {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+
+    const text = String(value).trim();
+    const dateOnly = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (dateOnly) {
+        return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
+    }
+
+    const parsed = new Date(text);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function addOneMonth(value) {
+    const date = dateFromValue(value);
+    if (!date) return null;
+
+    const targetMonth = date.getMonth() + 1;
+    let result = new Date(date.getFullYear(), targetMonth, date.getDate());
+    if (result.getMonth() !== targetMonth % 12) {
+        result = new Date(date.getFullYear(), targetMonth + 1, 0);
+    }
+    return result;
+}
+
+function formatDisplayDate(value) {
+    const date = dateFromValue(value);
+    if (!date) return '';
+
+    return date.toLocaleDateString('es-VE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
+function getPromotionExpiryText(card) {
+    const expiryDate = dateFromValue(card.fecha_vencimiento_promocion) ||
+        addOneMonth(card.fecha_aplicacion_promocion || card.fecha_creacion);
+    return formatDisplayDate(expiryDate);
+}
+
+function buildCompletedPromoAlert(card, accumulated, required) {
+    if (required <= 0 || accumulated < required) return '';
+
+    const expiryText = getPromotionExpiryText(card);
+    let html = '<div class="completed-promo-alert mb-2">' +
+        '<i class="bi bi-check-circle-fill me-1"></i>Promoci&oacute;n completada. Puede utilizar su promoci&oacute;n.';
+    if (expiryText) {
+        html += `<small>V&aacute;lida hasta el ${escapeHtml(expiryText)}.</small>`;
+    }
+    html += '</div>';
+    return html;
+}
+
 function loadCards() {
     apiCall('/api/promotions/cards').then(res => {
         const container = document.getElementById('cardsBody');
@@ -134,6 +190,7 @@ function loadCards() {
             const cardNum = formatCardNumber(c.id);
             const statusClass = c.canjeada ? 'redeemed-badge' : 'active-badge';
             const statusText = c.canjeada ? 'Canjeada' : 'Activa';
+            const completedAlertHtml = buildCompletedPromoAlert(c, accumulated, required);
 
             container.innerHTML += `<div class="loyalty-card-wrapper fade-in-up">
                 <div class="fidelity-card-physical" style="background: ${bg};">
@@ -161,6 +218,7 @@ function loadCards() {
                     </div>
                     <p class="small text-muted mb-2">${escapeHtml(c.promo_descripcion || '')}</p>
                     <div class="small mb-2"><strong class="text-orange">Recompensa:</strong> ${escapeHtml(c.recompensa || '-')}</div>
+                    ${completedAlertHtml}
                     ${slotsHtml}
                     ${!c.canjeada ? `<button class="btn btn-sm btn-outline-orange w-100 mt-2" onclick="addPoint(${Number(c.id)})"><i class="bi bi-plus-circle me-1"></i>Registrar punto</button>` : ''}
                 </div>

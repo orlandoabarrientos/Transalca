@@ -185,54 +185,81 @@
         }
 
         .punch-card-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
-            margin: 8px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 14px 0 0;
         }
 
         .punch-slot {
-            aspect-ratio: 1;
+            width: 82px;
+            height: 82px;
+            flex: 0 0 82px;
             border-radius: 50%;
             border: 2px dashed var(--border);
-            background: var(--bg-main);
+            background: #fbfdff;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.78rem;
+            font-size: 0.9rem;
             color: var(--text-muted);
-            font-weight: 600;
+            font-weight: 700;
             position: relative;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         .punch-slot.filled {
-            border-style: solid;
-            border-color: #eab308;
-            background: radial-gradient(circle, #fef08a 0%, #eab308 100%);
-            box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
-            color: #fff;
-            transform: scale(1.05);
+            border-color: #f2b500;
+            background: #fff;
+            color: #f2b500;
         }
 
         .punch-slot.filled i {
             font-size: 0.95rem;
-            color: #fff;
+            color: inherit;
         }
 
         .punch-slot.reward-slot {
-            border-color: var(--primary);
-            color: var(--primary);
-            background: var(--bg-main);
+            border-color: var(--border);
+            color: var(--text-muted);
+            background: #f8fafc;
         }
 
         .punch-slot.reward-slot.filled {
-            border-style: solid;
             border-color: var(--primary);
-            background: radial-gradient(circle, var(--primary-glow) 0%, var(--primary) 100%);
-            box-shadow: 0 0 10px var(--primary-glow);
-            color: #fff;
-            transform: scale(1.05);
+            background: #fff;
+            color: var(--primary);
+        }
+
+        .completed-promo-alert {
+            border: 1px solid #bbf7d0;
+            background: #f0fdf4;
+            color: #15803d;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            line-height: 1.45;
+            text-align: center;
+        }
+
+        .completed-promo-alert small {
+            display: block;
+            margin-top: 2px;
+            color: #166534;
+            font-weight: 600;
+        }
+
+        @media (max-width: 576px) {
+            .punch-card-grid {
+                gap: 10px;
+            }
+
+            .punch-slot {
+                width: 68px;
+                height: 68px;
+                flex-basis: 68px;
+            }
         }
 
         .promo-form-image {
