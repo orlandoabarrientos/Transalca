@@ -57,7 +57,10 @@ class PromotionModel(Connection):
 
     def get_client_cards(self, cliente_cedula):
         cards = self.fetch_all("transalca",
-            "SELECT tf.*, p.nombre as promo_nombre, p.descripcion as promo_descripcion, p.puntos_requeridos, p.recompensa, p.imagen_tarjeta, p.tipo FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id WHERE tf.cliente_cedula = %s ORDER BY tf.fecha_creacion DESC",
+            "SELECT tf.*, p.nombre as promo_nombre, p.descripcion as promo_descripcion, p.puntos_requeridos, p.recompensa, p.imagen_tarjeta, p.tipo, "
+            "DATE_FORMAT(COALESCE((SELECT MAX(hp.fecha) FROM historial_puntos hp WHERE hp.tarjeta_id = tf.id), tf.fecha_creacion), '%%Y-%%m-%%d') as fecha_aplicacion_promocion, "
+            "DATE_FORMAT(DATE_ADD(COALESCE((SELECT MAX(hp.fecha) FROM historial_puntos hp WHERE hp.tarjeta_id = tf.id), tf.fecha_creacion), INTERVAL 1 MONTH), '%%Y-%%m-%%d') as fecha_vencimiento_promocion "
+            "FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id WHERE tf.cliente_cedula = %s ORDER BY tf.fecha_creacion DESC",
             (cliente_cedula,))
         return cards
 

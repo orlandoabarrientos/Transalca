@@ -221,6 +221,25 @@
             color: var(--primary);
         }
 
+        .completed-promo-alert {
+            border: 1px solid #bbf7d0;
+            background: #f0fdf4;
+            color: #15803d;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            line-height: 1.45;
+            text-align: center;
+        }
+
+        .completed-promo-alert small {
+            display: block;
+            margin-top: 2px;
+            color: #166534;
+            font-weight: 600;
+        }
+
         @media (max-width: 576px) {
             .punch-card-grid {
                 gap: 10px;
@@ -278,6 +297,49 @@
                 .replace(/'/g, '&#39;');
         }
 
+        function dateFromValue(value) {
+            if (!value) return null;
+            if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+
+            var text = String(value).trim();
+            var dateOnly = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (dateOnly) {
+                return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
+            }
+
+            var parsed = new Date(text);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        function addOneMonth(value) {
+            var date = dateFromValue(value);
+            if (!date) return null;
+
+            var targetMonth = date.getMonth() + 1;
+            var result = new Date(date.getFullYear(), targetMonth, date.getDate());
+            if (result.getMonth() !== targetMonth % 12) {
+                result = new Date(date.getFullYear(), targetMonth + 1, 0);
+            }
+            return result;
+        }
+
+        function formatDisplayDate(value) {
+            var date = dateFromValue(value);
+            if (!date) return '';
+
+            return date.toLocaleDateString('es-VE', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
+
+        function getPromotionExpiryText(card) {
+            var expiryDate = dateFromValue(card.fecha_vencimiento_promocion) ||
+                addOneMonth(card.fecha_aplicacion_promocion || card.fecha_creacion);
+            return formatDisplayDate(expiryDate);
+        }
+
         $(document).ready(function () {
             $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
             $('#footerContainer').load('/components/client_footer.html');
@@ -317,6 +379,17 @@
                     }
                     stampsHtml += '</div>';
 
+                    var completedAlertHtml = '';
+                    if (required > 0 && accumulated >= required) {
+                        var expiryText = getPromotionExpiryText(card);
+                        completedAlertHtml = '<div class="completed-promo-alert mb-2">' +
+                            '<i class="bi bi-check-circle-fill me-1"></i>Promoci&oacute;n completada. Puede utilizar su promoci&oacute;n.';
+                        if (expiryText) {
+                            completedAlertHtml += '<small>V&aacute;lida hasta el ' + escapeHtml(expiryText) + '.</small>';
+                        }
+                        completedAlertHtml += '</div>';
+                    }
+
                     var bg = getCardBackground(card.imagen_tarjeta);
                     var cardNum = formatCardNumber(card.id);
                     var statusClass = card.canjeada ? 'redeemed-badge' : 'active-badge';
@@ -347,6 +420,7 @@
                             '</div>' +
                             '<p class="small text-muted mb-2">' + escapeHtml(card.promo_descripcion || '') + '</p>' +
                             '<div class="small mb-2"><strong class="text-orange">Recompensa:</strong> ' + escapeHtml(card.recompensa || '-') + '</div>' +
+                            completedAlertHtml +
                             stampsHtml +
                         '</div>' +
                     '</div>';
