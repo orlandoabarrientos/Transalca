@@ -175,32 +175,34 @@
         }
 
         .punch-card-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
-            margin: 8px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 14px 0 0;
         }
 
         .punch-slot {
-            aspect-ratio: 1;
+            width: 84px;
+            height: 84px;
+            flex: 0 0 84px;
             border-radius: 50%;
             border: 2px dashed var(--border);
-            background: var(--bg-main);
+            background: #f8fafc;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.78rem;
+            font-size: 0.9rem;
             color: var(--text-muted);
-            font-weight: 600;
+            font-weight: 700;
             position: relative;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         .punch-slot.filled {
             border-style: solid;
-            border-color: #eab308;
-            background: radial-gradient(circle, #fef08a 0%, #eab308 100%);
-            box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
+            border-color: #f2b500;
+            background: radial-gradient(circle at 35% 30%, #fff4a6 0%, #ffd84d 45%, #f2b500 100%);
+            box-shadow: 0 8px 18px rgba(242, 181, 0, 0.26);
             color: #fff;
             transform: scale(1.05);
         }
@@ -211,18 +213,30 @@
         }
 
         .punch-slot.reward-slot {
-            border-color: var(--primary);
-            color: var(--primary);
-            background: var(--bg-main);
+            border-color: var(--border);
+            color: var(--text-muted);
+            background: #f8fafc;
         }
 
         .punch-slot.reward-slot.filled {
             border-style: solid;
             border-color: var(--primary);
-            background: radial-gradient(circle, var(--primary-glow) 0%, var(--primary) 100%);
-            box-shadow: 0 0 10px var(--primary-glow);
+            background: radial-gradient(circle at 35% 30%, #ffe4c4 0%, #f8b978 42%, var(--primary) 100%);
+            box-shadow: 0 8px 20px rgba(230, 126, 34, 0.28);
             color: #fff;
             transform: scale(1.05);
+        }
+
+        @media (max-width: 576px) {
+            .punch-card-grid {
+                gap: 10px;
+            }
+
+            .punch-slot {
+                width: 72px;
+                height: 72px;
+                flex-basis: 72px;
+            }
         }
     </style>
 </head>
@@ -309,13 +323,6 @@
                     }
                     stampsHtml += '</div>';
 
-                    var completedAlertHtml = '';
-                    if (accumulated >= required) {
-                        completedAlertHtml = '<div class="alert alert-success py-2 px-3 mb-2 text-center" style="font-size: 0.85rem; font-weight: 700; border-radius: 10px; color: #15803d; background-color: #f0fdf4; border-color: #bbf7d0;">' +
-                            '🎉 ¡Promoción completada! Puede aplicar su promoción.' +
-                            '</div>';
-                    }
-
                     var bg = getCardBackground(card.imagen_tarjeta);
                     var cardNum = formatCardNumber(card.id);
                     var statusClass = card.canjeada ? 'redeemed-badge' : 'active-badge';
@@ -346,7 +353,6 @@
                             '</div>' +
                             '<p class="small text-muted mb-2">' + escapeHtml(card.promo_descripcion || '') + '</p>' +
                             '<div class="small mb-2"><strong class="text-orange">Recompensa:</strong> ' + escapeHtml(card.recompensa || '-') + '</div>' +
-                            completedAlertHtml +
                             stampsHtml +
                         '</div>' +
                     '</div>';
