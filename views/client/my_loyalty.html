@@ -211,18 +211,15 @@
         }
 
         .punch-slot.reward-slot {
-            border-color: var(--border);
-            color: var(--text-muted);
-            background: var(--bg-main);
+            border-color: var(--warning);
+            color: var(--warning);
+            background: rgba(245, 158, 11, 0.05);
         }
 
         .punch-slot.reward-slot.filled {
-            border-style: solid;
-            border-color: var(--primary);
-            background: radial-gradient(circle, var(--primary-glow) 0%, var(--primary) 100%);
-            box-shadow: 0 0 10px var(--primary-glow);
-            color: #fff;
-            transform: scale(1.05);
+            border-color: var(--warning);
+            background: radial-gradient(circle, rgba(245,158,11,0.2) 0%, var(--warning) 100%);
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
         }
     </style>
 </head>
@@ -299,10 +296,10 @@
                         if (isFilled) slotClass += ' filled';
 
                         var slotContent = '';
-                        if (isReward) {
-                            slotContent = isFilled ? '<i class="bi bi-gift-fill"></i>' : '<i class="bi bi-gift"></i>';
+                        if (isFilled) {
+                            slotContent = isReward ? '<i class="bi bi-gift-fill"></i>' : '<i class="bi bi-patch-check-fill"></i>';
                         } else {
-                            slotContent = i;
+                            slotContent = isReward ? '<i class="bi bi-gift"></i>' : i;
                         }
 
                         stampsHtml += '<div class="' + slotClass + '">' + slotContent + '</div>';
