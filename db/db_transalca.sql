@@ -938,7 +938,9 @@ CREATE TABLE `servicio_mecanico` (
   `orden_venta_id` int(11) DEFAULT NULL,
   `fecha` timestamp NOT NULL DEFAULT current_timestamp(),
   `estado` varchar(30) NOT NULL DEFAULT 'asignado',
-  `observaciones` varchar(1000) DEFAULT NULL
+  `observaciones` varchar(1000) DEFAULT NULL,
+  `cliente_cedula` varchar(20) DEFAULT NULL,
+  `vehiculo_placa` varchar(20) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `servicio_sucursal` (
@@ -1180,7 +1182,9 @@ ALTER TABLE `servicio_mecanico`
   ADD KEY `servicio_id` (`servicio_id`),
   ADD KEY `mecanico_cedula` (`mecanico_cedula`),
   ADD KEY `orden_venta_id` (`orden_venta_id`),
-  ADD KEY `estado` (`estado`);
+  ADD KEY `estado` (`estado`),
+  ADD KEY `cliente_cedula` (`cliente_cedula`),
+  ADD KEY `vehiculo_placa` (`vehiculo_placa`);
 
 ALTER TABLE `servicio_sucursal`
   ADD PRIMARY KEY (`servicio_id`,`sucursal_id`),
@@ -1372,7 +1376,9 @@ ALTER TABLE `qr_codes`
 ALTER TABLE `servicio_mecanico`
   ADD CONSTRAINT `servicio_mecanico_ibfk_1` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id`),
   ADD CONSTRAINT `servicio_mecanico_ibfk_2` FOREIGN KEY (`mecanico_cedula`) REFERENCES `mecanicos` (`cedula`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `servicio_mecanico_ibfk_3` FOREIGN KEY (`orden_venta_id`) REFERENCES `ordenes_venta` (`id`);
+  ADD CONSTRAINT `servicio_mecanico_ibfk_3` FOREIGN KEY (`orden_venta_id`) REFERENCES `ordenes_venta` (`id`),
+  ADD CONSTRAINT `fk_servicio_mecanico_cliente` FOREIGN KEY (`cliente_cedula`) REFERENCES `clientes` (`cedula`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_servicio_mecanico_vehiculo` FOREIGN KEY (`vehiculo_placa`) REFERENCES `vehiculos` (`placa`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 ALTER TABLE `servicio_sucursal`
   ADD CONSTRAINT `servicio_sucursal_ibfk_1` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id`) ON DELETE CASCADE,

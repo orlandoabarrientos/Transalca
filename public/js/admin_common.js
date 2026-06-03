@@ -321,6 +321,7 @@ const Validator = {
         if (form.dataset.validatorRealtimeBound === '1') return;
         form.dataset.validatorRealtimeBound = '1';
         form.querySelectorAll('input, select, textarea').forEach(el => {
+            let timeoutId = null;
             const handler = () => {
                 if (el.id) {
                     Validator.validateField(formId, el.id);
@@ -341,7 +342,12 @@ const Validator = {
             };
             el.addEventListener('input', () => {
                 delete el.dataset.externalError;
-                handler();
+                if (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'email' || el.type === 'password' || el.type === 'tel' || el.type === 'number')) {
+                    if (timeoutId) clearTimeout(timeoutId);
+                    timeoutId = setTimeout(handler, 300);
+                } else {
+                    handler();
+                }
             });
             el.addEventListener('change', handler);
         });

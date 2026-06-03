@@ -19,6 +19,11 @@ def _validate_assignment(data):
         orden_venta_id = normalize_int(errors, 'orden_venta_id', data.get('orden_venta_id'), 'La orden')
     mecanico_cedula = (data.get('mecanico_cedula') or '').strip() or None
     observaciones = optional_text(errors, 'observaciones', data.get('observaciones'), 'Las observaciones', max_len=255, allow_serial=True)
+    cliente_cedula = (data.get('cliente_cedula') or '').strip() or None
+    vehiculo_placa = (data.get('vehiculo_placa') or '').strip().upper() or None
+    estado = validate_choice(errors, 'estado', data.get('estado') or 'asignado', ESTADOS_SERVICIO_MECANICO)
+    fecha = (data.get('fecha') or '').strip().replace('T', ' ') or None
+
     if servicio_id and not model.service_exists(servicio_id):
         errors['servicio_id'] = SELECT_TAMPER_MESSAGE
     if mecanico_cedula and not model.mechanic_exists(mecanico_cedula):
@@ -29,7 +34,11 @@ def _validate_assignment(data):
         'servicio_id': servicio_id,
         'mecanico_cedula': mecanico_cedula,
         'orden_venta_id': orden_venta_id,
-        'observaciones': observaciones
+        'observaciones': observaciones,
+        'cliente_cedula': cliente_cedula,
+        'vehiculo_placa': vehiculo_placa,
+        'estado': estado,
+        'fecha': fecha
     }, errors
 
 

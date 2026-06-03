@@ -34,5 +34,5 @@ class CategoryModel(Connection):
 
     def nombre_exists(self, nombre, exclude_nombre=None):
         if exclude_nombre:
-            return self.fetch_one("transalca", "SELECT nombre FROM categorias WHERE nombre = %s AND nombre != %s", (nombre, exclude_nombre)) is not None
-        return self.fetch_one("transalca", "SELECT nombre FROM categorias WHERE nombre = %s", (nombre,)) is not None
+            return self.fetch_one("transalca", "SELECT nombre FROM categorias WHERE nombre = %s AND nombre != %s AND estado = 1", (nombre, exclude_nombre)) is not None
+        return self.fetch_one("transalca", "SELECT nombre FROM categorias WHERE nombre = %s AND estado = 1", (nombre,)) is not None

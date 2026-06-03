@@ -7,7 +7,17 @@ class ServiceMechanicModel(Connection):
 
     def get_all(self):
         assignments = self.fetch_all("transalca",
-            "SELECT sm.*, s.nombre as servicio_nombre, s.precio, m.nombre as mecanico_nombre_base, m.apellido as mecanico_apellido_base FROM servicio_mecanico sm INNER JOIN servicios s ON sm.servicio_id = s.id LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula ORDER BY sm.fecha DESC")
+            "SELECT sm.id, sm.servicio_id, sm.mecanico_cedula, sm.orden_venta_id, sm.fecha, sm.estado, sm.observaciones, "
+            "s.nombre as servicio_nombre, s.precio, "
+            "m.nombre as mecanico_nombre_base, m.apellido as mecanico_apellido_base, "
+            "COALESCE(sm.cliente_cedula, ov.cliente_cedula) as cliente_cedula, "
+            "COALESCE(sm.vehiculo_placa, bv.vehiculo_placa) as vehiculo_placa "
+            "FROM servicio_mecanico sm "
+            "INNER JOIN servicios s ON sm.servicio_id = s.id "
+            "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula "
+            "LEFT JOIN ordenes_venta ov ON sm.orden_venta_id = ov.id "
+            "LEFT JOIN bitacora_vehiculo bv ON sm.id = bv.servicio_mecanico_id "
+            "ORDER BY sm.fecha DESC")
         for a in assignments:
             nombre = (a.get('mecanico_nombre_base') or '').strip()
             apellido = (a.get('mecanico_apellido_base') or '').strip()
@@ -19,7 +29,15 @@ class ServiceMechanicModel(Connection):
 
     def get_by_id(self, aid):
         return self.fetch_one("transalca",
-            "SELECT sm.*, s.nombre as servicio_nombre FROM servicio_mecanico sm INNER JOIN servicios s ON sm.servicio_id = s.id WHERE sm.id = %s", (aid,))
+            "SELECT sm.id, sm.servicio_id, sm.mecanico_cedula, sm.orden_venta_id, sm.fecha, sm.estado, sm.observaciones, "
+            "s.nombre as servicio_nombre, "
+            "COALESCE(sm.cliente_cedula, ov.cliente_cedula) as cliente_cedula, "
+            "COALESCE(sm.vehiculo_placa, bv.vehiculo_placa) as vehiculo_placa "
+            "FROM servicio_mecanico sm "
+            "INNER JOIN servicios s ON sm.servicio_id = s.id "
+            "LEFT JOIN ordenes_venta ov ON sm.orden_venta_id = ov.id "
+            "LEFT JOIN bitacora_vehiculo bv ON sm.id = bv.servicio_mecanico_id "
+            "WHERE sm.id = %s", (aid,))
 
     def service_exists(self, servicio_id):
         return self.fetch_one("transalca", "SELECT id FROM servicios WHERE id = %s AND estado = 1", (servicio_id,)) is not None
@@ -56,8 +74,9 @@ class ServiceMechanicModel(Connection):
             if not self._is_mechanic_nullable():
                 raise Exception("La base de datos no permite registrar servicio sin mecanico")
         return self.insert("transalca",
-            "INSERT INTO servicio_mecanico (servicio_id, mecanico_cedula, orden_venta_id, observaciones) VALUES (%s, %s, %s, %s)",
-            (data['servicio_id'], mecanico_cedula, data.get('orden_venta_id') or None, data.get('observaciones', '').strip()))
+            "INSERT INTO servicio_mecanico (servicio_id, mecanico_cedula, orden_venta_id, observaciones, cliente_cedula, vehiculo_placa, estado, fecha) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (data['servicio_id'], mecanico_cedula, data.get('orden_venta_id') or None, data.get('observaciones', '').strip(),
+             data.get('cliente_cedula') or None, data.get('vehiculo_placa') or None, data.get('estado') or 'asignado', data.get('fecha') or None))
 
     def update_mechanic(self, aid, mecanico_cedula):
         mecanico_cedula = (mecanico_cedula or '').strip()
@@ -72,8 +91,9 @@ class ServiceMechanicModel(Connection):
     def update_assignment(self, aid, data):
         mecanico_cedula = (data.get('mecanico_cedula') or '').strip() or None
         return self.update("transalca",
-            "UPDATE servicio_mecanico SET servicio_id = %s, mecanico_cedula = %s, orden_venta_id = %s, observaciones = %s WHERE id = %s",
-            (data['servicio_id'], mecanico_cedula, data.get('orden_venta_id') or None, data.get('observaciones', '').strip(), aid))
+            "UPDATE servicio_mecanico SET servicio_id = %s, mecanico_cedula = %s, orden_venta_id = %s, observaciones = %s, cliente_cedula = %s, vehiculo_placa = %s, estado = %s, fecha = %s WHERE id = %s",
+            (data['servicio_id'], mecanico_cedula, data.get('orden_venta_id') or None, data.get('observaciones', '').strip(),
+             data.get('cliente_cedula') or None, data.get('vehiculo_placa') or None, data.get('estado') or 'asignado', data.get('fecha') or None, aid))
 
     def delete_assignment(self, aid):
         return self.delete("transalca", "DELETE FROM servicio_mecanico WHERE id = %s", (aid,))

@@ -108,10 +108,10 @@ class VehicleModel(Connection):
         placa = self._plate(placa)
         if exclude_id:
             return self.fetch_one("transalca",
-                "SELECT placa FROM vehiculos WHERE placa = %s AND placa != %s",
+                "SELECT placa FROM vehiculos WHERE placa = %s AND placa != %s AND estado = 1",
                 (placa, self._plate(exclude_id))) is not None
         return self.fetch_one("transalca",
-            "SELECT placa FROM vehiculos WHERE placa = %s", (placa,)) is not None
+            "SELECT placa FROM vehiculos WHERE placa = %s AND estado = 1", (placa,)) is not None
 
     def get_km_history(self, vid):
         return self.fetch_all("transalca",

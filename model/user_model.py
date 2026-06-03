@@ -89,8 +89,8 @@ class UserModel(Connection):
 
     def cedula_exists(self, cedula, exclude_id=None):
         if exclude_id:
-            return self.fetch_one("mantenimiento", "SELECT id FROM usuarios WHERE cedula = %s AND id != %s", (cedula, exclude_id)) is not None
-        return self.fetch_one("mantenimiento", "SELECT id FROM usuarios WHERE cedula = %s", (cedula,)) is not None
+            return self.fetch_one("mantenimiento", "SELECT id FROM usuarios WHERE cedula = %s AND id != %s AND estado = 1", (cedula, exclude_id)) is not None
+        return self.fetch_one("mantenimiento", "SELECT id FROM usuarios WHERE cedula = %s AND estado = 1", (cedula,)) is not None
 
     def assign_role(self, user_id, rol_id):
         existing = self.fetch_one("mantenimiento",

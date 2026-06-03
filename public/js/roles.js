@@ -156,11 +156,47 @@ function renderPermissionsPagination(total, page) {
     prevLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); if(${page > 1}) renderPermissionsPage(${page - 1})"><i class="bi bi-chevron-left"></i></a>`;
     controls.appendChild(prevLi);
     
-    for (let i = 1; i <= pages; i++) {
+    const maxVisible = 5;
+    let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
+    let endPage = startPage + maxVisible - 1;
+    
+    if (endPage > pages) {
+        endPage = pages;
+        startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+    
+    if (startPage > 1) {
+        const firstLi = document.createElement('li');
+        firstLi.className = 'page-item';
+        firstLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); renderPermissionsPage(1)">1</a>`;
+        controls.appendChild(firstLi);
+        
+        if (startPage > 2) {
+            const ellipsisLi = document.createElement('li');
+            ellipsisLi.className = 'page-item disabled';
+            ellipsisLi.innerHTML = `<span class="page-link">...</span>`;
+            controls.appendChild(ellipsisLi);
+        }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
         const li = document.createElement('li');
         li.className = `page-item ${page === i ? 'active' : ''}`;
         li.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); renderPermissionsPage(${i})">${i}</a>`;
         controls.appendChild(li);
+    }
+    
+    if (endPage < pages) {
+        if (endPage < pages - 1) {
+            const ellipsisLi = document.createElement('li');
+            ellipsisLi.className = 'page-item disabled';
+            ellipsisLi.innerHTML = `<span class="page-link">...</span>`;
+            controls.appendChild(ellipsisLi);
+        }
+        const lastLi = document.createElement('li');
+        lastLi.className = 'page-item';
+        lastLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); renderPermissionsPage(${pages})">${pages}</a>`;
+        controls.appendChild(lastLi);
     }
     
     const nextLi = document.createElement('li');

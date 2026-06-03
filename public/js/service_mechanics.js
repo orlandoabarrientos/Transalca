@@ -13,15 +13,68 @@ $(document).ready(function () {
     mechanicModal = new bootstrap.Modal(document.getElementById('mechanicAssignModal'));
 
     Validator.setRules('assignmentForm', {
-        servicio_id: { required: true, requiredMsg: 'Debe seleccionar un servicio' }
+        servicio_id: { required: true, requiredMsg: 'Debe seleccionar un servicio' },
+        estado: { required: true, requiredMsg: 'Debe seleccionar un estado' },
+        fecha: { required: true, requiredMsg: 'Debe seleccionar una fecha' }
     });
     Validator.setupRealtime('assignmentForm');
+
+    $('#orden_venta_id').change(function() {
+        const orderId = $(this).val();
+        if (orderId) {
+            const order = ordersCache.find(o => o.id == orderId);
+            if (order) {
+                document.getElementById('cliente_cedula').value = order.cliente_cedula || '';
+                onClienteChange();
+            }
+        }
+    });
 
     initializeCatalogs().then(() => loadAssignments());
 });
 
+let clientsCache = [];
+
+async function loadClients() {
+    try {
+        const res = await apiCall('/api/clients/?tipo_cliente=all');
+        clientsCache = res.data || [];
+        const select = document.getElementById('cliente_cedula');
+        if (!select) return;
+        select.innerHTML = '<option value="">Seleccione cliente...</option>';
+        clientsCache.forEach(c => {
+            select.innerHTML += `<option value="${c.cedula}">${escapeHtml(c.nombre)} ${escapeHtml(c.apellido)} (${c.cedula})</option>`;
+        });
+    } catch (e) {}
+}
+
+async function loadVehiclesForClient(clienteCedula) {
+    const select = document.getElementById('vehiculo_placa');
+    if (!select) return;
+    select.innerHTML = '<option value="">Cargando vehículos...</option>';
+    if (!clienteCedula) {
+        select.innerHTML = '<option value="">Seleccione un cliente primero</option>';
+        return;
+    }
+    try {
+        const res = await apiCall(`/api/vehicles/?cliente=${encodeURIComponent(clienteCedula)}`);
+        const vehicles = res.data || [];
+        select.innerHTML = '<option value="">Seleccione vehículo...</option>';
+        vehicles.forEach(v => {
+            select.innerHTML += `<option value="${v.placa}">${escapeHtml(v.marca)} ${escapeHtml(v.modelo)} - ${escapeHtml(v.placa)}</option>`;
+        });
+    } catch (e) {
+        select.innerHTML = '<option value="">Error al cargar vehículos</option>';
+    }
+}
+
+function onClienteChange() {
+    const clientCedula = document.getElementById('cliente_cedula').value;
+    loadVehiclesForClient(clientCedula);
+}
+
 async function initializeCatalogs() {
-    await Promise.all([loadServices(), loadMechanics(), loadOrders()]);
+    await Promise.all([loadServices(), loadMechanics(), loadOrders(), loadClients()]);
 }
 
 async function loadOrders() {
@@ -122,6 +175,17 @@ function openAssignmentModal() {
     document.getElementById('orden_venta_id').value = '';
     document.getElementById('mecanico_cedula').value = '';
     document.getElementById('observaciones').value = '';
+    document.getElementById('cliente_cedula').value = '';
+    document.getElementById('vehiculo_placa').value = '';
+    document.getElementById('estado').value = 'asignado';
+
+    const now = new Date();
+    const tzoffset = now.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 16);
+    document.getElementById('fecha').value = localISOTime;
+
+    onClienteChange();
+
     assignmentModal.show();
     Validator.initTracking('assignmentForm');
 }
@@ -139,7 +203,11 @@ async function saveAssignment() {
         servicio_id: parseInt(document.getElementById('servicio_id').value, 10),
         mecanico_cedula: document.getElementById('mecanico_cedula').value || null,
         orden_venta_id: document.getElementById('orden_venta_id').value ? parseInt(document.getElementById('orden_venta_id').value, 10) : null,
-        observaciones: document.getElementById('observaciones').value || ''
+        observaciones: document.getElementById('observaciones').value || '',
+        cliente_cedula: document.getElementById('cliente_cedula').value || null,
+        vehiculo_placa: document.getElementById('vehiculo_placa').value || null,
+        estado: document.getElementById('estado').value || 'asignado',
+        fecha: document.getElementById('fecha').value || null
     };
     const saveBtn = document.querySelector('#assignmentModal .btn-orange');
 
@@ -172,6 +240,34 @@ function editAssignment(id) {
         document.getElementById('mecanico_cedula').value = a.mecanico_cedula || '';
         document.getElementById('orden_venta_id').value = a.orden_venta_id || '';
         document.getElementById('observaciones').value = a.observaciones || '';
+        document.getElementById('cliente_cedula').value = a.cliente_cedula || '';
+        document.getElementById('estado').value = a.estado || 'asignado';
+
+        if (a.fecha) {
+            const cleanFecha = a.fecha.replace(' ', 'T');
+            const date = new Date(cleanFecha);
+            if (!isNaN(date.getTime())) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                document.getElementById('fecha').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+            } else {
+                const match = a.fecha.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+                if (match) {
+                    document.getElementById('fecha').value = `${match[1]}T${match[2]}`;
+                } else {
+                    document.getElementById('fecha').value = '';
+                }
+            }
+        } else {
+            document.getElementById('fecha').value = '';
+        }
+
+        loadVehiclesForClient(a.cliente_cedula).then(() => {
+            document.getElementById('vehiculo_placa').value = a.vehiculo_placa || '';
+        });
         
         document.getElementById('assignmentModalTitle').textContent = 'Modificar Servicio Mecánico';
         assignmentModal.show();

@@ -57,7 +57,10 @@ def get_all():
             return deny()
         search = request.args.get('q')
         estado = request.args.get('estado')
-        return jsonify({"status": "success", "data": model.get_all(search, estado, 'persona')})
+        tipo_cliente = request.args.get('tipo_cliente', 'persona')
+        if tipo_cliente == 'all':
+            tipo_cliente = None
+        return jsonify({"status": "success", "data": model.get_all(search, estado, tipo_cliente)})
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:

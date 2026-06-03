@@ -85,6 +85,33 @@
                             </div>
                         </div>
                         <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Cliente</label>
+                                <select class="form-select" id="cliente_cedula" name="cliente_cedula" onchange="onClienteChange()"></select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Vehículo</label>
+                                <select class="form-select" id="vehiculo_placa" name="vehiculo_placa"></select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Estado <span class="required">*</span></label>
+                                <select class="form-select" id="estado" name="estado">
+                                    <option value="asignado">Asignado</option>
+                                    <option value="en_proceso">En proceso</option>
+                                    <option value="completado">Completado</option>
+                                    <option value="cancelado">Cancelado</option>
+                                </select>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Fecha <span class="required">*</span></label>
+                                <input type="datetime-local" class="form-control" id="fecha" name="fecha">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Orden de venta</label>
                                 <select class="form-select" id="orden_venta_id" name="orden_venta_id">

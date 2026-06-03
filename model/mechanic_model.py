@@ -71,9 +71,9 @@ class MechanicModel(Connection):
     def cedula_exists(self, cedula, exclude_cedula=None):
         if exclude_cedula:
             return self.fetch_one("transalca",
-                "SELECT cedula FROM mecanicos WHERE cedula = %s AND cedula != %s", (cedula, exclude_cedula)) is not None
+                "SELECT cedula FROM mecanicos WHERE cedula = %s AND cedula != %s AND estado = 1", (cedula, exclude_cedula)) is not None
         return self.fetch_one("transalca",
-            "SELECT cedula FROM mecanicos WHERE cedula = %s", (cedula,)) is not None
+            "SELECT cedula FROM mecanicos WHERE cedula = %s AND estado = 1", (cedula,)) is not None
 
     def get_service_history(self, cedula):
         return self.fetch_all("transalca",

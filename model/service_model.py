@@ -83,9 +83,9 @@ class ServiceModel(Connection):
 
     def nombre_exists(self, nombre, exclude_id=None):
         if exclude_id:
-            result = self.fetch_one("transalca", "SELECT id FROM servicios WHERE nombre = %s AND id != %s", (nombre, exclude_id))
+            result = self.fetch_one("transalca", "SELECT id FROM servicios WHERE nombre = %s AND id != %s AND estado = 1", (nombre, exclude_id))
         else:
-            result = self.fetch_one("transalca", "SELECT id FROM servicios WHERE nombre = %s", (nombre,))
+            result = self.fetch_one("transalca", "SELECT id FROM servicios WHERE nombre = %s AND estado = 1", (nombre,))
         return result is not None
 
     def get_by_nombre(self, nombre):

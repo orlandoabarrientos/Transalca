@@ -63,8 +63,8 @@ class SupplierModel(Connection):
     def rif_exists(self, rif, exclude_rif=None):
         if exclude_rif:
             result = self.fetch_one("transalca",
-                "SELECT rif FROM proveedores WHERE rif = %s AND rif != %s", (rif, exclude_rif))
+                "SELECT rif FROM proveedores WHERE rif = %s AND rif != %s AND estado = 1", (rif, exclude_rif))
         else:
             result = self.fetch_one("transalca",
-                "SELECT rif FROM proveedores WHERE rif = %s", (rif,))
+                "SELECT rif FROM proveedores WHERE rif = %s AND estado = 1", (rif,))
         return result is not None

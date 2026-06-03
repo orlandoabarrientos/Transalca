@@ -155,9 +155,9 @@ class ProductModel(Connection):
 
     def codigo_exists(self, codigo, exclude_codigo=None):
         if exclude_codigo:
-            result = self.fetch_one("transalca", "SELECT codigo FROM productos WHERE codigo = %s AND codigo != %s", (codigo, exclude_codigo))
+            result = self.fetch_one("transalca", "SELECT codigo FROM productos WHERE codigo = %s AND codigo != %s AND estado = 1", (codigo, exclude_codigo))
         else:
-            result = self.fetch_one("transalca", "SELECT codigo FROM productos WHERE codigo = %s", (codigo,))
+            result = self.fetch_one("transalca", "SELECT codigo FROM productos WHERE codigo = %s AND estado = 1", (codigo,))
         return result is not None
 
     def category_exists(self, nombre):
