@@ -116,7 +116,7 @@ def get_one(cedula):
         auth = require_login()
         if auth:
             return auth
-        if not can_access_client(cedula):
+        if not can_access_client(cedula) or cedula == 'V-00000000':
             return deny()
         c = model.get_by_cedula(cedula)
         if not c:
@@ -168,7 +168,7 @@ def update(cedula):
         auth = require_login()
         if auth:
             return auth
-        if not is_employee():
+        if not is_employee() or cedula == 'V-00000000':
             return deny()
         data = request.get_json() or {}
         clean, errors = _validate_client({**data, 'cedula': cedula}, True)
@@ -188,7 +188,7 @@ def toggle(cedula):
         auth = require_login()
         if auth:
             return auth
-        if not is_employee():
+        if not is_employee() or cedula == 'V-00000000':
             return deny()
         estado = model.toggle_estado(cedula)
         return jsonify({"status": "success", "message": "Cliente eliminado correctamente.", "estado": estado})

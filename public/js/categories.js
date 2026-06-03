@@ -5,7 +5,7 @@ $(document).ready(function() {
     $('#navbarContainer').load('/components/admin_navbar.html');
     loadData();
     Validator.setRules('categoryForm', {
-        nombre: { required: true, minLength: 3, requiredMsg: 'El nombre de la categoría es obligatorio', minLengthMsg: 'El nombre debe tener al menos 3 caracteres' }
+        nombre: { required: true, minLength: 3, maxLength: 30, requiredMsg: 'El nombre de la categoría es obligatorio', minLengthMsg: 'El nombre debe tener al menos 3 caracteres', maxLengthMsg: 'El nombre no puede superar los 30 caracteres.' }
     });
     Validator.setupRealtime('categoryForm');
 

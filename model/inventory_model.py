@@ -58,7 +58,12 @@ class InventoryModel(Connection):
             "LEFT JOIN sucursales s ON ov.sucursal_id = s.id WHERE ov.id = %s", (order_id,))
         if order:
             order['detalles'] = self.fetch_all("transalca",
-                "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre ELSE sv.nombre END as item_nombre FROM detalle_orden_venta d LEFT JOIN productos p ON d.producto_codigo = p.codigo LEFT JOIN servicios sv ON d.servicio_id = sv.id WHERE d.orden_id = %s",
+                "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre ELSE sv.nombre END as item_nombre "
+                "FROM ((SELECT id, orden_id, producto_codigo, 0 AS servicio_id, 'producto' AS tipo, cantidad, precio_unitario, subtotal FROM detalle_orden_venta_productos) "
+                "UNION ALL "
+                "(SELECT id, orden_id, 'SIN_PRODUCTO' AS producto_codigo, servicio_id, 'servicio' AS tipo, cantidad, precio_unitario, subtotal FROM detalle_orden_venta_servicios)) d "
+                "LEFT JOIN productos p ON d.producto_codigo = p.codigo "
+                "LEFT JOIN servicios sv ON d.servicio_id = sv.id WHERE d.orden_id = %s",
                 (order_id,))
             client = self.fetch_one("mantenimiento",
                 "SELECT nombre, apellido, email, telefono FROM usuarios WHERE cedula = %s", (order['cliente_cedula'],))

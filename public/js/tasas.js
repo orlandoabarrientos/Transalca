@@ -7,7 +7,7 @@ $(document).ready(function() {
     Validator.setRules('tasaForm', {
         fecha: { required: true, requiredMsg: 'Fecha requerida' },
         monto: { required: true, min: 0.01, requiredMsg: 'Monto requerido', minMsg: 'Debe ser mayor a 0' },
-        fuente: { required: true, minLength: 2, requiredMsg: 'Fuente requerida', minLengthMsg: 'Mínimo 2 caracteres' }
+        fuente: { required: true, minLength: 2, maxLength: 30, requiredMsg: 'Fuente requerida', minLengthMsg: 'Mínimo 2 caracteres', maxLengthMsg: 'La fuente no puede superar los 30 caracteres.' }
     });
     Validator.setupRealtime('tasaForm');
 });

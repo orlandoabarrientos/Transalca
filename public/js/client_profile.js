@@ -29,14 +29,26 @@ function bindProfileEvents() {
     $('#vCarnetFile').on('change', onCarnetFileSelected);
 
     Validator.setRules('profileForm', {
-        fNombre: { required: true, minLength: 2, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El nombre es obligatorio', patternMsg: 'El nombre solo puede contener letras' },
-        fApellido: { required: true, minLength: 2, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El apellido es obligatorio', patternMsg: 'El apellido solo puede contener letras' },
-        fTelefono: { required: true, pattern: PHONE_REGEX_PROFILE, requiredMsg: 'El telefono es obligatorio', patternMsg: 'Debe tener 11 digitos y comenzar por 04' }
+        fNombre: { required: true, minLength: 2, maxLength: 30, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El nombre es obligatorio', patternMsg: 'El nombre solo puede contener letras', maxLengthMsg: 'El nombre no puede superar los 30 caracteres.' },
+        fApellido: { required: true, minLength: 2, maxLength: 30, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El apellido es obligatorio', patternMsg: 'El apellido solo puede contener letras', maxLengthMsg: 'El apellido no puede superar los 30 caracteres.' },
+        fTelefono: { required: true, pattern: PHONE_REGEX_PROFILE, maxLength: 11, requiredMsg: 'El telefono es obligatorio', patternMsg: 'Debe tener 11 digitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
+        fDireccion: { maxLength: 200, maxLengthMsg: 'La dirección no puede superar los 200 caracteres.' }
     });
     Validator.setRules('vehicleForm', {
-        vMarca: { required: true, minLength: 2, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9 .-]+$/, requiredMsg: 'La marca es obligatoria', patternMsg: 'La marca tiene caracteres invalidos' },
-        vModelo: { required: true, minLength: 1, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9 .-]+$/, requiredMsg: 'El modelo es obligatorio', patternMsg: 'El modelo tiene caracteres invalidos' },
-        vAnio: { min: 1900, minMsg: 'El ano debe ser valido' },
+        vMarca: { required: true, minLength: 2, maxLength: 30, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9 .-]+$/, requiredMsg: 'La marca es obligatoria', patternMsg: 'La marca tiene caracteres invalidos', maxLengthMsg: 'La marca no puede superar los 30 caracteres.' },
+        vModelo: { required: true, minLength: 1, maxLength: 30, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9 .-]+$/, requiredMsg: 'El modelo es obligatorio', patternMsg: 'El modelo tiene caracteres invalidos', maxLengthMsg: 'El modelo no puede superar los 30 caracteres.' },
+        vAnio: {
+            custom: v => {
+                if (!v) return true;
+                const yr = parseInt(v);
+                const maxYear = new Date().getFullYear() + 1;
+                return yr >= 1940 && yr <= maxYear;
+            },
+            customMsg: `El año del vehículo debe estar entre 1940 y ${new Date().getFullYear() + 1}`
+        },
+        vPlaca: { maxLength: 10, maxLengthMsg: 'La placa no puede superar los 10 caracteres.' },
+        vColor: { maxLength: 20, maxLengthMsg: 'El color no puede superar los 20 caracteres.' },
+        vTipo: { maxLength: 30, maxLengthMsg: 'El tipo de vehículo no puede superar los 30 caracteres.' },
         vKm: { min: 0, minMsg: 'El kilometraje no puede ser negativo' }
     });
     Validator.setupRealtime('profileForm');

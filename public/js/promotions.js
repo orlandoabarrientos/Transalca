@@ -6,7 +6,8 @@ $(document).ready(function () {
     loadPromos();
     loadCards();
     Validator.setRules('promoForm', {
-        nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'El nombre debe tener al menos 3 caracteres' },
+        nombre: { required: true, minLength: 3, maxLength: 50, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'El nombre debe tener al menos 3 caracteres', maxLengthMsg: 'El nombre no puede superar los 50 caracteres.' },
+        recompensa: { maxLength: 100, maxLengthMsg: 'La recompensa no puede superar los 100 caracteres.' },
         tipo: { required: true, requiredMsg: 'El tipo de promoción es obligatorio' },
         puntos_requeridos: { required: true, min: 1, requiredMsg: 'Los puntos son obligatorios', minMsg: 'Los puntos deben ser mayores a 0' }
     });

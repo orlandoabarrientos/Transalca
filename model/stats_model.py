@@ -14,7 +14,7 @@ class StatsModel(Connection):
         return {"labels": labels, "data": data}
 
     def get_top_performing_products(self, limit=5):
-        sql = "SELECT p.nombre, SUM(d.cantidad) as total_vendido FROM detalle_orden_venta d INNER JOIN productos p ON d.producto_codigo = p.codigo WHERE d.tipo = 'producto' GROUP BY d.producto_codigo ORDER BY total_vendido DESC LIMIT %s"
+        sql = "SELECT p.nombre, SUM(d.cantidad) as total_vendido FROM detalle_orden_venta_productos d INNER JOIN productos p ON d.producto_codigo = p.codigo GROUP BY d.producto_codigo ORDER BY total_vendido DESC LIMIT %s"
         records = self.fetch_all("transalca", sql, (limit,))
         labels = [r['nombre'][:15] for r in records]
         data = [int(r['total_vendido']) for r in records]

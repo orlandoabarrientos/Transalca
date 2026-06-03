@@ -9,12 +9,13 @@ $(document).ready(function() {
     loadRoles();
     updatePasswordStrength('password', 'passwordStrengthBar');
     Validator.setRules('userForm', {
-        nombre: { required: true, minLength: 2, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El nombre es obligatorio', patternMsg: 'El nombre solo puede contener letras' },
-        apellido: { required: true, minLength: 2, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El apellido es obligatorio', patternMsg: 'El apellido solo puede contener letras' },
+        nombre: { required: true, minLength: 2, maxLength: 30, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El nombre es obligatorio', patternMsg: 'El nombre solo puede contener letras', maxLengthMsg: 'El nombre no puede superar los 30 caracteres.' },
+        apellido: { required: true, minLength: 2, maxLength: 30, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El apellido es obligatorio', patternMsg: 'El apellido solo puede contener letras', maxLengthMsg: 'El apellido no puede superar los 30 caracteres.' },
         cedula_prefijo: { required: true, custom: v => ['V', 'E', 'J', 'G', 'P'].includes(v), customMsg: 'El valor seleccionado no es válido. Recargue la página e inténtelo nuevamente.' },
-        cedula: { required: true, pattern: /^\d{7,8}$/, requiredMsg: 'La cédula es obligatoria.', patternMsg: 'La cédula debe tener 7 u 8 dígitos.' },
-        email: { required: true, email: true, requiredMsg: 'El correo es obligatorio' },
-        telefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 dígitos y comenzar por 04' },
+        cedula: { required: true, pattern: /^\d{7,8}$/, maxLength: 8, requiredMsg: 'La cédula es obligatoria.', patternMsg: 'La cédula debe tener 7 u 8 dígitos.', maxLengthMsg: 'La cédula no puede superar los 8 caracteres.' },
+        email: { required: true, email: true, maxLength: 50, requiredMsg: 'El correo es obligatorio', maxLengthMsg: 'El correo no puede superar los 50 caracteres.' },
+        telefono: { pattern: /^$|^04\d{9}$/, maxLength: 11, patternMsg: 'Debe tener 11 dígitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
+        direccion: { maxLength: 200, maxLengthMsg: 'La dirección no puede superar los 200 caracteres.' },
         tipo: { required: true, custom: v => ['cliente', 'empleado'].includes(v), customMsg: 'El valor seleccionado no es válido. Recargue la página e inténtelo nuevamente' },
         rol_id: { required: true, requiredMsg: 'El rol es obligatorio' }
     });

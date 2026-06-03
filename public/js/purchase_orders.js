@@ -10,7 +10,8 @@ $(document).ready(function () {
 
     Validator.setRules('createOrderForm', {
         proveedor_rif: { required: true, requiredMsg: 'Debe seleccionar un proveedor' },
-        sucursal_id: { required: true, requiredMsg: 'Debe seleccionar una sucursal' }
+        sucursal_id: { required: true, requiredMsg: 'Debe seleccionar una sucursal' },
+        poObservaciones: { maxLength: 300, maxLengthMsg: 'Las observaciones no pueden superar los 300 caracteres.' }
     });
     Validator.setupRealtime('createOrderForm');
 

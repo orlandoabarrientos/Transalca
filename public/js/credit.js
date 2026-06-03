@@ -26,7 +26,8 @@ $(document).ready(function () {
             minMsg: 'El monto debe ser mayor a cero'
         },
         registerCreditStartDate: { required: true, requiredMsg: 'Fecha de inicio requerida' },
-        registerCreditEndDate: { required: true, requiredMsg: 'Fecha de fin requerida' }
+        registerCreditEndDate: { required: true, requiredMsg: 'Fecha de fin requerida' },
+        creditObservaciones: { maxLength: 300, maxLengthMsg: 'Las observaciones no pueden superar los 300 caracteres.' }
     });
     Validator.setupRealtime('creditDatesForm');
     Validator.setupRealtime('creditPaymentForm');

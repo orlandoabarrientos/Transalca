@@ -6,8 +6,8 @@ $(document).ready(function() {
     });
     $('#navbarContainer').load('/components/admin_navbar.html');
     Validator.setRules('paymentMethodForm', {
-        nombre: { required: true, minLength: 3, maxLength: 100, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'El nombre debe tener al menos 3 caracteres' },
-        datos: { required: true, minLength: 3, maxLength: 1000, requiredMsg: 'Los datos son obligatorios', minLengthMsg: 'Los datos deben tener al menos 3 caracteres' }
+        nombre: { required: true, minLength: 3, maxLength: 50, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'El nombre debe tener al menos 3 caracteres', maxLengthMsg: 'El nombre no puede superar los 50 caracteres.' },
+        datos: { required: true, minLength: 3, maxLength: 200, requiredMsg: 'Los datos son obligatorios', minLengthMsg: 'Los datos deben tener al menos 3 caracteres', maxLengthMsg: 'Los datos no pueden superar los 200 caracteres.' }
     });
     Validator.setupRealtime('paymentMethodForm');
     let checkTimeout = null;

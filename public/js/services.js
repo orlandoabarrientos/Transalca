@@ -6,7 +6,8 @@ $(document).ready(function() {
     loadData();
     loadSucursales('sucursal_id', false).then(() => enhanceSearchableSelects(document.getElementById('serviceModal')));
     Validator.setRules('serviceForm', {
-        nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'Mínimo 3 caracteres' },
+        nombre: { required: true, minLength: 3, maxLength: 50, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'Mínimo 3 caracteres', maxLengthMsg: 'El nombre del servicio no puede superar los 50 caracteres.' },
+        descripcion: { maxLength: 150, maxLengthMsg: 'La descripción no puede superar los 150 caracteres.' },
         precio: { required: true, min: 0.01, requiredMsg: 'El precio es obligatorio', minMsg: 'Debe ser mayor a 0' },
         duracion_estimada: { required: true, min: 1, requiredMsg: 'La duración es obligatoria', minMsg: 'Debe ser mayor a 0' },
         tipo: { required: true, requiredMsg: 'Seleccione un tipo de servicio' },

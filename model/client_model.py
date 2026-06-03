@@ -18,7 +18,7 @@ class ClientModel(Connection):
         sql = (
             "SELECT c.*, "
             "(SELECT COUNT(*) FROM vehiculos v WHERE v.cliente_cedula = c.cedula AND v.estado = 1) as vehiculos_count "
-            "FROM clientes c WHERE 1=1"
+            "FROM clientes c WHERE c.cedula != 'V-00000000'"
         )
         params = []
         if tipo_cliente:
@@ -109,10 +109,11 @@ class ClientModel(Connection):
         return int(client.get('estado') or 0) if client else 0
 
     def get_stats(self, tipo_cliente='persona'):
-        params = (tipo_cliente,) if tipo_cliente else None
-        where = "WHERE COALESCE(tipo_cliente, 'persona') = %s" if tipo_cliente else ""
-        total = self.fetch_one("transalca", f"SELECT COUNT(*) as total FROM clientes {where}", params)
-        activos = self.fetch_one("transalca", f"SELECT COUNT(*) as total FROM clientes {where} AND estado=1" if tipo_cliente else "SELECT COUNT(*) as total FROM clientes WHERE estado=1", params)
+        params = [tipo_cliente] if tipo_cliente else []
+        where = "WHERE COALESCE(tipo_cliente, 'persona') = %s" if tipo_cliente else "WHERE 1=1"
+        where += " AND cedula != 'V-00000000'"
+        total = self.fetch_one("transalca", f"SELECT COUNT(*) as total FROM clientes {where}", tuple(params) if params else None)
+        activos = self.fetch_one("transalca", f"SELECT COUNT(*) as total FROM clientes {where} AND estado=1", tuple(params) if params else None)
         return {
             'total': total['total'] if total else 0,
             'activos': activos['total'] if activos else 0

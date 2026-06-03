@@ -42,9 +42,15 @@ $(document).ready(function() {
         nombre: {
             required: true,
             minLength: 3,
+            maxLength: 30,
             pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/,
             requiredMsg: 'El nombre es obligatorio',
-            patternMsg: 'El nombre solo puede contener letras'
+            patternMsg: 'El nombre solo puede contener letras',
+            maxLengthMsg: 'El nombre del cargo no puede superar los 30 caracteres.'
+        },
+        descripcion: {
+            maxLength: 150,
+            maxLengthMsg: 'La descripción no puede superar los 150 caracteres.'
         }
     });
     Validator.setupRealtime('roleForm');

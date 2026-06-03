@@ -98,9 +98,10 @@ $(document).ready(function() {
     $('#navbarContainer').load('/components/admin_navbar.html');
     loadData();
     Validator.setRules('sucursalForm', {
-        nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es requerido', minLengthMsg: 'Mínimo 3 caracteres' },
-        telefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 dígitos y comenzar por 04' },
-        email: { email: true }
+        nombre: { required: true, minLength: 3, maxLength: 30, requiredMsg: 'El nombre es requerido', minLengthMsg: 'Mínimo 3 caracteres', maxLengthMsg: 'El nombre no puede superar los 30 caracteres.' },
+        telefono: { pattern: /^$|^04\d{9}$/, maxLength: 11, patternMsg: 'Debe tener 11 dígitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
+        email: { email: true, maxLength: 50, maxLengthMsg: 'El correo no puede superar los 50 caracteres.' },
+        direccion: { maxLength: 150, maxLengthMsg: 'La dirección no puede superar los 150 caracteres.' }
     });
     Validator.setupRealtime('sucursalForm');
     document.getElementById('email')?.addEventListener('input', debounce(validateUniqueSucursalEmail, 350));

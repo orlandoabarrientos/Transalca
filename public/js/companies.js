@@ -11,20 +11,34 @@ $(document).ready(function () {
     $('#filterEstado').on('change', loadCompanies);
     Validator.setRules('companyForm', {
         fRifPrefijo: { required: true, custom: v => ['J', 'G', 'V', 'E', 'P'].includes(v), customMsg: 'El valor seleccionado no es valido. Recargue la pagina e intentelo nuevamente.' },
-        fRif: { required: true, pattern: /^\d{9}$/, requiredMsg: 'RIF requerido', patternMsg: 'El RIF debe tener 9 digitos' },
-        fRazonSocial: { required: true, minLength: 2, maxLength: 200, requiredMsg: 'Razon social requerida' },
-        fTelefono: { required: true, pattern: /^04\d{9}$/, requiredMsg: 'Telefono requerido', patternMsg: 'Debe tener 11 digitos y comenzar por 04' },
-        fEmail: { email: true },
-        fRepresentanteCedula: { pattern: /^$|^\d{7,8}$/, patternMsg: 'La cédula debe tener 7 u 8 dígitos' },
-        fRepresentanteTelefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 digitos y comenzar por 04' },
-        fRepresentanteEmail: { email: true },
+        fRif: { required: true, pattern: /^\d{9}$/, maxLength: 9, requiredMsg: 'RIF requerido', patternMsg: 'El RIF debe tener 9 digitos', maxLengthMsg: 'El RIF no puede superar los 9 caracteres.' },
+        fRazonSocial: { required: true, minLength: 2, maxLength: 100, requiredMsg: 'Razon social requerida', maxLengthMsg: 'La razón social no puede superar los 100 caracteres.' },
+        fNombreComercial: { maxLength: 100, maxLengthMsg: 'El nombre comercial no puede superar los 100 caracteres.' },
+        fRepresentanteNombre: { maxLength: 30, maxLengthMsg: 'El nombre del representante no puede superar los 30 caracteres.' },
+        fRepresentanteCedula: { pattern: /^$|^\d{7,8}$/, maxLength: 8, patternMsg: 'La cédula debe tener 7 u 8 dígitos', maxLengthMsg: 'La cédula del representante no puede superar los 8 caracteres.' },
+        fRepresentanteTelefono: { pattern: /^$|^04\d{9}$/, maxLength: 11, patternMsg: 'Debe tener 11 digitos y comenzar por 04', maxLengthMsg: 'El teléfono del representante no puede superar los 11 caracteres.' },
+        fRepresentanteEmail: { email: true, maxLength: 50, maxLengthMsg: 'El correo del representante no puede superar los 50 caracteres.' },
+        fSector: { maxLength: 50, maxLengthMsg: 'El sector no puede superar los 50 caracteres.' },
+        fTelefono: { required: true, pattern: /^04\d{9}$/, maxLength: 11, requiredMsg: 'Telefono requerido', patternMsg: 'Debe tener 11 digitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
+        fEmail: { email: true, maxLength: 50, maxLengthMsg: 'El correo no puede superar los 50 caracteres.' },
+        fDireccion: { maxLength: 200, maxLengthMsg: 'La dirección no puede superar los 200 caracteres.' },
         fLimiteCredito: { min: 0, minMsg: 'El límite no puede ser negativo' },
         fDiasCredito: { min: 0, minMsg: 'Los días no pueden ser negativos' }
     });
     Validator.setRules('fleetForm', {
-        vMarca: { required: true, minLength: 2, requiredMsg: 'Marca requerida' },
-        vModelo: { required: true, minLength: 1, requiredMsg: 'Modelo requerido' },
-        vPlaca: { required: true, minLength: 5, requiredMsg: 'Placa requerida' },
+        vMarca: { required: true, minLength: 2, maxLength: 30, requiredMsg: 'Marca requerida', maxLengthMsg: 'La marca no puede superar los 30 caracteres.' },
+        vModelo: { required: true, minLength: 1, maxLength: 30, requiredMsg: 'Modelo requerido', maxLengthMsg: 'El modelo no puede superar los 30 caracteres.' },
+        vAnio: {
+            custom: v => {
+                if (!v) return true;
+                const yr = parseInt(v);
+                return yr >= 1980 && yr <= 2030;
+            },
+            customMsg: 'El año del vehículo debe estar entre 1980 y 2030'
+        },
+        vPlaca: { required: true, minLength: 5, maxLength: 10, requiredMsg: 'Placa requerida', maxLengthMsg: 'La placa no puede superar los 10 caracteres.' },
+        vColor: { maxLength: 20, maxLengthMsg: 'El color no puede superar los 20 caracteres.' },
+        vTipo: { maxLength: 30, maxLengthMsg: 'El tipo de vehículo no puede superar los 30 caracteres.' },
         vKm: { min: 0, minMsg: 'El kilometraje no puede ser negativo' }
     });
     Validator.setupRealtime('companyForm');

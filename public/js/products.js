@@ -9,7 +9,7 @@ $(document).ready(function() {
     loadCombos();
     loadSucursales('sucursal_id', false).then(() => enhanceSearchableSelects(document.getElementById('productModal')));
     Validator.setRules('productForm', {
-        codigo: { required: true, minLength: 2, requiredMsg: 'El código es obligatorio' },
+        codigo: { required: true, minLength: 2, maxLength: 20, requiredMsg: 'El código es obligatorio', maxLengthMsg: 'El código no puede superar los 20 caracteres.' },
         nombre: { 
             required: true, 
             minLength: 3, 
@@ -17,12 +17,12 @@ $(document).ready(function() {
             pattern: /^[A-Za-z0-9ñÑáéíóúÁÉÍÓÚ\s\-\.\#\:\,\_\/]+$/, 
             requiredMsg: 'El nombre es obligatorio', 
             minLengthMsg: 'Mínimo 3 caracteres',
-            maxLengthMsg: 'Máximo 50 caracteres',
+            maxLengthMsg: 'El nombre no puede superar los 50 caracteres.',
             patternMsg: 'El nombre contiene caracteres no válidos' 
         },
         descripcion: {
-            maxLength: 250,
-            maxLengthMsg: 'La descripción no puede superar los 250 caracteres'
+            maxLength: 150,
+            maxLengthMsg: 'La descripción no puede superar los 150 caracteres.'
         },
         precio: { required: true, min: 0.01, requiredMsg: 'El precio es obligatorio', minMsg: 'El precio debe ser mayor a 0' },
         categoria: { required: true, requiredMsg: 'Debe seleccionar una categoría' },

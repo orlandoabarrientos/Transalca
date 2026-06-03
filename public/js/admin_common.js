@@ -87,6 +87,12 @@ function setFieldError(el, message) {
     if (feedback) {
         feedback.textContent = message || '';
         feedback.style.display = 'block';
+        const msg = (message || '').toLowerCase();
+        if (msg.includes('ya existe') || msg.includes('ya registrado') || msg.includes('ya esta registrado') || msg.includes('ya está registrado') || msg.includes('ya registrada') || msg.includes('ya se encuentra')) {
+            feedback.style.color = '#dc3545';
+        } else {
+            feedback.style.color = '#b0b0b0';
+        }
     }
     syncSelect2ValidationState(el);
 }

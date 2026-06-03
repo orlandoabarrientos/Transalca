@@ -5,7 +5,8 @@ $(document).ready(function () {
     loadActivePromotions();
     Validator.setRules('qrForm', {
         tipo: { required: true, requiredMsg: 'Seleccione un tipo de QR' },
-        utilidad_tipo: { required: true, requiredMsg: 'Seleccione una utilidad' }
+        utilidad_tipo: { required: true, requiredMsg: 'Seleccione una utilidad' },
+        contenido: { maxLength: 150, maxLengthMsg: 'El contenido no puede superar los 150 caracteres.' }
     });
     Validator.setupRealtime('qrForm');
     document.getElementById('utilidadTipo')?.addEventListener('change', toggleUtilityFields);

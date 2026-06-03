@@ -19,15 +19,28 @@ $(document).ready(function () {
     });
     Validator.setRules('clientForm', {
         fCedulaPrefijo: { required: true, custom: v => ['V', 'E', 'J', 'G', 'P'].includes(v), customMsg: 'El valor seleccionado no es válido. Recargue la página e inténtelo nuevamente.' },
-        fCedula: { required: true, pattern: /^\d{7,8}$/, requiredMsg: 'Cédula requerida', patternMsg: 'La cédula debe tener 7 u 8 dígitos' },
-        fNombre: { required: true, pattern: /^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$/u, requiredMsg: 'Nombre requerido', patternMsg: 'Solo letras y espacios' },
-        fApellido: { required: true, pattern: /^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$/u, requiredMsg: 'Apellido requerido', patternMsg: 'Solo letras y espacios' },
-        fTelefono: { required: true, pattern: /^04\d{9}$/, requiredMsg: 'Teléfono requerido', patternMsg: 'Debe tener 11 dígitos y comenzar por 04' },
-        fEmail: { email: true }
+        fCedula: { required: true, pattern: /^\d{7,8}$/, maxLength: 8, requiredMsg: 'Cédula requerida', patternMsg: 'La cédula debe tener 7 u 8 dígitos', maxLengthMsg: 'La cédula no puede superar los 8 caracteres.' },
+        fNombre: { required: true, pattern: /^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$/u, maxLength: 30, requiredMsg: 'Nombre requerido', patternMsg: 'Solo letras y espacios', maxLengthMsg: 'El nombre no puede superar los 30 caracteres.' },
+        fApellido: { required: true, pattern: /^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$/u, maxLength: 30, requiredMsg: 'Apellido requerido', patternMsg: 'Solo letras y espacios', maxLengthMsg: 'El apellido no puede superar los 30 caracteres.' },
+        fTelefono: { required: true, pattern: /^04\d{9}$/, maxLength: 11, requiredMsg: 'Teléfono requerido', patternMsg: 'Debe tener 11 dígitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
+        fEmail: { email: true, maxLength: 50, maxLengthMsg: 'El correo no puede superar los 50 caracteres.' },
+        fDireccion: { maxLength: 200, maxLengthMsg: 'La dirección no puede superar los 200 caracteres.' }
     });
     Validator.setRules('vehicleForm', {
-        vMarca: { required: true, minLength: 2, requiredMsg: 'Marca requerida' },
-        vModelo: { required: true, minLength: 1, requiredMsg: 'Modelo requerido' },
+        vMarca: { required: true, minLength: 2, maxLength: 30, requiredMsg: 'Marca requerida', maxLengthMsg: 'La marca no puede superar los 30 caracteres.' },
+        vModelo: { required: true, minLength: 1, maxLength: 30, requiredMsg: 'Modelo requerido', maxLengthMsg: 'El modelo no puede superar los 30 caracteres.' },
+        vAnio: {
+            custom: v => {
+                if (!v) return true;
+                const yr = parseInt(v);
+                const maxYear = new Date().getFullYear() + 1;
+                return yr >= 1940 && yr <= maxYear;
+            },
+            customMsg: `El año del vehículo debe estar entre 1940 y ${new Date().getFullYear() + 1}`
+        },
+        vPlaca: { maxLength: 10, maxLengthMsg: 'La placa no puede superar los 10 caracteres.' },
+        vColor: { maxLength: 20, maxLengthMsg: 'El color no puede superar los 20 caracteres.' },
+        vTipo: { maxLength: 30, maxLengthMsg: 'El tipo de vehículo no puede superar los 30 caracteres.' },
         vKm: { min: 0, minMsg: 'El kilometraje no puede ser negativo' }
     });
     Validator.setupRealtime('clientForm');

@@ -93,6 +93,10 @@ CREATE TABLE `clientes` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+INSERT INTO `clientes` (`cedula`, `cedula_prefijo`, `tipo_cliente`, `nombre`, `apellido`, `telefono`, `email`, `direccion`, `estado`, `origen_registro`, `usuario_id`, `created_at`, `updated_at`) VALUES
+('V-00000000', 'V', 'persona', 'Admin', 'Sistema', '0424-0000000', 'admin@transalca.com', 'Oficina Principal', 1, 'cliente', NULL, '2026-05-18 04:29:47', '2026-05-28 06:14:49');
+
+
 CREATE TABLE `comisiones_mecanico` (
   `id` int(11) NOT NULL,
   `servicio_mecanico_id` int(11) NOT NULL,
@@ -166,16 +170,6 @@ CREATE TABLE `detalle_orden_compra` (
   `subtotal` decimal(12,2) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE `detalle_orden_venta` (
-`id` int(11)
-,`orden_id` int(11)
-,`producto_codigo` varchar(50)
-,`servicio_id` int(11)
-,`tipo` varchar(8)
-,`cantidad` int(11)
-,`precio_unitario` decimal(10,2)
-,`subtotal` decimal(12,2)
-);
 
 CREATE TABLE `detalle_orden_venta_productos` (
   `id` int(11) NOT NULL,
@@ -1051,9 +1045,6 @@ CREATE TABLE `vehiculos` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-DROP TABLE IF EXISTS `detalle_orden_venta`;
-
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `detalle_orden_venta`  AS SELECT `detalle_orden_venta_productos`.`id` AS `id`, `detalle_orden_venta_productos`.`orden_id` AS `orden_id`, `detalle_orden_venta_productos`.`producto_codigo` AS `producto_codigo`, 0 AS `servicio_id`, 'producto' AS `tipo`, `detalle_orden_venta_productos`.`cantidad` AS `cantidad`, `detalle_orden_venta_productos`.`precio_unitario` AS `precio_unitario`, `detalle_orden_venta_productos`.`subtotal` AS `subtotal` FROM `detalle_orden_venta_productos`union all select `detalle_orden_venta_servicios`.`id` AS `id`,`detalle_orden_venta_servicios`.`orden_id` AS `orden_id`,'SIN_PRODUCTO' AS `producto_codigo`,`detalle_orden_venta_servicios`.`servicio_id` AS `servicio_id`,'servicio' AS `tipo`,`detalle_orden_venta_servicios`.`cantidad` AS `cantidad`,`detalle_orden_venta_servicios`.`precio_unitario` AS `precio_unitario`,`detalle_orden_venta_servicios`.`subtotal` AS `subtotal` from `detalle_orden_venta_servicios`  ;
 
 ALTER TABLE `bitacora_vehiculo`
   ADD PRIMARY KEY (`id`),

@@ -8,11 +8,12 @@ $(document).ready(function() {
     $('#navbarContainer').load('/components/admin_navbar.html');
     loadData();
     Validator.setRules('supplierForm', {
-        nombre: { required: true, minLength: 3, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'Mínimo 3 caracteres' },
+        nombre: { required: true, minLength: 3, maxLength: 30, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'Mínimo 3 caracteres', maxLengthMsg: 'El nombre no puede superar los 30 caracteres.' },
         rif_prefijo: { required: true, custom: v => ['J', 'G', 'V', 'E', 'P'].includes(v), customMsg: 'El valor seleccionado no es válido. Recargue la página e inténtelo nuevamente.' },
-        rif: { required: true, pattern: /^\d{9}$/, requiredMsg: 'El RIF es obligatorio.', patternMsg: 'El RIF debe tener 9 dígitos.' },
-        email: { email: true },
-        telefono: { pattern: /^$|^04\d{9}$/, patternMsg: 'Debe tener 11 dígitos y comenzar por 04' }
+        rif: { required: true, pattern: /^\d{9}$/, maxLength: 9, requiredMsg: 'El RIF es obligatorio.', patternMsg: 'El RIF debe tener 9 dígitos.', maxLengthMsg: 'El RIF no puede superar los 9 caracteres.' },
+        email: { email: true, maxLength: 50, maxLengthMsg: 'El correo no puede superar los 50 caracteres.' },
+        telefono: { pattern: /^$|^04\d{9}$/, maxLength: 11, patternMsg: 'Debe tener 11 dígitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
+        direccion: { maxLength: 200, maxLengthMsg: 'La dirección no puede superar los 200 caracteres.' }
     });
     Validator.setupRealtime('supplierForm');
     document.getElementById('rif')?.addEventListener('input', validateUniqueSupplierRif);
