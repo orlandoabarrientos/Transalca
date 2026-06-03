@@ -120,10 +120,10 @@ function loadCards() {
                 if (isFilled) slotClass += ' filled';
 
                 let slotContent = '';
-                if (isFilled) {
-                    slotContent = isReward ? '<i class="bi bi-gift-fill"></i>' : '<i class="bi bi-patch-check-fill"></i>';
+                if (isReward) {
+                    slotContent = isFilled ? '<i class="bi bi-gift-fill"></i>' : '<i class="bi bi-gift"></i>';
                 } else {
-                    slotContent = isReward ? '<i class="bi bi-gift"></i>' : i;
+                    slotContent = i;
                 }
 
                 slotsHtml += `<div class="${slotClass}">${slotContent}</div>`;
