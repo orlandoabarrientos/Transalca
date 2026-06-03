@@ -169,15 +169,15 @@ function statusSelect(id, current) {
 
 function openAssignmentModal() {
     Validator.clearForm('assignmentForm');
-    const idInput = document.getElementById('assignmentId');
-    if (idInput) idInput.value = '';
-    document.getElementById('assignmentModalTitle').textContent = 'Registrar Servicio Mecánico';
-    document.getElementById('orden_venta_id').value = '';
-    document.getElementById('mecanico_cedula').value = '';
-    document.getElementById('observaciones').value = '';
-    document.getElementById('cliente_cedula').value = '';
-    document.getElementById('vehiculo_placa').value = '';
-    document.getElementById('estado').value = 'asignado';
+    $('#assignmentId').val('');
+    $('#assignmentModalTitle').text('Registrar Servicio Mecánico');
+    $('#servicio_id').val('').trigger('change');
+    $('#mecanico_cedula').val('').trigger('change');
+    $('#orden_venta_id').val('').trigger('change');
+    $('#observaciones').val('');
+    $('#cliente_cedula').val('').trigger('change');
+    $('#vehiculo_placa').val('').trigger('change');
+    $('#estado').val('asignado').trigger('change');
 
     const now = new Date();
     const tzoffset = now.getTimezoneOffset() * 60000;
@@ -233,15 +233,13 @@ function editAssignment(id) {
         const a = res.data;
         Validator.clearForm('assignmentForm');
         
-        const idInput = document.getElementById('assignmentId');
-        if (idInput) idInput.value = a.id;
-        
-        document.getElementById('servicio_id').value = a.servicio_id || '';
-        document.getElementById('mecanico_cedula').value = a.mecanico_cedula || '';
-        document.getElementById('orden_venta_id').value = a.orden_venta_id || '';
-        document.getElementById('observaciones').value = a.observaciones || '';
-        document.getElementById('cliente_cedula').value = a.cliente_cedula || '';
-        document.getElementById('estado').value = a.estado || 'asignado';
+        $('#assignmentId').val(a.id);
+        $('#servicio_id').val(a.servicio_id || '').trigger('change');
+        $('#mecanico_cedula').val(a.mecanico_cedula || '').trigger('change');
+        $('#orden_venta_id').val(a.orden_venta_id || '').trigger('change');
+        $('#observaciones').val(a.observaciones || '');
+        $('#cliente_cedula').val(a.cliente_cedula || '').trigger('change');
+        $('#estado').val(a.estado || 'asignado').trigger('change');
 
         if (a.fecha) {
             const cleanFecha = a.fecha.replace(' ', 'T');
@@ -266,10 +264,10 @@ function editAssignment(id) {
         }
 
         loadVehiclesForClient(a.cliente_cedula).then(() => {
-            document.getElementById('vehiculo_placa').value = a.vehiculo_placa || '';
+            $('#vehiculo_placa').val(a.vehiculo_placa || '').trigger('change');
         });
         
-        document.getElementById('assignmentModalTitle').textContent = 'Modificar Servicio Mecánico';
+        $('#assignmentModalTitle').text('Modificar Servicio Mecánico');
         assignmentModal.show();
         Validator.initTracking('assignmentForm');
     });
