@@ -29,16 +29,20 @@
                     <div class="card-header"><span>Resumen del Pedido</span></div>
                     <div class="card-body">
                         <div class="d-flex justify-content-between mb-2"><span>Subtotal:</span><span
-                                id="subtotal">$0.00</span></div>
+                                id="subtotal" data-no-hydrate="true">$0.00</span></div>
                         <hr>
                         <div class="d-flex justify-content-between mb-3"><strong>Total:</strong><strong id="total"
-                                class="fs-4" style="color:var(--highlight);">$0.00</strong></div>
+                                class="fs-4" style="color:var(--highlight);" data-no-hydrate="true">$0.00</strong></div>
                         <form id="checkoutForm" enctype="multipart/form-data">
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Metodo de Pago</label>
                                 <select class="form-select" id="metodoPago">
                                     <option value="">Cargando metodos...</option>
                                 </select>
+                                <div id="metodoPagoInfoContainer" class="mt-2 text-muted small" style="display:none; font-size: 0.95rem;">
+                                    <div class="fw-bold text-dark mb-1">Datos para el pago:</div>
+                                    <div id="metodoPagoInfoText" style="white-space: pre-wrap; line-height: 1.4;"></div>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Comprobante de Pago</label>
@@ -64,8 +68,13 @@
         $(document).ready(function () {
             $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
             $('#footerContainer').load('/components/client_footer.html');
-            loadPaymentMethods();
-            loadCart();
+            
+            loadExchangeRatesCached()
+                .then(loadPaymentMethods)
+                .then(loadCart);
+
+            $('#metodoPago').on('change', updateSummaryPrices);
+
             $('#checkoutForm').on('submit', function (e) {
                 e.preventDefault();
                 var fd = new FormData();
@@ -85,7 +94,7 @@
             return String(value || '').replace(/_/g, ' ').replace(/\b\w/g, function (m) { return m.toUpperCase(); });
         }
         function loadPaymentMethods() {
-            $.get('/api/payment-methods/active', function (r) {
+            return $.get('/api/payment-methods/active', function (r) {
                 var select = $('#metodoPago');
                 select.empty();
                 var methods = r.data || [];
@@ -95,19 +104,26 @@
                     return;
                 }
                 methods.forEach(function (m) {
-                    select.append('<option value="' + escapeHtml(m.nombre) + '">' + escapeHtml(formatPaymentMethodLabel(m.nombre)) + '</option>');
+                    select.append('<option value="' + escapeHtml(m.nombre) + '" data-moneda="' + escapeHtml(m.moneda || 'usd') + '" data-datos-pago="' + escapeHtml(m.datos_pago || '') + '">' + escapeHtml(formatPaymentMethodLabel(m.nombre)) + '</option>');
                 });
+                select.trigger('change');
             }).fail(function () {
-                var fallback = ['transferencia', 'pago_movil', 'efectivo', 'zelle'];
+                var fallback = [
+                    { nombre: 'transferencia', moneda: 'bs', datos_pago: 'Banco Mercantil - Cta: 0105-0000-0000-0000-0000' },
+                    { nombre: 'pago_movil', moneda: 'bs', datos_pago: 'Pago Móvil Mercantil: V-12345678 - Tel: 0412-0000000' },
+                    { nombre: 'efectivo', moneda: 'usd', datos_pago: '' },
+                    { nombre: 'zelle', moneda: 'usd', datos_pago: 'zelle@transalca.com' }
+                ];
                 var select = $('#metodoPago');
                 select.empty();
                 fallback.forEach(function (m) {
-                    select.append('<option value="' + m + '">' + formatPaymentMethodLabel(m) + '</option>');
+                    select.append('<option value="' + m.nombre + '" data-moneda="' + m.moneda + '" data-datos-pago="' + escapeHtml(m.datos_pago || '') + '">' + formatPaymentMethodLabel(m.nombre) + '</option>');
                 });
+                select.trigger('change');
             });
         }
         function loadCart() {
-            $.get('/api/orders/cart', function (r) {
+            return $.get('/api/orders/cart', function (r) {
                 var html = ''; var total = 0;
                 if (!r.data || r.data.length === 0) {
                     html = '<div class="text-center py-5"><i class="bi bi-cart-x fs-1 text-muted"></i><p class="text-muted mt-2">Tu carrito está vacío</p><a href="/client/catalog" class="btn btn-primary-custom">Ver Catálogo</a></div>';
@@ -115,13 +131,53 @@
                 } else {
                     r.data.forEach(function (item) {
                         var subtotal = item.precio * item.cantidad; total += subtotal;
-                        html += '<div class="d-flex justify-content-between align-items-center py-3 border-bottom"><div class="d-flex align-items-center gap-3"><img src="/public/assets/images/' + (item.imagen || 'no-image.png') + '" style="width:60px;height:60px;object-fit:cover;border-radius:8px;" onerror="this.src=\'/public/assets/images/no-image.png\'"><div><h6 class="mb-0 fw-bold">' + item.item_nombre + '</h6><small class="text-muted">' + item.tipo + '</small></div></div><div class="d-flex align-items-center gap-3"><div class="input-group input-group-sm" style="width:120px;"><button class="btn btn-outline-secondary" onclick="updateQty(' + item.id + ',' + (item.cantidad - 1) + ')">-</button><input type="text" class="form-control text-center" value="' + item.cantidad + '" readonly><button class="btn btn-outline-secondary" onclick="updateQty(' + item.id + ',' + (item.cantidad + 1) + ')">+</button></div><span class="fw-bold" data-usd-price="' + subtotal + '">' + formatUsdBs(subtotal) + '</span><button class="btn btn-sm btn-outline-danger" onclick="removeItem(' + item.id + ')"><i class="bi bi-trash"></i></button></div></div>';
+                        html += '<div class="d-flex justify-content-between align-items-center py-3 border-bottom"><div class="d-flex align-items-center gap-3"><img src="/public/assets/images/' + (item.imagen || 'no-image.png') + '" style="width:60px;height:60px;object-fit:cover;border-radius:8px;" onerror="this.src=\'/public/assets/images/no-image.png\'"><div><h6 class="mb-0 fw-bold">' + item.item_nombre + '</h6><small class="text-muted">' + item.tipo + '</small></div></div><div class="d-flex align-items-center gap-3"><div class="input-group input-group-sm" style="width:120px;"><button class="btn btn-outline-secondary" onclick="updateQty(' + item.id + ',' + (item.cantidad - 1) + ')">-</button><input type="text" class="form-control text-center" value="' + item.cantidad + '" readonly><button class="btn btn-outline-secondary" onclick="updateQty(' + item.id + ',' + (item.cantidad + 1) + ')">+</button></div><span class="fw-bold cart-item-price" data-usd-price="' + subtotal + '" data-no-hydrate="true">' + formatUsdBs(subtotal) + '</span><button class="btn btn-sm btn-outline-danger" onclick="removeItem(' + item.id + ')"><i class="bi bi-trash"></i></button></div></div>';
                     });
                 }
                 $('#cartItems').html(html);
-                $('#subtotal').text(formatUsdBs(total)).attr('data-usd-price', total);
-                $('#total').text(formatUsdBs(total)).attr('data-usd-price', total);
+                $('#subtotal').attr('data-usd-price', total);
+                $('#total').attr('data-usd-price', total);
+                updateSummaryPrices();
             });
+        }
+        function updateSummaryPrices() {
+            var selectedOption = $('#metodoPago option:selected');
+            var paymentCurrency = (selectedOption.attr('data-moneda') || 'usd').toLowerCase();
+            var rates = window.TransalcaRates || { bcv: 0, usdt: 0 };
+            var bcv = parseFloat(rates.bcv || 0);
+            var usdt = parseFloat(rates.usdt || 0);
+
+            var formatVal = function (usdVal) {
+                if (paymentCurrency === 'bs' && bcv && usdt) {
+                    var bsVal = (usdVal * usdt) / bcv;
+                    return 'Bs. ' + parseFloat(bsVal || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                } else {
+                    return '$' + parseFloat(usdVal || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+            };
+
+            $('#subtotal').text(formatVal(parseFloat($('#subtotal').attr('data-usd-price') || 0)));
+            $('#total').text(formatVal(parseFloat($('#total').attr('data-usd-price') || 0)));
+
+            $('.cart-item-price').each(function () {
+                var usdPrice = parseFloat($(this).attr('data-usd-price') || 0);
+                $(this).text(formatVal(usdPrice));
+            });
+
+            $('#divisasPromoLabel').remove();
+            if (paymentCurrency === 'usd') {
+                $('<div id="divisasPromoLabel" class="text-danger small fw-bold mb-2">Promoción en divisas</div>').insertBefore('#total');
+            }
+
+            var datosPago = selectedOption.attr('data-datos-pago') || '';
+            var infoContainer = $('#metodoPagoInfoContainer');
+            if (datosPago.trim()) {
+                $('#metodoPagoInfoText').text(datosPago);
+                infoContainer.show();
+            } else {
+                $('#metodoPagoInfoText').text('');
+                infoContainer.hide();
+            }
         }
         function updateQty(cartId, qty) {
             if (qty < 1) { removeItem(cartId); return; }

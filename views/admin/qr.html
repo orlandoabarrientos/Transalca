@@ -53,7 +53,7 @@
                 <div class="modal-body">
                     <form id="qrForm"><input type="hidden" id="qrId">
                         <div class="mb-3"><label class="form-label">Tipo <span class="required">*</span></label><select
-                                class="form-select" id="tipo" name="tipo" required>
+                                class="form-select no-select2" id="tipo" name="tipo" data-no-select2="true" required>
                                 <option value="">Seleccione tipo...</option>
                                 <option value="info">Informacion</option>
                                 <option value="promocion">Promocion</option>
@@ -68,13 +68,13 @@
                         </div>
                         <div class="row g-3 mb-3">
                             <div class="col-md-4"><label class="form-label">Utilidad asignada <span class="required">*</span></label><select
-                                    class="form-select" id="utilidad_tipo" name="utilidad_tipo" required>
+                                    class="form-select no-select2" id="utilidad_tipo" name="utilidad_tipo" data-no-select2="true" required>
                                     <option value="">Seleccione utilidad...</option>
                                     <option value="promocion">Promocion</option>
                                     <option value="validar_pago">Validar pago</option>
                                 </select><div class="invalid-feedback"></div></div>
                             <div class="col-md-4" id="promoRefWrap" style="display:none;"><label class="form-label">Promocion
-                                    Activa</label><select class="form-select" id="promocionRefSelect" name="promocion_id"></select><small
+                                    Activa</label><select class="form-select no-select2" id="promocionRefSelect" name="promocion_id" data-no-select2="true"></select><small
                                     id="promoRefHint" class="text-muted"></small></div>
                             <div class="col-md-4" id="orderRefWrap" style="display:none;"><label
                                     class="form-label">Orden para validar pago</label><input type="number"

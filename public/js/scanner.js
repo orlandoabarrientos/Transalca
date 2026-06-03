@@ -135,6 +135,18 @@ async function processScan(rawOverride = null) {
 }
 
 function renderScanResult(data) {
+    if (data.mode === 'promocion_directa_aplicada' || data.mode === 'mesa_promocion_aplicada') {
+        const cardData = data.card || {};
+        const promoName = cardData.promo_nombre || 'Promoción';
+        window.location.href = `/client/my_loyalty?promo_registered=1&promo_name=${encodeURIComponent(promoName)}`;
+        return;
+    }
+
+    if (data.mode === 'validar_pago_redirect') {
+        window.location.href = `/client/my_orders?validar_pago_qr=${data.qr_id}`;
+        return;
+    }
+
     const card = document.getElementById('scanResultCard');
     const body = document.getElementById('scanResultBody');
     if (!card || !body) return;
@@ -219,13 +231,16 @@ function renderOrderBlock(order, title) {
         return `<div class="alert alert-warning">No se encontro informacion de factura.</div>`;
     }
 
+    const orderCurrency = (order.moneda || 'usd').toLowerCase();
+    const symbol = orderCurrency === 'bs' ? 'Bs. ' : '$';
+
     const cliente = order.cliente || {};
     const detailsRows = (order.detalles || []).map(d => `
         <tr>
             <td>${escapeHtml(d.item_nombre || '-')}</td>
             <td>${d.cantidad || 0}</td>
-            <td>$${formatMoney(d.precio_unitario || d.precio || 0)}</td>
-            <td>$${formatMoney(d.subtotal || 0)}</td>
+            <td>${symbol}${formatMoney(d.precio_unitario || d.precio || 0)}</td>
+            <td>${symbol}${formatMoney(d.subtotal || 0)}</td>
         </tr>
     `).join('');
 
@@ -239,7 +254,7 @@ function renderOrderBlock(order, title) {
             <div><strong>Fecha:</strong> ${formatDate(order.fecha)}</div>
             <div><strong>Cliente:</strong> ${escapeHtml((cliente.nombre || '') + ' ' + (cliente.apellido || ''))} (${escapeHtml(order.cliente_cedula || '')})</div>
             <div><strong>Correo:</strong> ${escapeHtml(cliente.email || '-')}</div>
-            <div><strong>Total:</strong> $${formatMoney(order.total || 0)}</div>
+            <div><strong>Total:</strong> ${symbol}${formatMoney(order.total || 0)}</div>
             ${employeeTools}
         </div>
         <div class="table-responsive">

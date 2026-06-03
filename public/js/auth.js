@@ -1,5 +1,18 @@
 $(document).ready(function () {
     const page = window.location.pathname.split('/').pop();
+    
+    const params = new URLSearchParams(window.location.search);
+    const nextVal = params.get('next');
+    if (nextVal) {
+        if (page === 'login') {
+            const regLink = document.querySelector('a[href="/auth/register"]');
+            if (regLink) regLink.href = `/auth/register?next=${encodeURIComponent(nextVal)}`;
+        } else if (page === 'register') {
+            const logLink = document.querySelector('a[href="/auth/login"]');
+            if (logLink) logLink.href = `/auth/login?next=${encodeURIComponent(nextVal)}`;
+        }
+    }
+
     if (page === 'login') setupLogin();
     else if (page === 'register') setupRegister();
     else if (page === 'recover') setupRecover();
@@ -76,7 +89,9 @@ function setupRegister() {
                 return;
             }
             showToast(res.message, 'success');
-            setTimeout(() => window.location.href = '/auth/login', 1500);
+            const nextVal = new URLSearchParams(window.location.search).get('next');
+            const loginUrl = nextVal ? `/auth/login?next=${encodeURIComponent(nextVal)}` : '/auth/login';
+            setTimeout(() => window.location.href = loginUrl, 1500);
         } catch (e) {}
     });
 }

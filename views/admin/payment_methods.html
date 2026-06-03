@@ -32,6 +32,7 @@
                                 <th>Nombre</th>
                                 <th>Datos</th>
                                 <th>Crédito</th>
+                                <th>Moneda</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -59,10 +60,18 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Datos <span class="required">*</span></label>
-                        <textarea class="form-control" id="datos" name="datos" rows="4" maxlength="1000"></textarea>
+                        <textarea class="form-control" id="datos_pago" name="datos_pago" rows="3" maxlength="80"></textarea>
                         <div class="invalid-feedback"></div>
                     </div>
-                    <div class="form-check form-switch">
+                    <div class="mb-3">
+                        <label class="form-label">Moneda <span class="required">*</span></label>
+                        <select class="form-select" id="moneda" name="moneda" required>
+                            <option value="usd">Dólares (usd)</option>
+                            <option value="bs">Bolívares (bs)</option>
+                        </select>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="form-check form-switch mb-3">
                         <input class="form-check-input" type="checkbox" id="permite_credito" name="permite_credito">
                         <label class="form-check-label" for="permite_credito">Permite compras a crédito de empresas</label>
                     </div>
@@ -77,7 +86,7 @@
 </div>
 <script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
 <script src="/public/jquery/jquery.min.js"></script>
-<script src="/public/js/admin_common.js"></script>
-<script src="/public/js/payment_methods.js"></script>
+<script src="/public/js/admin_common.js?v=2"></script>
+<script src="/public/js/payment_methods.js?v=2"></script>
 </body>
 </html>

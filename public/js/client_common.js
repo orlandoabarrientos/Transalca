@@ -354,6 +354,7 @@ function normalizeRatePayload(json) {
 
 function hydrateDualPrices(root = document) {
     root.querySelectorAll('[data-usd-price]').forEach(el => {
+        if (el.hasAttribute('data-no-hydrate') || el.closest('[data-no-hydrate]')) return;
         el.textContent = formatUsdBs(el.dataset.usdPrice);
     });
     updateCurrencyMenuLabel();

@@ -52,7 +52,7 @@ def create():
         utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
         if not utilidad_tipo:
             errors['utilidad_tipo'] = 'La utilidad es obligatoria'
-        elif utilidad_tipo in ('promocion', 'validar_pago', 'mesa') and not str(data.get('referencia_id') or '').strip():
+        elif utilidad_tipo in ('promocion', 'mesa') and not str(data.get('referencia_id') or '').strip():
             errors['referencia_id'] = 'Seleccione una referencia para esta utilidad'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
@@ -77,7 +77,7 @@ def update(qr_id):
         utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
         if not utilidad_tipo:
             errors['utilidad_tipo'] = 'La utilidad es obligatoria'
-        elif utilidad_tipo in ('promocion', 'validar_pago', 'mesa') and not str(data.get('referencia_id') or '').strip():
+        elif utilidad_tipo in ('promocion', 'mesa') and not str(data.get('referencia_id') or '').strip():
             errors['referencia_id'] = 'Seleccione una referencia para esta utilidad'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400

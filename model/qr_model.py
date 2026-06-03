@@ -107,7 +107,10 @@ class QRModel(Connection):
             qr['utilidad_asignada_at'] = content.get('assigned_at')
             qr['utilidad_expires_at'] = content.get('expires_at')
             qr['utilidad_referencia_id'] = content.get('referencia_id')
-            qr['contenido_resumen'] = content.get('nota') or qr.get('contenido') or ''
+            if qr.get('utilidad'):
+                qr['contenido_resumen'] = content.get('nota') or ''
+            else:
+                qr['contenido_resumen'] = qr.get('contenido') or ''
         return qr
 
     def update_qr(self, qr_id, data):
@@ -179,5 +182,8 @@ class QRModel(Connection):
             qr['utilidad_asignada_at'] = content.get('assigned_at')
             qr['utilidad_expires_at'] = content.get('expires_at')
             qr['utilidad_referencia_id'] = content.get('referencia_id')
-            qr['contenido_resumen'] = content.get('nota') or qr.get('contenido') or ''
+            if qr.get('utilidad'):
+                qr['contenido_resumen'] = content.get('nota') or ''
+            else:
+                qr['contenido_resumen'] = qr.get('contenido') or ''
         return qrs

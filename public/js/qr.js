@@ -9,7 +9,7 @@ $(document).ready(function () {
         contenido: { maxLength: 150, maxLengthMsg: 'El contenido no puede superar los 150 caracteres.' }
     });
     Validator.setupRealtime('qrForm');
-    document.getElementById('utilidad_tipo')?.addEventListener('change', toggleUtilityFields);
+    $('#utilidad_tipo, #tipo').on('change', toggleUtilityFields);
 });
 
 function loadData() {
@@ -43,33 +43,44 @@ function loadData() {
 function openModal() { Validator.clearForm('qrForm'); document.getElementById('qrId').value = ''; document.getElementById('modalTitle').textContent = 'Nuevo QR'; document.getElementById('contenido').value = ''; document.getElementById('utilidad_tipo').value = ''; document.getElementById('referenciaId').value = ''; document.getElementById('promocionRefSelect').value = ''; document.getElementById('ttlMinutos').value = '10'; toggleUtilityFields(); new bootstrap.Modal(document.getElementById('qrModal')).show(); }
 
 function editData(id) {
-    apiCall(`/api/qr/${id}`).then(res => { const q = res.data; document.getElementById('qrId').value = q.id; document.getElementById('tipo').value = q.tipo; document.getElementById('contenido').value = q.contenido_resumen || q.contenido || ''; document.getElementById('utilidad_tipo').value = q.utilidad || ''; document.getElementById('referenciaId').value = q.utilidad_referencia_id || ''; document.getElementById('promocionRefSelect').value = (q.utilidad === 'promocion' ? (q.utilidad_referencia_id || '') : ''); document.getElementById('ttlMinutos').value = '10'; document.getElementById('modalTitle').textContent = 'Editar QR'; toggleUtilityFields(); new bootstrap.Modal(document.getElementById('qrModal')).show(); });
+    apiCall(`/api/qr/${id}`).then(res => {
+        const q = res.data;
+        document.getElementById('qrId').value = q.id;
+        document.getElementById('tipo').value = q.tipo;
+        document.getElementById('contenido').value = q.contenido_resumen || q.contenido || '';
+        document.getElementById('utilidad_tipo').value = q.utilidad || '';
+        document.getElementById('referenciaId').value = q.utilidad_referencia_id || '';
+        const isPromo = (q.tipo === 'promocion' || q.utilidad === 'promocion');
+        document.getElementById('promocionRefSelect').value = isPromo ? (q.utilidad_referencia_id || '') : '';
+        document.getElementById('ttlMinutos').value = '10';
+        document.getElementById('modalTitle').textContent = 'Editar QR';
+        toggleUtilityFields();
+        new bootstrap.Modal(document.getElementById('qrModal')).show();
+    });
 }
 
 function saveData() {
     if (!Validator.validate('qrForm')) return showToast('Corrija los errores', 'warning');
     const id = document.getElementById('qrId').value;
+    const tipo = (document.getElementById('tipo').value || '').trim();
     const utilidadTipo = (document.getElementById('utilidad_tipo').value || '').trim();
     const contenido = (document.getElementById('contenido').value || '').trim();
     const promoRefId = (document.getElementById('promocionRefSelect').value || '').trim();
-    const orderRefId = (document.getElementById('referenciaId').value || '').trim();
     const ttlMinutos = (document.getElementById('ttlMinutos').value || '').trim() || '10';
-    const referenciaId = utilidadTipo === 'promocion' ? promoRefId : orderRefId;
+    
+    const isPromo = (tipo === 'promocion' || utilidadTipo === 'promocion');
+    const referenciaId = isPromo ? promoRefId : '';
 
     if (!utilidadTipo && contenido.length < 3) {
         return showToast('El contenido o la utilidad es requerido', 'warning');
     }
 
-    if (utilidadTipo === 'promocion' && !referenciaId) {
+    if (isPromo && !referenciaId) {
         return showToast('Debe seleccionar una promocion activa', 'warning');
     }
 
-    if (utilidadTipo === 'validar_pago' && !referenciaId) {
-        return showToast('Debe indicar una referencia para la utilidad', 'warning');
-    }
-
     const data = {
-        tipo: document.getElementById('tipo').value,
+        tipo: tipo,
         contenido: contenido,
         utilidad: utilidadTipo,
         utilidad_tipo: utilidadTipo,
@@ -91,13 +102,16 @@ function viewQRImage(id) {
 }
 
 function toggleUtilityFields() {
+    const tipo = (document.getElementById('tipo')?.value || '').trim();
     const utilityType = (document.getElementById('utilidad_tipo')?.value || '').trim();
     const promoWrap = document.getElementById('promoRefWrap');
     const orderWrap = document.getElementById('orderRefWrap');
     const ttlWrap = document.getElementById('utilidadTtlWrap');
-    if (promoWrap) promoWrap.style.display = utilityType === 'promocion' ? '' : 'none';
-    if (orderWrap) orderWrap.style.display = utilityType === 'validar_pago' ? '' : 'none';
-    if (ttlWrap) ttlWrap.style.display = utilityType ? '' : 'none';
+    
+    const showPromo = (tipo === 'promocion' || utilityType === 'promocion');
+    if (promoWrap) promoWrap.style.display = showPromo ? '' : 'none';
+    if (orderWrap) orderWrap.style.display = 'none'; // No se requiere referencia de orden para validar pago
+    if (ttlWrap) ttlWrap.style.display = (utilityType || showPromo) ? '' : 'none';
     if (window.enhanceSearchableSelects) enhanceSearchableSelects(document.getElementById('qrModal'));
     if (window.jQuery?.fn?.select2) window.jQuery('#promocionRefSelect').trigger('change.select2');
 }

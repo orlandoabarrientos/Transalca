@@ -62,9 +62,9 @@ class OrderModel(Connection):
     def get_active_payment_methods(self):
         try:
             return self.fetch_all("transalca",
-                "SELECT id, nombre, datos, permite_credito FROM metodos_pago WHERE estado = 1 ORDER BY nombre")
+                "SELECT id, nombre, permite_credito, moneda, datos_pago FROM metodos_pago WHERE estado = 1 ORDER BY nombre")
         except Exception:
-            return [{'id': 0, 'nombre': n, 'datos': '', 'permite_credito': 0} for n in ('transferencia', 'pago_movil', 'efectivo', 'zelle', 'binance', 'tarjeta')]
+            return [{'id': 0, 'nombre': n, 'permite_credito': 0, 'moneda': 'usd', 'datos_pago': ''} for n in ('transferencia', 'pago_movil', 'efectivo', 'zelle', 'binance', 'tarjeta')]
 
     def get_payment_method(self, value):
         value = (value or '').strip()
@@ -164,22 +164,46 @@ class OrderModel(Connection):
             if tipo_pago == 'credito':
                 fecha_inicio_credito = caracas_now().date()
                 fecha_vencimiento = fecha_inicio_credito + timedelta(days=int(client.get('dias_credito') or 0))
-            total = sum(item['precio'] * item['cantidad'] for item in cart_items)
+            moneda = payment_method.get('moneda', 'usd').lower() if payment_method else 'usd'
+            tasa = 1.0
+            if moneda == 'bs':
+                try:
+                    from model.bcv_rate_model import get_bcv_rates
+                    from model.binance_rate_model import get_usdt_rate_ves
+                    bcv_rate = float(get_bcv_rates(verify=False).get('usd', 0))
+                    usdt_rate = float(get_usdt_rate_ves())
+                    if bcv_rate > 0 and usdt_rate > 0:
+                        tasa = usdt_rate / bcv_rate
+                    else:
+                        tasa = 1.3200
+                except Exception:
+                    tasa = 1.3200
+
+            total = 0
+            for item in cart_items:
+                item_price = float(item['precio'])
+                if moneda == 'bs':
+                    item_price = round(item_price * tasa, 2)
+                total += item_price * item['cantidad']
+
             monto_deuda = total if tipo_pago == 'credito' else 0
             cursor.execute(
-                "INSERT INTO ordenes_venta (cliente_cedula, sucursal_id, fecha, total, monto_deuda, metodo_pago_id, tipo_pago, credito_estado, fecha_inicio_credito, fecha_vencimiento_credito, comprobante_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                (cliente_cedula, sucursal_id, caracas_now(), total, monto_deuda, metodo_id, tipo_pago, credito_estado, fecha_inicio_credito, fecha_vencimiento, comprobante_url))
+                "INSERT INTO ordenes_venta (cliente_cedula, sucursal_id, fecha, total, monto_deuda, metodo_pago_id, tipo_pago, credito_estado, fecha_inicio_credito, fecha_vencimiento_credito, comprobante_url, moneda, tasa) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (cliente_cedula, sucursal_id, caracas_now(), total, monto_deuda, metodo_id, tipo_pago, credito_estado, fecha_inicio_credito, fecha_vencimiento, comprobante_url, moneda, tasa))
             order_id = cursor.lastrowid
             for item in cart_items:
+                item_price = float(item['precio'])
+                if moneda == 'bs':
+                    item_price = round(item_price * tasa, 2)
                 if item['tipo'] == 'producto':
-                    subtotal = item['precio'] * item['cantidad']
+                    subtotal = item_price * item['cantidad']
                     cursor.execute(
                         "INSERT INTO detalle_orden_venta_productos (orden_id, producto_codigo, cantidad, precio_unitario, subtotal) VALUES (%s, %s, %s, %s, %s)",
-                        (order_id, item['producto_codigo'], item['cantidad'], item['precio'], subtotal))
+                        (order_id, item['producto_codigo'], item['cantidad'], item_price, subtotal))
                 else:
                     cursor.execute(
                         "INSERT INTO detalle_orden_venta_servicios (orden_id, servicio_id, cantidad, precio_unitario, subtotal) VALUES (%s, %s, 1, %s, %s)",
-                        (order_id, item['servicio_id'], item['precio'], item['precio']))
+                        (order_id, item['servicio_id'], item_price, item_price))
                     if allow_unassigned_services:
                         cursor.execute(
                             "INSERT INTO servicio_mecanico (servicio_id, mecanico_cedula, orden_venta_id, observaciones) VALUES (%s, %s, %s, %s)",

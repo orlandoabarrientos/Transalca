@@ -7,7 +7,7 @@ $(document).ready(function() {
     $('#navbarContainer').load('/components/admin_navbar.html');
     Validator.setRules('paymentMethodForm', {
         nombre: { required: true, minLength: 3, maxLength: 50, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'El nombre debe tener al menos 3 caracteres', maxLengthMsg: 'El nombre no puede superar los 50 caracteres.' },
-        datos: { required: true, minLength: 3, maxLength: 200, requiredMsg: 'Los datos son obligatorios', minLengthMsg: 'Los datos deben tener al menos 3 caracteres', maxLengthMsg: 'Los datos no pueden superar los 200 caracteres.' }
+        datos_pago: { required: true, minLength: 3, maxLength: 80, requiredMsg: 'Los datos son obligatorios', minLengthMsg: 'Los datos deben tener al menos 3 caracteres', maxLengthMsg: 'Los datos no pueden superar los 80 caracteres.' }
     });
     Validator.setupRealtime('paymentMethodForm');
     let checkTimeout = null;
@@ -48,7 +48,7 @@ function loadPaymentMethods() {
 function renderPaymentMethods() {
     const q = ($('#paymentMethodSearch').val() || '').toLowerCase().trim();
     const rows = paymentMethodsCache.filter(item => {
-        const text = `${item.nombre || ''} ${item.datos || ''}`.toLowerCase();
+        const text = `${item.nombre || ''} ${item.datos_pago || ''}`.toLowerCase();
         return !q || text.includes(q);
     });
     const tbody = document.getElementById('paymentMethodBody');
@@ -57,8 +57,9 @@ function renderPaymentMethods() {
     rows.forEach(item => {
         tbody.innerHTML += `<tr>
             <td><strong>${escapeHtml(item.nombre)}</strong></td>
-            <td>${escapeHtml(item.datos)}</td>
+            <td style="white-space: pre-line;">${escapeHtml(item.datos_pago || '')}</td>
             <td>${item.permite_credito ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-secondary">No</span>'}</td>
+            <td><span class="badge bg-info">${(item.moneda || 'usd').toUpperCase()}</span></td>
             <td>
                 <button class="btn btn-icon btn-sm btn-warning" onclick="editPaymentMethod(${item.id})" title="Modificar método de pago"><i class="bi bi-pencil-square"></i></button>
                 <button class="btn btn-icon btn-sm btn-danger" onclick="deletePaymentMethod(${item.id})" title="Eliminar método de pago"><i class="bi bi-trash"></i></button>
@@ -66,7 +67,7 @@ function renderPaymentMethods() {
         </tr>`;
     });
     if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-wallet2"></i><p>No hay métodos de pago registrados</p></div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-wallet2"></i><p>No hay métodos de pago registrados</p></div></td></tr>';
     }
 }
 
@@ -74,6 +75,8 @@ function openPaymentMethodModal() {
     Validator.clearForm('paymentMethodForm');
     document.getElementById('paymentMethodId').value = '';
     document.getElementById('permite_credito').checked = false;
+    document.getElementById('moneda').value = 'usd';
+    document.getElementById('datos_pago').value = '';
     document.getElementById('paymentMethodModalTitle').textContent = 'Registrar Método de Pago';
     document.getElementById('btnSavePaymentMethod').innerHTML = '<i class="bi bi-plus-circle me-1"></i>Registrar';
     new bootstrap.Modal(document.getElementById('paymentMethodModal')).show();
@@ -86,8 +89,9 @@ function editPaymentMethod(id) {
         Validator.clearForm('paymentMethodForm');
         document.getElementById('paymentMethodId').value = item.id;
         document.getElementById('nombre').value = item.nombre || '';
-        document.getElementById('datos').value = item.datos || '';
+        document.getElementById('datos_pago').value = item.datos_pago || '';
         document.getElementById('permite_credito').checked = !!item.permite_credito;
+        document.getElementById('moneda').value = item.moneda || 'usd';
         document.getElementById('paymentMethodModalTitle').textContent = 'Modificar Método de Pago';
         document.getElementById('btnSavePaymentMethod').innerHTML = '<i class="bi bi-pencil-square me-1"></i>Modificar';
         new bootstrap.Modal(document.getElementById('paymentMethodModal')).show();
@@ -100,8 +104,9 @@ function savePaymentMethod() {
     const id = document.getElementById('paymentMethodId').value;
     const data = {
         nombre: document.getElementById('nombre').value,
-        datos: document.getElementById('datos').value,
-        permite_credito: document.getElementById('permite_credito').checked ? 1 : 0
+        datos_pago: document.getElementById('datos_pago').value,
+        permite_credito: document.getElementById('permite_credito').checked ? 1 : 0,
+        moneda: document.getElementById('moneda').value
     };
     const method = id ? 'PUT' : 'POST';
     const url = id ? `/api/payment-methods/${id}` : '/api/payment-methods/';

@@ -13,8 +13,11 @@ def _validate(data):
     errors = {}
     clean = {}
     clean['nombre'] = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=100, allow_serial=True)
-    clean['datos'] = require_text(errors, 'datos', data.get('datos'), 'Los datos del método de pago', min_len=3, max_len=1000, allow_serial=True)
+    clean['datos_pago'] = require_text(errors, 'datos_pago', data.get('datos_pago'), 'Los datos de pago', min_len=3, max_len=80, allow_serial=True)
     clean['permite_credito'] = 1 if data.get('permite_credito') in (1, '1', True, 'true', 'on') else 0
+    clean['moneda'] = (data.get('moneda') or 'usd').strip().lower()
+    if clean['moneda'] not in ('usd', 'bs'):
+        errors['moneda'] = 'La moneda debe ser usd o bs.'
     return clean, errors
 
 

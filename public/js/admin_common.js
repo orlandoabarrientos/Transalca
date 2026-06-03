@@ -677,6 +677,7 @@ function enhanceSearchableSelects(root = document) {
         if (!ready || !window.jQuery) return;
         selects.forEach(select => {
             if (select.closest('.input-group')) return;
+            if (select.hasAttribute('data-no-select2') || select.classList.contains('no-select2')) return;
             const $select = window.jQuery(select);
             const modal = select.closest('.modal');
             const modalId = modal?.id || '';
@@ -1013,6 +1014,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     observer.observe(document.body, { childList: true, subtree: true });
     setInterval(cleanupUiLocks, 5000);
+    if (document.getElementById('sidebarContainer')) {
+        startAdminValidationPolling();
+    }
 });
 
 document.addEventListener('click', async (e) => {
@@ -1050,4 +1054,207 @@ async function loadNavSession() {
             applyAdminDocumentTitle();
         }
     } catch (e) { }
+}
+
+function getShownValidationRequestIds() {
+    try {
+        const stored = sessionStorage.getItem('shown_validation_req_ids');
+        return new Set(stored ? JSON.parse(stored) : []);
+    } catch (e) {
+        return new Set();
+    }
+}
+
+function markValidationRequestIdAsShown(id) {
+    try {
+        const current = getShownValidationRequestIds();
+        current.add(id);
+        sessionStorage.setItem('shown_validation_req_ids', JSON.stringify(Array.from(current)));
+    } catch (e) {}
+}
+
+function startAdminValidationPolling() {
+    if (typeof Swal === 'undefined') {
+        let link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = '/public/sweetalert2/sweetalert2.min.css';
+        document.head.appendChild(link);
+
+        let script = document.createElement('script');
+        script.src = '/public/sweetalert2/sweetalert2.all.min.js';
+        document.head.appendChild(script);
+    }
+
+    setInterval(pollPendingValidations, 10000);
+    setTimeout(pollPendingValidations, 2500);
+}
+
+async function pollPendingValidations() {
+    if (typeof Swal === 'undefined') return;
+    try {
+        const res = await fetch('/api/scanner/solicitudes-pendientes', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.status === 'success' && data.data && data.data.length > 0) {
+            const shownIds = getShownValidationRequestIds();
+            const pending = data.data.find(r => !shownIds.has(r.id));
+            if (pending) {
+                showValidationAlert(pending);
+            }
+        }
+    } catch (e) {
+        console.error('Error polling validations:', e);
+    }
+}
+
+function showValidationAlert(req) {
+    markValidationRequestIdAsShown(req.id);
+    
+    const title = req.tipo === 'validar_pago' ? 'Solicitud de Validación de Pago' : 'Escaneo de Factura Pagada';
+    let timerInterval;
+    Swal.fire({
+        title: title,
+        html: `
+            <p>Hay una solicitud pendiente de validación:</p>
+            <div class="text-start border rounded p-2 bg-light small mb-3">
+                <strong>Cliente:</strong> ${escapeHtml(req.cliente_nombre)}<br>
+                <strong>Teléfono:</strong> ${escapeHtml(req.cliente_telefono || 'N/A')}<br>
+                <strong>Pedido:</strong> #${req.orden_venta_id}<br>
+                <strong>Monto Total:</strong> $${req.total.toFixed(2)} (${req.metodo_pago})<br>
+                <strong>Tipo:</strong> ${req.tipo === 'validar_pago' ? 'Validar Pago' : 'Factura'}
+            </div>
+            <p class="text-muted small">Cerrando automáticamente en <b>180</b> segundos...</p>
+        `,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Ver Datos',
+        cancelButtonText: 'No ver / Rechazar',
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#dc3545',
+        timer: 180000,
+        timerProgressBar: true,
+        didOpen: () => {
+            const content = Swal.getHtmlContainer();
+            const b = content.querySelector('b');
+            timerInterval = setInterval(() => {
+                if (b) {
+                    b.textContent = Math.ceil(Swal.getTimerLeft() / 1000);
+                }
+            }, 1000);
+        },
+        willClose: () => {
+            clearInterval(timerInterval);
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            openAdminValidationDetailsModal(req);
+        }
+    });
+}
+
+function openAdminValidationDetailsModal(req) {
+    const orderCurrency = (req.moneda || 'usd').toLowerCase();
+    const symbol = orderCurrency === 'bs' ? 'Bs. ' : '$';
+
+    const detailsRows = (req.detalles || []).map(d => `
+        <tr>
+            <td style="padding:4px 8px; text-align:left;">${escapeHtml(d.item_nombre || '-')}</td>
+            <td style="padding:4px 8px;">${d.cantidad || 0}</td>
+            <td style="padding:4px 8px; text-align:right;">${symbol}${parseFloat(d.precio_unitario || 0).toFixed(2)}</td>
+            <td style="padding:4px 8px; text-align:right;">${symbol}${parseFloat(d.subtotal || 0).toFixed(2)}</td>
+        </tr>
+    `).join('');
+
+    let comprobanteHtml = '';
+    if (req.comprobante_img) {
+        comprobanteHtml = `
+            <div class="mt-3 text-start">
+                <strong>Comprobante de Pago:</strong><br>
+                <img src="/public/assets/comprobantes/${escapeHtml(req.comprobante_img)}" 
+                     class="img-fluid rounded border mt-2" 
+                     style="max-height: 240px; width: 100%; object-fit: contain;" 
+                     alt="Comprobante">
+            </div>
+        `;
+    }
+
+    const isAlreadyApproved = ['aprobada', 'aprobado', 'verificado', 'verificada', 'pagado', 'pagada'].includes(String(req.estado_orden || '').toLowerCase());
+
+    Swal.fire({
+        title: `Detalle de Validación - Pedido #${req.orden_venta_id}`,
+        width: '600px',
+        html: `
+            <div class="text-start" style="font-size: 0.85rem;">
+                <div class="row g-2 mb-3">
+                    <div class="col-6"><strong>Cliente:</strong> ${escapeHtml(req.cliente_nombre)}</div>
+                    <div class="col-6"><strong>Cédula:</strong> ${escapeHtml(req.cliente_cedula)}</div>
+                    <div class="col-6"><strong>Email:</strong> ${escapeHtml(req.cliente_email || '-')}</div>
+                    <div class="col-6"><strong>Teléfono:</strong> ${escapeHtml(req.cliente_telefono || '-')}</div>
+                    <div class="col-6"><strong>Método Pago:</strong> ${escapeHtml(req.metodo_pago)}</div>
+                    <div class="col-6"><strong>Estado:</strong> ${escapeHtml(req.estado_orden)}</div>
+                </div>
+                
+                <h6 class="fw-bold border-bottom pb-1">Productos / Servicios</h6>
+                <table style="width:100%; font-size: 0.8rem; border-collapse: collapse;" class="table table-sm mb-3">
+                    <thead>
+                        <tr style="background:#f1f5f9;">
+                            <th style="padding:4px 8px; text-align:left;">Item</th>
+                            <th style="padding:4px 8px;">Cant</th>
+                            <th style="padding:4px 8px; text-align:right;">Precio</th>
+                            <th style="padding:4px 8px; text-align:right;">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${detailsRows || '<tr><td colspan="4" class="text-center text-muted">Sin detalles</td></tr>'}
+                    </tbody>
+                </table>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <strong>Total del Pedido:</strong>
+                    <span class="fs-5 fw-bold" style="color: #e95d0f;">${symbol}${parseFloat(req.total).toFixed(2)}</span>
+                </div>
+                
+                ${comprobanteHtml}
+            </div>
+        `,
+        showDenyButton: !isAlreadyApproved,
+        showConfirmButton: !isAlreadyApproved,
+        showCancelButton: true,
+        confirmButtonText: '<i class="bi bi-check-lg me-1"></i>Validar',
+        denyButtonText: '<i class="bi bi-x-lg me-1"></i>Rechazar',
+        cancelButtonText: 'Cerrar',
+        confirmButtonColor: '#28a745',
+        denyButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d'
+    }).then((result) => {
+        if (!isAlreadyApproved) {
+            if (result.isConfirmed) {
+                respondToValidationRequest(req.id, 'aprobar');
+            } else if (result.isDenied) {
+                respondToValidationRequest(req.id, 'rechazar');
+            }
+        }
+    });
+}
+
+async function respondToValidationRequest(reqId, responseType) {
+    try {
+        const res = await fetch('/api/scanner/responder-validacion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                solicitud_id: reqId,
+                respuesta: responseType
+            }),
+            credentials: 'same-origin'
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast(data.message, 'success');
+            if (typeof loadData === 'function') loadData();
+        } else {
+            showToast(data.message || 'Error al guardar respuesta', 'error');
+        }
+    } catch (e) {
+        showToast('Error de conexión', 'error');
+    }
 }

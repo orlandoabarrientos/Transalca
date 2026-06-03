@@ -453,8 +453,9 @@ CREATE TABLE `mecanicos` (
 CREATE TABLE `metodos_pago` (
   `id` int(11) NOT NULL,
   `nombre` varchar(100) NOT NULL,
-  `datos` varchar(1000) NOT NULL,
   `permite_credito` tinyint(1) NOT NULL DEFAULT 0,
+  `moneda` varchar(10) NOT NULL DEFAULT 'usd',
+  `datos_pago` varchar(80) NOT NULL DEFAULT '',
   `estado` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -502,7 +503,9 @@ CREATE TABLE `ordenes_venta` (
   `credito_notificacion_vencido` tinyint(1) DEFAULT 0,
   `fecha_pago_credito` datetime DEFAULT NULL,
   `comprobante_url` varchar(255) DEFAULT NULL,
-  `observaciones` varchar(1000) DEFAULT NULL
+  `observaciones` varchar(1000) DEFAULT NULL,
+  `moneda` varchar(10) NOT NULL DEFAULT 'usd',
+  `tasa` decimal(12,4) NOT NULL DEFAULT 1.0000
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `productos` (

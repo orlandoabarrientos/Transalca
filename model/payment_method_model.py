@@ -13,7 +13,7 @@ class PaymentMethodModel(Connection):
 
     def get_active(self):
         return self.fetch_all("transalca",
-            "SELECT id, nombre, datos, permite_credito FROM metodos_pago WHERE estado = 1 ORDER BY nombre")
+            "SELECT id, nombre, permite_credito, moneda, datos_pago FROM metodos_pago WHERE estado = 1 ORDER BY nombre")
 
     def get_by_id(self, method_id):
         return self.fetch_one("transalca",
@@ -39,13 +39,13 @@ class PaymentMethodModel(Connection):
 
     def create(self, data):
         return self.insert("transalca",
-            "INSERT INTO metodos_pago (nombre, datos, permite_credito) VALUES (%s,%s,%s)",
-            (data['nombre'].strip(), data['datos'].strip(), int(data.get('permite_credito') or 0)))
+            "INSERT INTO metodos_pago (nombre, permite_credito, moneda, datos_pago) VALUES (%s,%s,%s,%s)",
+            (data['nombre'].strip(), int(data.get('permite_credito') or 0), data.get('moneda', 'usd').strip().lower(), (data.get('datos_pago') or '').strip()))
 
     def update_method(self, method_id, data):
         return self.update("transalca",
-            "UPDATE metodos_pago SET nombre=%s, datos=%s, permite_credito=%s WHERE id=%s",
-            (data['nombre'].strip(), data['datos'].strip(), int(data.get('permite_credito') or 0), method_id))
+            "UPDATE metodos_pago SET nombre=%s, permite_credito=%s, moneda=%s, datos_pago=%s WHERE id=%s",
+            (data['nombre'].strip(), int(data.get('permite_credito') or 0), data.get('moneda', 'usd').strip().lower(), (data.get('datos_pago') or '').strip(), method_id))
 
     def soft_delete(self, method_id):
         return self.update("transalca",
