@@ -340,15 +340,25 @@ class ScannerModel(Connection):
                     (cliente_cedula, user['nombre'], user['apellido'], user['email'], user.get('telefono') or '', user.get('direccion') or ''))
 
         card = self.fetch_one("transalca",
-            "SELECT id FROM tarjeta_fidelidad WHERE cliente_cedula = %s AND promocion_id = %s AND canjeada = 0 ORDER BY id DESC LIMIT 1",
+            "SELECT id, puntos_acumulados FROM tarjeta_fidelidad WHERE cliente_cedula = %s AND promocion_id = %s AND canjeada = 0 ORDER BY id DESC LIMIT 1",
             (cliente_cedula, promocion_id))
 
         if card:
             card_id = card['id']
+            new_points = min(card['puntos_acumulados'] + 1, promo['puntos_requeridos'])
+            self.update("transalca",
+                "UPDATE tarjeta_fidelidad SET puntos_acumulados = %s WHERE id = %s",
+                (new_points, card_id))
+            self.insert("transalca",
+                "INSERT INTO historial_puntos (tarjeta_id, puntos, tipo, descripcion) VALUES (%s, 1, 'suma', 'Punto acumulado via escaneo QR')",
+                (card_id,))
         else:
             card_id = self.insert("transalca",
-                "INSERT INTO tarjeta_fidelidad (cliente_cedula, promocion_id) VALUES (%s, %s)",
+                "INSERT INTO tarjeta_fidelidad (cliente_cedula, promocion_id, puntos_acumulados) VALUES (%s, %s, 1)",
                 (cliente_cedula, promocion_id))
+            self.insert("transalca",
+                "INSERT INTO historial_puntos (tarjeta_id, puntos, tipo, descripcion) VALUES (%s, 1, 'suma', 'Registro de tarjeta y primer punto via escaneo QR')",
+                (card_id,))
 
         return self.fetch_one("transalca",
             "SELECT tf.*, p.nombre as promo_nombre, p.puntos_requeridos, p.recompensa FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id WHERE tf.id = %s",
