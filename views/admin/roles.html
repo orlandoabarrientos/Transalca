@@ -56,6 +56,7 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Descripción</label>
                             <input type="text" class="form-control" id="descripcion" name="descripcion">
+                            <div class="invalid-feedback"></div>
                         </div>
                     </div>
                     <h6 class="fw-bold mt-3 mb-3">Permisos por Módulo</h6>
@@ -73,11 +74,18 @@
                             <tbody id="permissionsBody"></tbody>
                         </table>
                     </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2 px-1">
+                        <div class="text-muted small" id="permissionsPageInfo">Mostrando 0 de 0 permisos</div>
+                        <nav aria-label="Navegación de permisos">
+                            <ul class="pagination pagination-sm mb-0" id="permissionsPagination">
+                            </ul>
+                        </nav>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-orange" onclick="saveData()">Guardar</button>
+                <button type="button" class="btn btn-success" onclick="saveData()">Guardar</button>
             </div>
         </div>
     </div>

@@ -33,10 +33,11 @@ def _validate_company(data, require_rif=True):
     clean['email'] = normalize_email(errors, data.get('email'), required=False)
     clean['direccion'] = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=300)
     clean['representante_nombre'] = optional_text(errors, 'representante_nombre', data.get('representante_nombre'), 'El representante', max_len=150, allow_serial=False)
-    rep_cedula, rep_prefijo, _ = normalize_cedula(errors, data, field='representante_cedula', required=False)
+    rep_required = bool(clean['representante_nombre'])
+    rep_cedula, rep_prefijo, _ = normalize_cedula(errors, data, field='representante_cedula', required=rep_required)
     clean['representante_cedula'] = rep_cedula
     clean['representante_cedula_prefijo'] = rep_prefijo
-    clean['representante_telefono'] = normalize_phone(errors, data.get('representante_telefono'), 'representante_telefono', required=False)
+    clean['representante_telefono'] = normalize_phone(errors, data.get('representante_telefono'), 'representante_telefono', required=rep_required)
     clean['representante_email'] = normalize_email(errors, data.get('representante_email'), 'representante_email', required=False)
     clean['sector'] = optional_text(errors, 'sector', data.get('sector'), 'El sector', max_len=150)
     clean['limite_credito'] = normalize_decimal(errors, 'limite_credito', data.get('limite_credito') or '0', 'El limite de credito', min_value=Decimal('0'))

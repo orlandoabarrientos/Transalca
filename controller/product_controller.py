@@ -55,8 +55,27 @@ def get_all():
             if estado not in ('0', '1', 0, 1):
                 return jsonify({"status": "error", "message": SELECT_TAMPER_MESSAGE}), 400
             products = model.get_by_estado(int(estado))
-        else:
-            products = model.get_all()
+            return jsonify({"status": "success", "data": products})
+        
+        page_val = request.args.get('page')
+        if page_val is not None:
+            try:
+                page = int(page_val)
+                per_page = int(request.args.get('per_page', 10))
+            except (ValueError, TypeError):
+                page = 1
+                per_page = 10
+            paginated = model.get_all_paginated(page, per_page)
+            return jsonify({
+                "status": "success",
+                "data": paginated["data"],
+                "total": paginated["total"],
+                "page": paginated["page"],
+                "per_page": paginated["per_page"],
+                "pages": paginated["pages"]
+            })
+
+        products = model.get_all()
         return jsonify({"status": "success", "data": products})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los productos"}), 500

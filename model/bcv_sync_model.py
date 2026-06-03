@@ -95,13 +95,13 @@ class BCVAutoSyncScheduler:
 
     def _run_once(self):
         now = datetime.now(CARACAS_TZ)
-        if now.hour < BCV_SYNC_HOUR:
+        if now.hour < 16 or (now.hour == 16 and now.minute < 1):
             return
         today = now.date().isoformat()
         if self._last_completed_date == today:
             return
         try:
-            result = sync_bcv_rate_if_needed(force=False, now=now)
+            result = sync_bcv_rate_if_needed(force=True, now=now)
             if result.get('synced') or result.get('reason') == 'already_synced':
                 self._last_completed_date = today
                 logger.info("BCV auto-sync %s para %s", result.get('action') or result.get('reason'), today)

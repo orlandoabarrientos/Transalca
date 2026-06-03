@@ -115,7 +115,7 @@ function saveData() {
     if (!id) data.password = document.getElementById('password').value;
     const url = id ? `/api/users/${id}` : '/api/users/';
     const method = id ? 'PUT' : 'POST';
-    const saveBtn = document.querySelector('#userModal .btn-orange');
+    const saveBtn = document.querySelector('#userModal .btn-success');
     setButtonLoading(saveBtn, true, 'Guardando...');
     apiCall(url, method, data).then(res => {
         setButtonLoading(saveBtn, false);

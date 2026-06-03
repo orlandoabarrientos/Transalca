@@ -5,7 +5,22 @@ $(document).ready(function() {
     $('#navbarContainer').load('/components/admin_navbar.html');
     loadData();
     Validator.setRules('brandForm', {
-        nombre: { required: true, minLength: 2, maxLength: 30, requiredMsg: 'El nombre de la marca es obligatorio', minLengthMsg: 'El nombre debe tener al menos 2 caracteres', maxLengthMsg: 'El nombre no puede superar los 30 caracteres.' }
+        nombre: {
+            required: true,
+            minLength: 2,
+            maxLength: 30,
+            pattern: /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+(?: [a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+)*$/,
+            requiredMsg: 'El nombre de la marca es obligatorio',
+            minLengthMsg: 'El nombre debe tener al menos 2 caracteres',
+            maxLengthMsg: 'El nombre no puede superar los 30 caracteres.',
+            patternMsg: 'El nombre solo puede contener letras, números y espacios simples.'
+        },
+        descripcion: {
+            maxLength: 150,
+            pattern: /^$|^[^<>]+$/,
+            maxLengthMsg: 'La descripción no puede superar los 150 caracteres.',
+            patternMsg: 'La descripción contiene caracteres no permitidos.'
+        }
     });
     Validator.setupRealtime('brandForm');
 

@@ -13,10 +13,23 @@ $(document).ready(function () {
     switchReport('sales', document.querySelector('.report-tab[data-report="sales"]'));
 });
 
+const reportDescriptions = {
+    sales: "Muestra las órdenes de venta registradas en el sistema, permitiendo filtrar por fechas y estados (pendiente, aprobada, completada, cancelada) para evaluar el volumen de facturación.",
+    payments: "Detalla el flujo de pagos realizados por los clientes, incluyendo número de referencia, monto, moneda, método de pago y estado de verificación (pendiente, aprobado, rechazado).",
+    inventory: "Presenta el Kardex de stock con las entradas y salidas de inventario por producto, indicando la cantidad, motivo del movimiento, tipo de transacción y fecha.",
+    mechanics: "Evalúa el desempeño de los mecánicos de la empresa según los servicios asignados, completados, tasa de efectividad (performance) e ingresos totales generados en dólares.",
+    bitacora: "Exhibe la bitácora de auditoría del sistema con las acciones críticas realizadas por los usuarios (creación, modificación, eliminación), indicando módulo, fecha, usuario e IP."
+};
+
 function switchReport(type, el) {
     currentReport = type;
     document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
     if (el) el.classList.add('active');
+
+    const descEl = document.getElementById('reportDescription');
+    if (descEl) {
+        descEl.textContent = reportDescriptions[type] || 'Seleccione un reporte para ver su descripción.';
+    }
 
     const statusContainer = document.getElementById('statusFilterContainer');
     const statusSelect = document.getElementById('status');

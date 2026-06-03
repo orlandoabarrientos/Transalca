@@ -81,8 +81,10 @@ def update(tasa_id):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        data = request.get_json()
+        data = request.get_json() or {}
         errors = {}
+        if not data.get('fecha'):
+            errors['fecha'] = 'Fecha requerida'
         try:
             monto = float(data.get('monto', 0))
             if monto <= 0:

@@ -14,9 +14,29 @@ $(document).ready(function () {
         fRif: { required: true, pattern: /^\d{9}$/, maxLength: 9, requiredMsg: 'RIF requerido', patternMsg: 'El RIF debe tener 9 digitos', maxLengthMsg: 'El RIF no puede superar los 9 caracteres.' },
         fRazonSocial: { required: true, minLength: 2, maxLength: 100, requiredMsg: 'Razon social requerida', maxLengthMsg: 'La razón social no puede superar los 100 caracteres.' },
         fNombreComercial: { maxLength: 100, maxLengthMsg: 'El nombre comercial no puede superar los 100 caracteres.' },
-        fRepresentanteNombre: { maxLength: 30, maxLengthMsg: 'El nombre del representante no puede superar los 30 caracteres.' },
-        fRepresentanteCedula: { pattern: /^$|^\d{7,8}$/, maxLength: 8, patternMsg: 'La cédula debe tener 7 u 8 dígitos', maxLengthMsg: 'La cédula del representante no puede superar los 8 caracteres.' },
-        fRepresentanteTelefono: { pattern: /^$|^04\d{9}$/, maxLength: 11, patternMsg: 'Debe tener 11 digitos y comenzar por 04', maxLengthMsg: 'El teléfono del representante no puede superar los 11 caracteres.' },
+        fRepresentante: { maxLength: 30, maxLengthMsg: 'El nombre del representante no puede superar los 30 caracteres.' },
+        fRepresentanteCedula: {
+            custom: v => {
+                const repName = ($('#fRepresentante').val() || '').trim();
+                if (repName && !v) return false;
+                if (v && !/^\d{7,8}$/.test(v)) return false;
+                return true;
+            },
+            customMsg: 'Cédula requerida para el representante (7 u 8 dígitos)',
+            maxLength: 8,
+            maxLengthMsg: 'La cédula del representante no puede superar los 8 caracteres.'
+        },
+        fRepresentanteTelefono: {
+            custom: v => {
+                const repName = ($('#fRepresentante').val() || '').trim();
+                if (repName && !v) return false;
+                if (v && !/^04\d{9}$/.test(v)) return false;
+                return true;
+            },
+            customMsg: 'Teléfono requerido para el representante (comenzar por 04 con 11 dígitos)',
+            maxLength: 11,
+            maxLengthMsg: 'El teléfono del representante no puede superar los 11 caracteres.'
+        },
         fRepresentanteEmail: { email: true, maxLength: 50, maxLengthMsg: 'El correo del representante no puede superar los 50 caracteres.' },
         fSector: { maxLength: 50, maxLengthMsg: 'El sector no puede superar los 50 caracteres.' },
         fTelefono: { required: true, pattern: /^04\d{9}$/, maxLength: 11, requiredMsg: 'Telefono requerido', patternMsg: 'Debe tener 11 digitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
@@ -32,9 +52,10 @@ $(document).ready(function () {
             custom: v => {
                 if (!v) return true;
                 const yr = parseInt(v);
-                return yr >= 1980 && yr <= 2030;
+                const maxYear = new Date().getFullYear() + 1;
+                return yr >= 1940 && yr <= maxYear;
             },
-            customMsg: 'El año del vehículo debe estar entre 1980 y 2030'
+            customMsg: `El año del vehículo debe estar entre 1940 y ${new Date().getFullYear() + 1}`
         },
         vPlaca: { required: true, minLength: 5, maxLength: 10, requiredMsg: 'Placa requerida', maxLengthMsg: 'La placa no puede superar los 10 caracteres.' },
         vColor: { maxLength: 20, maxLengthMsg: 'El color no puede superar los 20 caracteres.' },
@@ -43,6 +64,10 @@ $(document).ready(function () {
     });
     Validator.setupRealtime('companyForm');
     Validator.setupRealtime('fleetForm');
+    $('#fRepresentante').on('input', () => {
+        Validator.validateField('companyForm', 'fRepresentanteCedula');
+        Validator.validateField('companyForm', 'fRepresentanteTelefono');
+    });
     $('#fRif, #fRifPrefijo').on('input change', debounce(validateUniqueCompanyRif, 350));
     $('#fEmail').on('input', debounce(validateUniqueCompanyEmail, 350));
 });

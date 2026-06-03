@@ -112,6 +112,19 @@ class Connection:
         if not normalized:
             return False
         exclude = exclude or {}
+        
+        class_name = self.__class__.__name__
+        tables_to_check = []
+        if class_name == 'SucursalModel' or 'sucursal_id' in exclude:
+            tables_to_check.append("sucursales")
+        elif class_name == 'SupplierModel' or 'proveedor_rif' in exclude:
+            tables_to_check.append("proveedores")
+        elif class_name in ('ClientModel', 'CompanyModel', 'UserModel', 'AuthModel', 'ProfileModel') or any(k in exclude for k in ('cliente_cedula', 'usuario_cedula', 'usuario_id')):
+            tables_to_check.append("clientes")
+            tables_to_check.append("usuarios")
+        else:
+            tables_to_check = ["usuarios", "clientes", "proveedores", "sucursales"]
+
         checks = [
             ("mantenimiento", "usuarios", "email", "id", exclude.get("usuario_id"), "cedula", exclude.get("usuario_cedula")),
             ("transalca", "clientes", "email", "cedula", exclude.get("cliente_cedula"), None, None),
@@ -119,8 +132,10 @@ class Connection:
             ("transalca", "sucursales", "email", "id", exclude.get("sucursal_id"), None, None),
         ]
         for db, table, column, key, excluded_value, second_key, second_excluded_value in checks:
+            if table not in tables_to_check:
+                continue
             try:
-                where = [f"LOWER({column}) = %s"]
+                where = [f"LOWER({column}) = %s", "estado = 1"]
                 params = [normalized]
                 if excluded_value not in (None, ''):
                     where.append(f"{key} != %s")

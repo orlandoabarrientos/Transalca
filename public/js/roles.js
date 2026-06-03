@@ -84,27 +84,97 @@ async function loadModules() {
     } catch(e) {}
 }
 
-function renderPermissions(permisos = []) {
+let permissionsState = {};
+let currentPermissionsPage = 1;
+const permissionsPerPage = 5;
+
+function initPermissionsState(permisos = []) {
+    permissionsState = {};
+    MODULES.forEach(mod => {
+        permissionsState[mod] = { crear: 0, leer: 0, actualizar: 0, eliminar: 0 };
+    });
+    permisos.forEach(p => {
+        if (permissionsState[p.modulo]) {
+            permissionsState[p.modulo] = {
+                crear: p.crear ? 1 : 0,
+                leer: p.leer ? 1 : 0,
+                actualizar: p.actualizar ? 1 : 0,
+                eliminar: p.eliminar ? 1 : 0
+            };
+        }
+    });
+}
+
+function renderPermissionsPage(page = 1) {
+    currentPermissionsPage = page;
     const tbody = document.getElementById('permissionsBody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    MODULES.forEach(mod => {
-        const p = permisos.find(x => x.modulo === mod) || {};
+    
+    const start = (page - 1) * permissionsPerPage;
+    const end = start + permissionsPerPage;
+    const pageModules = MODULES.slice(start, end);
+    
+    pageModules.forEach(mod => {
+        const p = permissionsState[mod] || { crear: 0, leer: 0, actualizar: 0, eliminar: 0 };
         tbody.innerHTML += `<tr>
             <td class="fw-bold">${escapeHtml(MODULE_LABELS[mod] || mod)}</td>
-            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="crear" ${p.crear ? 'checked' : ''}></td>
-            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="leer" ${p.leer ? 'checked' : ''}></td>
-            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="actualizar" ${p.actualizar ? 'checked' : ''}></td>
-            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="eliminar" ${p.eliminar ? 'checked' : ''}></td>
+            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="crear" ${p.crear ? 'checked' : ''} onchange="updatePermissionState('${escapeHtml(mod)}', 'crear', this.checked)"></td>
+            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="leer" ${p.leer ? 'checked' : ''} onchange="updatePermissionState('${escapeHtml(mod)}', 'leer', this.checked)"></td>
+            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="actualizar" ${p.actualizar ? 'checked' : ''} onchange="updatePermissionState('${escapeHtml(mod)}', 'actualizar', this.checked)"></td>
+            <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="eliminar" ${p.eliminar ? 'checked' : ''} onchange="updatePermissionState('${escapeHtml(mod)}', 'eliminar', this.checked)"></td>
         </tr>`;
     });
+    
+    renderPermissionsPagination(MODULES.length, page);
+}
+
+function updatePermissionState(mod, perm, checked) {
+    if (!permissionsState[mod]) {
+        permissionsState[mod] = { crear: 0, leer: 0, actualizar: 0, eliminar: 0 };
+    }
+    permissionsState[mod][perm] = checked ? 1 : 0;
+    updateFormSubmitState('roleForm');
+}
+
+function renderPermissionsPagination(total, page) {
+    const info = document.getElementById('permissionsPageInfo');
+    const controls = document.getElementById('permissionsPagination');
+    const pages = Math.ceil(total / permissionsPerPage);
+    
+    if (info) {
+        const start = total ? (page - 1) * permissionsPerPage + 1 : 0;
+        const end = Math.min(page * permissionsPerPage, total);
+        info.textContent = `Mostrando ${start} a ${end} de ${total} módulos`;
+    }
+    if (!controls) return;
+    controls.innerHTML = '';
+    if (pages <= 1) return;
+    
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${page === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); if(${page > 1}) renderPermissionsPage(${page - 1})"><i class="bi bi-chevron-left"></i></a>`;
+    controls.appendChild(prevLi);
+    
+    for (let i = 1; i <= pages; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${page === i ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); renderPermissionsPage(${i})">${i}</a>`;
+        controls.appendChild(li);
+    }
+    
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${page === pages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); if(${page < pages}) renderPermissionsPage(${page + 1})"><i class="bi bi-chevron-right"></i></a>`;
+    controls.appendChild(nextLi);
 }
 
 function openModal() {
     Validator.clearForm('roleForm');
     document.getElementById('roleId').value = '';
     document.getElementById('modalTitle').textContent = 'Registrar rol';
-    renderPermissions();
+    initPermissionsState();
+    renderPermissionsPage(1);
     new bootstrap.Modal(document.getElementById('roleModal')).show();
     Validator.initTracking('roleForm');
 }
@@ -117,7 +187,8 @@ function editData(id) {
         document.getElementById('roleId').value = r.id;
         document.getElementById('nombre').value = r.nombre || '';
         document.getElementById('descripcion').value = r.descripcion || '';
-        renderPermissions(r.permisos || []);
+        initPermissionsState(r.permisos || []);
+        renderPermissionsPage(1);
         document.getElementById('modalTitle').textContent = 'Modificar rol';
         new bootstrap.Modal(document.getElementById('roleModal')).show();
         Validator.initTracking('roleForm');
@@ -126,13 +197,10 @@ function editData(id) {
 
 function collectPermissions() {
     const perms = [];
-    MODULES.forEach(mod => {
-        const crear = document.querySelector(`.perm-check[data-mod="${mod}"][data-perm="crear"]`)?.checked ? 1 : 0;
-        const leer = document.querySelector(`.perm-check[data-mod="${mod}"][data-perm="leer"]`)?.checked ? 1 : 0;
-        const actualizar = document.querySelector(`.perm-check[data-mod="${mod}"][data-perm="actualizar"]`)?.checked ? 1 : 0;
-        const eliminar = document.querySelector(`.perm-check[data-mod="${mod}"][data-perm="eliminar"]`)?.checked ? 1 : 0;
-        if (crear || leer || actualizar || eliminar) {
-            perms.push({ modulo: mod, crear, leer, actualizar, eliminar });
+    Object.keys(permissionsState).forEach(mod => {
+        const p = permissionsState[mod];
+        if (p.crear || p.leer || p.actualizar || p.eliminar) {
+            perms.push({ modulo: mod, crear: p.crear, leer: p.leer, actualizar: p.actualizar, eliminar: p.eliminar });
         }
     });
     return perms;
@@ -148,7 +216,7 @@ function saveData() {
     };
     const url = id ? `/api/roles/${id}` : '/api/roles/';
     const method = id ? 'PUT' : 'POST';
-    const saveBtn = document.querySelector('#roleModal .btn-orange');
+    const saveBtn = document.querySelector('#roleModal .btn-success');
     setButtonLoading(saveBtn, true, 'Guardando...');
     apiCall(url, method, data).then(res => {
         setButtonLoading(saveBtn, false);

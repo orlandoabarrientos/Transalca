@@ -52,10 +52,22 @@ function openModal(id = null) {
     Validator.initTracking('tasaForm');
 }
 
+function formatIsoDate(dateStr) {
+    if (!dateStr) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    if (/^\d{4}-\d{2}-\d{2}T/.test(dateStr)) return dateStr.split('T')[0];
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const year = d.getUTCFullYear();
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 function editData(id, fecha, monto, fuente) {
     Validator.clearForm('tasaForm');
     document.getElementById('tasaId').value = id;
-    document.getElementById('fecha').value = fecha.split('T')[0];
+    document.getElementById('fecha').value = formatIsoDate(fecha);
     document.getElementById('monto').value = monto;
     document.getElementById('fuente').value = fuente;
     document.getElementById('modalTitle').textContent = 'Modificar Tasa';

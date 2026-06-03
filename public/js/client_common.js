@@ -387,6 +387,11 @@ function confirmAction(message, callback, options = {}) {
             confirmButtonColor: options.confirmColor || '#e95d0f'
         }).then(result => {
             if (result.isConfirmed && typeof callback === 'function') callback();
+            setTimeout(() => {
+                if (document.querySelector('.modal.show')) {
+                    document.body.classList.add('modal-open');
+                }
+            }, 100);
         });
         return;
     }

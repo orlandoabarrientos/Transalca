@@ -33,8 +33,12 @@ $(document).ready(function() {
     document.getElementById('codigo')?.addEventListener('input', validateUniqueProductCodigo);
 });
 
-function loadData() {
-    apiCall('/api/products/').then(res => {
+let currentProductPage = 1;
+const productsPerPage = 10;
+
+function loadData(page = 1) {
+    currentProductPage = page;
+    apiCall(`/api/products/?page=${page}&per_page=${productsPerPage}`).then(res => {
         const tbody = document.getElementById('productBody');
         if (!tbody) return;
         tbody.innerHTML = '';
@@ -55,7 +59,38 @@ function loadData() {
         if (!res.data?.length) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-box"></i><p>No hay productos registrados</p></div></td></tr>';
         }
+        renderPagination(res.total || 0, res.page || 1, res.pages || 1);
     });
+}
+
+function renderPagination(total, page, pages) {
+    const info = document.getElementById('paginationInfo');
+    const controls = document.getElementById('paginationControls');
+    if (info) {
+        const start = total ? (page - 1) * productsPerPage + 1 : 0;
+        const end = Math.min(page * productsPerPage, total);
+        info.textContent = `Mostrando ${start} a ${end} de ${total} productos`;
+    }
+    if (!controls) return;
+    controls.innerHTML = '';
+    if (pages <= 1) return;
+    
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${page === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); if(${page > 1}) loadData(${page - 1})"><i class="bi bi-chevron-left"></i></a>`;
+    controls.appendChild(prevLi);
+    
+    for (let i = 1; i <= pages; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${page === i ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); loadData(${i})">${i}</a>`;
+        controls.appendChild(li);
+    }
+    
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${page === pages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); if(${page < pages}) loadData(${page + 1})"><i class="bi bi-chevron-right"></i></a>`;
+    controls.appendChild(nextLi);
 }
 
 async function loadCombos() {
@@ -124,7 +159,7 @@ function saveData() {
         marca: document.getElementById('marca')?.value || null,
         sucursal_ids: Array.from(document.getElementById('sucursal_id')?.selectedOptions || []).map(o => o.value)
     };
-    const saveBtn = document.querySelector('#productModal .btn-orange');
+    const saveBtn = document.querySelector('#productModal .btn-success');
     const url = oldCodigo ? '/api/products/update' : '/api/products/';
     const method = oldCodigo ? 'PUT' : 'POST';
     if (oldCodigo) data.old_codigo = oldCodigo;
@@ -137,7 +172,7 @@ function saveData() {
         }
         bootstrap.Modal.getInstance(document.getElementById('productModal')).hide();
         showToast(res.message);
-        loadData();
+        loadData(currentProductPage);
     });
 }
 
@@ -147,7 +182,7 @@ function toggleEstado(codigo) {
         apiCall('/api/products/toggle', 'PUT', { codigo }).then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
             showToast(res.message);
-            loadData();
+            loadData(currentProductPage);
         });
     });
 }

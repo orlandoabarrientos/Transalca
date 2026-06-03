@@ -9,9 +9,29 @@ $(document).ready(function () {
         nombre: { required: true, minLength: 3, maxLength: 50, requiredMsg: 'El nombre es obligatorio', minLengthMsg: 'El nombre debe tener al menos 3 caracteres', maxLengthMsg: 'El nombre no puede superar los 50 caracteres.' },
         recompensa: { maxLength: 100, maxLengthMsg: 'La recompensa no puede superar los 100 caracteres.' },
         tipo: { required: true, requiredMsg: 'El tipo de promoción es obligatorio' },
-        puntos_requeridos: { required: true, min: 1, requiredMsg: 'Los puntos son obligatorios', minMsg: 'Los puntos deben ser mayores a 0' }
+        puntos_requeridos: { required: true, min: 1, requiredMsg: 'Los puntos son obligatorios', minMsg: 'Los puntos deben ser mayores a 0' },
+        fecha_inicio: {
+            custom: v => {
+                if (!v) return true;
+                return /^\d{4}-\d{2}-\d{2}$/.test(v);
+            },
+            customMsg: 'Fecha de inicio inválida'
+        },
+        fecha_fin: {
+            custom: v => {
+                if (!v) return true;
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+                const start = $('#fecha_inicio').val();
+                if (!start) return true;
+                return v >= start;
+            },
+            customMsg: 'La fecha de fin no puede ser anterior a la fecha de inicio'
+        }
     });
     Validator.setupRealtime('promoForm');
+    $('#fecha_inicio').on('change input', () => {
+        Validator.validateField('promoForm', 'fecha_fin');
+    });
     bindModalValidationReset();
     document.getElementById('imagen_tarjeta')?.addEventListener('change', onPromoImageSelected);
 

@@ -151,8 +151,21 @@ function installSweetAlertDefaults() {
     if (!window.Swal || window.Swal.__transalcaDefaults) return;
     const originalFire = window.Swal.fire.bind(window.Swal);
     window.Swal.fire = function(options, ...args) {
-        if (typeof options === 'object' && options && !options.showCancelButton && !options.timer) {
-            options = { timer: 5000, timerProgressBar: true, showConfirmButton: true, ...options };
+        if (typeof options === 'object' && options) {
+            if (!options.showCancelButton && !options.timer) {
+                options = { timer: 5000, timerProgressBar: true, showConfirmButton: true, ...options };
+            }
+            const originalDidClose = options.didClose;
+            options.didClose = function(...closeArgs) {
+                if (typeof originalDidClose === 'function') {
+                    originalDidClose.apply(this, closeArgs);
+                }
+                setTimeout(() => {
+                    if (document.querySelector('.modal.show')) {
+                        document.body.classList.add('modal-open');
+                    }
+                }, 100);
+            };
         }
         return originalFire(options, ...args);
     };
@@ -251,7 +264,7 @@ const Validator = {
         const rules = this.rules[formId];
         if (!rules || !rules[field]) return true;
         const fieldRules = rules[field];
-        const el = document.getElementById(field);
+        const el = document.querySelector(`#${formId} #${field}`) || document.getElementById(field) || document.querySelector(`#${formId} [name="${cssEscapeValue(field)}"]`);
         if (!el) return true;
 
         let value = '';
@@ -520,7 +533,7 @@ function updateFormSubmitState(formId) {
     const modal = form.closest('.modal-content') || form;
     const hasErrors = !!form.querySelector('.is-invalid');
     const isDirty = form._initialState ? (serializeForm(form) !== form._initialState) : true;
-    modal.querySelectorAll('button[type="submit"], button[onclick*="save"], button[onclick*="Save"], #btnSaveVehicle, #btnSavePromo').forEach(btn => {
+    modal.querySelectorAll('button[type="submit"], button[onclick*="save"], button[onclick*="Save"], #btnSaveVehicle, #btnSavePromo, button[onclick*="change"], button[onclick*="Change"], #btnChangePassword, .btn-success').forEach(btn => {
         if (!btn.dataset.loading) {
             btn.disabled = hasErrors || (form._initialState ? !isDirty : false);
         }

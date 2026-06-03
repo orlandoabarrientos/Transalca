@@ -332,10 +332,12 @@
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Fecha Inicio</label>
                                 <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio">
+                                <div class="invalid-feedback"></div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Fecha Fin</label>
                                 <input type="date" class="form-control" id="fecha_fin" name="fecha_fin">
+                                <div class="invalid-feedback"></div>
                             </div>
                         </div>
                         <div class="mb-3">
@@ -347,7 +349,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-orange" id="btnSavePromo" onclick="saveData()">Guardar</button>
+                    <button type="button" class="btn btn-success" id="btnSavePromo" onclick="saveData()">Guardar</button>
                 </div>
             </div>
         </div>

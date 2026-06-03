@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from model.category_model import CategoryModel
 from model.bitacora_model import BitacoraModel
+from config.validation import require_text, optional_text
 
 category_bp = Blueprint('categories', __name__)
 model = CategoryModel()
@@ -52,25 +53,26 @@ def create():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        data = request.get_json()
+        data = request.get_json() or {}
         errors = {}
-        if not data.get('nombre') or len(data['nombre'].strip()) < 3:
-            errors['nombre'] = 'El nombre debe tener al menos 3 caracteres'
+        clean = {}
+        clean['nombre'] = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=30, allow_serial=True)
+        clean['descripcion'] = optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=150)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        existing = model.get_by_nombre(data['nombre'].strip())
+        existing = model.get_by_nombre(clean['nombre'])
         if existing:
             if existing['estado'] == 1:
                 return jsonify({"status": "error", "message": "La categoria ya existe", "errors": {"nombre": "La categoria ya existe"}}), 400
             else:
-                model.update_category(existing['nombre'], data)
+                model.update_category(existing['nombre'], clean)
                 model.update("transalca", "UPDATE categorias SET estado = 1 WHERE nombre = %s", (existing['nombre'],))
-                bitacora.log_action(session['user_id'], 'CREAR', 'CATEGORIAS', f"Categoria creada: {data['nombre']}", request.remote_addr)
+                bitacora.log_action(session['user_id'], 'CREAR', 'CATEGORIAS', f"Categoria creada: {clean['nombre']}", request.remote_addr)
                 return jsonify({"status": "success", "message": "Categoria registrada correctamente.", "nombre": existing['nombre']})
-        model.create(data)
+        model.create(clean)
         bitacora.log_action(session['user_id'], 'CREAR', 'CATEGORIAS',
-            f"Categoria creada: {data['nombre']}", request.remote_addr)
-        return jsonify({"status": "success", "message": "Categoria registrada correctamente.", "nombre": data['nombre'].strip()})
+            f"Categoria creada: {clean['nombre']}", request.remote_addr)
+        return jsonify({"status": "success", "message": "Categoria registrada correctamente.", "nombre": clean['nombre']})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -80,19 +82,20 @@ def update():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        data = request.get_json()
+        data = request.get_json() or {}
         errors = {}
-        old_nombre = data.get('old_nombre', '')
-        if not data.get('nombre') or len(data['nombre'].strip()) < 3:
-            errors['nombre'] = 'El nombre debe tener al menos 3 caracteres'
+        old_nombre = data.get('old_nombre', '').strip()
+        clean = {}
+        clean['nombre'] = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=30, allow_serial=True)
+        clean['descripcion'] = optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=150)
         if not old_nombre:
             errors['old_nombre'] = 'Identificador de categoria requerido'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        new_nombre = data['nombre'].strip()
+        new_nombre = clean['nombre']
         if new_nombre != old_nombre and model.nombre_exists(new_nombre):
             return jsonify({"status": "error", "message": "La categoria ya existe", "errors": {"nombre": "La categoria ya existe"}}), 400
-        model.update_category(old_nombre, data)
+        model.update_category(old_nombre, clean)
         bitacora.log_action(session['user_id'], 'MODIFICAR', 'CATEGORIAS',
             f"Categoria modificada: {old_nombre} -> {new_nombre}", request.remote_addr)
         return jsonify({"status": "success", "message": "Categoria modificada correctamente."})

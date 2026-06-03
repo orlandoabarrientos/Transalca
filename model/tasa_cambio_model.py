@@ -30,6 +30,10 @@ class TasaCambioModel(Connection):
             (data['fecha'], 'bcv', float(data['monto']), data['fuente'].strip()))
 
     def update_tasa(self, tasa_id, data):
+        if 'fecha' in data:
+            return self.update("transalca",
+                "UPDATE tasas_cambio SET monto = %s, fuente = %s, fecha = %s WHERE id = %s AND tipo='bcv'",
+                (float(data['monto']), data['fuente'].strip(), data['fecha'], tasa_id))
         return self.update("transalca",
             "UPDATE tasas_cambio SET monto = %s, fuente = %s WHERE id = %s AND tipo='bcv'",
             (float(data['monto']), data['fuente'].strip(), tasa_id))

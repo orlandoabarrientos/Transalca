@@ -24,6 +24,31 @@ class ProductModel(Connection):
     def get_all(self):
         return self.fetch_all("transalca", self._product_select())
 
+    def get_all_paginated(self, page, per_page):
+        offset = (page - 1) * per_page
+        total_query = "SELECT COUNT(DISTINCT p.codigo) as total FROM productos p WHERE p.estado = 1"
+        total = self.fetch_one("transalca", total_query)['total']
+        
+        select_query = (
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, "
+            "COALESCE(GROUP_CONCAT(DISTINCT su.nombre ORDER BY su.nombre SEPARATOR ', '), 'Sin stock') as sucursal_nombre, "
+            "GROUP_CONCAT(DISTINCT st.sucursal_id ORDER BY st.sucursal_id SEPARATOR ',') as sucursal_ids, "
+            "COALESCE(SUM(st.stock),0) as stock "
+            "FROM productos p "
+            "LEFT JOIN stock st ON p.codigo = st.producto_codigo "
+            "LEFT JOIN sucursales su ON st.sucursal_id = su.id "
+            "WHERE p.estado = 1 GROUP BY p.codigo ORDER BY p.nombre "
+            "LIMIT %s OFFSET %s"
+        )
+        data = self.fetch_all("transalca", select_query, (per_page, offset))
+        return {
+            "data": data,
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "pages": (total + per_page - 1) // per_page
+        }
+
     def get_active(self):
         return self.fetch_all("transalca", self._product_select())
 

@@ -3,7 +3,11 @@ $(document).ready(function() {
     $('#navbarContainer').load('/components/admin_navbar.html');
     loadProfile();
     updatePasswordStrength('new_password', 'passwordStrengthBar');
-    Validator.setRules('profileForm', { nombre: { required: true, minLength: 2 }, apellido: { required: true, minLength: 2 } });
+    Validator.setRules('profileForm', {
+        nombre: { required: true, minLength: 2, maxLength: 30, requiredMsg: 'El nombre es requerido', minLengthMsg: 'Mínimo 2 caracteres', maxLengthMsg: 'El nombre no puede superar los 30 caracteres.' },
+        apellido: { required: true, minLength: 2, maxLength: 30, requiredMsg: 'El apellido es requerido', minLengthMsg: 'Mínimo 2 caracteres', maxLengthMsg: 'El apellido no puede superar los 30 caracteres.' },
+        telefono: { pattern: /^$|^04\d{9}$/, maxLength: 11, patternMsg: 'Debe tener 11 dígitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' }
+    });
     Validator.setRules('passwordForm', {
         old_password: { required: true, requiredMsg: 'Ingrese contraseña actual' },
         new_password: { required: true, pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$/, patternMsg: 'Mín 8, 1 may, 1 min, 1 num, 1 esp' },

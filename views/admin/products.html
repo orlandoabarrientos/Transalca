@@ -19,7 +19,7 @@
                 <h4 class="fw-bold mb-0">Gestionar Productos</h4>
                 <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Registrar Producto</button>
             </div>
-            <div class="card">
+            <div class="card mb-3">
                 <div class="card-body p-0">
                     <table class="table mb-0">
                         <thead>
@@ -36,6 +36,13 @@
                         <tbody id="productBody"></tbody>
                     </table>
                 </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center px-2 mb-4">
+                <div class="text-muted small" id="paginationInfo">Mostrando 0 de 0 productos</div>
+                <nav aria-label="Navegación de productos">
+                    <ul class="pagination pagination-sm mb-0 animate-fade-in" id="paginationControls">
+                    </ul>
+                </nav>
             </div>
         </div>
     </div>
@@ -94,7 +101,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-orange" onclick="saveData()">Guardar</button>
+                <button type="button" class="btn btn-success" onclick="saveData()">Guardar</button>
             </div>
         </div>
     </div>
