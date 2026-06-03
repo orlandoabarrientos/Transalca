@@ -182,12 +182,12 @@
         }
 
         .punch-slot {
-            width: 84px;
-            height: 84px;
-            flex: 0 0 84px;
+            width: 82px;
+            height: 82px;
+            flex: 0 0 82px;
             border-radius: 50%;
             border: 2px dashed var(--border);
-            background: #f8fafc;
+            background: #fbfdff;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -199,17 +199,14 @@
         }
 
         .punch-slot.filled {
-            border-style: solid;
             border-color: #f2b500;
-            background: radial-gradient(circle at 35% 30%, #fff4a6 0%, #ffd84d 45%, #f2b500 100%);
-            box-shadow: 0 8px 18px rgba(242, 181, 0, 0.26);
-            color: #fff;
-            transform: scale(1.05);
+            background: #fff;
+            color: #f2b500;
         }
 
         .punch-slot.filled i {
             font-size: 0.95rem;
-            color: #fff;
+            color: inherit;
         }
 
         .punch-slot.reward-slot {
@@ -219,12 +216,9 @@
         }
 
         .punch-slot.reward-slot.filled {
-            border-style: solid;
             border-color: var(--primary);
-            background: radial-gradient(circle at 35% 30%, #ffe4c4 0%, #f8b978 42%, var(--primary) 100%);
-            box-shadow: 0 8px 20px rgba(230, 126, 34, 0.28);
-            color: #fff;
-            transform: scale(1.05);
+            background: #fff;
+            color: var(--primary);
         }
 
         @media (max-width: 576px) {
@@ -233,9 +227,9 @@
             }
 
             .punch-slot {
-                width: 72px;
-                height: 72px;
-                flex-basis: 72px;
+                width: 68px;
+                height: 68px;
+                flex-basis: 68px;
             }
         }
     </style>
