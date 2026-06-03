@@ -8,7 +8,7 @@ model = ServiceModel()
 bitacora = BitacoraModel()
 
 
-def _validate_service(data):
+def _validate_service(data, current_id=None):
     errors = {}
     clean = {}
     clean['nombre'] = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=200, allow_serial=False)
@@ -21,6 +21,9 @@ def _validate_service(data):
         errors['tipo'] = 'El tipo de servicio es obligatorio.'
     elif tipo not in ('alineacion', 'rotacion', 'balanceo', 'cambio_aceite', 'general'):
         errors['tipo'] = SELECT_TAMPER_MESSAGE
+ 
+    current = model.get_by_id(current_id) if current_id else None
+    current_suc_ids = [int(v) for v in (current.get('sucursal_ids') or '').split(',') if v] if current else []
 
     raw_ids = data.get('sucursal_ids')
     if raw_ids is None:
@@ -34,7 +37,8 @@ def _validate_service(data):
         except (TypeError, ValueError):
             errors['sucursal_id'] = SELECT_TAMPER_MESSAGE
         else:
-            if not model.sucursal_exists(sucursal_id):
+            is_current_suc = sucursal_id in current_suc_ids
+            if not is_current_suc and not model.sucursal_exists(sucursal_id):
                 errors['sucursal_id'] = SELECT_TAMPER_MESSAGE
             elif sucursal_id not in clean['sucursal_ids']:
                 clean['sucursal_ids'].append(sucursal_id)
@@ -125,7 +129,7 @@ def update(sid):
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
         data = request.get_json() or {}
-        clean, errors = _validate_service(data)
+        clean, errors = _validate_service(data, sid)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         if model.nombre_exists(clean['nombre'], sid):

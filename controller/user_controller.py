@@ -12,7 +12,7 @@ PASSWORD_REGEX = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%
 TIPOS_USUARIO = ['cliente', 'empleado']
 
 
-def _validate_user(data, require_password=False):
+def _validate_user(data, require_password=False, current_id=None):
     errors = {}
     cedula, cedula_prefijo, _ = normalize_cedula(errors, data)
     clean = {
@@ -25,6 +25,11 @@ def _validate_user(data, require_password=False):
         'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=255),
         'tipo': validate_choice(errors, 'tipo', data.get('tipo') or 'empleado', TIPOS_USUARIO)
     }
+    
+    current = model.get_by_id(current_id) if current_id else None
+    current_roles = model.get_user_roles(current_id) if current_id else []
+    current_role_ids = [r['id'] for r in current_roles]
+
     rol_id = data.get('rol_id')
     if rol_id in (None, '', 0, '0'):
         errors['rol_id'] = "El rol es obligatorio."
@@ -34,7 +39,8 @@ def _validate_user(data, require_password=False):
         except (TypeError, ValueError):
             errors['rol_id'] = SELECT_TAMPER_MESSAGE
         else:
-            if not model.role_exists(clean['rol_id']):
+            is_current_rol = clean['rol_id'] in current_role_ids
+            if not is_current_rol and not model.role_exists(clean['rol_id']):
                 errors['rol_id'] = SELECT_TAMPER_MESSAGE
     if require_password:
         password = data.get('password') or ''
@@ -159,7 +165,7 @@ def update(user_id):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        data, errors = _validate_user(request.get_json() or {}, require_password=False)
+        data, errors = _validate_user(request.get_json() or {}, require_password=False, current_id=user_id)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         if model.email_exists(data['email'], user_id):

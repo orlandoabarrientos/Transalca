@@ -8,7 +8,7 @@ model = ProductModel()
 bitacora = BitacoraModel()
 
 
-def _validate_product(data):
+def _validate_product(data, old_codigo=None):
     errors = {}
     codigo = optional_text(errors, 'codigo', data.get('codigo'), 'El codigo', max_len=50, allow_serial=True)
     if not codigo or len(codigo) < 2:
@@ -21,10 +21,18 @@ def _validate_product(data):
         'categoria': require_text(errors, 'categoria', data.get('categoria'), 'La categoria', min_len=1, max_len=150, allow_serial=True),
         'marca': require_text(errors, 'marca', data.get('marca'), 'La marca', min_len=1, max_len=150, allow_serial=True)
     }
-    if clean['categoria'] and not errors.get('categoria') and not model.category_exists(clean['categoria']):
-        errors['categoria'] = SELECT_TAMPER_MESSAGE
-    if clean['marca'] and not errors.get('marca') and not model.brand_exists(clean['marca']):
-        errors['marca'] = SELECT_TAMPER_MESSAGE
+    
+    existing = model.get_by_codigo(old_codigo) if old_codigo else None
+
+    if clean['categoria'] and not errors.get('categoria'):
+        is_current_cat = existing and existing.get('categoria') == clean['categoria']
+        if not is_current_cat and not model.category_exists(clean['categoria']):
+            errors['categoria'] = SELECT_TAMPER_MESSAGE
+            
+    if clean['marca'] and not errors.get('marca'):
+        is_current_brand = existing and existing.get('marca') == clean['marca']
+        if not is_current_brand and not model.brand_exists(clean['marca']):
+            errors['marca'] = SELECT_TAMPER_MESSAGE
         
     sucursal_ids = data.get('sucursal_ids')
     if sucursal_ids is not None:
@@ -176,7 +184,7 @@ def update():
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         raw = request.get_json() or {}
         old_codigo = raw.get('old_codigo', '')
-        data, errors = _validate_product(raw)
+        data, errors = _validate_product(raw, old_codigo)
         if not old_codigo:
             errors['old_codigo'] = 'Identificador de producto requerido.'
         if errors:

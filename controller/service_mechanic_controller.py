@@ -11,7 +11,7 @@ bitacora = BitacoraModel()
 commission_model = CommissionModel()
 
 
-def _validate_assignment(data):
+def _validate_assignment(data, current_id=None):
     errors = {}
     servicio_id = normalize_int(errors, 'servicio_id', data.get('servicio_id'), 'El servicio')
     orden_venta_id = None
@@ -24,10 +24,18 @@ def _validate_assignment(data):
     estado = validate_choice(errors, 'estado', data.get('estado') or 'asignado', ESTADOS_SERVICIO_MECANICO)
     fecha = (data.get('fecha') or '').strip().replace('T', ' ') or None
 
-    if servicio_id and not model.service_exists(servicio_id):
-        errors['servicio_id'] = SELECT_TAMPER_MESSAGE
-    if mecanico_cedula and not model.mechanic_exists(mecanico_cedula):
-        errors['mecanico_cedula'] = SELECT_TAMPER_MESSAGE
+    current = model.get_by_id(current_id) if current_id else None
+
+    if servicio_id:
+        is_current_service = current and current.get('servicio_id') == servicio_id
+        if not is_current_service and not model.service_exists(servicio_id):
+            errors['servicio_id'] = SELECT_TAMPER_MESSAGE
+            
+    if mecanico_cedula:
+        is_current_mechanic = current and current.get('mecanico_cedula') == mecanico_cedula
+        if not is_current_mechanic and not model.mechanic_exists(mecanico_cedula):
+            errors['mecanico_cedula'] = SELECT_TAMPER_MESSAGE
+            
     if orden_venta_id and not model.order_exists(orden_venta_id):
         errors['orden_venta_id'] = 'La orden seleccionada no existe.'
     return {
@@ -126,7 +134,7 @@ def update(aid):
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         if not model.get_by_id(aid):
             return jsonify({"status": "error", "message": "Asignacion no encontrada"}), 404
-        data, errors = _validate_assignment(request.get_json() or {})
+        data, errors = _validate_assignment(request.get_json() or {}, aid)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         model.update_assignment(aid, data)
