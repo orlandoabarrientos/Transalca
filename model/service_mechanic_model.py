@@ -7,7 +7,9 @@ class ServiceMechanicModel(Connection):
 
     def get_all(self):
         assignments = self.fetch_all("transalca",
-            "SELECT sm.id, sm.servicio_id, sm.mecanico_cedula, sm.orden_venta_id, sm.fecha, sm.estado, sm.observaciones, "
+            "SELECT sm.id, sm.servicio_id, sm.mecanico_cedula, sm.orden_venta_id, "
+            "DATE_FORMAT(sm.fecha, '%%Y-%%m-%%dT%%H:%%i') as fecha, "
+            "sm.estado, sm.observaciones, "
             "s.nombre as servicio_nombre, s.precio, "
             "m.nombre as mecanico_nombre_base, m.apellido as mecanico_apellido_base, "
             "COALESCE(sm.cliente_cedula, ov.cliente_cedula) as cliente_cedula, "
@@ -28,16 +30,32 @@ class ServiceMechanicModel(Connection):
         return assignments
 
     def get_by_id(self, aid):
-        return self.fetch_one("transalca",
-            "SELECT sm.id, sm.servicio_id, sm.mecanico_cedula, sm.orden_venta_id, sm.fecha, sm.estado, sm.observaciones, "
+        item = self.fetch_one("transalca",
+            "SELECT sm.id, sm.servicio_id, sm.mecanico_cedula, sm.orden_venta_id, "
+            "DATE_FORMAT(sm.fecha, '%%Y-%%m-%%dT%%H:%%i') as fecha, "
+            "sm.estado, sm.observaciones, "
             "s.nombre as servicio_nombre, "
             "COALESCE(sm.cliente_cedula, ov.cliente_cedula) as cliente_cedula, "
-            "COALESCE(sm.vehiculo_placa, bv.vehiculo_placa) as vehiculo_placa "
+            "COALESCE(sm.vehiculo_placa, bv.vehiculo_placa) as vehiculo_placa, "
+            "c.nombre as cliente_nombre, c.apellido as cliente_apellido, "
+            "v.marca as vehiculo_marca, v.modelo as vehiculo_modelo, "
+            "m.nombre as mecanico_nombre_base, m.apellido as mecanico_apellido_base "
             "FROM servicio_mecanico sm "
             "INNER JOIN servicios s ON sm.servicio_id = s.id "
             "LEFT JOIN ordenes_venta ov ON sm.orden_venta_id = ov.id "
             "LEFT JOIN bitacora_vehiculo bv ON sm.id = bv.servicio_mecanico_id "
+            "LEFT JOIN clientes c ON COALESCE(sm.cliente_cedula, ov.cliente_cedula) = c.cedula "
+            "LEFT JOIN vehiculos v ON COALESCE(sm.vehiculo_placa, bv.vehiculo_placa) = v.placa "
+            "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula "
             "WHERE sm.id = %s", (aid,))
+        if item:
+            nombre = (item.get('mecanico_nombre_base') or '').strip()
+            apellido = (item.get('mecanico_apellido_base') or '').strip()
+            full_name = f"{nombre} {apellido}".strip()
+            item['mecanico_nombre'] = full_name if full_name else None
+            item.pop('mecanico_nombre_base', None)
+            item.pop('mecanico_apellido_base', None)
+        return item
 
     def service_exists(self, servicio_id):
         return self.fetch_one("transalca", "SELECT id FROM servicios WHERE id = %s AND estado = 1", (servicio_id,)) is not None

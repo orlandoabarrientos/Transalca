@@ -173,7 +173,7 @@ function openAssignmentModal() {
     $('#assignmentModalTitle').text('Registrar Servicio Mecánico');
     $('#servicio_id').val('').trigger('change');
     $('#mecanico_cedula').val('').trigger('change');
-    $('#orden_venta_id').val('').trigger('change');
+    $('#orden_venta_id').val('');
     $('#observaciones').val('');
     $('#cliente_cedula').val('').trigger('change');
     $('#vehiculo_placa').val('').trigger('change');
@@ -234,36 +234,54 @@ function editAssignment(id) {
         Validator.clearForm('assignmentForm');
         
         $('#assignmentId').val(a.id);
-        $('#servicio_id').val(a.servicio_id || '').trigger('change');
-        $('#mecanico_cedula').val(a.mecanico_cedula || '').trigger('change');
-        $('#orden_venta_id').val(a.orden_venta_id || '').trigger('change');
+        $('#orden_venta_id').val(a.orden_venta_id || '');
         $('#observaciones').val(a.observaciones || '');
-        $('#cliente_cedula').val(a.cliente_cedula || '').trigger('change');
         $('#estado').val(a.estado || 'asignado').trigger('change');
 
-        if (a.fecha) {
-            const cleanFecha = a.fecha.replace(' ', 'T');
-            const date = new Date(cleanFecha);
-            if (!isNaN(date.getTime())) {
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                const hours = String(date.getHours()).padStart(2, '0');
-                const minutes = String(date.getMinutes()).padStart(2, '0');
-                document.getElementById('fecha').value = `${year}-${month}-${day}T${hours}:${minutes}`;
-            } else {
-                const match = a.fecha.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
-                if (match) {
-                    document.getElementById('fecha').value = `${match[1]}T${match[2]}`;
-                } else {
-                    document.getElementById('fecha').value = '';
-                }
-            }
-        } else {
-            document.getElementById('fecha').value = '';
+        // Check if service exists in select options (handles inactive services)
+        const serviceSelect = document.getElementById('servicio_id');
+        if (serviceSelect && a.servicio_id && !Array.from(serviceSelect.options).some(opt => opt.value == a.servicio_id)) {
+            const opt = document.createElement('option');
+            opt.value = a.servicio_id;
+            opt.textContent = `${a.servicio_nombre || 'Servicio inactivo'} (Inactivo)`;
+            serviceSelect.appendChild(opt);
         }
+        $('#servicio_id').val(a.servicio_id || '').trigger('change');
+
+        // Check if mechanic exists in select options (handles inactive mechanics)
+        const mechanicSelect = document.getElementById('mecanico_cedula');
+        if (mechanicSelect && a.mecanico_cedula && !Array.from(mechanicSelect.options).some(opt => opt.value == a.mecanico_cedula)) {
+            const opt = document.createElement('option');
+            opt.value = a.mecanico_cedula;
+            opt.textContent = `${a.mecanico_nombre || a.mecanico_cedula} (Inactivo)`;
+            mechanicSelect.appendChild(opt);
+        }
+        $('#mecanico_cedula').val(a.mecanico_cedula || '').trigger('change');
+
+        // Check if client exists in select options (handles V-00000000 or inactive clients)
+        const clientSelect = document.getElementById('cliente_cedula');
+        if (clientSelect && a.cliente_cedula && !Array.from(clientSelect.options).some(opt => opt.value == a.cliente_cedula)) {
+            const opt = document.createElement('option');
+            opt.value = a.cliente_cedula;
+            const name = a.cliente_nombre ? `${a.cliente_nombre} ${a.cliente_apellido || ''}` : (a.cliente_cedula === 'V-00000000' ? 'Cliente General' : 'Cliente Inactivo');
+            opt.textContent = `${name} (${a.cliente_cedula})` + (a.cliente_cedula === 'V-00000000' ? '' : ' (Inactivo)');
+            clientSelect.appendChild(opt);
+        }
+        $('#cliente_cedula').val(a.cliente_cedula || '').trigger('change');
+
+        // Format and set date directly (backend returns it as 'YYYY-MM-DDTHH:MM')
+        $('#fecha').val(a.fecha || '');
 
         loadVehiclesForClient(a.cliente_cedula).then(() => {
+            const vehicleSelect = document.getElementById('vehiculo_placa');
+            if (vehicleSelect && a.vehiculo_placa && !Array.from(vehicleSelect.options).some(opt => opt.value == a.vehiculo_placa)) {
+                const opt = document.createElement('option');
+                opt.value = a.vehiculo_placa;
+                const brand = a.vehiculo_marca || '';
+                const modelName = a.vehiculo_modelo || '';
+                opt.textContent = `${brand} ${modelName} - ${a.vehiculo_placa} (Inactivo)`;
+                vehicleSelect.appendChild(opt);
+            }
             $('#vehiculo_placa').val(a.vehiculo_placa || '').trigger('change');
         });
         
