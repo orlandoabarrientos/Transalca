@@ -116,7 +116,7 @@ async function processScan(rawOverride = null) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: JSON.stringify({ raw })
+            body: JSON.stringify({ raw, source: 'client' })
         });
         const data = await res.json();
 

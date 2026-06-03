@@ -207,7 +207,7 @@
                 const res = await fetch('/api/scanner/scan', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ raw: qrRaw }),
+                    body: JSON.stringify({ raw: qrRaw, source: 'client' }),
                     credentials: 'same-origin'
                 });
                 const data = await res.json();

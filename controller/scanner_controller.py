@@ -27,7 +27,10 @@ def scan_qr():
         if error:
             return jsonify({"status": "error", "message": error}), 400
 
-        if _is_employee():
+        source = data.get('source') or ''
+        if source == 'client':
+            result = model.process_scan_for_client(qr, session.get('user_cedula'))
+        elif _is_employee():
             result = model.process_scan_for_employee(qr)
         elif session.get('user_tipo') == 'cliente':
             result = model.process_scan_for_client(qr, session.get('user_cedula'))

@@ -330,6 +330,15 @@ class ScannerModel(Connection):
         if not promo:
             return None
 
+        # Check if client exists in clientes table to satisfy foreign key
+        client = self.fetch_one("transalca", "SELECT cedula FROM clientes WHERE cedula = %s", (cliente_cedula,))
+        if not client:
+            user = self.fetch_one("mantenimiento", "SELECT nombre, apellido, email, telefono, direccion FROM usuarios WHERE cedula = %s", (cliente_cedula,))
+            if user:
+                self.insert("transalca",
+                    "INSERT INTO clientes (cedula, nombre, apellido, email, telefono, direccion) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (cliente_cedula, user['nombre'], user['apellido'], user['email'], user.get('telefono') or '', user.get('direccion') or ''))
+
         card = self.fetch_one("transalca",
             "SELECT id FROM tarjeta_fidelidad WHERE cliente_cedula = %s AND promocion_id = %s AND canjeada = 0 ORDER BY id DESC LIMIT 1",
             (cliente_cedula, promocion_id))
