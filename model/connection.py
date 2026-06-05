@@ -63,9 +63,19 @@ class Connection:
             raise Exception("No se pudo conectar a la base de datos de transalca")
         return Connection._local.transalca
 
+    def _set_session_variables(self, cursor):
+        from flask import has_request_context, session, request
+        user_id = 1
+        ip = '127.0.0.1'
+        if has_request_context():
+            user_id = session.get('user_id', 1)
+            ip = request.remote_addr or '127.0.0.1'
+        cursor.execute("SET @current_usuario_id = %s, @current_ip = %s", (user_id, ip))
+
     def execute_query(self, db, sql, params=None):
         conn = self.con_mantenimiento() if db == "mantenimiento" else self.con_transalca()
         cursor = conn.cursor()
+        self._set_session_variables(cursor)
         cursor.execute(sql, params or ())
         return cursor
 
@@ -80,6 +90,7 @@ class Connection:
     def insert(self, db, sql, params=None):
         conn = self.con_mantenimiento() if db == "mantenimiento" else self.con_transalca()
         cursor = conn.cursor()
+        self._set_session_variables(cursor)
         cursor.execute(sql, params or ())
         conn.commit()
         return cursor.lastrowid
@@ -87,6 +98,7 @@ class Connection:
     def update(self, db, sql, params=None):
         conn = self.con_mantenimiento() if db == "mantenimiento" else self.con_transalca()
         cursor = conn.cursor()
+        self._set_session_variables(cursor)
         cursor.execute(sql, params or ())
         conn.commit()
         return cursor.rowcount

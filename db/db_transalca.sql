@@ -1404,6 +1404,462 @@ ALTER TABLE `ticket_respuestas`
 
 ALTER TABLE `vehiculos`
   ADD CONSTRAINT `vehiculos_ibfk_1` FOREIGN KEY (`cliente_cedula`) REFERENCES `clientes` (`cedula`) ON UPDATE CASCADE;
+DELIMITER //
+
+CREATE TRIGGER trg_bitacora_categorias_insert
+AFTER INSERT ON categorias
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'CATEGORIAS', CONCAT('Categoria creada: ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_categorias_update
+AFTER UPDATE ON categorias
+FOR EACH ROW
+BEGIN
+    IF OLD.estado = 1 AND NEW.estado = 0 THEN
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'ELIMINAR', 'CATEGORIAS', CONCAT('Categoria desactivada: ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+    ELSE
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'CATEGORIAS', CONCAT('Categoria modificada: ', OLD.nombre, ' -> ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
+END //
+
+CREATE TRIGGER trg_bitacora_marcas_insert
+AFTER INSERT ON marcas
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'MARCAS', CONCAT('Marca creada: ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_marcas_update
+AFTER UPDATE ON marcas
+FOR EACH ROW
+BEGIN
+    IF OLD.estado = 1 AND NEW.estado = 0 THEN
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'ELIMINAR', 'MARCAS', CONCAT('Marca desactivada: ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+    ELSE
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'MARCAS', CONCAT('Marca modificada: ', OLD.nombre, ' -> ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
+END //
+
+CREATE TRIGGER trg_bitacora_productos_insert
+AFTER INSERT ON productos
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'PRODUCTOS', CONCAT('Producto creado: ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_productos_update
+AFTER UPDATE ON productos
+FOR EACH ROW
+BEGIN
+    IF OLD.estado = 1 AND NEW.estado = 0 THEN
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'PRODUCTOS', CONCAT('Estado producto cambiado: ', NEW.codigo), COALESCE(@current_ip, '127.0.0.1'));
+    ELSE
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'PRODUCTOS', CONCAT('Producto modificado: ', OLD.codigo), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
+END //
+
+CREATE TRIGGER trg_bitacora_proveedores_insert
+AFTER INSERT ON proveedores
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'PROVEEDORES', CONCAT('Proveedor creado: ', NEW.rif), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_proveedores_update
+AFTER UPDATE ON proveedores
+FOR EACH ROW
+BEGIN
+    IF OLD.estado = 1 AND NEW.estado = 0 THEN
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'ELIMINAR', 'PROVEEDORES', CONCAT('Proveedor desactivado: ', NEW.rif), COALESCE(@current_ip, '127.0.0.1'));
+    ELSE
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'PROVEEDORES', CONCAT('Proveedor modificado: ', NEW.rif), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
+END //
+
+CREATE TRIGGER trg_bitacora_mecanicos_insert
+AFTER INSERT ON mecanicos
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'MECANICOS', CONCAT('Mecanico creado: ', NEW.cedula), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_mecanicos_update
+AFTER UPDATE ON mecanicos
+FOR EACH ROW
+BEGIN
+    IF OLD.estado = 1 AND NEW.estado = 0 THEN
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'MECANICOS', CONCAT('Estado mecanico cambiado: ', NEW.cedula), COALESCE(@current_ip, '127.0.0.1'));
+    ELSE
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'MECANICOS', CONCAT('Mecanico modificado: ', OLD.cedula), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
+END //
+
+CREATE TRIGGER trg_bitacora_servicios_insert
+AFTER INSERT ON servicios
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'SERVICIOS', CONCAT('Servicio creado: ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_servicios_update
+AFTER UPDATE ON servicios
+FOR EACH ROW
+BEGIN
+    IF OLD.estado = 1 AND NEW.estado = 0 THEN
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'ELIMINAR', 'SERVICIOS', CONCAT('Servicio desactivado: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+    ELSE
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'SERVICIOS', CONCAT('Servicio modificado: ', OLD.id), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
+END //
+
+CREATE TRIGGER trg_bitacora_sucursales_insert
+AFTER INSERT ON sucursales
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'SUCURSALES', CONCAT('Sucursal creada: ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_sucursales_update
+AFTER UPDATE ON sucursales
+FOR EACH ROW
+BEGIN
+    IF OLD.estado = 1 AND NEW.estado = 0 THEN
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'ELIMINAR', 'SUCURSALES', CONCAT('Sucursal desactivada: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+    ELSE
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'SUCURSALES', CONCAT('Sucursal modificada: ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
+END //
+
+CREATE TRIGGER trg_bitacora_stock_update
+AFTER UPDATE ON stock
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'INVENTARIO', CONCAT('Inventario modificado: ', NEW.producto_codigo, ' (nueva cantidad: ', NEW.stock, ')'), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_metodos_pago_insert
+AFTER INSERT ON metodos_pago
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'METODOS_PAGO', CONCAT('Método de pago creado: ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_metodos_pago_update
+AFTER UPDATE ON metodos_pago
+FOR EACH ROW
+BEGIN
+    IF OLD.estado = 1 AND NEW.estado = 0 THEN
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'ELIMINAR', 'METODOS_PAGO', CONCAT('Método de pago eliminado: ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+    ELSE
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'METODOS_PAGO', CONCAT('Método de pago modificado: ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
+END //
+
+CREATE TRIGGER trg_bitacora_ordenes_venta_insert
+AFTER INSERT ON ordenes_venta
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'ORDENES', CONCAT('Orden creada ID: ', NEW.id, ' para cliente: ', NEW.cliente_cedula), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_ordenes_venta_update
+AFTER UPDATE ON ordenes_venta
+FOR EACH ROW
+BEGIN
+    IF OLD.credito_estado <> NEW.credito_estado OR OLD.monto_deuda <> NEW.monto_deuda THEN
+        IF NEW.credito_estado = 'pagado' THEN
+            INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+            VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'CREDITO', CONCAT('Crédito pagado orden: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+        ELSEIF OLD.monto_deuda <> NEW.monto_deuda AND NEW.monto_deuda > 0 THEN
+            INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+            VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'CREDITO', CONCAT('Abono registrado orden: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+        ELSEIF NEW.credito_estado = 'activo' AND OLD.credito_estado = 'sin_credito' THEN
+            INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+            VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'CREDITO', CONCAT('Crédito registrado para la empresa ', NEW.cliente_cedula, ' por $', NEW.total), COALESCE(@current_ip, '127.0.0.1'));
+        ELSE
+            INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+            VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'CREDITO', CONCAT('Crédito actualizado orden: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+        END IF;
+    ELSE
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'ORDENES', CONCAT('Orden modificada ID: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
+END //
+
+CREATE TRIGGER trg_bitacora_ordenes_compra_insert
+AFTER INSERT ON ordenes_compra
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'ORDEN_COMPRA', CONCAT('Orden de compra creada ID: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_ordenes_compra_update
+AFTER UPDATE ON ordenes_compra
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'ORDEN_COMPRA', CONCAT('Orden de compra modificada ID: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_empresas_insert
+AFTER INSERT ON empresas
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'EMPRESAS', CONCAT('Empresa registrada: ', NEW.rif), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_empresas_update
+AFTER UPDATE ON empresas
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'EMPRESAS', CONCAT('Empresa modificada: ', NEW.rif), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_clientes_insert
+AFTER INSERT ON clientes
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'CLIENTES', CONCAT('Cliente registrado: ', NEW.cedula), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_clientes_update
+AFTER UPDATE ON clientes
+FOR EACH ROW
+BEGIN
+    IF OLD.estado = 1 AND NEW.estado = 0 THEN
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'ELIMINAR', 'CLIENTES', CONCAT('Cliente eliminado/estado cambiado: ', NEW.cedula), COALESCE(@current_ip, '127.0.0.1'));
+    ELSE
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'CLIENTES', CONCAT('Cliente modificado: ', NEW.cedula), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
+END //
+
+CREATE TRIGGER trg_bitacora_promociones_insert
+AFTER INSERT ON promociones
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'PROMOCIONES', CONCAT('Promocion creada: ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_promociones_update
+AFTER UPDATE ON promociones
+FOR EACH ROW
+BEGIN
+    IF OLD.estado = 1 AND NEW.estado = 0 THEN
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'PROMOCIONES', CONCAT('Estado promocion cambiado ID: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+    ELSE
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'PROMOCIONES', CONCAT('Promocion modificada ID: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
+END //
+
+CREATE TRIGGER trg_bitacora_tasas_cambio_insert
+AFTER INSERT ON tasas_cambio
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'TASA_CAMBIO', CONCAT('Tasa de cambio creada ID: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_tasas_cambio_update
+AFTER UPDATE ON tasas_cambio
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'TASA_CAMBIO', CONCAT('Tasa de cambio modificada ID: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_tickets_soporte_insert
+AFTER INSERT ON tickets_soporte
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'TICKETS', CONCAT('Ticket creado ID: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_tickets_soporte_update
+AFTER UPDATE ON tickets_soporte
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'TICKETS', CONCAT('Ticket modificado ID: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_ticket_respuestas_insert
+AFTER INSERT ON ticket_respuestas
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'TICKETS', CONCAT('Respuesta a ticket registrada para ticket ID: ', NEW.ticket_id), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_vehiculos_insert
+AFTER INSERT ON vehiculos
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'VEHICULOS', CONCAT('Vehiculo registrado placa: ', NEW.placa), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_vehiculos_update
+AFTER UPDATE ON vehiculos
+FOR EACH ROW
+BEGIN
+    IF OLD.estado = 1 AND NEW.estado = 0 THEN
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'ELIMINAR', 'VEHICULOS', CONCAT('Vehiculo desactivado placa: ', NEW.placa), COALESCE(@current_ip, '127.0.0.1'));
+    ELSE
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'VEHICULOS', CONCAT('Vehiculo modificado placa: ', NEW.placa), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
+END //
+
+CREATE TRIGGER trg_bitacora_bitacora_vehiculo_insert
+AFTER INSERT ON bitacora_vehiculo
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'VEHICULOS', CONCAT('Registro de servicio para placa: ', NEW.vehiculo_placa), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_comprobantes_pago_insert
+AFTER INSERT ON comprobantes_pago
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'PAGOS', CONCAT('Comprobante de pago subido orden ID: ', NEW.orden_venta_id), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_comprobantes_pago_update
+AFTER UPDATE ON comprobantes_pago
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'PAGOS', CONCAT('Comprobante de pago revisado orden ID: ', NEW.orden_venta_id, ' Estado: ', NEW.estado), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_qr_codes_insert
+AFTER INSERT ON qr_codes
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'QR', CONCAT('Codigo QR creado: ', NEW.utilidad), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_qr_codes_update
+AFTER UPDATE ON qr_codes
+FOR EACH ROW
+BEGIN
+    IF OLD.estado = 1 AND NEW.estado = 0 THEN
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'ELIMINAR', 'QR', CONCAT('Codigo QR eliminado: ', NEW.utilidad), COALESCE(@current_ip, '127.0.0.1'));
+    ELSE
+        INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'QR', CONCAT('Codigo QR modificado: ', NEW.utilidad), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
+END //
+
+CREATE TRIGGER trg_bitacora_comisiones_mecanico_insert
+AFTER INSERT ON comisiones_mecanico
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'COMISIONES', CONCAT('Comision de mecanico registrada ID: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_comisiones_mecanico_update
+AFTER UPDATE ON comisiones_mecanico
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'COMISIONES', CONCAT('Estado de pago de comision cambiado ID: ', NEW.id, ' a: ', NEW.estado_pago), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_consumo_combustible_insert
+AFTER INSERT ON consumo_combustible
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'COMBUSTIBLE', CONCAT('Registro de consumo combustible creado para placa: ', NEW.vehiculo_placa), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_consumo_combustible_update
+AFTER UPDATE ON consumo_combustible
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'COMBUSTIBLE', CONCAT('Registro de consumo combustible modificado para placa: ', NEW.vehiculo_placa), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_mantenimientos_programados_insert
+AFTER INSERT ON mantenimientos_programados
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'MANTENIMIENTO', CONCAT('Mantenimiento programado para placa: ', NEW.vehiculo_placa), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_mantenimientos_programados_update
+AFTER UPDATE ON mantenimientos_programados
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'MANTENIMIENTO', CONCAT('Mantenimiento programado ID: ', NEW.id, ' cambiado a: ', NEW.estado), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_tarjeta_fidelidad_insert
+AFTER INSERT ON tarjeta_fidelidad
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'PROMOCIONES', CONCAT('Tarjeta de fidelidad asignada a: ', NEW.cliente_cedula), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+CREATE TRIGGER trg_bitacora_solicitudes_validacion_update
+AFTER UPDATE ON solicitudes_validacion
+FOR EACH ROW
+BEGIN
+    INSERT INTO db_mantenimiento.bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'ESCANER', CONCAT('Solicitud validacion ID ', NEW.id, ' respondida como ', NEW.estado), COALESCE(@current_ip, '127.0.0.1'));
+END //
+
+DELIMITER ;
+
 COMMIT;
 
 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT;

@@ -79,13 +79,33 @@ BEGIN
 END //
 DELIMITER ;
 
+CREATE TABLE IF NOT EXISTS eventos_sistema (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    accion VARCHAR(50) NOT NULL,
+    modulo VARCHAR(100) NOT NULL,
+    descripcion TEXT,
+    ip VARCHAR(45) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DELIMITER //
+CREATE TRIGGER trg_bitacora_eventos_sistema_insert
+AFTER INSERT ON eventos_sistema
+FOR EACH ROW
+BEGIN
+    INSERT INTO bitacora (usuario_id, accion, modulo, descripcion, ip)
+    VALUES (NEW.usuario_id, NEW.accion, NEW.modulo, NEW.descripcion, NEW.ip);
+END //
+DELIMITER ;
+
 DELIMITER //
 CREATE TRIGGER trg_bitacora_usuario_insert
 AFTER INSERT ON usuarios
 FOR EACH ROW
 BEGIN
     INSERT INTO bitacora (usuario_id, accion, modulo, descripcion, ip)
-    VALUES (NEW.id, 'CREAR', 'USUARIOS', CONCAT('Usuario creado: ', NEW.nombre, ' ', NEW.apellido), '127.0.0.1');
+    VALUES (COALESCE(@current_usuario_id, NEW.id), 'CREAR', 'USUARIOS', CONCAT('Usuario creado: ', NEW.nombre, ' ', NEW.apellido), COALESCE(@current_ip, '127.0.0.1'));
 END //
 DELIMITER ;
 
@@ -94,8 +114,41 @@ CREATE TRIGGER trg_bitacora_usuario_update
 AFTER UPDATE ON usuarios
 FOR EACH ROW
 BEGIN
+    IF OLD.estado = 1 AND NEW.estado = 0 THEN
+        INSERT INTO bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'ELIMINAR', 'USUARIOS', CONCAT('Usuario eliminado ID: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+    ELSEIF OLD.estado <> NEW.estado THEN
+        INSERT INTO bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'USUARIOS', CONCAT('Estado de usuario cambiado ID: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+    ELSE
+        INSERT INTO bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'USUARIOS', CONCAT('Usuario modificado ID: ', NEW.id), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER trg_bitacora_roles_insert
+AFTER INSERT ON roles
+FOR EACH ROW
+BEGIN
     INSERT INTO bitacora (usuario_id, accion, modulo, descripcion, ip)
-    VALUES (NEW.id, 'MODIFICAR', 'USUARIOS', CONCAT('Usuario modificado: ', NEW.nombre, ' ', NEW.apellido), '127.0.0.1');
+    VALUES (COALESCE(@current_usuario_id, 1), 'CREAR', 'ROLES', CONCAT('Rol creado: ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER trg_bitacora_roles_update
+AFTER UPDATE ON roles
+FOR EACH ROW
+BEGIN
+    IF OLD.estado = 1 AND NEW.estado = 0 THEN
+        INSERT INTO bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'ELIMINAR', 'ROLES', CONCAT('Rol desactivado: ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+    ELSE
+        INSERT INTO bitacora (usuario_id, accion, modulo, descripcion, ip)
+        VALUES (COALESCE(@current_usuario_id, 1), 'MODIFICAR', 'ROLES', CONCAT('Rol modificado: ', OLD.nombre, ' -> ', NEW.nombre), COALESCE(@current_ip, '127.0.0.1'));
+    END IF;
 END //
 DELIMITER ;
 

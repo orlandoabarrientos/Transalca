@@ -1,12 +1,12 @@
 from flask import Blueprint, jsonify, request, session
 from controller._guards import deny, is_employee, require_login
-from model.bitacora_model import BitacoraModel
+# from model.bitacora_model import BitacoraModel
 from model.payment_method_model import PaymentMethodModel
 from config.validation import require_text
 
 payment_method_bp = Blueprint('payment_methods', __name__)
 model = PaymentMethodModel()
-bitacora = BitacoraModel()
+# bitacora = BitacoraModel()
 
 
 def _validate(data):
@@ -94,10 +94,10 @@ def create():
             else:
                 model.update_method(existing['id'], clean)
                 model.update("transalca", "UPDATE metodos_pago SET estado = 1 WHERE id = %s", (existing['id'],))
-                bitacora.log_action(session['user_id'], 'CREAR', 'METODOS_PAGO', f"Método de pago creado: {clean['nombre']}", request.remote_addr)
+                # bitacora.log_action(session['user_id'], 'CREAR', 'METODOS_PAGO', f"Método de pago creado: {clean['nombre']}", request.remote_addr)
                 return jsonify({"status": "success", "message": "Método de pago registrado correctamente.", "id": existing['id']}), 201
         method_id = model.create(clean)
-        bitacora.log_action(session['user_id'], 'CREAR', 'METODOS_PAGO', f"Método de pago creado: {clean['nombre']}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'CREAR', 'METODOS_PAGO', f"Método de pago creado: {clean['nombre']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Método de pago registrado correctamente.", "id": method_id}), 201
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -119,7 +119,7 @@ def update(method_id):
         if model.name_exists(clean['nombre'], method_id):
             return jsonify({"status": "error", "message": "Este método de pago ya está registrado.", "errors": {"nombre": "Este método de pago ya está registrado."}}), 400
         model.update_method(method_id, clean)
-        bitacora.log_action(session['user_id'], 'MODIFICAR', 'METODOS_PAGO', f"Método de pago modificado: {clean['nombre']}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'METODOS_PAGO', f"Método de pago modificado: {clean['nombre']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Método de pago modificado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -137,7 +137,7 @@ def delete(method_id):
         if not item:
             return jsonify({"status": "error", "message": "Método de pago no encontrado."}), 404
         model.soft_delete(method_id)
-        bitacora.log_action(session['user_id'], 'ELIMINAR', 'METODOS_PAGO', f"Método de pago eliminado: {item['nombre']}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'ELIMINAR', 'METODOS_PAGO', f"Método de pago eliminado: {item['nombre']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Método de pago eliminado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

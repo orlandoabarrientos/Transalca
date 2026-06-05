@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, session, send_from_directory
 from model.auth_model import AuthModel
-from model.bitacora_model import BitacoraModel
+# from model.bitacora_model import BitacoraModel
 from config.validation import (
     LoginThrottle,
     normalize_cedula,
@@ -13,7 +13,7 @@ import re
 
 auth_bp = Blueprint('auth', __name__)
 model = AuthModel()
-bitacora = BitacoraModel()
+# bitacora = BitacoraModel()
 login_throttle = LoginThrottle()
 
 PASSWORD_REGEX = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$'
@@ -69,7 +69,10 @@ def do_login():
         requested_next = (data.get('next') or '').strip()
         if requested_next.startswith('/') and not requested_next.startswith('//'):
             redirect_url = requested_next
-        bitacora.log_action(user['id'], 'LOGIN', 'AUTH', f"Inicio de sesion: {user['email']}", request.remote_addr)
+        # bitacora.log_action(user['id'], 'LOGIN', 'AUTH', f"Inicio de sesion: {user['email']}", request.remote_addr)
+        model.insert("mantenimiento",
+            "INSERT INTO eventos_sistema (usuario_id, accion, modulo, descripcion, ip) VALUES (%s, %s, %s, %s, %s)",
+            (user['id'], 'LOGIN', 'AUTH', f"Inicio de sesion: {user['email']}", request.remote_addr))
         return jsonify({"status": "success", "redirect": redirect_url, "user": {"nombre": user['nombre'], "tipo": user['tipo']}})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo iniciar sesion."}), 500
@@ -169,7 +172,10 @@ def do_reset():
 def logout():
     try:
         if 'user_id' in session:
-            bitacora.log_action(session['user_id'], 'LOGOUT', 'AUTH', 'Cierre de sesion', request.remote_addr)
+            # bitacora.log_action(session['user_id'], 'LOGOUT', 'AUTH', 'Cierre de sesion', request.remote_addr)
+            model.insert("mantenimiento",
+                "INSERT INTO eventos_sistema (usuario_id, accion, modulo, descripcion, ip) VALUES (%s, %s, %s, %s, %s)",
+                (session['user_id'], 'LOGOUT', 'AUTH', 'Cierre de sesion', request.remote_addr))
         session.clear()
         return jsonify({"status": "success", "redirect": "/auth/login"})
     except Exception:

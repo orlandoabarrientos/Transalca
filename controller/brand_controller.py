@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify, session
 from model.brand_model import BrandModel
-from model.bitacora_model import BitacoraModel
+# from model.bitacora_model import BitacoraModel
 from config.validation import require_text, optional_text
 
 brand_bp = Blueprint('brands', __name__)
 model = BrandModel()
-bitacora = BitacoraModel()
+# bitacora = BitacoraModel()
 
 
 @brand_bp.route('/', methods=['GET'])
@@ -67,11 +67,11 @@ def create():
             else:
                 model.update_brand(existing['nombre'], clean)
                 model.update("transalca", "UPDATE marcas SET estado = 1 WHERE nombre = %s", (existing['nombre'],))
-                bitacora.log_action(session['user_id'], 'CREAR', 'MARCAS', f"Marca creada: {clean['nombre']}", request.remote_addr)
+                # bitacora.log_action(session['user_id'], 'CREAR', 'MARCAS', f"Marca creada: {clean['nombre']}", request.remote_addr)
                 return jsonify({"status": "success", "message": "Marca registrada correctamente.", "nombre": existing['nombre']})
         model.create(clean)
-        bitacora.log_action(session['user_id'], 'CREAR', 'MARCAS',
-            f"Marca creada: {clean['nombre']}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'CREAR', 'MARCAS',
+            # f"Marca creada: {clean['nombre']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Marca registrada correctamente.", "nombre": clean['nombre']})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -96,8 +96,8 @@ def update():
         if new_nombre != old_nombre and model.nombre_exists(new_nombre):
             return jsonify({"status": "error", "message": "La marca ya existe", "errors": {"nombre": "La marca ya existe"}}), 400
         model.update_brand(old_nombre, clean)
-        bitacora.log_action(session['user_id'], 'MODIFICAR', 'MARCAS',
-            f"Marca modificada: {old_nombre} -> {new_nombre}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'MARCAS',
+            # f"Marca modificada: {old_nombre} -> {new_nombre}", request.remote_addr)
         return jsonify({"status": "success", "message": "Marca modificada correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -111,8 +111,8 @@ def delete():
         data = request.get_json()
         nombre = data.get('nombre', '')
         model.soft_delete(nombre)
-        bitacora.log_action(session['user_id'], 'ELIMINAR', 'MARCAS',
-            f"Marca desactivada: {nombre}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'ELIMINAR', 'MARCAS',
+            # f"Marca desactivada: {nombre}", request.remote_addr)
         return jsonify({"status": "success", "message": "Marca eliminada correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

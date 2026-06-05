@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify, session
 from model.product_model import ProductModel
-from model.bitacora_model import BitacoraModel
+# from model.bitacora_model import BitacoraModel
 from config.validation import SELECT_TAMPER_MESSAGE, normalize_decimal, optional_text, require_text
 
 product_bp = Blueprint('products', __name__)
 model = ProductModel()
-bitacora = BitacoraModel()
+# bitacora = BitacoraModel()
 
 
 def _validate_product(data, old_codigo=None):
@@ -168,10 +168,10 @@ def create():
             else:
                 model.update_product(existing['codigo'], data)
                 model.update("transalca", "UPDATE productos SET estado = 1 WHERE codigo = %s", (existing['codigo'],))
-                bitacora.log_action(session['user_id'], 'CREAR', 'PRODUCTOS', f"Producto creado: {data['nombre']}", request.remote_addr)
+                # bitacora.log_action(session['user_id'], 'CREAR', 'PRODUCTOS', f"Producto creado: {data['nombre']}", request.remote_addr)
                 return jsonify({"status": "success", "message": "Producto registrado correctamente", "codigo": existing['codigo']})
         model.create(data)
-        bitacora.log_action(session['user_id'], 'CREAR', 'PRODUCTOS', f"Producto creado: {data['nombre']}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'CREAR', 'PRODUCTOS', f"Producto creado: {data['nombre']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Producto registrado correctamente", "codigo": data['codigo']})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar el producto"}), 500
@@ -192,7 +192,7 @@ def update():
         if data['codigo'] != old_codigo and model.codigo_exists(data['codigo']):
             return jsonify({"status": "error", "message": "Este codigo ya esta registrado", "errors": {"codigo": "Este codigo ya esta registrado."}}), 400
         model.update_product(old_codigo, data)
-        bitacora.log_action(session['user_id'], 'MODIFICAR', 'PRODUCTOS', f"Producto modificado: {old_codigo}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'PRODUCTOS', f"Producto modificado: {old_codigo}", request.remote_addr)
         return jsonify({"status": "success", "message": "Producto modificado correctamente"})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el producto"}), 500
@@ -209,7 +209,7 @@ def toggle():
         if not product:
             return jsonify({"status": "error", "message": "Producto no encontrado"}), 404
         model.soft_delete(codigo)
-        bitacora.log_action(session['user_id'], 'MODIFICAR', 'PRODUCTOS', f"Estado producto cambiado: {codigo}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'PRODUCTOS', f"Estado producto cambiado: {codigo}", request.remote_addr)
         return jsonify({"status": "success", "message": "Producto eliminado correctamente"})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cambiar el estado del producto"}), 500

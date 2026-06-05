@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from model.promotion_model import PromotionModel
-from model.bitacora_model import BitacoraModel
+# from model.bitacora_model import BitacoraModel
 from config.constants import TIPOS_PROMOCION
 from config.validation import normalize_int, optional_text, require_text, validate_choice
 import os
@@ -9,7 +9,7 @@ from werkzeug.utils import secure_filename
 
 promotion_bp = Blueprint('promotions', __name__)
 model = PromotionModel()
-bitacora = BitacoraModel()
+# bitacora = BitacoraModel()
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'public', 'assets', 'images')
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -89,10 +89,10 @@ def create():
             else:
                 model.update_promotion(existing['id'], data)
                 model.update("transalca", "UPDATE promociones SET estado = 1 WHERE id = %s", (existing['id'],))
-                bitacora.log_action(session['user_id'], 'CREAR', 'PROMOCIONES', f"Promocion creada: {data['nombre']}", request.remote_addr)
+                # bitacora.log_action(session['user_id'], 'CREAR', 'PROMOCIONES', f"Promocion creada: {data['nombre']}", request.remote_addr)
                 return jsonify({"status": "success", "message": "Promocion registrada correctamente.", "id": existing['id']})
         promo_id = model.create(data)
-        bitacora.log_action(session['user_id'], 'CREAR', 'PROMOCIONES', f"Promocion creada: {data['nombre']}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'CREAR', 'PROMOCIONES', f"Promocion creada: {data['nombre']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Promocion registrada correctamente.", "id": promo_id})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar la promocion."}), 500
@@ -109,7 +109,7 @@ def update(promo_id):
         if model.nombre_exists(data['nombre'], promo_id):
             return jsonify({"status": "error", "message": "Ya existe una promocion con ese nombre.", "errors": {"nombre": "Ya existe una promocion con ese nombre."}}), 400
         model.update_promotion(promo_id, data)
-        bitacora.log_action(session['user_id'], 'MODIFICAR', 'PROMOCIONES', f"Promocion modificada ID: {promo_id}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'PROMOCIONES', f"Promocion modificada ID: {promo_id}", request.remote_addr)
         return jsonify({"status": "success", "message": "Promocion modificada correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar la promocion."}), 500
@@ -123,7 +123,7 @@ def delete(promo_id):
         new_estado = model.soft_delete(promo_id)
         if new_estado is None:
             return jsonify({"status": "error", "message": "Promocion no encontrada."}), 404
-        bitacora.log_action(session['user_id'], 'MODIFICAR', 'PROMOCIONES', f"Estado promocion cambiado ID: {promo_id}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'PROMOCIONES', f"Estado promocion cambiado ID: {promo_id}", request.remote_addr)
         return jsonify({"status": "success", "message": "Promocion eliminada correctamente.", "estado": new_estado})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cambiar el estado de la promocion."}), 500
@@ -162,7 +162,7 @@ def assign_card():
         if not data.get('cliente_cedula') or not data.get('promocion_id'):
             return jsonify({"status": "error", "message": "Datos incompletos."}), 400
         card_id = model.assign_card_to_client(data['cliente_cedula'], data['promocion_id'])
-        bitacora.log_action(session['user_id'], 'CREAR', 'PROMOCIONES', f"Tarjeta asignada al cliente: {data['cliente_cedula']}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'CREAR', 'PROMOCIONES', f"Tarjeta asignada al cliente: {data['cliente_cedula']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Tarjeta registrada correctamente.", "id": card_id})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar la tarjeta."}), 500

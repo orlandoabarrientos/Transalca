@@ -1,13 +1,13 @@
 from flask import Blueprint, request, jsonify, session
 from model.service_mechanic_model import ServiceMechanicModel
-from model.bitacora_model import BitacoraModel
+# from model.bitacora_model import BitacoraModel
 from model.commission_model import CommissionModel
 from config.constants import ESTADOS_SERVICIO_MECANICO
 from config.validation import SELECT_TAMPER_MESSAGE, normalize_int, optional_text, validate_choice
 
 service_mechanic_bp = Blueprint('service_mechanics', __name__)
 model = ServiceMechanicModel()
-bitacora = BitacoraModel()
+# bitacora = BitacoraModel()
 commission_model = CommissionModel()
 
 
@@ -79,7 +79,7 @@ def create():
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         aid = model.assign(data)
         message = 'Servicio mecanico registrado correctamente'
-        bitacora.log_action(session['user_id'], 'CREAR', 'SERVICIO_MECANICO', f"Registro servicio mecanico ID: {aid}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'CREAR', 'SERVICIO_MECANICO', f"Registro servicio mecanico ID: {aid}", request.remote_addr)
         return jsonify({"status": "success", "message": message, "id": aid})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar el servicio mecanico"}), 500
@@ -97,7 +97,7 @@ def update_mechanic(aid):
         if not mecanico_cedula or not model.mechanic_exists(mecanico_cedula):
             return jsonify({"status": "error", "message": SELECT_TAMPER_MESSAGE, "errors": {"mecanico_cedula": SELECT_TAMPER_MESSAGE}}), 400
         model.update_mechanic(aid, mecanico_cedula)
-        bitacora.log_action(session['user_id'], 'MODIFICAR', 'SERVICIO_MECANICO', f"Mecanico actualizado en asignacion ID: {aid}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'SERVICIO_MECANICO', f"Mecanico actualizado en asignacion ID: {aid}", request.remote_addr)
         return jsonify({"status": "success", "message": "Mecanico asignado correctamente"})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo asignar el mecanico"}), 500
@@ -138,7 +138,7 @@ def update(aid):
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         model.update_assignment(aid, data)
-        bitacora.log_action(session['user_id'], 'MODIFICAR', 'SERVICIO_MECANICO', f"Servicio mecanico modificado ID: {aid}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'SERVICIO_MECANICO', f"Servicio mecanico modificado ID: {aid}", request.remote_addr)
         return jsonify({"status": "success", "message": "Servicio mecanico modificado correctamente"})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el servicio mecanico"}), 500
@@ -152,7 +152,7 @@ def delete(aid):
         if not model.get_by_id(aid):
             return jsonify({"status": "error", "message": "Asignacion no encontrada"}), 404
         model.delete_assignment(aid)
-        bitacora.log_action(session['user_id'], 'ELIMINAR', 'SERVICIO_MECANICO', f"Servicio mecanico eliminado ID: {aid}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'ELIMINAR', 'SERVICIO_MECANICO', f"Servicio mecanico eliminado ID: {aid}", request.remote_addr)
         return jsonify({"status": "success", "message": "Servicio mecanico eliminado correctamente"})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo eliminar el servicio mecanico"}), 500

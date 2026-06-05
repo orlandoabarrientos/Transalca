@@ -4,13 +4,13 @@ from decimal import Decimal, InvalidOperation
 from flask import Blueprint, jsonify, request, session
 
 from controller._guards import deny, is_employee, require_login
-from model.bitacora_model import BitacoraModel
+# from model.bitacora_model import BitacoraModel
 from model.credit_model import CreditModel
 
 
 credit_bp = Blueprint('credit', __name__)
 model = CreditModel()
-bitacora = BitacoraModel()
+# bitacora = BitacoraModel()
 ALLOWED_STATUS = {'pendiente', 'aprobado', 'activo', 'pagado', 'vencido', 'anulado'}
 
 
@@ -84,7 +84,8 @@ def update_status(order_id):
         if not updated:
             return jsonify({"status": "error", "message": "Crédito no encontrado."}), 404
         if session.get('user_id'):
-            bitacora.log_action(session['user_id'], 'MODIFICAR', 'CREDITO', f"Crédito actualizado orden: {order_id}", request.remote_addr)
+            # bitacora.log_action(session['user_id'], 'MODIFICAR', 'CREDITO', f"Crédito actualizado orden: {order_id}", request.remote_addr)
+            pass
         return jsonify({"status": "success", "message": "Crédito modificado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -110,7 +111,8 @@ def update_dates(order_id):
         if not updated:
             return jsonify({"status": "error", "message": "Crédito no encontrado."}), 404
         if session.get('user_id'):
-            bitacora.log_action(session['user_id'], 'MODIFICAR', 'CREDITO', f"Fechas de crédito actualizadas orden: {order_id}", request.remote_addr)
+            # bitacora.log_action(session['user_id'], 'MODIFICAR', 'CREDITO', f"Fechas de crédito actualizadas orden: {order_id}", request.remote_addr)
+            pass
         return jsonify({"status": "success", "message": "Crédito modificado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -128,7 +130,8 @@ def mark_paid(order_id):
         if not updated:
             return jsonify({"status": "error", "message": "Crédito no encontrado."}), 404
         if session.get('user_id'):
-            bitacora.log_action(session['user_id'], 'MODIFICAR', 'CREDITO', f"Crédito pagado orden: {order_id}", request.remote_addr)
+            # bitacora.log_action(session['user_id'], 'MODIFICAR', 'CREDITO', f"Crédito pagado orden: {order_id}", request.remote_addr)
+            pass
         return jsonify({"status": "success", "message": "Crédito pagado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -151,7 +154,8 @@ def register_payment(order_id):
         if not result.get('ok'):
             return jsonify({"status": "error", "message": result.get('message', 'No se pudo registrar el abono.')}), result.get('status_code', 400)
         if session.get('user_id'):
-            bitacora.log_action(session['user_id'], 'MODIFICAR', 'CREDITO', f"Abono registrado orden: {order_id}", request.remote_addr)
+            # bitacora.log_action(session['user_id'], 'MODIFICAR', 'CREDITO', f"Abono registrado orden: {order_id}", request.remote_addr)
+            pass
         message = "Crédito pagado correctamente." if result.get('pagado') else "Abono registrado correctamente."
         return jsonify({
             "status": "success",
@@ -204,7 +208,8 @@ def create_credit():
         if not result.get('ok'):
             return jsonify({"status": "error", "message": result.get('message')}), 400
         if session.get('user_id'):
-            bitacora.log_action(session['user_id'], 'CREAR', 'CREDITO', f"Crédito registrado para la empresa {cliente_cedula} por ${total}", request.remote_addr)
+            # bitacora.log_action(session['user_id'], 'CREAR', 'CREDITO', f"Crédito registrado para la empresa {cliente_cedula} por ${total}", request.remote_addr)
+            pass
         return jsonify({"status": "success", "message": result.get('message'), "data": {"id": result.get('id')}})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

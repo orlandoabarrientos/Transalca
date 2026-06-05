@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from model.profile_model import ProfileModel
-from model.bitacora_model import BitacoraModel
+# from model.bitacora_model import BitacoraModel
 from config.validation import normalize_email, normalize_phone, optional_text, require_text
 import os
 import re
@@ -8,7 +8,7 @@ import time
 
 profile_bp = Blueprint('profile', __name__)
 model = ProfileModel()
-bitacora = BitacoraModel()
+# bitacora = BitacoraModel()
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'public', 'assets', 'profile_pics')
 PASSWORD_REGEX = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$'
 
@@ -89,7 +89,7 @@ def change_password():
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         result = model.change_password(session['user_id'], data['old_password'], data['new_password'])
         if result:
-            bitacora.log_action(session['user_id'], 'MODIFICAR', 'PERFIL', 'Contrasena cambiada', request.remote_addr)
+            # bitacora.log_action(session['user_id'], 'MODIFICAR', 'PERFIL', 'Contrasena cambiada', request.remote_addr)
             return jsonify({"status": "success", "message": "Contrasena modificada correctamente."})
         return jsonify({"status": "error", "message": "Contrasena actual incorrecta.", "errors": {"old_password": "Contrasena actual incorrecta."}}), 400
     except Exception:

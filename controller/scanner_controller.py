@@ -1,13 +1,13 @@
 from flask import Blueprint, request, jsonify, session, send_file
 from model.scanner_model import ScannerModel
-from model.bitacora_model import BitacoraModel
+# from model.bitacora_model import BitacoraModel
 import qrcode
 import io
 
 
 scanner_bp = Blueprint('scanner', __name__)
 model = ScannerModel()
-bitacora = BitacoraModel()
+# bitacora = BitacoraModel()
 
 
 def _is_employee():
@@ -37,8 +37,8 @@ def scan_qr():
         else:
             return jsonify({"status": "error", "message": "Tipo de usuario no permitido"}), 403
 
-        bitacora.log_action(session['user_id'], 'LEER', 'ESCANER',
-            f"QR escaneado ID: {qr['id']} | Modo: {result.get('mode', 'N/A')}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'LEER', 'ESCANER',
+            # f"QR escaneado ID: {qr['id']} | Modo: {result.get('mode', 'N/A')}", request.remote_addr)
 
         return jsonify({
             "status": "success",
@@ -82,8 +82,8 @@ def create_table_qr():
 
         result = model.create_table_qr(session.get('user_cedula'), codigo_mesa)
 
-        bitacora.log_action(session['user_id'], 'CREAR', 'ESCANER',
-            f"QR de mesa creado/reutilizado ID: {result['id']}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'CREAR', 'ESCANER',
+            # f"QR de mesa creado/reutilizado ID: {result['id']}", request.remote_addr)
 
         msg = 'QR de mesa creado' if result.get('created') else 'Ya existe un QR activo para esa mesa'
         return jsonify({"status": "success", "message": msg, "data": result})
@@ -107,8 +107,8 @@ def update_table_qr_action(qr_id):
 
         qr = model.set_table_qr_action(qr_id, accion, promocion_id)
 
-        bitacora.log_action(session['user_id'], 'MODIFICAR', 'ESCANER',
-            f"Accion actualizada en QR de mesa ID: {qr_id}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'ESCANER',
+            # f"Accion actualizada en QR de mesa ID: {qr_id}", request.remote_addr)
 
         return jsonify({"status": "success", "message": "Accion actualizada", "data": qr})
     except ValueError as ve:
@@ -297,8 +297,8 @@ def responder_validacion():
                 model.update("transalca", "UPDATE comprobantes_pago SET estado = 'rechazado', revisado_por = %s WHERE orden_venta_id = %s", (revisado_por, orden_id))
             msg = "Validacion rechazada."
 
-        bitacora.log_action(session['user_id'], 'MODIFICAR', 'ESCANER',
-            f"Solicitud validacion ID {solicitud_id} respondida como {respuesta}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'ESCANER',
+            # f"Solicitud validacion ID {solicitud_id} respondida como {respuesta}", request.remote_addr)
 
         return jsonify({"status": "success", "message": msg})
     except Exception as e:

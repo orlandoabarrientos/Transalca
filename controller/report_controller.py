@@ -1,13 +1,13 @@
 from flask import Blueprint, request, jsonify, session, Response
 from model.report_model import ReportModel
-from model.bitacora_model import BitacoraModel
+# from model.bitacora_model import BitacoraModel
 from datetime import datetime
 import csv
 import io
 
 report_bp = Blueprint('reports', __name__)
 model = ReportModel()
-bitacora = BitacoraModel()
+# bitacora = BitacoraModel()
 
 
 @report_bp.route('/dashboard', methods=['GET'])

@@ -1,10 +1,10 @@
 from flask import Blueprint, request, jsonify, session
 from model.qr_model import QRModel
-from model.bitacora_model import BitacoraModel
+# from model.bitacora_model import BitacoraModel
 
 qr_bp = Blueprint('qr', __name__)
 model = QRModel()
-bitacora = BitacoraModel()
+# bitacora = BitacoraModel()
 
 
 @qr_bp.route('/', methods=['GET'])
@@ -58,8 +58,8 @@ def create():
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         data['usuario_cedula'] = session['user_cedula']
         qr_id = model.create_qr(data)
-        bitacora.log_action(session['user_id'], 'CREAR', 'QR',
-            f"QR creado ID: {qr_id}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'CREAR', 'QR',
+            # f"QR creado ID: {qr_id}", request.remote_addr)
         return jsonify({"status": "success", "message": "QR registrado correctamente.", "id": qr_id})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -82,8 +82,8 @@ def update(qr_id):
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         model.update_qr(qr_id, data)
-        bitacora.log_action(session['user_id'], 'MODIFICAR', 'QR',
-            f"QR modificado ID: {qr_id}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'QR',
+            # f"QR modificado ID: {qr_id}", request.remote_addr)
         return jsonify({"status": "success", "message": "QR modificado correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -95,8 +95,8 @@ def delete(qr_id):
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         model.soft_delete(qr_id)
-        bitacora.log_action(session['user_id'], 'ELIMINAR', 'QR',
-            f"QR desactivado ID: {qr_id}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'ELIMINAR', 'QR',
+            # f"QR desactivado ID: {qr_id}", request.remote_addr)
         return jsonify({"status": "success", "message": "QR eliminado correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

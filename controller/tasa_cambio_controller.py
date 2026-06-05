@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify, session
 from model.tasa_cambio_model import TasaCambioModel
-from model.bitacora_model import BitacoraModel
+# from model.bitacora_model import BitacoraModel
 from model.bcv_sync_model import sync_bcv_rate_if_needed
 
 tasa_bp = Blueprint('tasas', __name__)
 model = TasaCambioModel()
-bitacora = BitacoraModel()
+# bitacora = BitacoraModel()
 
 
 def _ensure_bcv_auto_sync():
@@ -69,8 +69,8 @@ def create():
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         tasa_id = model.create(data)
-        bitacora.log_action(session['user_id'], 'CREAR', 'TASAS_CAMBIO',
-            f"Tasa registrada: {data['monto']} Bs - {data['fuente']}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'CREAR', 'TASAS_CAMBIO',
+            # f"Tasa registrada: {data['monto']} Bs - {data['fuente']}", request.remote_addr)
         return jsonify({"status": "success", "message": "Tasa registrada correctamente.", "id": tasa_id})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -96,8 +96,8 @@ def update(tasa_id):
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         model.update_tasa(tasa_id, data)
-        bitacora.log_action(session['user_id'], 'MODIFICAR', 'TASAS_CAMBIO',
-            f"Tasa modificada ID: {tasa_id}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'TASAS_CAMBIO',
+            # f"Tasa modificada ID: {tasa_id}", request.remote_addr)
         return jsonify({"status": "success", "message": "Tasa modificada correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -109,8 +109,8 @@ def delete(tasa_id):
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
         model.delete_tasa(tasa_id)
-        bitacora.log_action(session['user_id'], 'ELIMINAR', 'TASAS_CAMBIO',
-            f"Tasa eliminada ID: {tasa_id}", request.remote_addr)
+        # bitacora.log_action(session['user_id'], 'ELIMINAR', 'TASAS_CAMBIO',
+            # f"Tasa eliminada ID: {tasa_id}", request.remote_addr)
         return jsonify({"status": "success", "message": "Tasa eliminada correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

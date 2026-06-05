@@ -1,13 +1,13 @@
 from flask import Blueprint, request, jsonify, session, Response
 from model.purchase_order_model import PurchaseOrderModel
-from model.bitacora_model import BitacoraModel
+# from model.bitacora_model import BitacoraModel
 from controller._guards import require_login, is_employee, deny
 from decimal import Decimal
 from datetime import datetime
 
 purchase_order_bp = Blueprint('purchase_orders', __name__)
 model = PurchaseOrderModel()
-bitacora = BitacoraModel()
+# bitacora = BitacoraModel()
 
 
 @purchase_order_bp.route('/', methods=['GET'])
@@ -96,9 +96,10 @@ def create():
             return jsonify({"status": "error", "message": result.get('message')}), 400
             
         if session.get('user_id'):
-            bitacora.log_action(session['user_id'], 'CREAR', 'ORDEN_COMPRA', 
-                                f"Orden de compra registrada ID: {result.get('id')} para el proveedor {proveedor_rif}", 
-                                request.remote_addr)
+            # bitacora.log_action(session['user_id'], 'CREAR', 'ORDEN_COMPRA', 
+                                # f"Orden de compra registrada ID: {result.get('id')} para el proveedor {proveedor_rif}", 
+                                # request.remote_addr)
+            pass
                                 
         return jsonify({"status": "success", "message": result.get('message'), "data": {"id": result.get('id')}})
     except Exception:
@@ -137,9 +138,10 @@ def mark_as_bought(order_id):
             return jsonify({"status": "error", "message": result.get('message')}), 400
             
         if session.get('user_id'):
-            bitacora.log_action(session['user_id'], 'MODIFICAR', 'ORDEN_COMPRA', 
-                                f"Orden de compra ID {order_id} marcada como COMPRADA. Stock sumado.", 
-                                request.remote_addr)
+            # bitacora.log_action(session['user_id'], 'MODIFICAR', 'ORDEN_COMPRA', 
+                                # f"Orden de compra ID {order_id} marcada como COMPRADA. Stock sumado.", 
+                                # request.remote_addr)
+            pass
                                 
         return jsonify({"status": "success", "message": result.get('message')})
     except Exception:
