@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, session, send_file
 from model.scanner_model import ScannerModel
+from model.notification_model import NotificationModel
 # from model.bitacora_model import BitacoraModel
 import qrcode
 import io
@@ -7,6 +8,7 @@ import io
 
 scanner_bp = Blueprint('scanner', __name__)
 model = ScannerModel()
+notification_model = NotificationModel()
 # bitacora = BitacoraModel()
 
 
@@ -287,14 +289,19 @@ def responder_validacion():
         model.update("transalca", "UPDATE solicitudes_validacion SET estado = %s WHERE id = %s", (estado_solicitud, solicitud_id))
 
         orden_id = req['orden_venta_id']
+        orden = model.fetch_one("transalca", "SELECT cliente_cedula FROM ordenes_venta WHERE id = %s", (orden_id,))
         if respuesta == 'aprobar':
             model.update("transalca", "UPDATE ordenes_venta SET estado = 'aprobada' WHERE id = %s", (orden_id,))
             model.update("transalca", "UPDATE comprobantes_pago SET estado = 'verificado', revisado_por = %s WHERE orden_venta_id = %s", (revisado_por, orden_id))
+            if orden:
+                notification_model.notify_payment_status(orden.get('cliente_cedula'), orden_id, True)
             msg = "Validacion aprobada con exito."
         else:
             if req['tipo'] == 'validar_pago':
                 model.update("transalca", "UPDATE ordenes_venta SET estado = 'rechazada' WHERE id = %s", (orden_id,))
                 model.update("transalca", "UPDATE comprobantes_pago SET estado = 'rechazado', revisado_por = %s WHERE orden_venta_id = %s", (revisado_por, orden_id))
+                if orden:
+                    notification_model.notify_payment_status(orden.get('cliente_cedula'), orden_id, False, 'Validacion de pago rechazada por el equipo.')
             msg = "Validacion rechazada."
 
         # bitacora.log_action(session['user_id'], 'MODIFICAR', 'ESCANER',

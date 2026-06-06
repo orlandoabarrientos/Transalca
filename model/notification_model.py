@@ -111,3 +111,29 @@ class NotificationModel(Connection):
             'mensaje': f'Tienes una nueva promocion disponible: {promo_nombre}',
             'prioridad': 'baja'
         })
+
+    def notify_payment_status(self, cliente_cedula, orden_venta_id, approved, reason=''):
+        if not cliente_cedula:
+            return None
+        if approved:
+            return self.create({
+                'cliente_cedula': cliente_cedula,
+                'tipo': 'pago',
+                'titulo': f'Pago aprobado: pedido #{orden_venta_id}',
+                'mensaje': f'Tu pago del pedido #{orden_venta_id} fue aprobado. Ya puedes revisar el estado y el QR de factura en Mis pedidos.',
+                'prioridad': 'media'
+            })
+        clean_reason = (reason or '').strip()
+        message = f'Tu pago del pedido #{orden_venta_id} fue rechazado.'
+        if clean_reason:
+            message += f' Motivo: {clean_reason}'
+            if clean_reason[-1] not in '.?!':
+                message += '.'
+        message += ' Revisa el detalle del pedido y carga un comprobante valido si corresponde.'
+        return self.create({
+            'cliente_cedula': cliente_cedula,
+            'tipo': 'pago',
+            'titulo': f'Pago rechazado: pedido #{orden_venta_id}',
+            'mensaje': message,
+            'prioridad': 'alta'
+        })

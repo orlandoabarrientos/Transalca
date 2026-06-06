@@ -1,5 +1,7 @@
 
 let currentUser = null;
+let clientNotificationsReady = false;
+let clientKnownNotificationIds = new Set();
 
 function showToast(message, type = 'success') {
     let container = document.getElementById('toastContainer');
@@ -69,6 +71,8 @@ function updateNavForUser() {
 }
 
 function updateNavForGuest() {
+    clientNotificationsReady = false;
+    clientKnownNotificationIds.clear();
     document.querySelectorAll('.auth-required').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.guest-only').forEach(el => el.style.display = '');
 }
@@ -143,7 +147,6 @@ function getProductDefaultImageName(product = {}) {
         { image: 'product-default-battery.png', terms: ['bateria', 'battery', 'amp', 'duracell', 'moura'] },
         { image: 'product-default-lubricant.png', terms: ['lubricante', 'aceite', 'oil', '10w', '15w', '20w', '5w', 'sintetico', 'valvoline', 'mobil'] },
         { image: 'product-default-filter.png', terms: ['filtro', 'filter'] },
-        { image: 'product-default-brake.png', terms: ['freno', 'pastilla', 'disco', 'brake'] },
         { image: 'product-default-tire.png', terms: ['caucho', 'llanta', 'neumatico', 'rin', 'r13', 'r14', 'r15', 'r16', 'r17', 'r18', 'r19', 'pirelli', 'bridgestone', 'goodyear'] }
     ];
 
@@ -275,6 +278,13 @@ async function loadClientNotifications() {
         const data = await res.json();
         if (data.status !== 'success') return;
         const list = data.data || [];
+        const newPaymentAlerts = list.filter(n => !n.leida && n.tipo === 'pago' && !clientKnownNotificationIds.has(String(n.id)));
+        if (clientNotificationsReady && newPaymentAlerts.length) {
+            const alert = newPaymentAlerts[0];
+            showToast(alert.titulo || alert.mensaje || 'Actualizacion de pago recibida.', alert.prioridad === 'alta' ? 'warning' : 'info');
+        }
+        clientKnownNotificationIds = new Set(list.map(n => String(n.id)));
+        clientNotificationsReady = true;
         const unread = list.filter(n => !n.leida).length;
         const badge = document.getElementById('clientNotifBadge');
         if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? '' : 'none'; }
@@ -283,7 +293,16 @@ async function loadClientNotifications() {
         if (list.length === 0) { container.innerHTML = '<div class="text-center text-muted py-3" style="font-size:0.8rem;">Sin notificaciones</div>'; return; }
         container.innerHTML = list.slice(0, 8).map(n => {
             const bg = n.leida ? '' : 'background:rgba(0,0,0,0.03);';
-            return `<div class="px-3 py-2 border-bottom" style="font-size:0.8rem;cursor:pointer;${bg}" onclick="markReadClient(${n.id})"><div style="font-weight:${n.leida?'400':'600'};">${n.titulo || n.mensaje}</div><div class="text-muted" style="font-size:0.7rem;">${n.mensaje ? n.mensaje.substring(0,60) : ''}</div></div>`;
+            const title = escapeHtml(n.titulo || n.mensaje || 'Notificacion');
+            const message = escapeHtml(n.mensaje ? String(n.mensaje).substring(0, 80) : '');
+            const icon = n.tipo === 'pago' ? 'bi-credit-card' : n.tipo === 'ticket' ? 'bi-life-preserver' : 'bi-bell';
+            return `<div class="px-3 py-2 border-bottom d-flex gap-2" style="font-size:0.8rem;cursor:pointer;${bg}" onclick="markReadClient(${n.id})">
+                <i class="bi ${icon}" style="color:#ea580c;"></i>
+                <div>
+                    <div style="font-weight:${n.leida?'400':'600'};">${title}</div>
+                    <div class="text-muted" style="font-size:0.7rem;">${message}</div>
+                </div>
+            </div>`;
         }).join('');
     } catch(e) {}
 }
