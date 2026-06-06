@@ -1,4 +1,3 @@
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -8,29 +7,24 @@ dist/
 build/
 *.egg
 
-# Virtual environments
 .venv/
 venv/
 env/
 ENV/
 
-# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 
-# Environment variables
 .env
 .env.local
 
-# OS
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Uploaded assets (keep directory structure)
 public/assets/profile_pics/*
 !public/assets/profile_pics/default.png
 public/assets/comprobantes/*
@@ -40,17 +34,14 @@ public/assets/images/*
 !public/assets/images/product-default-*.png
 !public/assets/comprobantes/.gitkeep
 
-# Backups
 respaldos/*
 !respaldos/.gitkeep
 
-# Temp files
 tmp/
 tmp_hash.txt
 *.tmp
 *.log
 
-# Design reference files
 *.pdf
 
 .agents/

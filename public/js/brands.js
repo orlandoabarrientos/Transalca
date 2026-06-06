@@ -24,7 +24,7 @@ $(document).ready(function() {
     });
     Validator.setupRealtime('brandForm');
 
-    // Debounced real-time uniqueness validation
+
     let checkTimeout = null;
     const nameInput = document.getElementById('nombre');
     if (nameInput) {

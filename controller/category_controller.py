@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify, session
 from model.category_model import CategoryModel
-# from model.bitacora_model import BitacoraModel
+
 from config.validation import require_text, optional_text
 
 category_bp = Blueprint('categories', __name__)
 model = CategoryModel()
-# bitacora = BitacoraModel()
+
 
 
 @category_bp.route('/', methods=['GET'])
@@ -67,11 +67,11 @@ def create():
             else:
                 model.update_category(existing['nombre'], clean)
                 model.update("transalca", "UPDATE categorias SET estado = 1 WHERE nombre = %s", (existing['nombre'],))
-                # bitacora.log_action(session['user_id'], 'CREAR', 'CATEGORIAS', f"Categoria creada: {clean['nombre']}", request.remote_addr)
+
                 return jsonify({"status": "success", "message": "Categoria registrada correctamente.", "nombre": existing['nombre']})
         model.create(clean)
-        # bitacora.log_action(session['user_id'], 'CREAR', 'CATEGORIAS',
-            # f"Categoria creada: {clean['nombre']}", request.remote_addr)
+
+
         return jsonify({"status": "success", "message": "Categoria registrada correctamente.", "nombre": clean['nombre']})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -96,8 +96,8 @@ def update():
         if new_nombre != old_nombre and model.nombre_exists(new_nombre):
             return jsonify({"status": "error", "message": "La categoria ya existe", "errors": {"nombre": "La categoria ya existe"}}), 400
         model.update_category(old_nombre, clean)
-        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'CATEGORIAS',
-            # f"Categoria modificada: {old_nombre} -> {new_nombre}", request.remote_addr)
+
+
         return jsonify({"status": "success", "message": "Categoria modificada correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -111,8 +111,8 @@ def delete():
         data = request.get_json()
         nombre = data.get('nombre', '')
         model.soft_delete(nombre)
-        # bitacora.log_action(session['user_id'], 'ELIMINAR', 'CATEGORIAS',
-            # f"Categoria desactivada: {nombre}", request.remote_addr)
+
+
         return jsonify({"status": "success", "message": "Categoria eliminada correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

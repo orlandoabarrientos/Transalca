@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify, session
 from model.service_model import ServiceModel
-# from model.bitacora_model import BitacoraModel
+
 from config.validation import SELECT_TAMPER_MESSAGE, normalize_decimal, normalize_int, optional_text, require_text
 
 service_bp = Blueprint('services', __name__)
 model = ServiceModel()
-# bitacora = BitacoraModel()
+
 
 
 def _validate_service(data, current_id=None):
@@ -15,13 +15,13 @@ def _validate_service(data, current_id=None):
     clean['descripcion'] = optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=1000)
     clean['precio'] = normalize_decimal(errors, 'precio', data.get('precio'), 'El precio')
     clean['duracion_estimada'] = normalize_int(errors, 'duracion_estimada', data.get('duracion_estimada') or 60, 'La duracion', min_value=1, max_value=1440)
-    
+
     tipo = (data.get('tipo') or '').strip().lower()
     if not tipo:
         errors['tipo'] = 'El tipo de servicio es obligatorio.'
     elif tipo not in ('alineacion', 'rotacion', 'balanceo', 'cambio_aceite', 'general'):
         errors['tipo'] = SELECT_TAMPER_MESSAGE
- 
+
     current = model.get_by_id(current_id) if current_id else None
     current_suc_ids = [int(v) for v in (current.get('sucursal_ids') or '').split(',') if v] if current else []
 
@@ -42,10 +42,10 @@ def _validate_service(data, current_id=None):
                 errors['sucursal_id'] = SELECT_TAMPER_MESSAGE
             elif sucursal_id not in clean['sucursal_ids']:
                 clean['sucursal_ids'].append(sucursal_id)
-                
+
     if not clean['sucursal_ids'] and not errors.get('sucursal_id'):
         errors['sucursal_id'] = 'Debe seleccionar al menos una sucursal.'
-        
+
     return clean, errors
 
 
@@ -113,11 +113,11 @@ def create():
             else:
                 model.update_service(existing['id'], clean)
                 model.update("transalca", "UPDATE servicios SET estado = 1 WHERE id = %s", (existing['id'],))
-                # bitacora.log_action(session['user_id'], 'CREAR', 'SERVICIOS', f"Servicio creado: {clean['nombre']}", request.remote_addr)
+
                 return jsonify({"status": "success", "message": "Servicio registrado correctamente.", "id": existing['id']})
         sid = model.create(clean)
-        # bitacora.log_action(session['user_id'], 'CREAR', 'SERVICIOS',
-            # f"Servicio creado: {clean['nombre']}", request.remote_addr)
+
+
         return jsonify({"status": "success", "message": "Servicio registrado correctamente.", "id": sid})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar el servicio."}), 500
@@ -135,8 +135,8 @@ def update(sid):
         if model.nombre_exists(clean['nombre'], sid):
             return jsonify({"status": "error", "message": "Ya existe un servicio con ese nombre.", "errors": {"nombre": "Ya existe un servicio con ese nombre."}}), 400
         model.update_service(sid, clean)
-        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'SERVICIOS',
-            # f"Servicio modificado ID: {sid}", request.remote_addr)
+
+
         return jsonify({"status": "success", "message": "Servicio modificado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el servicio."}), 500
@@ -148,8 +148,8 @@ def delete(sid):
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
         model.soft_delete(sid)
-        # bitacora.log_action(session['user_id'], 'ELIMINAR', 'SERVICIOS',
-            # f"Servicio desactivado ID: {sid}", request.remote_addr)
+
+
         return jsonify({"status": "success", "message": "Servicio eliminado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo eliminar el servicio."}), 500
@@ -161,8 +161,8 @@ def toggle(sid):
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
         model.toggle_estado(sid)
-        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'SERVICIOS',
-            # f"Estado cambiado servicio ID: {sid}", request.remote_addr)
+
+
         item = model.get_by_id(sid)
         msg = "Servicio reactivado correctamente." if item and item.get('estado') else "Servicio eliminado correctamente."
         return jsonify({"status": "success", "message": msg})

@@ -1,12 +1,12 @@
 from flask import Blueprint, request, jsonify, session
 from model.user_model import UserModel
-# from model.bitacora_model import BitacoraModel
+
 from config.validation import normalize_cedula, normalize_email, normalize_phone, optional_text, require_text, validate_choice, SELECT_TAMPER_MESSAGE
 import re
 
 user_bp = Blueprint('users', __name__)
 model = UserModel()
-# bitacora = BitacoraModel()
+
 
 PASSWORD_REGEX = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$'
 TIPOS_USUARIO = ['cliente', 'empleado']
@@ -25,7 +25,7 @@ def _validate_user(data, require_password=False, current_id=None):
         'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=255),
         'tipo': validate_choice(errors, 'tipo', data.get('tipo') or 'empleado', TIPOS_USUARIO)
     }
-    
+
     current = model.get_by_id(current_id) if current_id else None
     current_roles = model.get_user_roles(current_id) if current_id else []
     current_role_ids = [r['id'] for r in current_roles]
@@ -115,13 +115,13 @@ def create():
             return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
         if existing_by_email and existing_by_email['estado'] == 1:
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        
+
         existing = existing_by_cedula or existing_by_email
         if existing:
             email_exclude = {"usuario_id": existing['id'], "cliente_cedula": data['cedula']}
             if model.email_exists_globally(data['email'], email_exclude):
                 return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-            
+
             from werkzeug.security import generate_password_hash
             password_hash = generate_password_hash(data['password'])
             update_data = {
@@ -136,14 +136,14 @@ def create():
             }
             model.update_info(existing['id'], update_data)
             model.update("mantenimiento", "UPDATE usuarios SET password_hash = %s, estado = 1 WHERE id = %s", (password_hash, existing['id']))
-            
+
             current_roles = model.get_user_roles(existing['id'])
             for role in current_roles:
                 model.remove_role(existing['id'], role['id'])
             if data.get('rol_id'):
                 model.assign_role(existing['id'], data['rol_id'])
-                
-            # bitacora.log_action(session['user_id'], 'CREAR', 'USUARIOS', f"Usuario creado: {data['nombre']} {data['apellido']}", request.remote_addr)
+
+
             return jsonify({"status": "success", "message": "Usuario registrado correctamente.", "id": existing['id']})
 
         email_exclude = {"cliente_cedula": data['cedula']} if data.get('tipo') == 'cliente' else {}
@@ -153,7 +153,7 @@ def create():
         if user_id:
             if data.get('rol_id'):
                 model.assign_role(user_id, data['rol_id'])
-            # bitacora.log_action(session['user_id'], 'CREAR', 'USUARIOS', f"Usuario creado: {data['nombre']} {data['apellido']}", request.remote_addr)
+
             return jsonify({"status": "success", "message": "Usuario registrado correctamente.", "id": user_id})
         return jsonify({"status": "error", "message": "No se pudo registrar el usuario."}), 500
     except Exception:
@@ -178,7 +178,7 @@ def update(user_id):
             model.remove_role(user_id, role['id'])
         if data.get('rol_id'):
             model.assign_role(user_id, data['rol_id'])
-        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'USUARIOS', f"Usuario modificado ID: {user_id}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Usuario modificado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el usuario."}), 500
@@ -192,7 +192,7 @@ def delete(user_id):
         result = model.soft_delete(user_id)
         if result is False:
             return jsonify({"status": "error", "message": "No se puede eliminar al ultimo administrador."}), 400
-        # bitacora.log_action(session['user_id'], 'ELIMINAR', 'USUARIOS', f"Usuario eliminado ID: {user_id}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Usuario eliminado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo eliminar el usuario."}), 500
@@ -209,7 +209,7 @@ def toggle_status(user_id):
             return jsonify({"status": "error", "message": SELECT_TAMPER_MESSAGE}), 400
         estado = int(estado)
         model.update_status(user_id, estado)
-        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'USUARIOS', f"Estado de usuario cambiado ID: {user_id}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Usuario eliminado correctamente." if estado == 0 else "Estado modificado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cambiar el estado del usuario."}), 500

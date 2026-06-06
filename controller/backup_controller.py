@@ -1,10 +1,10 @@
 from flask import Blueprint, request, jsonify, session, send_file
 from model.backup_model import BackupModel
-# from model.bitacora_model import BitacoraModel
+
 
 backup_bp = Blueprint('backup', __name__)
 model = BackupModel()
-# bitacora = BitacoraModel()
+
 
 
 @backup_bp.route('/', methods=['GET'])
@@ -24,8 +24,8 @@ def create_backup():
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         files = model.create_backup()
         if files:
-            # bitacora.log_action(session['user_id'], 'CREAR', 'RESPALDOS',
-                # f"Respaldo creado: {', '.join([f['filename'] for f in files])}", request.remote_addr)
+
+
             model.insert("mantenimiento",
                 "INSERT INTO eventos_sistema (usuario_id, accion, modulo, descripcion, ip) VALUES (%s, %s, %s, %s, %s)",
                 (session['user_id'], 'CREAR', 'RESPALDOS', f"Respaldo creado: {', '.join([f['filename'] for f in files])}", request.remote_addr))
@@ -54,8 +54,8 @@ def delete(filename):
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         if model.delete_backup(filename):
-            # bitacora.log_action(session['user_id'], 'ELIMINAR', 'RESPALDOS',
-                # f"Respaldo eliminado: {filename}", request.remote_addr)
+
+
             model.insert("mantenimiento",
                 "INSERT INTO eventos_sistema (usuario_id, accion, modulo, descripcion, ip) VALUES (%s, %s, %s, %s, %s)",
                 (session['user_id'], 'ELIMINAR', 'RESPALDOS', f"Respaldo eliminado: {filename}", request.remote_addr))

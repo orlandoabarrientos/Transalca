@@ -15,7 +15,7 @@ $(document).ready(function () {
     });
     Validator.setupRealtime('createOrderForm');
 
-    // Initial loads
+
     loadStats();
     loadOrders();
     preloadProducts();
@@ -58,8 +58,8 @@ function loadOrders() {
             const dateStr = formatDate(o.fecha);
             const total = Number(o.total || 0);
             const isBought = String(o.estado || '').toLowerCase() === 'comprado';
-            const statusBadge = isBought 
-                ? '<span class="badge-status badge-active">Comprado</span>' 
+            const statusBadge = isBought
+                ? '<span class="badge-status badge-active">Comprado</span>'
                 : '<span class="badge-status badge-pending">Pendiente</span>';
 
             tbody.append(`
@@ -97,7 +97,7 @@ function showCreateOrderModal() {
     $('#poItemsBody').empty();
     $('#poTotalLabel').text('$0.00');
 
-    // Populate suppliers
+
     $('#poSupplierSelect').html('<option value="">Cargando proveedores...</option>');
     $.get('/api/suppliers/active', function(r) {
         if (r.status === 'success') {
@@ -111,7 +111,7 @@ function showCreateOrderModal() {
         }
     });
 
-    // Populate sucursales
+
     $('#poSucursalSelect').html('<option value="">Cargando sucursales...</option>');
     $.get('/api/sucursales/active', function(r) {
         if (r.status === 'success') {
@@ -125,7 +125,7 @@ function showCreateOrderModal() {
         }
     });
 
-    // Add first item row automatically
+
     addProductRow();
 
     new bootstrap.Modal('#createOrderModal').show();

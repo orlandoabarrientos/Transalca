@@ -67,7 +67,7 @@ function saveData() {
     const contenido = (document.getElementById('contenido').value || '').trim();
     const promoRefId = (document.getElementById('promocionRefSelect').value || '').trim();
     const ttlMinutos = (document.getElementById('ttlMinutos').value || '').trim() || '10';
-    
+
     const isPromo = (tipo === 'promocion' || utilidadTipo === 'promocion');
     const referenciaId = isPromo ? promoRefId : '';
 
@@ -107,10 +107,10 @@ function toggleUtilityFields() {
     const promoWrap = document.getElementById('promoRefWrap');
     const orderWrap = document.getElementById('orderRefWrap');
     const ttlWrap = document.getElementById('utilidadTtlWrap');
-    
+
     const showPromo = (tipo === 'promocion' || utilityType === 'promocion');
     if (promoWrap) promoWrap.style.display = showPromo ? '' : 'none';
-    if (orderWrap) orderWrap.style.display = 'none'; // No se requiere referencia de orden para validar pago
+    if (orderWrap) orderWrap.style.display = 'none';
     if (ttlWrap) ttlWrap.style.display = (utilityType || showPromo) ? '' : 'none';
     if (window.enhanceSearchableSelects) enhanceSearchableSelects(document.getElementById('qrModal'));
     if (window.jQuery?.fn?.select2) window.jQuery('#promocionRefSelect').trigger('change.select2');

@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, session, send_file
 from model.scanner_model import ScannerModel
 from model.notification_model import NotificationModel
-# from model.bitacora_model import BitacoraModel
+
 import qrcode
 import io
 
@@ -9,7 +9,7 @@ import io
 scanner_bp = Blueprint('scanner', __name__)
 model = ScannerModel()
 notification_model = NotificationModel()
-# bitacora = BitacoraModel()
+
 
 
 def _is_employee():
@@ -39,8 +39,8 @@ def scan_qr():
         else:
             return jsonify({"status": "error", "message": "Tipo de usuario no permitido"}), 403
 
-        # bitacora.log_action(session['user_id'], 'LEER', 'ESCANER',
-            # f"QR escaneado ID: {qr['id']} | Modo: {result.get('mode', 'N/A')}", request.remote_addr)
+
+
 
         return jsonify({
             "status": "success",
@@ -84,8 +84,8 @@ def create_table_qr():
 
         result = model.create_table_qr(session.get('user_cedula'), codigo_mesa)
 
-        # bitacora.log_action(session['user_id'], 'CREAR', 'ESCANER',
-            # f"QR de mesa creado/reutilizado ID: {result['id']}", request.remote_addr)
+
+
 
         msg = 'QR de mesa creado' if result.get('created') else 'Ya existe un QR activo para esa mesa'
         return jsonify({"status": "success", "message": msg, "data": result})
@@ -109,8 +109,8 @@ def update_table_qr_action(qr_id):
 
         qr = model.set_table_qr_action(qr_id, accion, promocion_id)
 
-        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'ESCANER',
-            # f"Accion actualizada en QR de mesa ID: {qr_id}", request.remote_addr)
+
+
 
         return jsonify({"status": "success", "message": "Accion actualizada", "data": qr})
     except ValueError as ve:
@@ -191,7 +191,7 @@ def solicitar_validacion():
     try:
         if 'user_cedula' not in session:
             return jsonify({"status": "error", "message": "Debe iniciar sesion para solicitar validacion"}), 401
-        
+
         data = request.get_json() or {}
         orden_id = data.get('orden_id')
         tipo = data.get('tipo', 'validar_pago')
@@ -236,7 +236,7 @@ def get_solicitudes_pendientes():
             orden = model.get_order_full(r['orden_venta_id'])
             if not orden:
                 continue
-            
+
             comp = model.fetch_one("transalca", "SELECT imagen_url FROM comprobantes_pago WHERE orden_venta_id = %s", (r['orden_venta_id'],))
             comprobante_img = comp['imagen_url'] if comp else None
 
@@ -304,8 +304,8 @@ def responder_validacion():
                     notification_model.notify_payment_status(orden.get('cliente_cedula'), orden_id, False, 'Validacion de pago rechazada por el equipo.')
             msg = "Validacion rechazada."
 
-        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'ESCANER',
-            # f"Solicitud validacion ID {solicitud_id} respondida como {respuesta}", request.remote_addr)
+
+
 
         return jsonify({"status": "success", "message": msg})
     except Exception as e:

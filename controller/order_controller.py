@@ -1,13 +1,13 @@
 from flask import Blueprint, request, jsonify, session
 from model.order_model import OrderModel
-# from model.bitacora_model import BitacoraModel
+
 import os
 from werkzeug.utils import secure_filename
 from config.validation import SELECT_TAMPER_MESSAGE, normalize_int, validate_choice
 
 order_bp = Blueprint('orders', __name__)
 model = OrderModel()
-# bitacora = BitacoraModel()
+
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'public', 'assets', 'comprobantes')
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
 TIPOS_ITEM = ['producto', 'servicio']
@@ -123,8 +123,8 @@ def checkout():
                 comprobante_url = filename
         order_id = model.create_sale_order(session['user_cedula'], metodo_pago, comprobante_url, sucursal_id)
         if order_id:
-            # bitacora.log_action(session['user_id'], 'CREAR', 'ORDENES',
-                # f"Orden de venta creada ID: {order_id}", request.remote_addr)
+
+
             return jsonify({"status": "success", "message": "Orden registrada correctamente", "id": order_id})
         return jsonify({"status": "error", "message": "Carrito vacio o error al crear orden"}), 400
     except ValueError as e:

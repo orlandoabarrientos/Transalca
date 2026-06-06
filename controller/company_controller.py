@@ -14,12 +14,12 @@ from config.validation import (
 )
 from controller._guards import can_access_client, deny, is_employee, require_login
 from model.company_model import CompanyModel
-# from model.bitacora_model import BitacoraModel
+
 
 
 company_bp = Blueprint('companies', __name__)
 model = CompanyModel()
-# bitacora = BitacoraModel()
+
 
 
 def _validate_company(data, require_rif=True):
@@ -138,7 +138,7 @@ def create():
         if clean.get('email') and model.email_exists_globally(clean['email'], {"cliente_cedula": clean['rif']}):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         result = model.create(clean)
-        # # bitacora.log_action(session.get('user_id'), 'CREAR', 'EMPRESAS', f"Empresa registrada: {clean['rif']}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Empresa registrada correctamente.", "id": result.get('rif')}), 201
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -159,7 +159,7 @@ def update(rif):
         if clean.get('email') and model.email_exists_globally(clean['email'], {"cliente_cedula": rif}):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         model.update_company(rif, clean)
-        # # bitacora.log_action(session.get('user_id'), 'MODIFICAR', 'EMPRESAS', f"Empresa modificada: {rif}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Empresa modificada correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -174,7 +174,7 @@ def delete(rif):
         if not is_employee():
             return deny()
         model.soft_delete(rif)
-        # # bitacora.log_action(session.get('user_id'), 'ELIMINAR', 'EMPRESAS', f"Empresa eliminada/desactivada: {rif}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Empresa eliminada correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

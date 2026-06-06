@@ -2893,7 +2893,7 @@ body.client-store .qr-redirect-logo {
     }
 }
 
-/* Client visual correction pass */
+
 body.client-store .client-navbar-wrap {
     border-bottom: 1px solid rgba(15, 23, 42, 0.08);
     box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
@@ -3776,7 +3776,7 @@ body.client-store .punch-slot {
     }
 }
 
-/* Client header polish: brand asset and action buttons */
+
 body.client-store .client-brand-logo,
 body.client-store .client-footer-logo,
 body.client-store .qr-redirect-logo {

@@ -330,7 +330,7 @@ class ScannerModel(Connection):
         if not promo:
             return None
 
-        # Check if client exists in clientes table to satisfy foreign key
+
         client = self.fetch_one("transalca", "SELECT cedula FROM clientes WHERE cedula = %s", (cliente_cedula,))
         if not client:
             user = self.fetch_one("mantenimiento", "SELECT nombre, apellido, email, telefono, direccion FROM usuarios WHERE cedula = %s", (cliente_cedula,))

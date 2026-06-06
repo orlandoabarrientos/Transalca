@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify, session
 from model.supplier_model import SupplierModel
-# from model.bitacora_model import BitacoraModel
+
 from config.validation import normalize_email, normalize_phone, normalize_rif, optional_text, require_text
 
 supplier_bp = Blueprint('suppliers', __name__)
 model = SupplierModel()
-# bitacora = BitacoraModel()
+
 
 
 def _validate_supplier(data):
@@ -84,12 +84,12 @@ def create():
             else:
                 model.update_supplier(existing['rif'], data)
                 model.update("transalca", "UPDATE proveedores SET estado = 1 WHERE rif = %s", (existing['rif'],))
-                # bitacora.log_action(session['user_id'], 'CREAR', 'PROVEEDORES', f"Proveedor creado: {data['nombre']}", request.remote_addr)
+
                 return jsonify({"status": "success", "message": "Proveedor registrado correctamente.", "rif": existing['rif']})
         if data.get('email') and model.email_exists_globally(data['email'], {"proveedor_rif": data['rif']}):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         model.create(data)
-        # bitacora.log_action(session['user_id'], 'CREAR', 'PROVEEDORES', f"Proveedor creado: {data['nombre']}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Proveedor registrado correctamente.", "rif": data['rif']})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar el proveedor."}), 500
@@ -112,7 +112,7 @@ def update():
         if data.get('email') and model.email_exists_globally(data['email'], {"proveedor_rif": old_rif}):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         model.update_supplier(old_rif, data)
-        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'PROVEEDORES', f"Proveedor modificado: {old_rif}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Proveedor modificado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el proveedor."}), 500
@@ -129,7 +129,7 @@ def toggle():
         if not supplier:
             return jsonify({"status": "error", "message": "Proveedor no encontrado."}), 404
         model.soft_delete(rif)
-        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'PROVEEDORES', f"Estado proveedor cambiado: {rif}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Proveedor eliminado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cambiar el estado del proveedor."}), 500

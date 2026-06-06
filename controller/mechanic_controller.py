@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from model.mechanic_model import MechanicModel
-# from model.bitacora_model import BitacoraModel
+
 from config.validation import normalize_cedula, normalize_phone, optional_text, require_text
 from werkzeug.utils import secure_filename
 import os
@@ -8,7 +8,7 @@ import time
 
 mechanic_bp = Blueprint('mechanics', __name__)
 model = MechanicModel()
-# bitacora = BitacoraModel()
+
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 
 
@@ -99,7 +99,7 @@ def create():
                     data['foto_perfil'] = filename
                 model.update_mechanic(existing['cedula'], data)
                 model.update("transalca", "UPDATE mecanicos SET estado = 1 WHERE cedula = %s", (existing['cedula'],))
-                # bitacora.log_action(session['user_id'], 'CREAR', 'MECANICOS', f"Mecanico creado: {data['cedula']}", request.remote_addr)
+
                 return jsonify({"status": "success", "message": "Mecanico registrado correctamente.", "cedula": existing['cedula']})
         filename, file_error = _save_photo(request.files.get('foto_perfil'), data['cedula'])
         if file_error:
@@ -107,7 +107,7 @@ def create():
         if filename:
             data['foto_perfil'] = filename
         model.create(data)
-        # bitacora.log_action(session['user_id'], 'CREAR', 'MECANICOS', f"Mecanico creado: {data['cedula']}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Mecanico registrado correctamente.", "cedula": data['cedula']})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar el mecanico."}), 500
@@ -133,7 +133,7 @@ def update():
         if filename:
             data['foto_perfil'] = filename
         model.update_mechanic(old_cedula, data)
-        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'MECANICOS', f"Mecanico modificado: {old_cedula}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Mecanico modificado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el mecanico."}), 500
@@ -149,7 +149,7 @@ def delete():
         result = model.soft_delete(cedula)
         if result is None:
             return jsonify({"status": "error", "message": "Mecanico no encontrado."}), 404
-        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'MECANICOS', f"Estado mecanico cambiado: {cedula}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Mecanico eliminado correctamente.", "estado": 0})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cambiar el estado del mecanico."}), 500

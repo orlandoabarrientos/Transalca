@@ -1,13 +1,13 @@
 from flask import Blueprint, request, jsonify, session
 from model.payment_model import PaymentModel
 from model.notification_model import NotificationModel
-# from model.bitacora_model import BitacoraModel
+
 from config.validation import optional_text
 
 payment_bp = Blueprint('payments', __name__)
 model = PaymentModel()
 notification_model = NotificationModel()
-# bitacora = BitacoraModel()
+
 
 
 @payment_bp.route('/pending', methods=['GET'])
@@ -47,8 +47,8 @@ def approve(comp_id):
             return jsonify({"status": "error", "message": "Comprobante no encontrado"}), 404
         result = model.approve(comp_id, session['user_cedula'])
         if result:
-            # bitacora.log_action(session['user_id'], 'MODIFICAR', 'PAGOS',
-                # f"Pago aprobado comprobante ID: {comp_id}", request.remote_addr)
+
+
             comp = model.get_by_id(comp_id)
             if comp:
                 notification_model.notify_payment_status(comp.get('cliente_cedula'), comp.get('orden_venta_id'), True)
@@ -75,8 +75,8 @@ def reject(comp_id):
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         result = model.reject(comp_id, session['user_cedula'], observaciones)
         if result:
-            # bitacora.log_action(session['user_id'], 'MODIFICAR', 'PAGOS',
-                # f"Pago rechazado comprobante ID: {comp_id}", request.remote_addr)
+
+
             comp = model.get_by_id(comp_id)
             if comp:
                 notification_model.notify_payment_status(comp.get('cliente_cedula'), comp.get('orden_venta_id'), False, observaciones)

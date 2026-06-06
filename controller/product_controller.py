@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify, session
 from model.product_model import ProductModel
-# from model.bitacora_model import BitacoraModel
+
 from config.validation import SELECT_TAMPER_MESSAGE, normalize_decimal, optional_text, require_text
 
 product_bp = Blueprint('products', __name__)
 model = ProductModel()
-# bitacora = BitacoraModel()
+
 
 
 def _validate_product(data, old_codigo=None):
@@ -21,19 +21,19 @@ def _validate_product(data, old_codigo=None):
         'categoria': require_text(errors, 'categoria', data.get('categoria'), 'La categoria', min_len=1, max_len=150, allow_serial=True),
         'marca': require_text(errors, 'marca', data.get('marca'), 'La marca', min_len=1, max_len=150, allow_serial=True)
     }
-    
+
     existing = model.get_by_codigo(old_codigo) if old_codigo else None
 
     if clean['categoria'] and not errors.get('categoria'):
         is_current_cat = existing and existing.get('categoria') == clean['categoria']
         if not is_current_cat and not model.category_exists(clean['categoria']):
             errors['categoria'] = SELECT_TAMPER_MESSAGE
-            
+
     if clean['marca'] and not errors.get('marca'):
         is_current_brand = existing and existing.get('marca') == clean['marca']
         if not is_current_brand and not model.brand_exists(clean['marca']):
             errors['marca'] = SELECT_TAMPER_MESSAGE
-        
+
     sucursal_ids = data.get('sucursal_ids')
     if sucursal_ids is not None:
         if not isinstance(sucursal_ids, list):
@@ -51,7 +51,7 @@ def _validate_product(data, old_codigo=None):
                 clean['sucursal_ids'] = cleaned_ids
     else:
         errors['sucursal_id'] = 'Seleccione al menos una sucursal.'
-        
+
     return clean, errors
 
 
@@ -64,7 +64,7 @@ def get_all():
                 return jsonify({"status": "error", "message": SELECT_TAMPER_MESSAGE}), 400
             products = model.get_by_estado(int(estado))
             return jsonify({"status": "success", "data": products})
-        
+
         page_val = request.args.get('page')
         if page_val is not None:
             try:
@@ -203,10 +203,10 @@ def create():
             else:
                 model.update_product(existing['codigo'], data)
                 model.update("transalca", "UPDATE productos SET estado = 1 WHERE codigo = %s", (existing['codigo'],))
-                # bitacora.log_action(session['user_id'], 'CREAR', 'PRODUCTOS', f"Producto creado: {data['nombre']}", request.remote_addr)
+
                 return jsonify({"status": "success", "message": "Producto registrado correctamente", "codigo": existing['codigo']})
         model.create(data)
-        # bitacora.log_action(session['user_id'], 'CREAR', 'PRODUCTOS', f"Producto creado: {data['nombre']}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Producto registrado correctamente", "codigo": data['codigo']})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar el producto"}), 500
@@ -227,7 +227,7 @@ def update():
         if data['codigo'] != old_codigo and model.codigo_exists(data['codigo']):
             return jsonify({"status": "error", "message": "Este codigo ya esta registrado", "errors": {"codigo": "Este codigo ya esta registrado."}}), 400
         model.update_product(old_codigo, data)
-        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'PRODUCTOS', f"Producto modificado: {old_codigo}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Producto modificado correctamente"})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el producto"}), 500
@@ -244,7 +244,7 @@ def toggle():
         if not product:
             return jsonify({"status": "error", "message": "Producto no encontrado"}), 404
         model.soft_delete(codigo)
-        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'PRODUCTOS', f"Estado producto cambiado: {codigo}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Producto eliminado correctamente"})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cambiar el estado del producto"}), 500

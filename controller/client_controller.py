@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from model.client_model import ClientModel
 from model.vehicle_model import VehicleModel
-# from model.bitacora_model import BitacoraModel
+
 from controller._guards import can_access_client, deny, is_employee, require_login
 from config.validation import (
     normalize_cedula,
@@ -17,7 +17,7 @@ from config.constants import TIPOS_COMBUSTIBLE
 client_bp = Blueprint('client_admin', __name__)
 model = ClientModel()
 vehicle_model = VehicleModel()
-# bitacora = BitacoraModel()
+
 
 
 def _validate_client(data, require_cedula=True):
@@ -158,7 +158,7 @@ def create():
         if clean.get('email') and model.email_exists_globally(clean['email'], {"cliente_cedula": clean['cedula'], "usuario_cedula": clean['cedula']}):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         result = model.create(clean)
-        # bitacora.log_action(session.get('user_id'), 'CREAR', 'CLIENTES', f"Cliente registrado: {clean['cedula']}", request.remote_addr)
+
         if result.get('reactivated'):
             return jsonify({"status": "success", "message": "Cliente registrado correctamente.", "id": result.get('cedula')}), 201
         return jsonify({"status": "success", "message": "Cliente registrado correctamente.", "id": result.get('cedula')}), 201
@@ -183,7 +183,7 @@ def update(cedula):
         if clean.get('email') and model.email_exists_globally(clean['email'], {"cliente_cedula": cedula, "usuario_cedula": cedula}):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         model.update_client(cedula, clean)
-        # bitacora.log_action(session.get('user_id'), 'MODIFICAR', 'CLIENTES', f"Cliente modificado: {cedula}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Cliente modificado correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -198,7 +198,7 @@ def toggle(cedula):
         if not is_employee() or cedula == 'V-00000000':
             return deny()
         estado = model.toggle_estado(cedula)
-        # bitacora.log_action(session.get('user_id'), 'ELIMINAR', 'CLIENTES', f"Cliente eliminado/estado cambiado: {cedula}", request.remote_addr)
+
         return jsonify({"status": "success", "message": "Cliente eliminado correctamente.", "estado": estado})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

@@ -783,7 +783,7 @@ function runDomEnhancements(root = document) {
         normalizeActionButtons(root);
         applyAdminDocumentTitle();
 
-        // Restore and persist sidebar scroll
+
         const sidebar = document.getElementById('adminSidebar');
         if (sidebar && !sidebar.dataset.scrollRestored) {
             sidebar.dataset.scrollRestored = '1';
@@ -1108,7 +1108,7 @@ async function pollPendingValidations() {
 
 function showValidationAlert(req) {
     markValidationRequestIdAsShown(req.id);
-    
+
     const title = req.tipo === 'validar_pago' ? 'Solicitud de Validación de Pago' : 'Escaneo de Factura Pagada';
     let timerInterval;
     Swal.fire({
@@ -1169,9 +1169,9 @@ function openAdminValidationDetailsModal(req) {
         comprobanteHtml = `
             <div class="mt-3 text-start">
                 <strong>Comprobante de Pago:</strong><br>
-                <img src="/public/assets/comprobantes/${escapeHtml(req.comprobante_img)}" 
-                     class="img-fluid rounded border mt-2" 
-                     style="max-height: 240px; width: 100%; object-fit: contain;" 
+                <img src="/public/assets/comprobantes/${escapeHtml(req.comprobante_img)}"
+                     class="img-fluid rounded border mt-2"
+                     style="max-height: 240px; width: 100%; object-fit: contain;"
                      alt="Comprobante">
             </div>
         `;
@@ -1192,7 +1192,7 @@ function openAdminValidationDetailsModal(req) {
                     <div class="col-6"><strong>Método Pago:</strong> ${escapeHtml(req.metodo_pago)}</div>
                     <div class="col-6"><strong>Estado:</strong> ${escapeHtml(req.estado_orden)}</div>
                 </div>
-                
+
                 <h6 class="fw-bold border-bottom pb-1">Productos / Servicios</h6>
                 <table style="width:100%; font-size: 0.8rem; border-collapse: collapse;" class="table table-sm mb-3">
                     <thead>
@@ -1207,12 +1207,12 @@ function openAdminValidationDetailsModal(req) {
                         ${detailsRows || '<tr><td colspan="4" class="text-center text-muted">Sin detalles</td></tr>'}
                     </tbody>
                 </table>
-                
+
                 <div class="d-flex justify-content-between align-items-center">
                     <strong>Total del Pedido:</strong>
                     <span class="fs-5 fw-bold" style="color: #e95d0f;">${symbol}${parseFloat(req.total).toFixed(2)}</span>
                 </div>
-                
+
                 ${comprobanteHtml}
             </div>
         `,

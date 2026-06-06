@@ -154,7 +154,7 @@ async function loadAssignments() {
     } catch (e) { }
 }
 
-// Para la bitácora
+
 function statusSelect(id, current) {
     const options = [
         ['asignado', 'Asignado'],
@@ -232,13 +232,13 @@ function editAssignment(id) {
         if (res.status === 'error') return showToast(res.message, 'error');
         const a = res.data;
         Validator.clearForm('assignmentForm');
-        
+
         $('#assignmentId').val(a.id);
         $('#orden_venta_id').val(a.orden_venta_id || '');
         $('#observaciones').val(a.observaciones || '');
         $('#estado').val(a.estado || 'asignado').trigger('change');
 
-        // Check if service exists in select options (handles inactive services)
+
         const serviceSelect = document.getElementById('servicio_id');
         if (serviceSelect && a.servicio_id && !Array.from(serviceSelect.options).some(opt => opt.value == a.servicio_id)) {
             const opt = document.createElement('option');
@@ -248,7 +248,7 @@ function editAssignment(id) {
         }
         $('#servicio_id').val(a.servicio_id || '').trigger('change');
 
-        // Check if mechanic exists in select options (handles inactive mechanics)
+
         const mechanicSelect = document.getElementById('mecanico_cedula');
         if (mechanicSelect && a.mecanico_cedula && !Array.from(mechanicSelect.options).some(opt => opt.value == a.mecanico_cedula)) {
             const opt = document.createElement('option');
@@ -258,7 +258,7 @@ function editAssignment(id) {
         }
         $('#mecanico_cedula').val(a.mecanico_cedula || '').trigger('change');
 
-        // Check if client exists in select options (handles V-00000000 or inactive clients)
+
         const clientSelect = document.getElementById('cliente_cedula');
         if (clientSelect && a.cliente_cedula && !Array.from(clientSelect.options).some(opt => opt.value == a.cliente_cedula)) {
             const opt = document.createElement('option');
@@ -269,7 +269,7 @@ function editAssignment(id) {
         }
         $('#cliente_cedula').val(a.cliente_cedula || '').trigger('change');
 
-        // Format and set date directly (backend returns it as 'YYYY-MM-DDTHH:MM')
+
         $('#fecha').val(a.fecha || '');
 
         loadVehiclesForClient(a.cliente_cedula).then(() => {
@@ -284,7 +284,7 @@ function editAssignment(id) {
             }
             $('#vehiculo_placa').val(a.vehiculo_placa || '').trigger('change');
         });
-        
+
         $('#assignmentModalTitle').text('Modificar Servicio Mecánico');
         assignmentModal.show();
         Validator.initTracking('assignmentForm');

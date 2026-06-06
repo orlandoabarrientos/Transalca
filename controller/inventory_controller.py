@@ -1,10 +1,10 @@
 from flask import Blueprint, request, jsonify, session
 from model.inventory_model import InventoryModel
-# from model.bitacora_model import BitacoraModel
+
 
 inventory_bp = Blueprint('inventory', __name__)
 model = InventoryModel()
-# bitacora = BitacoraModel()
+
 
 
 @inventory_bp.route('/', methods=['GET'])
@@ -47,8 +47,8 @@ def update_stock():
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         model.update_stock(data['producto_codigo'], stock, data.get('sucursal_id'))
-        # bitacora.log_action(session['user_id'], 'MODIFICAR', 'INVENTARIO',
-            # f"Stock actualizado producto: {data['producto_codigo']}", request.remote_addr)
+
+
         return jsonify({"status": "success", "message": "Stock actualizado"})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
