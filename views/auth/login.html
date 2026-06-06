@@ -3,20 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <link rel="icon" type="image/png" href="/public/img/transalca-logo.png">
-    <meta name="description" content="Inicia sesion en Transalca C.A. - Tu tienda de repuestos y servicios automotrices">
+    <meta name="description" content="Inicia sesion en Transalca Group - tienda de repuestos, cauchos y servicios automotrices">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
     <link href="/public/css/styles.css" rel="stylesheet">
 </head>
-<body>
-<div class="auth-container">
-    <div class="auth-card">
+<body class="auth-login-page">
+<div class="auth-container auth-login-shell">
+    <div class="auth-card auth-login-card">
+        <div class="auth-brand-lockup">
+            <img src="/public/img/transalca-logo.png" alt="Transalca Group">
+            <div>
+                <strong>Transalca Group</strong>
+                <span>Repuestos, cauchos y servicios</span>
+            </div>
+        </div>
         <div class="brand-title">
-            <h2>TRANSALCA</h2>
-            <p>Repuestos y Servicios Automotrices</p>
+            <span class="auth-eyebrow">Acceso seguro</span>
+            <h2>Bienvenido de vuelta</h2>
+            <p>Ingresa para gestionar tus pedidos, pagos y beneficios.</p>
         </div>
         <form id="loginForm">
             <div class="mb-3">
@@ -31,26 +38,37 @@
                 <label class="form-label">Contrasena <span class="required">*</span></label>
                 <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                    <input type="password" class="form-control" id="loginPassword" name="loginPassword" placeholder="••••••••" required>
-                    <button class="btn btn-outline-secondary" type="button" id="togglePassword" tabindex="-1" style="border-color:var(--border-color);">
+                    <input type="password" class="form-control" id="loginPassword" name="loginPassword" placeholder="********" required>
+                    <button class="btn btn-outline-secondary auth-password-toggle" type="button" id="togglePassword" tabindex="-1">
                         <i class="bi bi-eye"></i>
                     </button>
                 </div>
                 <div class="invalid-feedback"></div>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <a href="/auth/recover" class="text-decoration-none" style="font-size:0.82rem;color:var(--primary);">¿Olvido su contrasena?</a>
+                <a href="/auth/recover" class="auth-recover-link">Olvido su contrasena?</a>
             </div>
-            <button type="submit" class="btn-login mb-3">Iniciar Sesion</button>
-            <p class="text-center" style="font-size:0.85rem;color:var(--text-secondary);">
-                ¿No tiene cuenta? <a href="/auth/register" style="color:var(--primary);font-weight:600;">Registrarse</a>
+            <button type="submit" class="btn-login auth-login-submit mb-3"><i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesion</button>
+            <p class="auth-register-copy">
+                No tiene cuenta? <a href="/auth/register">Registrarse</a>
             </p>
             <hr>
             <p class="text-center mb-0">
-                <a href="/client/home" class="btn btn-sm btn-outline-orange"><i class="bi bi-shop me-1"></i>Ver Catalogo sin registrarse</a>
+                <a href="/client/home" class="btn btn-sm btn-outline-orange auth-catalog-link"><i class="bi bi-shop me-1"></i>Ver Catalogo sin registrarse</a>
             </p>
         </form>
     </div>
+    <aside class="auth-login-panel">
+        <span class="auth-panel-badge"><i class="bi bi-shield-check"></i> Compra protegida</span>
+        <h1>Todo para tu vehiculo en una sola cuenta.</h1>
+        <p>Consulta catalogo, confirma pagos, revisa pedidos y conserva tus beneficios de fidelizacion.</p>
+        <div class="auth-panel-grid">
+            <span><i class="bi bi-bag-check"></i> Pedidos</span>
+            <span><i class="bi bi-credit-card"></i> Pagos</span>
+            <span><i class="bi bi-gift"></i> Fidelizacion</span>
+            <span><i class="bi bi-headset"></i> Soporte</span>
+        </div>
+    </aside>
 </div>
 <script src="/public/jquery/jquery.min.js"></script>
 <script src="/public/bootstrap/bootstrap.bundle.min.js"></script>

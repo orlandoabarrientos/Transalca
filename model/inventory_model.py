@@ -11,6 +11,40 @@ class InventoryModel(Connection):
         return self.fetch_all("transalca",
             "SELECT i.*, p.nombre as producto_nombre, p.codigo, p.precio, p.categoria as categoria_nombre, s.nombre as sucursal_nombre FROM stock i INNER JOIN productos p ON i.producto_codigo = p.codigo LEFT JOIN sucursales s ON i.sucursal_id = s.id WHERE i.sucursal_id = %s ORDER BY p.nombre", (sucursal_id,))
 
+    def get_paginated(self, page, per_page, sucursal_id=None, q=None):
+        where = []
+        params = []
+        if sucursal_id:
+            where.append("i.sucursal_id = %s")
+            params.append(sucursal_id)
+        if q:
+            like = f"%{q}%"
+            where.append("(p.nombre LIKE %s OR p.codigo LIKE %s OR p.categoria LIKE %s OR s.nombre LIKE %s)")
+            params.extend([like, like, like, like])
+
+        from_sql = (
+            "FROM stock i INNER JOIN productos p ON i.producto_codigo = p.codigo "
+            "LEFT JOIN sucursales s ON i.sucursal_id = s.id"
+        )
+        where_sql = f" WHERE {' AND '.join(where)}" if where else ""
+        total_row = self.fetch_one("transalca", f"SELECT COUNT(*) as total {from_sql}{where_sql}", tuple(params))
+        total = total_row['total'] if total_row else 0
+        pages = (total + per_page - 1) // per_page if total else 0
+        if pages and page > pages:
+            page = pages
+        offset = (page - 1) * per_page
+        data = self.fetch_all("transalca",
+            "SELECT i.*, p.nombre as producto_nombre, p.codigo, p.precio, p.categoria as categoria_nombre, s.nombre as sucursal_nombre "
+            f"{from_sql}{where_sql} ORDER BY p.nombre LIMIT %s OFFSET %s",
+            tuple(params + [per_page, offset]))
+        return {
+            "data": data,
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "pages": pages
+        }
+
     def get_low_stock(self):
         return self.fetch_all("transalca",
             "SELECT i.*, p.nombre as producto_nombre, p.codigo, s.nombre as sucursal_nombre FROM stock i INNER JOIN productos p ON i.producto_codigo = p.codigo LEFT JOIN sucursales s ON i.sucursal_id = s.id WHERE i.stock <= i.stock_minimo ORDER BY i.stock ASC")

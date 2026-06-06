@@ -1111,6 +1111,267 @@ a:hover {
     transform: translateY(-1px);
 }
 
+.auth-login-page {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at 14% 18%, rgba(249, 115, 22, 0.18), transparent 28%),
+        radial-gradient(circle at 86% 12%, rgba(15, 23, 42, 0.10), transparent 30%),
+        linear-gradient(135deg, #F8FAFC 0%, #FFF7ED 58%, #FFFFFF 100%);
+}
+
+.auth-login-shell {
+    display: grid;
+    grid-template-columns: minmax(340px, 430px) minmax(400px, 520px);
+    align-items: stretch;
+    gap: 0;
+    width: min(100%, 950px);
+    min-height: auto;
+    margin: 0 auto;
+    padding: clamp(10px, 2vh, 22px);
+    background: transparent;
+}
+
+.auth-login-card {
+    max-width: none;
+    border-radius: 24px 0 0 24px;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    border-right: 0;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.16);
+    padding: 28px 32px;
+}
+
+.auth-brand-lockup {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.auth-brand-lockup img {
+    width: 46px;
+    height: 46px;
+    object-fit: contain;
+}
+
+.auth-brand-lockup strong,
+.auth-brand-lockup span {
+    display: block;
+}
+
+.auth-brand-lockup strong {
+    color: #111827;
+    font-size: 1.05rem;
+    font-weight: 900;
+    line-height: 1.1;
+}
+
+.auth-brand-lockup span {
+    color: #64748B;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.auth-login-card .brand-title {
+    text-align: left;
+    margin-bottom: 20px;
+}
+
+.auth-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    color: #C2410C;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.auth-login-card .brand-title h2 {
+    color: #111827;
+    font-size: 1.72rem;
+    letter-spacing: 0;
+    line-height: 1.05;
+    margin: 0;
+    text-transform: none;
+}
+
+.auth-login-card .brand-title p {
+    color: #64748B;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    max-width: 360px;
+}
+
+.auth-login-card .mb-3 {
+    margin-bottom: 0.78rem !important;
+}
+
+.auth-login-card .mb-4 {
+    margin-bottom: 0.95rem !important;
+}
+
+.auth-login-card .form-label {
+    color: #111827;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.auth-login-card .input-group {
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.auth-login-card .input-group-text,
+.auth-login-card .form-control,
+.auth-password-toggle {
+    min-height: 44px;
+    border-color: #E2E8F0;
+    background: #F8FAFC;
+}
+
+.auth-login-card .input-group-text {
+    width: 50px;
+    justify-content: center;
+    color: #475569;
+    border-radius: 12px 0 0 12px;
+}
+
+.auth-login-card .form-control {
+    color: #111827;
+    font-weight: 600;
+}
+
+.auth-login-card .form-control:focus {
+    border-color: rgba(249, 115, 22, 0.52);
+    box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.12);
+    background: #FFFFFF;
+}
+
+.auth-password-toggle {
+    border-radius: 0 12px 12px 0;
+    color: #475569;
+}
+
+.auth-password-toggle:hover,
+.auth-password-toggle:focus {
+    background: #FFF7ED;
+    border-color: rgba(249, 115, 22, 0.34);
+    color: #C2410C;
+}
+
+.auth-recover-link,
+.auth-register-copy a {
+    color: #C2410C;
+    font-size: 0.84rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.auth-recover-link:hover,
+.auth-register-copy a:hover {
+    color: #F97316;
+}
+
+.auth-login-card .auth-login-submit {
+    min-height: 46px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #F97316, #C2410C);
+    box-shadow: 0 16px 32px rgba(249, 115, 22, 0.26);
+}
+
+.auth-login-card .auth-login-submit:hover,
+.auth-login-card .auth-login-submit:focus {
+    background: linear-gradient(135deg, #EA580C, #9A3412);
+    box-shadow: 0 20px 38px rgba(249, 115, 22, 0.32);
+}
+
+.auth-register-copy {
+    color: #64748B;
+    font-size: 0.86rem;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.auth-login-card hr {
+    border-color: #E2E8F0;
+    opacity: 1;
+}
+
+.auth-catalog-link {
+    border-radius: 12px;
+    padding: 10px 14px;
+}
+
+.auth-login-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 540px;
+    padding: 32px;
+    color: #FFFFFF;
+    border-radius: 0 24px 24px 0;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.16);
+    background:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.18), rgba(15, 23, 42, 0.88)),
+        url('/public/assets/images/transalca-ecommerce-hero.png');
+    background-size: cover;
+    background-position: center;
+}
+
+.auth-panel-badge {
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    margin-bottom: auto;
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 900;
+    backdrop-filter: blur(10px);
+}
+
+.auth-login-panel h1 {
+    max-width: 430px;
+    margin: 0 0 12px;
+    font-size: 2.35rem;
+    line-height: 0.98;
+    font-weight: 900;
+    letter-spacing: 0;
+}
+
+.auth-login-panel p {
+    max-width: 420px;
+    color: rgba(255, 255, 255, 0.84);
+    font-size: 0.9rem;
+    line-height: 1.65;
+}
+
+.auth-panel-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.auth-panel-grid span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 10px;
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    backdrop-filter: blur(10px);
+}
+
 .password-strength {
     height: 3px;
     border-radius: 2px;
@@ -3820,6 +4081,34 @@ body.client-store .client-cart-btn:focus {
     box-shadow: none;
 }
 
+body.client-store .client-login-btn {
+    min-width: 42px;
+    min-height: 42px;
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    background: #FFFFFF;
+    color: #0F172A;
+    font-weight: 900;
+    box-shadow: none;
+}
+
+body.client-store .client-login-btn:hover,
+body.client-store .client-login-btn:focus {
+    background: #FFF7ED;
+    border-color: rgba(249, 115, 22, 0.34);
+    color: #C2410C;
+    box-shadow: none;
+}
+
+body.client-store .client-login-btn i {
+    color: #C2410C;
+}
+
 body.client-store .client-profile-btn {
     width: 42px;
     height: 42px;
@@ -3861,10 +4150,22 @@ body.client-store .client-profile-fallback {
     }
 
     body.client-store .client-cart-btn,
-    body.client-store .client-profile-btn {
+    body.client-store .client-profile-btn,
+    body.client-store .client-login-btn {
         width: 40px;
         min-width: 40px;
         height: 40px;
+        padding: 0;
+    }
+
+    body.client-store .client-login-btn {
+        font-size: 0;
+        gap: 0;
+    }
+
+    body.client-store .client-login-btn i {
+        font-size: 1rem;
+        margin: 0 !important;
     }
 
     body.client-store .client-profile-photo {
@@ -3875,5 +4176,46 @@ body.client-store .client-profile-fallback {
     body.client-store .client-profile-fallback {
         width: 36px;
         height: 36px;
+    }
+}
+
+@media (max-width: 992px) {
+    .auth-login-shell {
+        grid-template-columns: 1fr;
+        width: min(100%, 560px);
+        padding: 22px;
+    }
+
+    .auth-login-card {
+        border-right: 1px solid rgba(226, 232, 240, 0.95);
+        border-radius: 24px;
+    }
+
+    .auth-login-panel {
+        display: none;
+    }
+}
+
+@media (max-width: 576px) {
+    .auth-login-shell {
+        padding: 14px;
+    }
+
+    .auth-login-card {
+        padding: 24px;
+        border-radius: 18px;
+    }
+
+    .auth-brand-lockup img {
+        width: 46px;
+        height: 46px;
+    }
+
+    .auth-login-card .brand-title h2 {
+        font-size: 1.65rem;
+    }
+
+    .auth-catalog-link {
+        width: 100%;
     }
 }
