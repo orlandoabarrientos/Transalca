@@ -49,6 +49,59 @@ class ProductModel(Connection):
             "pages": (total + per_page - 1) // per_page
         }
 
+    def get_active_paginated(self, page, per_page, category=None, branch=None, q=None, sort=None):
+        where = ["p.estado = 1"]
+        params = []
+
+        if category:
+            where.append("p.categoria = %s")
+            params.append(category)
+        if branch:
+            where.append(
+                "EXISTS (SELECT 1 FROM stock st_filter "
+                "WHERE st_filter.producto_codigo = p.codigo AND st_filter.sucursal_id = %s)"
+            )
+            params.append(branch)
+        if q:
+            like = f"%{q}%"
+            where.append("(p.nombre LIKE %s OR p.codigo LIKE %s OR p.descripcion LIKE %s)")
+            params.extend([like, like, like])
+
+        where_sql = " AND ".join(where)
+        count_query = f"SELECT COUNT(DISTINCT p.codigo) as total FROM productos p WHERE {where_sql}"
+        total_row = self.fetch_one("transalca", count_query, tuple(params))
+        total = total_row['total'] if total_row else 0
+        pages = (total + per_page - 1) // per_page if total else 0
+        if pages and page > pages:
+            page = pages
+        offset = (page - 1) * per_page
+
+        order_by = {
+            'price_asc': 'p.precio ASC, p.nombre ASC',
+            'price_desc': 'p.precio DESC, p.nombre ASC',
+            'name': 'p.nombre ASC'
+        }.get(sort, 'p.nombre ASC')
+
+        select_query = (
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, "
+            "COALESCE(GROUP_CONCAT(DISTINCT su.nombre ORDER BY su.nombre SEPARATOR ', '), 'Sin stock') as sucursal_nombre, "
+            "GROUP_CONCAT(DISTINCT st.sucursal_id ORDER BY st.sucursal_id SEPARATOR ',') as sucursal_ids, "
+            "COALESCE(SUM(st.stock),0) as stock "
+            "FROM productos p "
+            "LEFT JOIN stock st ON p.codigo = st.producto_codigo "
+            "LEFT JOIN sucursales su ON st.sucursal_id = su.id "
+            f"WHERE {where_sql} GROUP BY p.codigo ORDER BY {order_by} "
+            "LIMIT %s OFFSET %s"
+        )
+        data = self.fetch_all("transalca", select_query, tuple(params + [per_page, offset]))
+        return {
+            "data": data,
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "pages": pages
+        }
+
     def get_active(self):
         return self.fetch_all("transalca", self._product_select())
 

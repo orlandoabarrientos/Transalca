@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transalca Group | La mejor calidad</title>
-    <link rel="icon" type="image/png" href="/public/img/logo.png">
+    <link rel="icon" type="image/png" href="/public/img/transalca-logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
@@ -14,24 +14,40 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 
-<body>
+<body class="client-store">
     <div id="navbarContainer"></div>
-    <div class="container py-4">
-        <h3 class="fw-bold mb-4"><i class="bi bi-cart3 me-2"></i>Mi Carrito</h3>
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card-custom mb-4">
+    <section class="client-page-hero compact-page-hero cart-page-hero">
+        <div class="container">
+            <span class="store-eyebrow"><i class="bi bi-cart3 me-2"></i>Carrito</span>
+            <h1>Revisa tu compra y confirma tu pedido</h1>
+            <p>Valida cantidades, selecciona el metodo de pago y carga tu comprobante para finalizar.</p>
+        </div>
+    </section>
+    <div class="container py-4 client-inner-page cart-page">
+        <div class="client-page-title-row">
+            <div>
+                <span class="store-eyebrow">Checkout</span>
+                <h3><i class="bi bi-cart3 me-2"></i>Mi Carrito</h3>
+            </div>
+            <a href="/client/catalog" class="btn btn-outline-orange"><i class="bi bi-arrow-left me-1"></i>Seguir comprando</a>
+        </div>
+        <div class="row g-4 align-items-start">
+            <div class="col-lg-8">
+                <div class="card-custom cart-items-card">
+                    <div class="card-header">
+                        <span><i class="bi bi-basket me-2"></i>Productos y servicios</span>
+                    </div>
                     <div class="card-body" id="cartItems"></div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card-custom" style="position:sticky;top:80px;">
-                    <div class="card-header"><span>Resumen del Pedido</span></div>
+            <div class="col-lg-4">
+                <div class="card-custom checkout-summary-card">
+                    <div class="card-header"><span><i class="bi bi-receipt me-2"></i>Resumen del Pedido</span></div>
                     <div class="card-body">
-                        <div class="d-flex justify-content-between mb-2"><span>Subtotal:</span><span
+                        <div class="summary-line"><span>Subtotal:</span><span
                                 id="subtotal" data-no-hydrate="true">$0.00</span></div>
                         <hr>
-                        <div class="d-flex justify-content-between mb-3"><strong>Total:</strong><strong id="total"
+                        <div class="summary-total"><strong>Total:</strong><strong id="total"
                                 class="fs-4" style="color:var(--highlight);" data-no-hydrate="true">$0.00</strong></div>
                         <form id="checkoutForm" enctype="multipart/form-data">
                             <div class="mb-3">

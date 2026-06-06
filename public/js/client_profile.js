@@ -1,5 +1,69 @@
 const PHONE_REGEX_PROFILE = /^04\d{9}$/;
 const ALLOWED_FUEL_TYPES = ['gasolina', 'gasoil', 'otro'];
+const Validator = {
+    rules: {},
+
+    setRules(formId, rules) {
+        this.rules[formId] = rules || {};
+    },
+
+    setupRealtime(formId) {
+        const form = document.getElementById(formId);
+        if (!form) return;
+        form.querySelectorAll('input, select, textarea').forEach(field => {
+            field.addEventListener('input', () => this.validateField(formId, field.id));
+            field.addEventListener('change', () => this.validateField(formId, field.id));
+        });
+    },
+
+    validate(formId) {
+        const rules = this.rules[formId] || {};
+        let valid = true;
+        Object.keys(rules).forEach(fieldId => {
+            if (!this.validateField(formId, fieldId)) valid = false;
+        });
+        return valid;
+    },
+
+    validateField(formId, fieldId) {
+        const field = document.getElementById(fieldId);
+        const rules = (this.rules[formId] || {})[fieldId];
+        if (!field || !rules) return true;
+
+        const value = (field.value || '').trim();
+        let message = '';
+        if (rules.required && !value) message = rules.requiredMsg || 'Campo requerido';
+        else if (rules.minLength && value && value.length < rules.minLength) message = rules.minLengthMsg || `Minimo ${rules.minLength} caracteres`;
+        else if (rules.maxLength && value.length > rules.maxLength) message = rules.maxLengthMsg || `Maximo ${rules.maxLength} caracteres`;
+        else if (rules.pattern && value && !rules.pattern.test(value)) message = rules.patternMsg || 'Formato invalido';
+        else if (rules.min !== undefined && value && Number(value) < rules.min) message = rules.minMsg || `Valor minimo ${rules.min}`;
+        else if (rules.custom && !rules.custom(value)) message = rules.customMsg || 'Valor invalido';
+
+        this.setFieldError(field, message);
+        return !message;
+    },
+
+    showServerErrors(formId, errors) {
+        Object.entries(errors || {}).forEach(([fieldId, message]) => {
+            const field = document.getElementById(fieldId);
+            if (field) this.setFieldError(field, Array.isArray(message) ? message[0] : message);
+        });
+    },
+
+    setFieldError(field, message) {
+        field.classList.toggle('is-invalid', !!message);
+        let feedback = field.parentElement.querySelector('.client-validation-message');
+        if (!feedback && message) {
+            feedback = document.createElement('div');
+            feedback.className = 'invalid-feedback client-validation-message';
+            field.parentElement.appendChild(feedback);
+        }
+        if (feedback) {
+            feedback.textContent = message || '';
+            feedback.style.display = message ? 'block' : 'none';
+        }
+    }
+};
 
 const clientProfileState = {
     cedula: '',
@@ -11,6 +75,7 @@ const clientProfileState = {
 };
 
 $(document).ready(function () {
+    document.title = 'Transalca Group | Mi Perfil';
     $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
     $('#footerContainer').load('/components/client_footer.html');
     bindProfileEvents();
@@ -84,6 +149,9 @@ function setProfilePhoto(filename) {
     $('#profilePhoto').attr('src', src);
     $('#clientNavPhoto').attr('src', src);
     $('#navUserPhoto').attr('src', src);
+    const hasCustomPhoto = safeName && safeName !== 'default.png';
+    $('#clientNavPhoto').toggle(!!hasCustomPhoto);
+    $('.client-profile-fallback').toggle(!hasCustomPhoto);
 }
 
 async function onSaveProfile(event) {
@@ -196,6 +264,8 @@ function onProfilePhotoSelected() {
         const src = `/public/assets/profile_pics/${filename}${cacheBust}`;
         $('#profilePhoto').attr('src', src);
         $('#clientNavPhoto').attr('src', src);
+        $('#clientNavPhoto').show();
+        $('.client-profile-fallback').hide();
         $('#navUserPhoto').attr('src', src);
         showToast(data.message || 'Foto actualizada', 'success');
     }).catch(err => {

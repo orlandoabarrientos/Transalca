@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transalca Group | La mejor calidad</title>
-    <link rel="icon" type="image/png" href="/public/img/logo.png">
+    <link rel="icon" type="image/png" href="/public/img/transalca-logo.png">
     <meta name="description" content="Catalogo completo de repuestos, cauchos, lubricantes y servicios automotrices.">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
@@ -13,47 +13,97 @@
     <link href="/componente_ia/chat_widget.css" rel="stylesheet">
 </head>
 
-<body>
+<body class="client-store">
     <div id="navbarContainer"></div>
 
-    <div class="container py-4">
-        <div class="mb-4">
-            <h3 class="fw-bold mb-1">Catalogo</h3>
-            <p class="text-muted">Explora nuestros productos y servicios</p>
-        </div>
-
-
-        <div class="filter-bar">
-            <div class="search-bar" style="max-width:280px;">
-                <i class="bi bi-search"></i>
-                <input type="text" class="form-control" id="searchInput" placeholder="Buscar producto..."
-                    oninput="filterProducts()">
+    <section class="client-page-hero catalog-page-hero catalog-hero-v2">
+        <div class="container">
+            <div class="catalog-hero-copy">
+                <span class="store-eyebrow"><i class="bi bi-grid-3x3-gap me-2"></i>Catalogo Transalca Group</span>
+                <h1>Repuestos, cauchos y servicios para comprar sin friccion</h1>
+                <p>Busca por codigo, categoria o sucursal y agrega al carrito manteniendo la disponibilidad real.</p>
+                <div class="catalog-hero-pills">
+                    <span><i class="bi bi-shield-check"></i> Compra segura</span>
+                    <span><i class="bi bi-shop-window"></i> Por sucursal</span>
+                    <span><i class="bi bi-tools"></i> Servicios tecnicos</span>
+                </div>
             </div>
-            <select class="form-select" id="filterCategory" onchange="filterProducts()">
-                <option value="">Todas las categorias</option>
-            </select>
-            <select class="form-select" id="filterBranch" onchange="filterProducts()">
-                <option value="">Todas las sucursales</option>
-            </select>
-            <select class="form-select" id="filterSort" onchange="filterProducts()">
-                <option value="">Ordenar por</option>
-                <option value="price_asc">Precio: Menor a Mayor</option>
-                <option value="price_desc">Precio: Mayor a Menor</option>
-                <option value="name">Nombre A-Z</option>
-            </select>
+        </div>
+    </section>
+
+    <div class="container py-4 store-main catalog-page-v2">
+        <div class="catalog-toolbar">
+            <div class="catalog-search-card">
+                <label for="searchInput"><i class="bi bi-search"></i> Busqueda rapida</label>
+                <div class="catalog-search-control">
+                    <i class="bi bi-search"></i>
+                    <input type="text" class="form-control" id="searchInput"
+                        placeholder="Producto, codigo o servicio..." oninput="filterProducts()">
+                </div>
+                <div class="catalog-search-hints">
+                    <span><i class="bi bi-upc"></i> Codigo</span>
+                    <span><i class="bi bi-box-seam"></i> Producto</span>
+                    <span><i class="bi bi-wrench-adjustable"></i> Servicio</span>
+                </div>
+            </div>
+            <div class="catalog-filter-card">
+                <div class="catalog-filter-group">
+                    <label for="filterCategory"><i class="bi bi-tags"></i> Categoria</label>
+                    <select class="form-select" id="filterCategory" onchange="filterProducts()">
+                        <option value="">Todas las categorias</option>
+                    </select>
+                </div>
+                <div class="catalog-filter-group">
+                    <label for="filterBranch"><i class="bi bi-geo-alt"></i> Sucursal</label>
+                    <select class="form-select" id="filterBranch" onchange="filterProducts()">
+                        <option value="">Todas las sucursales</option>
+                    </select>
+                </div>
+                <div class="catalog-filter-group">
+                    <label for="filterSort"><i class="bi bi-sort-down"></i> Orden</label>
+                    <select class="form-select" id="filterSort" onchange="filterProducts()">
+                        <option value="">Relevancia</option>
+                        <option value="price_asc">Precio: menor a mayor</option>
+                        <option value="price_desc">Precio: mayor a menor</option>
+                        <option value="name">Nombre A-Z</option>
+                    </select>
+                </div>
+                <button type="button" class="btn btn-outline-orange catalog-clear-btn" onclick="clearCatalogFilters()">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar
+                </button>
+            </div>
         </div>
 
+        <div class="catalog-branch-strip">
+            <div class="catalog-strip-title">
+                <i class="bi bi-shop-window"></i>
+                <div>
+                    <strong>Comprar por sucursal</strong>
+                    <span>Filtra disponibilidad sin salir del catalogo.</span>
+                </div>
+            </div>
+            <div class="sucursal-selector" id="sucursalChips"></div>
+        </div>
 
-        <div class="sucursal-selector" id="sucursalChips"></div>
-
-
-        <ul class="nav nav-tabs mb-3">
-            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabProducts">Productos</a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabServices">Servicios</a></li>
-        </ul>
+        <div class="catalog-results-head">
+            <ul class="nav nav-tabs store-tabs catalog-tabs">
+                <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabProducts"><i
+                            class="bi bi-box-seam me-1"></i>Productos</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabServices"><i
+                            class="bi bi-tools me-1"></i>Servicios</a></li>
+            </ul>
+            <div class="catalog-counts">
+                <span id="productCount">0 productos</span>
+                <span id="serviceCount">0 servicios</span>
+            </div>
+        </div>
         <div class="tab-content">
             <div class="tab-pane fade show active" id="tabProducts">
                 <div class="row g-3" id="productGrid"></div>
+                <div class="catalog-pagination-bar">
+                    <div class="catalog-pagination-info" id="catalogPaginationInfo">Mostrando 0 productos</div>
+                    <ul class="pagination pagination-sm catalog-pagination mb-0" id="catalogPaginationControls"></ul>
+                </div>
             </div>
             <div class="tab-pane fade" id="tabServices">
                 <div class="row g-3" id="serviceGrid"></div>
@@ -67,8 +117,10 @@
     <script src="/public/jquery/jquery.min.js"></script>
     <script src="/public/js/client_common.js"></script>
     <script>
-        let allProducts = [];
         let allServices = [];
+        let catalogFilterTimer = null;
+        let catalogProductRequest = 0;
+        const catalogProductsPerPage = 30;
 
         $(document).ready(function () {
             $('#navbarContainer').load('/components/client_navbar.html', () => checkSession());
@@ -77,38 +129,44 @@
         });
 
         async function loadCatalog() {
+            const params = new URLSearchParams(window.location.search);
             try {
                 const cats = await fetch('/api/categories/active').then(r => r.json());
                 const sel = document.getElementById('filterCategory');
                 (cats.data || []).forEach(c => sel.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`);
+                applyInitialCatalogCategory(params.get('category'));
             } catch (e) { }
             try {
                 const branches = await fetch('/api/sucursales/active').then(r => r.json());
                 const sel = document.getElementById('filterBranch');
                 const chips = document.getElementById('sucursalChips');
-                chips.innerHTML = '<span class="sucursal-chip active" onclick="selectBranch(this,\'\')">Todas</span>';
+                chips.innerHTML = '<button type="button" class="sucursal-chip active" data-branch-id="" onclick="selectBranch(this,\'\')"><i class="bi bi-grid"></i>Todas</button>';
                 (branches.data || []).forEach(b => {
                     sel.innerHTML += `<option value="${b.id}">${b.nombre}</option>`;
-                    chips.innerHTML += `<span class="sucursal-chip" onclick="selectBranch(this,'${b.id}')">${b.nombre}</span>`;
+                    chips.innerHTML += `<button type="button" class="sucursal-chip" data-branch-id="${b.id}" onclick="selectBranch(this,'${b.id}')"><i class="bi bi-geo-alt"></i>${b.nombre}</button>`;
                 });
             } catch (e) { }
 
-            try {
-                const res = await fetch('/api/products/active').then(r => r.json());
-                allProducts = res.data || [];
-                renderProducts(allProducts);
-            } catch (e) { }
+            loadProducts(1);
 
             try {
                 const res = await fetch('/api/services/active').then(r => r.json());
                 allServices = res.data || [];
-                renderServices(allServices);
+                filterServices();
             } catch (e) { }
+        }
 
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('category')) {
-                document.getElementById('filterCategory').value = params.get('category');
-                filterProducts();
+        function applyInitialCatalogCategory(requestedCategory) {
+            const sel = document.getElementById('filterCategory');
+            if (!sel) return;
+            const options = Array.from(sel.options);
+            if (requestedCategory && options.some(o => o.value === requestedCategory)) {
+                sel.value = requestedCategory;
+                return;
+            }
+            if (!requestedCategory) {
+                const tireOption = options.find(o => normalizeProductText(o.value).includes('caucho'));
+                if (tireOption) sel.value = tireOption.value;
             }
         }
 
@@ -119,67 +177,225 @@
             filterProducts();
         }
 
-        function filterProducts() {
-            const q = document.getElementById('searchInput').value.toLowerCase();
-            const cat = document.getElementById('filterCategory').value;
-            const branch = document.getElementById('filterBranch').value;
-            const sort = document.getElementById('filterSort').value;
-
-            let filtered = allProducts.filter(p => {
-                if (q && !p.nombre.toLowerCase().includes(q) && !(p.codigo || '').toLowerCase().includes(q)) return false;
-                if (cat && p.categoria != cat) return false;
-                if (branch) {
-                    const branches = String(p.sucursal_ids || '').split(',').filter(Boolean);
-                    if (!branches.includes(String(branch))) return false;
-                }
-                return true;
+        function syncBranchChip(branchId) {
+            document.querySelectorAll('.sucursal-chip').forEach(c => {
+                c.classList.toggle('active', String(c.dataset.branchId || '') === String(branchId || ''));
             });
+        }
 
-            if (sort === 'price_asc') filtered.sort((a, b) => a.precio - b.precio);
-            else if (sort === 'price_desc') filtered.sort((a, b) => b.precio - a.precio);
-            else if (sort === 'name') filtered.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        function clearCatalogFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterCategory').value = '';
+            document.getElementById('filterBranch').value = '';
+            document.getElementById('filterSort').value = '';
+            syncBranchChip('');
+            filterProducts();
+        }
 
-            renderProducts(filtered);
+        function getCatalogFilters() {
+            return {
+                q: document.getElementById('searchInput').value.trim(),
+                cat: document.getElementById('filterCategory').value,
+                branch: document.getElementById('filterBranch').value,
+                sort: document.getElementById('filterSort').value
+            };
+        }
 
+        function filterProducts(page = 1) {
+            clearTimeout(catalogFilterTimer);
+            catalogFilterTimer = setTimeout(() => {
+                loadProducts(page);
+                filterServices();
+            }, page === 1 ? 180 : 0);
+        }
+
+        async function loadProducts(page = 1) {
+            const requestId = ++catalogProductRequest;
+            const { q, cat, branch, sort } = getCatalogFilters();
+            syncBranchChip(branch);
+
+            const params = new URLSearchParams({
+                page: String(page),
+                per_page: String(catalogProductsPerPage)
+            });
+            if (q) params.set('q', q);
+            if (cat) params.set('category', cat);
+            if (branch) params.set('branch', branch);
+            if (sort) params.set('sort', sort);
+
+            renderProductLoading();
+            try {
+                const res = await fetch(`/api/products/active?${params.toString()}`).then(r => r.json());
+                if (requestId !== catalogProductRequest) return;
+                const data = res.data || [];
+                renderProducts(data, res.total ?? data.length, res.page || page, res.pages || 0);
+            } catch (e) {
+                if (requestId !== catalogProductRequest) return;
+                document.getElementById('productGrid').innerHTML = '<div class="col-12"><div class="empty-state"><i class="bi bi-wifi-off"></i><p>No se pudieron cargar los productos</p></div></div>';
+                renderCatalogPagination(0, 1, 0);
+            }
+        }
+
+        function filterServices() {
+            const { q, branch } = getCatalogFilters();
+            const normalizedQ = q.toLowerCase();
             let filteredS = allServices.filter(s => {
-                if (q && !s.nombre.toLowerCase().includes(q)) return false;
+                if (normalizedQ && !(s.nombre || '').toLowerCase().includes(normalizedQ)) return false;
                 if (branch && s.sucursal_id && s.sucursal_id != branch) return false;
                 return true;
             });
             renderServices(filteredS);
         }
 
-        function renderProducts(products) {
+        function renderProductLoading() {
             const grid = document.getElementById('productGrid');
+            grid.innerHTML = Array.from({ length: 8 }).map(() => `<div class="col-6 col-md-4 col-lg-3">
+                <article class="product-card catalog-product-card catalog-product-skeleton">
+                    <div class="product-img"></div>
+                    <div class="product-info">
+                        <span></span>
+                        <strong></strong>
+                        <em></em>
+                    </div>
+                </article>
+            </div>`).join('');
+        }
+
+        function renderProducts(products, total = products.length, page = 1, pages = 0) {
+            const grid = document.getElementById('productGrid');
+            const count = document.getElementById('productCount');
+            if (count) count.textContent = `${total} producto${total === 1 ? '' : 's'}`;
             grid.innerHTML = '';
             products.forEach(p => {
-                const imgName = p.imagen && p.imagen !== 'default_product.png' ? p.imagen : 'no-image.png';
-                const img = `<img src="/public/assets/images/${imgName}" alt="${p.nombre}" onerror="this.parentElement.innerHTML='<div class=&quot;no-image&quot;><i class=&quot;bi bi-image&quot;></i><span>Sin imagen</span></div>'">`;
-                grid.innerHTML += `<div class="col-6 col-md-4 col-lg-3 fade-in-up"><div class="product-card">
-            <div class="product-img">${img}</div>
-            <div class="product-info">
-                <div class="product-category">${p.categoria_nombre || ''}</div>
-                <div class="product-name">${p.nombre}</div>
-                <div class="product-price" data-usd-price="${p.precio}">${formatUsdBs(p.precio)}</div>
-                ${p.sucursal_nombre ? `<div class="product-branch"><i class="bi bi-geo-alt"></i>${p.sucursal_nombre}</div>` : ''}
-            </div>
-            <button class="btn-add-cart" onclick="addToCart('${p.codigo}')"><i class="bi bi-cart-plus me-1"></i>Agregar</button>
-        </div></div>`;
+                const safeName = escapeHtml(p.nombre || '');
+                const safeCode = escapeHtml(p.codigo || '');
+                const safeCategory = escapeHtml(p.categoria_nombre || p.categoria || 'Producto');
+                const safeBranch = escapeHtml(p.sucursal_nombre || '');
+                const cartCode = encodeURIComponent(String(p.codigo || ''));
+                const img = buildProductImageHtml(p, p.nombre || 'Producto');
+                grid.innerHTML += `<div class="col-6 col-md-4 col-lg-3 fade-in-up">
+                    <article class="product-card catalog-product-card">
+                        <div class="product-img">
+                            <span class="catalog-product-badge"><i class="bi bi-box-seam"></i>${safeCategory}</span>
+                            ${img}
+                        </div>
+                        <div class="product-info">
+                            <div class="product-meta-row">
+                                <span>${safeCategory}</span>
+                                ${safeCode ? `<small>#${safeCode}</small>` : ''}
+                            </div>
+                            <div class="product-name">${safeName}</div>
+                            <div class="product-price-row">
+                                <span class="product-price" data-usd-price="${p.precio}">${formatUsdBs(p.precio)}</span>
+                                <span class="product-stock"><i class="bi bi-check2-circle"></i>Disponible</span>
+                            </div>
+                            ${safeBranch ? `<div class="product-branch"><i class="bi bi-geo-alt"></i>${safeBranch}</div>` : ''}
+                        </div>
+                        <button class="btn-add-cart" onclick="addToCart(decodeURIComponent('${cartCode}'))"><i class="bi bi-cart-plus me-1"></i>Agregar al carrito</button>
+                    </article>
+                </div>`;
             });
             if (!products.length) grid.innerHTML = '<div class="col-12"><div class="empty-state"><i class="bi bi-search"></i><p>No se encontraron productos</p></div></div>';
+            renderCatalogPagination(total, page, pages);
+            hydrateDualPrices(grid);
+        }
+
+        function catalogGoToPage(page) {
+            filterProducts(page);
+            document.getElementById('tabProducts')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function renderCatalogPagination(total, page, pages) {
+            const info = document.getElementById('catalogPaginationInfo');
+            const controls = document.getElementById('catalogPaginationControls');
+            if (info) {
+                const start = total ? (page - 1) * catalogProductsPerPage + 1 : 0;
+                const end = Math.min(page * catalogProductsPerPage, total);
+                info.textContent = total ? `Mostrando ${start} a ${end} de ${total} productos` : 'Mostrando 0 productos';
+            }
+            if (!controls) return;
+            controls.innerHTML = '';
+            if (pages <= 1) return;
+
+            const prevLi = document.createElement('li');
+            prevLi.className = `page-item ${page === 1 ? 'disabled' : ''}`;
+            prevLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); if(${page > 1}) catalogGoToPage(${page - 1})"><i class="bi bi-chevron-left"></i></a>`;
+            controls.appendChild(prevLi);
+
+            const maxVisible = 5;
+            let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
+            let endPage = startPage + maxVisible - 1;
+
+            if (endPage > pages) {
+                endPage = pages;
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            if (startPage > 1) {
+                const firstLi = document.createElement('li');
+                firstLi.className = 'page-item';
+                firstLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); catalogGoToPage(1)">1</a>`;
+                controls.appendChild(firstLi);
+
+                if (startPage > 2) {
+                    const ellipsisLi = document.createElement('li');
+                    ellipsisLi.className = 'page-item disabled';
+                    ellipsisLi.innerHTML = '<span class="page-link">...</span>';
+                    controls.appendChild(ellipsisLi);
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const li = document.createElement('li');
+                li.className = `page-item ${page === i ? 'active' : ''}`;
+                li.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); catalogGoToPage(${i})">${i}</a>`;
+                controls.appendChild(li);
+            }
+
+            if (endPage < pages) {
+                if (endPage < pages - 1) {
+                    const ellipsisLi = document.createElement('li');
+                    ellipsisLi.className = 'page-item disabled';
+                    ellipsisLi.innerHTML = '<span class="page-link">...</span>';
+                    controls.appendChild(ellipsisLi);
+                }
+                const lastLi = document.createElement('li');
+                lastLi.className = 'page-item';
+                lastLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); catalogGoToPage(${pages})">${pages}</a>`;
+                controls.appendChild(lastLi);
+            }
+
+            const nextLi = document.createElement('li');
+            nextLi.className = `page-item ${page === pages ? 'disabled' : ''}`;
+            nextLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); if(${page < pages}) catalogGoToPage(${page + 1})"><i class="bi bi-chevron-right"></i></a>`;
+            controls.appendChild(nextLi);
         }
 
         function renderServices(services) {
             const grid = document.getElementById('serviceGrid');
+            const count = document.getElementById('serviceCount');
+            if (count) count.textContent = `${services.length} servicio${services.length === 1 ? '' : 's'}`;
             grid.innerHTML = '';
             const icons = { alineacion: 'bi-rulers', rotacion: 'bi-arrow-repeat', balanceo: 'bi-speedometer', cambio_aceite: 'bi-droplet-fill', general: 'bi-wrench-adjustable' };
             services.forEach(s => {
-                grid.innerHTML += `<div class="col-6 col-md-4 col-lg-3 fade-in-up"><div class="card p-3 text-center" style="cursor:pointer;" onclick="addToCart(${s.id},'servicio')">
-            <i class="bi ${icons[s.tipo] || 'bi-wrench'}" style="font-size:2rem;color:var(--primary);"></i>
-            <h6 class="fw-bold mt-2 mb-1">${s.nombre}</h6>
-            <span class="fw-bold" style="color:var(--primary);" data-usd-price="${s.precio}">${formatUsdBs(s.precio)}</span>
-            ${s.sucursal_nombre ? `<small class="d-block text-muted mt-1"><i class="bi bi-geo-alt"></i> ${s.sucursal_nombre}</small>` : ''}
-        </div></div>`;
+                const safeName = escapeHtml(s.nombre || '');
+                const safeDesc = escapeHtml(s.descripcion || s.tipo || 'Servicio automotriz');
+                const safeBranch = escapeHtml(s.sucursal_nombre || '');
+                grid.innerHTML += `<div class="col-12 col-md-6 fade-in-up">
+                    <article class="service-card catalog-service-card" onclick="addToCart(${s.id},'servicio')">
+                        <div class="catalog-service-icon"><i class="bi ${icons[s.tipo] || 'bi-wrench-adjustable'}"></i></div>
+                        <div class="catalog-service-copy">
+                            <span>Servicio tecnico</span>
+                            <h6>${safeName}</h6>
+                            <p>${safeDesc}</p>
+                            ${safeBranch ? `<small><i class="bi bi-geo-alt"></i>${safeBranch}</small>` : ''}
+                        </div>
+                        <div class="catalog-service-action">
+                            <strong class="service-price" data-usd-price="${s.precio}">${formatUsdBs(s.precio)}</strong>
+                            <button type="button" class="btn btn-sm btn-orange"><i class="bi bi-cart-plus me-1"></i>Agregar</button>
+                        </div>
+                    </article>
+                </div>`;
             });
             if (!services.length) grid.innerHTML = '<div class="col-12"><div class="empty-state"><i class="bi bi-wrench"></i><p>No se encontraron servicios</p></div></div>';
         }

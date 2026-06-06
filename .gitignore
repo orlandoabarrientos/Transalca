@@ -36,6 +36,8 @@ public/assets/profile_pics/*
 public/assets/comprobantes/*
 public/assets/images/*
 !public/assets/images/.gitkeep
+!public/assets/images/transalca-ecommerce-hero.png
+!public/assets/images/product-default-*.png
 !public/assets/comprobantes/.gitkeep
 
 # Backups
@@ -43,6 +45,7 @@ respaldos/*
 !respaldos/.gitkeep
 
 # Temp files
+tmp/
 tmp_hash.txt
 *.tmp
 *.log

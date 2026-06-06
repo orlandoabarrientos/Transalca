@@ -49,7 +49,14 @@ async function checkSession() {
 function updateNavForUser() {
     if (!currentUser) return;
     const photo = document.getElementById('clientNavPhoto');
-    if (photo) photo.src = `/public/assets/profile_pics/${currentUser.foto || 'default.png'}`;
+    const hasCustomPhoto = !!currentUser.foto && currentUser.foto !== 'default.png';
+    if (photo) {
+        photo.src = `/public/assets/profile_pics/${currentUser.foto || 'default.png'}`;
+        photo.style.display = hasCustomPhoto ? '' : 'none';
+    }
+    document.querySelectorAll('.client-profile-fallback').forEach(el => {
+        el.style.display = hasCustomPhoto ? 'none' : '';
+    });
     document.querySelectorAll('.auth-required').forEach(el => el.style.display = '');
     document.querySelectorAll('.guest-only').forEach(el => el.style.display = 'none');
     const adminBtn = document.getElementById('navAdminBtn');
@@ -106,6 +113,73 @@ async function addToCart(itemId, tipo = 'producto', cantidad = 1) {
         }
     } catch (e) {
         showToast('Error de conexion', 'error');
+    }
+}
+
+function normalizeProductText(value) {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+}
+
+function hasExplicitProductImage(product) {
+    const image = String(product?.imagen || '').trim();
+    return !!image && image !== 'default_product.png' && image !== 'no-image.png';
+}
+
+function getProductDefaultImageName(product = {}) {
+    const text = normalizeProductText([
+        product.categoria_nombre,
+        product.categoria,
+        product.tipo,
+        product.nombre,
+        product.descripcion,
+        product.marca_nombre,
+        product.marca
+    ].filter(Boolean).join(' '));
+
+    const rules = [
+        { image: 'product-default-battery.png', terms: ['bateria', 'battery', 'amp', 'duracell', 'moura'] },
+        { image: 'product-default-lubricant.png', terms: ['lubricante', 'aceite', 'oil', '10w', '15w', '20w', '5w', 'sintetico', 'valvoline', 'mobil'] },
+        { image: 'product-default-filter.png', terms: ['filtro', 'filter'] },
+        { image: 'product-default-brake.png', terms: ['freno', 'pastilla', 'disco', 'brake'] },
+        { image: 'product-default-tire.png', terms: ['caucho', 'llanta', 'neumatico', 'rin', 'r13', 'r14', 'r15', 'r16', 'r17', 'r18', 'r19', 'pirelli', 'bridgestone', 'goodyear'] }
+    ];
+
+    const match = rules.find(rule => rule.terms.some(term => text.includes(term)));
+    return match ? match.image : 'product-default-parts.png';
+}
+
+function getProductImageName(product = {}) {
+    return hasExplicitProductImage(product) ? String(product.imagen).trim() : getProductDefaultImageName(product);
+}
+
+function getProductImageSrc(product = {}) {
+    return `/public/assets/images/${encodeURIComponent(getProductImageName(product))}`;
+}
+
+function buildProductImageHtml(product = {}, altText = '') {
+    const imageName = getProductImageName(product);
+    const fallbackName = getProductDefaultImageName(product);
+    const isDefault = !hasExplicitProductImage(product);
+    const src = `/public/assets/images/${encodeURIComponent(imageName)}`;
+    const fallback = `/public/assets/images/${encodeURIComponent(fallbackName)}`;
+    const classes = isDefault ? ' class="product-default-image"' : '';
+    return `<img src="${src}" alt="${escapeHtml(altText || product.nombre || 'Producto')}"${classes} data-product-fallback="${fallback}" onerror="handleProductImageError(this)">`;
+}
+
+function handleProductImageError(img) {
+    if (!img) return;
+    const fallback = img.dataset.productFallback || '/public/assets/images/product-default-parts.png';
+    if (img.src.indexOf(fallback) === -1 && img.dataset.fallbackApplied !== '1') {
+        img.dataset.fallbackApplied = '1';
+        img.classList.add('product-default-image');
+        img.src = fallback;
+        return;
+    }
+    if (img.parentElement) {
+        img.parentElement.innerHTML = '<div class="no-image"><i class="bi bi-image"></i><span>Sin imagen</span></div>';
     }
 }
 
@@ -301,7 +375,7 @@ function toggleCurrency() {
 function updateCurrencyMenuLabel() {
     const currency = getSelectedCurrency();
     document.querySelectorAll('[data-currency-toggle-label]').forEach(el => {
-        el.textContent = currency === 'USD' ? 'Ver precios en bolívares' : 'Ver precios en dólares';
+        el.textContent = currency === 'USD' ? 'Ver precios en bolivares' : 'Ver precios en dolares';
     });
 }
 

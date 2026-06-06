@@ -18,7 +18,7 @@ async function initializeHelpPage() {
     helpState.initialized = true;
 
     const loggedIn = await checkSession();
-    if (!loggedIn || !currentUser || currentUser.tipo !== 'cliente') {
+    if (!loggedIn || !currentUser) {
         $('#guestHelpBox').show();
         $('#clientHelpApp').hide();
         return;
@@ -94,14 +94,14 @@ function renderHelpTicketList() {
 
     helpState.tickets.forEach(t => {
         const active = Number(t.id) === Number(helpState.selectedTicketId) ? 'active' : '';
-        const statusBadge = estadoBadge(t.estado || 'abierto');
-        const priorityBadge = estadoBadge(t.prioridad || 'media');
+        const statusBadge = helpEstadoBadge(t.estado || 'abierto');
+        const priorityBadge = helpEstadoBadge(t.prioridad || 'media');
         const item = `
             <button type="button" class="list-group-item list-group-item-action ${active}" data-ticket-id="${t.id}">
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="text-start">
                         <div class="fw-semibold">#${t.id} ${escapeHtml(t.asunto || '')}</div>
-                        <div class="small text-muted">${formatDate(t.created_at)}</div>
+                        <div class="small text-muted">${helpFormatDate(t.created_at)}</div>
                     </div>
                     <div class="text-end">
                         <div>${statusBadge}</div>
@@ -161,7 +161,7 @@ function renderHelpTicketDetail(ticket) {
                 <div class="p-2 rounded ${bubbleClass}" style="max-width:80%;">
                     <div class="small fw-semibold mb-1">${escapeHtml(author)}</div>
                     <div>${escapeHtml(m.mensaje || '')}</div>
-                    <div class="small ${mine ? 'text-white-50' : 'text-muted'} mt-1">${formatDate(m.created_at)}</div>
+                    <div class="small ${mine ? 'text-white-50' : 'text-muted'} mt-1">${helpFormatDate(m.created_at)}</div>
                 </div>
             </div>
         `;
@@ -171,11 +171,11 @@ function renderHelpTicketDetail(ticket) {
         <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
                 <h6 class="mb-1">#${ticket.id} ${escapeHtml(ticket.asunto || '')}</h6>
-                <div class="small text-muted">Creado: ${formatDate(ticket.created_at)}</div>
+                <div class="small text-muted">Creado: ${helpFormatDate(ticket.created_at)}</div>
             </div>
             <div class="text-end">
-                ${estadoBadge(ticket.estado || 'abierto')}
-                <div class="mt-1">${estadoBadge(ticket.prioridad || 'media')}</div>
+                ${helpEstadoBadge(ticket.estado || 'abierto')}
+                <div class="mt-1">${helpEstadoBadge(ticket.prioridad || 'media')}</div>
             </div>
         </div>
         <div id="helpChatMessages" class="border rounded p-2" style="height:320px;overflow-y:auto;">
@@ -273,4 +273,37 @@ function escapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+function helpEstadoBadge(value) {
+    if (typeof estadoBadge === 'function') return estadoBadge(value);
+    const estado = String(value || '').toLowerCase();
+    const colors = {
+        abierto: 'primary',
+        en_revision: 'info',
+        espera_cliente: 'warning',
+        resuelto: 'success',
+        cerrado: 'secondary',
+        baja: 'secondary',
+        media: 'info',
+        alta: 'warning',
+        critica: 'danger'
+    };
+    const color = colors[estado] || 'secondary';
+    const label = estado.replace(/_/g, ' ');
+    return `<span class="badge bg-${color}">${escapeHtml(label.charAt(0).toUpperCase() + label.slice(1))}</span>`;
+}
+
+function helpFormatDate(value) {
+    if (typeof formatDate === 'function') return formatDate(value);
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return escapeHtml(value);
+    return date.toLocaleString('es-VE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 }

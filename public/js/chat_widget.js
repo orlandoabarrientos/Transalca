@@ -5,7 +5,8 @@
     const ASSISTANT_API_URL = window.TRANSALCA_ASSISTANT_API_URL || '';
     const WEBHOOK_URL = window.TRANSALCA_ASSISTANT_WEBHOOK_URL || '';
     const BOT_NAME = 'Asistente Transalca';
-    const WELCOME_MSG = '¡Hola! Soy el asistente de Transalca C.A. Cuéntame qué necesitas y te ayudo. Si quieres hablar con una persona real, me dices y te paso el número.';
+    const BRAND_WELCOME_MSG = 'Hola! Soy el asistente de Transalca Group. Cuentame que necesitas y te ayudo. Si quieres hablar con una persona real, me dices y te paso el numero.';
+    const WELCOME_MSG = 'Hola! Soy el asistente de Transalca Group. Cuentame que necesitas y te ayudo. Si quieres hablar con una persona real, me dices y te paso el numero.';
     const SUGGESTIONS = [
         'Consultar productos',
         'Precios y promociones',
@@ -112,7 +113,7 @@
         if (!sessionId) {
             sessionId = generateSessionId();
             messages = [];
-            addBotMessage(WELCOME_MSG);
+            addBotMessage(BRAND_WELCOME_MSG);
         }
         isOpen = true;
         document.getElementById('chatPanel').classList.add('open');
@@ -271,7 +272,7 @@
         const container = document.getElementById('chatMessages');
         if (container) container.innerHTML = '';
         sessionId = generateSessionId();
-        addBotMessage(WELCOME_MSG);
+        addBotMessage(BRAND_WELCOME_MSG);
     }
 
     window.TransalcaChat = {

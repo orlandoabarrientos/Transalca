@@ -1,29 +1,38 @@
 <nav class="client-navbar-wrap">
+    <div class="client-topbar">
+        <div class="container d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span><i class="bi bi-shield-check me-1"></i>Compra segura en repuestos, cauchos y servicios</span>
+            <span class="d-none d-md-inline-flex align-items-center gap-3">
+                <span><i class="bi bi-truck me-1"></i>Atencion por sucursal</span>
+                <span><i class="bi bi-headset me-1"></i>Soporte especializado</span>
+            </span>
+        </div>
+    </div>
     <div class="navbar navbar-expand-lg client-navbar">
         <div class="container">
             <a href="/client/home" class="client-brand">
-                <img src="/public/img/logo.png" alt="Transalca" class="client-brand-logo">
+                <img src="/public/img/transalca-logo.png" alt="Transalca Group" class="client-brand-logo">
                 <div>
-                    <strong>TRANSALCA C.A.</strong>
-                    <small>Repuestos y servicio automotriz</small>
+                    <strong>Transalca Group</strong>
+                    <small>Repuestos, cauchos y servicios</small>
                 </div>
             </a>
 
-            <div class="d-flex align-items-center gap-2 order-lg-3">
+            <div class="client-actions d-flex align-items-center gap-2 order-lg-3">
                 <div class="d-none d-xl-flex align-items-center" id="ratesBar">
                     <span class="client-rate-pill">
                         <i class="bi bi-bank me-1"></i>BCV: <span id="rateBcvClient">--</span> Bs
                     </span>
                 </div>
-                <a href="/client/cart" class="btn btn-sm btn-orange auth-required position-relative"
-                    style="display:none;">
-                    <i class="bi bi-cart3 me-1"></i>Carrito
+                <a href="/client/cart" class="btn btn-sm auth-required position-relative client-icon-btn client-cart-btn"
+                    style="display:none;" title="Carrito" aria-label="Carrito">
+                    <i class="bi bi-cart3"></i>
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
                         id="cartBadge" style="display:none;">0</span>
                 </a>
-                <div class="dropdown auth-required" style="display:none;">
-                    <button class="btn btn-sm position-relative" data-bs-toggle="dropdown" title="Notificaciones">
-                        <i class="bi bi-bell-fill" style="font-size:1.1rem;"></i>
+                <div class="dropdown auth-required client-notifications" style="display:none;">
+                    <button class="btn btn-sm position-relative client-icon-btn" data-bs-toggle="dropdown" title="Notificaciones">
+                        <i class="bi bi-bell"></i>
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="clientNotifBadge" style="display:none;font-size:0.6rem;">0</span>
                     </button>
                     <div class="dropdown-menu dropdown-menu-end p-0" style="width:320px;max-height:360px;overflow-y:auto;">
@@ -34,10 +43,11 @@
                         <div id="clientNotifList"><div class="text-center text-muted py-3" style="font-size:0.8rem;">Sin notificaciones</div></div>
                     </div>
                 </div>
-                <a href="/admin/dashboard" class="btn btn-sm btn-dark" id="navAdminBtn" style="display:none;"
+                <a href="/admin/dashboard" class="btn btn-sm btn-dark client-icon-btn" id="navAdminBtn" style="display:none;"
                     title="Panel de Administracion"><i class="bi bi-shield-lock-fill"></i></a>
                 <div class="dropdown auth-required" style="display:none;">
                     <button class="btn btn-sm client-profile-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="client-profile-fallback" aria-hidden="true"><i class="bi bi-person-circle"></i></span>
                         <img src="/public/assets/profile_pics/default.png" alt="Perfil" id="clientNavPhoto"
                             class="client-profile-photo">
                     </button>
@@ -48,9 +58,9 @@
                                 Pedidos</a></li>
                         <li><a class="dropdown-item" href="/client/my_loyalty"><i class="bi bi-gift me-2"></i>Mi
                                 Fidelizacion</a></li>
-                        <li><a class="dropdown-item" href="/client/help"><i class="bi bi-life-preserver me-2"></i>Ayuda</a></li>
+                        <li><a class="dropdown-item" href="/client/help"><i class="bi bi-headset me-2"></i>Ayuda</a></li>
                         <li><a class="dropdown-item" href="/scanner"><i class="bi bi-upc-scan me-2"></i>Escaner</a></li>
-                        <li><a class="dropdown-item" href="#" data-currency-toggle><i class="bi bi-currency-exchange me-2"></i><span data-currency-toggle-label>Ver precios en bolívares</span></a></li>
+                        <li><a class="dropdown-item" href="#" data-currency-toggle><i class="bi bi-currency-exchange me-2"></i><span data-currency-toggle-label>Ver precios en bolivares</span></a></li>
                         <li>
                             <hr class="dropdown-divider">
                         </li>
@@ -58,8 +68,8 @@
                                     class="bi bi-box-arrow-left me-2"></i>Cerrar Sesion</a></li>
                     </ul>
                 </div>
-                <a href="/auth/login" class="btn btn-sm btn-orange guest-only"><i
-                        class="bi bi-person-fill me-1"></i>Iniciar Sesion</a>
+                <a href="/auth/login" class="btn btn-sm btn-orange guest-only" title="Iniciar Sesion"><i
+                        class="bi bi-person-fill me-1"></i>Entrar</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
                     data-bs-target="#clientNavCollapse" aria-controls="clientNavCollapse" aria-expanded="false"
                     aria-label="Abrir menu">
@@ -77,7 +87,7 @@
                             href="/client/my_orders"><i class="bi bi-bag-check me-1"></i>Pedidos</a></li>
                     <li class="nav-item auth-required" style="display:none;"><a class="nav-link"
                             href="/client/my_loyalty"><i class="bi bi-gift me-1"></i>Fidelizacion</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/client/help"><i class="bi bi-life-preserver me-1"></i>Ayuda</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/client/help"><i class="bi bi-headset me-1"></i>Ayuda</a></li>
                     <li class="nav-item auth-required" style="display:none;"><a class="nav-link" href="/scanner"><i
                                 class="bi bi-upc-scan me-1"></i>Escaner</a></li>
                 </ul>

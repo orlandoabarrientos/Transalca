@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transalca Group | La mejor calidad</title>
-    <link rel="icon" type="image/png" href="/public/img/logo.png">
+    <link rel="icon" type="image/png" href="/public/img/transalca-logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
@@ -14,12 +14,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 
-<body>
+<body class="client-store">
     <div id="navbarContainer"></div>
-    <div class="container py-4" style="min-height:420px;">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-            <h3 class="fw-bold mb-0"><i class="bi bi-bag-check me-2"></i>Mis Pedidos</h3>
-            <input type="search" class="form-control auto-table-search" id="orderSearch" placeholder="Buscar pedido..." style="max-width:320px;">
+    <section class="client-page-hero compact-page-hero orders-page-hero">
+        <div class="container">
+            <span class="store-eyebrow"><i class="bi bi-bag-check me-2"></i>Pedidos</span>
+            <h1>Consulta el estado de tus compras</h1>
+            <p>Revisa detalles, comprobantes, codigos QR y solicitudes de validacion desde un solo lugar.</p>
+        </div>
+    </section>
+    <div class="container py-4 client-inner-page orders-page" style="min-height:420px;">
+        <div class="client-page-title-row orders-toolbar">
+            <div>
+                <span class="store-eyebrow">Historial</span>
+                <h3><i class="bi bi-bag-check me-2"></i>Mis Pedidos</h3>
+            </div>
+            <div class="search-bar orders-search">
+                <i class="bi bi-search"></i>
+                <input type="search" class="form-control auto-table-search" id="orderSearch" placeholder="Buscar pedido...">
+            </div>
         </div>
         <div id="ordersList"><div class="text-center py-5"><span class="spinner-border text-primary"></span><p class="text-muted mt-2">Cargando pedidos...</p></div></div>
     </div>

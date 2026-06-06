@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transalca Group | La mejor calidad</title>
-    <link rel="icon" type="image/png" href="/public/img/logo.png">
+    <link rel="icon" type="image/png" href="/public/img/transalca-logo.png">
     <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
@@ -12,13 +12,25 @@
     <link rel="stylesheet" href="/componente_ia/chat_widget.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="client-store">
     <div id="navbarContainer"></div>
-    <div class="container py-4">
-        <h3 class="fw-bold mb-4">Mi Perfil</h3>
+    <section class="client-page-hero compact-page-hero profile-page-hero">
+        <div class="container">
+            <span class="store-eyebrow"><i class="bi bi-person-circle me-2"></i>Cuenta</span>
+            <h1>Administra tu perfil y tus vehiculos</h1>
+            <p>Manten tus datos actualizados para compras, soporte, servicios y seguimiento de mantenimiento.</p>
+        </div>
+    </section>
+    <div class="container py-4 client-inner-page profile-page">
+        <div class="client-page-title-row">
+            <div>
+                <span class="store-eyebrow">Area cliente</span>
+                <h3>Mi Perfil</h3>
+            </div>
+        </div>
         <div class="row g-4">
             <div class="col-md-4">
-                <div class="card-custom text-center">
+                <div class="card-custom text-center profile-identity-card">
                     <div class="card-body py-5">
                         <img src="/public/assets/profile_pics/default.png" id="profilePhoto" class="rounded-circle mb-3"
                             style="width:130px;height:130px;object-fit:cover;border:4px solid var(--highlight);">
@@ -34,8 +46,8 @@
                 </div>
             </div>
             <div class="col-md-8">
-                <div class="card-custom mb-4">
-                    <div class="card-header"><span>Informacion Personal</span></div>
+                <div class="card-custom mb-4 profile-form-card">
+                    <div class="card-header"><span><i class="bi bi-person-lines-fill me-2"></i>Informacion Personal</span></div>
                     <div class="card-body">
                         <form id="profileForm">
                             <div class="row mb-3">
@@ -63,8 +75,8 @@
                     </div>
                 </div>
 
-                <div class="card-custom mb-4">
-                    <div class="card-header"><span>Cambiar Contrasena</span></div>
+                <div class="card-custom mb-4 profile-form-card">
+                    <div class="card-header"><span><i class="bi bi-shield-lock me-2"></i>Cambiar Contrasena</span></div>
                     <div class="card-body">
                         <form id="passwordForm">
                             <div class="mb-3">
@@ -88,9 +100,9 @@
                     </div>
                 </div>
 
-                <div class="card-custom">
+                <div class="card-custom vehicle-card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Mis Vehiculos</span>
+                        <span><i class="bi bi-car-front me-2"></i>Mis Vehiculos</span>
                         <button type="button" class="btn btn-sm btn-orange" id="btnAddVehicle">
                             <i class="bi bi-plus-circle me-1"></i>Agregar Vehiculo
                         </button>
@@ -202,7 +214,6 @@
     <script src="/public/jquery/jquery.min.js"></script>
     <script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
     <script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
-    <script src="/public/js/admin_common.js"></script>
     <script src="/public/js/client_common.js"></script>
     <script src="/public/js/constants.js"></script>
     <script src="/public/js/client_profile.js"></script>

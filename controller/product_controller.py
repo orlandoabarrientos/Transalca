@@ -92,6 +92,41 @@ def get_all():
 @product_bp.route('/active', methods=['GET'])
 def get_active():
     try:
+        if request.args.get('page') is not None or request.args.get('per_page') is not None:
+            try:
+                page = max(1, int(request.args.get('page', 1)))
+            except (ValueError, TypeError):
+                page = 1
+            try:
+                per_page = max(1, min(100, int(request.args.get('per_page', 30))))
+            except (ValueError, TypeError):
+                per_page = 30
+
+            branch = None
+            branch_raw = request.args.get('branch')
+            if branch_raw:
+                try:
+                    branch = int(branch_raw)
+                except (ValueError, TypeError):
+                    branch = None
+
+            sort = request.args.get('sort') if request.args.get('sort') in ('price_asc', 'price_desc', 'name') else None
+            paginated = model.get_active_paginated(
+                page,
+                per_page,
+                category=(request.args.get('category') or '').strip()[:150] or None,
+                branch=branch,
+                q=(request.args.get('q') or '').strip()[:80] or None,
+                sort=sort
+            )
+            return jsonify({
+                "status": "success",
+                "data": paginated["data"],
+                "total": paginated["total"],
+                "page": paginated["page"],
+                "per_page": paginated["per_page"],
+                "pages": paginated["pages"]
+            })
         return jsonify({"status": "success", "data": model.get_active()})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los productos"}), 500
