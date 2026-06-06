@@ -1123,9 +1123,10 @@ a:hover {
     display: grid;
     grid-template-columns: minmax(340px, 430px) minmax(400px, 520px);
     align-items: stretch;
+    align-content: center;
     gap: 0;
     width: min(100%, 950px);
-    min-height: auto;
+    min-height: 100vh;
     margin: 0 auto;
     padding: clamp(10px, 2vh, 22px);
     background: transparent;
