@@ -230,8 +230,8 @@ def add_vehicle(cedula):
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         clean['cliente_cedula'] = cedula
-        if clean.get('placa') and vehicle_model.placa_exists(clean['placa']):
-            return jsonify({"status": "error", "message": "Esta placa ya esta registrada.", "errors": {"placa": "Esta placa ya esta registrada."}}), 400
+        if data.get('representante_cedula'):
+            clean['representante_cedula'] = str(data.get('representante_cedula')).strip()
         vid = vehicle_model.create(clean)
         return jsonify({"status": "success", "message": "Vehiculo registrado correctamente.", "id": vid}), 201
     except Exception as e:
@@ -251,7 +251,7 @@ def update_vehicle(cedula, vid):
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         vehicle = vehicle_model.get_by_id(vid)
-        if not vehicle or vehicle.get('cliente_cedula') != cedula:
+        if not vehicle or cedula not in vehicle.get('cliente_cedula', '').split(','):
             return jsonify({"status": "error", "message": "Vehiculo no encontrado"}), 404
         if clean.get('placa') and vehicle_model.placa_exists(clean['placa'], exclude_id=vid):
             return jsonify({"status": "error", "message": "Esta placa ya esta registrada.", "errors": {"placa": "Esta placa ya esta registrada."}}), 400
@@ -270,9 +270,9 @@ def delete_vehicle(cedula, vid):
         if not can_access_client(cedula):
             return deny()
         vehicle = vehicle_model.get_by_id(vid)
-        if not vehicle or vehicle.get('cliente_cedula') != cedula:
+        if not vehicle or cedula not in vehicle.get('cliente_cedula', '').split(','):
             return jsonify({"status": "error", "message": "Vehiculo no encontrado"}), 404
-        vehicle_model.soft_delete(vid)
+        vehicle_model.soft_delete_relationship(cedula, vid)
         return jsonify({"status": "success", "message": "Vehiculo eliminado correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

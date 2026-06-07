@@ -12,24 +12,38 @@ class VehicleModel(Connection):
 
     def get_all(self):
         return self.fetch_all("transalca",
-            "SELECT v.*, v.placa as id, c.nombre as cliente_nombre, c.apellido as cliente_apellido "
+            "SELECT v.*, v.placa as id, "
+            "COALESCE(GROUP_CONCAT(DISTINCT CONCAT(c.nombre, ' ', c.apellido) SEPARATOR ', '), '-') as cliente_nombre, "
+            "'' as cliente_apellido "
             "FROM vehiculos v "
-            "INNER JOIN clientes c ON v.cliente_cedula = c.cedula "
-            "WHERE v.estado = 1 ORDER BY v.created_at DESC")
+            "LEFT JOIN cliente_vehiculo cv ON v.placa = cv.vehiculo_placa AND cv.estado = 1 "
+            "LEFT JOIN clientes c ON cv.cliente_cedula = c.cedula "
+            "WHERE v.estado = 1 "
+            "GROUP BY v.placa "
+            "ORDER BY v.created_at DESC")
 
     def get_by_id(self, vid):
         placa = self._plate(vid)
         return self.fetch_one("transalca",
-            "SELECT v.*, v.placa as id, c.nombre as cliente_nombre, c.apellido as cliente_apellido, "
-            "c.telefono as cliente_telefono, c.email as cliente_email "
+            "SELECT v.*, v.placa as id, "
+            "COALESCE(GROUP_CONCAT(DISTINCT CONCAT(c.nombre, ' ', c.apellido) SEPARATOR ', '), '-') as cliente_nombre, "
+            "'' as cliente_apellido, "
+            "COALESCE(GROUP_CONCAT(DISTINCT c.telefono SEPARATOR ', '), '') as cliente_telefono, "
+            "COALESCE(GROUP_CONCAT(DISTINCT c.email SEPARATOR ', '), '') as cliente_email, "
+            "COALESCE(GROUP_CONCAT(DISTINCT c.cedula SEPARATOR ','), '') as cliente_cedula "
             "FROM vehiculos v "
-            "INNER JOIN clientes c ON v.cliente_cedula = c.cedula "
-            "WHERE v.placa = %s", (placa,))
+            "LEFT JOIN cliente_vehiculo cv ON v.placa = cv.vehiculo_placa AND cv.estado = 1 "
+            "LEFT JOIN clientes c ON cv.cliente_cedula = c.cedula "
+            "WHERE v.placa = %s "
+            "GROUP BY v.placa", (placa,))
 
     def get_by_cliente(self, cliente_cedula):
         return self.fetch_all("transalca",
-            "SELECT v.*, v.placa as id FROM vehiculos v WHERE cliente_cedula = %s AND estado = 1 "
-            "ORDER BY created_at DESC", (cliente_cedula,))
+            "SELECT v.*, v.placa as id "
+            "FROM vehiculos v "
+            "INNER JOIN cliente_vehiculo cv ON v.placa = cv.vehiculo_placa "
+            "WHERE cv.cliente_cedula = %s AND cv.estado = 1 AND v.estado = 1 "
+            "ORDER BY cv.created_at DESC", (cliente_cedula,))
 
     def get_by_placa(self, placa):
         return self.fetch_one("transalca",
@@ -38,24 +52,55 @@ class VehicleModel(Connection):
     def create(self, data):
         validate_choice(data.get('tipo_combustible', 'gasolina'), TIPOS_COMBUSTIBLE, 'tipo_combustible')
         placa = self._plate(data.get('placa'))
-        self.insert("transalca",
-            "INSERT INTO vehiculos (cliente_cedula, marca, modelo, anio, placa, color, "
-            "tipo_vehiculo, tipo_combustible, kilometraje_actual, aceite_usado, "
-            "filtros_info, refrigerante_info, observaciones, titulo_vehiculo) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-            (data['cliente_cedula'].strip(), data['marca'].strip(),
-             data['modelo'].strip(), data.get('anio') or None,
-             placa,
-             (data.get('color') or '').strip(),
-             (data.get('tipo_vehiculo') or '').strip(),
-             data.get('tipo_combustible', 'gasolina'),
-             int(data.get('kilometraje_actual', 0)),
-             (data.get('aceite_usado') or '').strip(),
-             (data.get('filtros_info') or '').strip(),
-             (data.get('refrigerante_info') or '').strip(),
-             (data.get('observaciones') or '').strip(),
-             data.get('titulo_vehiculo') or None))
-        return placa
+        cliente_cedula = data.get('cliente_cedula', '').strip()
+        
+        conn = self.con_transalca()
+        conn.begin()
+        try:
+            existing_vehicle = self.fetch_one("transalca", "SELECT placa, estado FROM vehiculos WHERE placa = %s", (placa,))
+            if not existing_vehicle:
+                self.insert("transalca",
+                    "INSERT INTO vehiculos (marca, modelo, anio, placa, color, "
+                    "tipo_vehiculo, tipo_combustible, kilometraje_actual, aceite_usado, "
+                    "filtros_info, refrigerante_info, observaciones, titulo_vehiculo, estado) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1)",
+                    (data['marca'].strip(), data['modelo'].strip(),
+                     data.get('anio') or None, placa,
+                     (data.get('color') or '').strip(),
+                     (data.get('tipo_vehiculo') or '').strip(),
+                     data.get('tipo_combustible', 'gasolina'),
+                     int(data.get('kilometraje_actual', 0)),
+                     (data.get('aceite_usado') or '').strip(),
+                     (data.get('filtros_info') or '').strip(),
+                     (data.get('refrigerante_info') or '').strip(),
+                     (data.get('observaciones') or '').strip(),
+                     data.get('titulo_vehiculo') or None))
+            elif existing_vehicle['estado'] == 0:
+                self.update("transalca", "UPDATE vehiculos SET estado = 1 WHERE placa = %s", (placa,))
+                
+            if cliente_cedula:
+                existing_rel = self.fetch_one("transalca", 
+                    "SELECT id, estado FROM cliente_vehiculo WHERE cliente_cedula = %s AND vehiculo_placa = %s", 
+                    (cliente_cedula, placa))
+                if not existing_rel:
+                    self.insert("transalca", 
+                        "INSERT INTO cliente_vehiculo (cliente_cedula, vehiculo_placa, estado) VALUES (%s, %s, 1)", 
+                        (cliente_cedula, placa))
+                elif existing_rel['estado'] == 0:
+                    self.update("transalca", "UPDATE cliente_vehiculo SET estado = 1 WHERE id = %s", (existing_rel['id'],))
+                    
+                # If representative_cedula is provided (for company fleet vehicles), record the operation
+                representante_cedula = data.get('representante_cedula', '').strip()
+                if representante_cedula:
+                    self.insert("transalca",
+                        "INSERT INTO empresa_vehiculo_representante (empresa_rif, vehiculo_placa, representante_cedula, tipo_operacion) "
+                        "VALUES (%s, %s, %s, 'registro')",
+                        (cliente_cedula, placa, representante_cedula))
+            conn.commit()
+            return placa
+        except Exception:
+            conn.rollback()
+            raise
 
     def update_vehicle(self, vid, data):
         validate_choice(data.get('tipo_combustible', 'gasolina'), TIPOS_COMBUSTIBLE, 'tipo_combustible')
@@ -102,6 +147,15 @@ class VehicleModel(Connection):
         return self.update("transalca",
             "UPDATE vehiculos SET estado = 0 WHERE placa = %s", (self._plate(vid),))
 
+    def soft_delete_relationship(self, cliente_cedula, placa):
+        return self.update("transalca",
+            "UPDATE cliente_vehiculo SET estado = 0 WHERE cliente_cedula = %s AND vehiculo_placa = %s",
+            (cliente_cedula, self._plate(placa)))
+
+    def get_clients_by_vehicle(self, placa):
+        rows = self.fetch_all("transalca", "SELECT cliente_cedula FROM cliente_vehiculo WHERE vehiculo_placa = %s AND estado = 1", (self._plate(placa),))
+        return [r['cliente_cedula'] for r in rows]
+
     def placa_exists(self, placa, exclude_id=None):
         if not placa:
             return False
@@ -121,10 +175,15 @@ class VehicleModel(Connection):
     def search(self, query):
         q = f"%{query}%"
         return self.fetch_all("transalca",
-            "SELECT v.*, v.placa as id, c.nombre as cliente_nombre, c.apellido as cliente_apellido "
-            "FROM vehiculos v INNER JOIN clientes c ON v.cliente_cedula = c.cedula "
+            "SELECT v.*, v.placa as id, "
+            "COALESCE(GROUP_CONCAT(DISTINCT CONCAT(c.nombre, ' ', c.apellido) SEPARATOR ', '), '-') as cliente_nombre, "
+            "'' as cliente_apellido "
+            "FROM vehiculos v "
+            "LEFT JOIN cliente_vehiculo cv ON v.placa = cv.vehiculo_placa AND cv.estado = 1 "
+            "LEFT JOIN clientes c ON cv.cliente_cedula = c.cedula "
             "WHERE v.estado = 1 AND (v.placa LIKE %s OR v.marca LIKE %s OR v.modelo LIKE %s "
             "OR c.nombre LIKE %s OR c.apellido LIKE %s) "
+            "GROUP BY v.placa "
             "ORDER BY v.created_at DESC", (q, q, q, q, q))
 
     def get_cauchos(self, vid):

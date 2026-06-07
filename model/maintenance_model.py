@@ -55,22 +55,27 @@ class MaintenanceModel(Connection):
 
     def get_scheduled_by_id(self, mid):
         return self.fetch_one("transalca",
-            "SELECT mp.*, v.cliente_cedula FROM mantenimientos_programados mp "
-            "INNER JOIN vehiculos v ON mp.vehiculo_placa = v.placa WHERE mp.id=%s", (mid,))
+            "SELECT mp.*, COALESCE(GROUP_CONCAT(DISTINCT cv.cliente_cedula SEPARATOR ','), '') as cliente_cedula "
+            "FROM mantenimientos_programados mp "
+            "INNER JOIN vehiculos v ON mp.vehiculo_placa = v.placa "
+            "LEFT JOIN cliente_vehiculo cv ON v.placa = cv.vehiculo_placa AND cv.estado = 1 "
+            "WHERE mp.id=%s GROUP BY mp.id", (mid,))
 
     def get_pending(self, vid=None):
         sql = ("SELECT mp.*, r.nombre as regla_nombre, v.placa, v.marca, v.modelo, "
-               "c.nombre as cliente_nombre, c.apellido as cliente_apellido "
+               "COALESCE(GROUP_CONCAT(DISTINCT CONCAT(c.nombre, ' ', c.apellido) SEPARATOR ', '), '-') as cliente_nombre, "
+               "'' as cliente_apellido "
                "FROM mantenimientos_programados mp "
                "LEFT JOIN reglas_mantenimiento r ON mp.regla_id = r.id "
                "INNER JOIN vehiculos v ON mp.vehiculo_placa = v.placa "
-               "INNER JOIN clientes c ON v.cliente_cedula = c.cedula "
+               "LEFT JOIN cliente_vehiculo cv ON v.placa = cv.vehiculo_placa AND cv.estado = 1 "
+               "LEFT JOIN clientes c ON cv.cliente_cedula = c.cedula "
                "WHERE mp.estado IN ('pendiente','proximo','vencido')")
         params = []
         if vid:
             sql += " AND mp.vehiculo_placa = %s"
             params.append(str(vid).strip().upper())
-        sql += " ORDER BY mp.estado DESC, mp.fecha_proxima ASC"
+        sql += " GROUP BY mp.id ORDER BY mp.estado DESC, mp.fecha_proxima ASC"
         return self.fetch_all("transalca", sql, tuple(params) if params else None)
 
     def create_scheduled(self, data):

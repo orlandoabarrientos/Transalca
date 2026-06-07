@@ -77,6 +77,7 @@
                     </div>
                     <ul class="nav nav-tabs" role="tablist">
                         <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabFlota"><i class="bi bi-truck-front me-1"></i>Flota</a></li>
+                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabRepresentantes"><i class="bi bi-people me-1"></i>Representantes</a></li>
                         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabOrdenes"><i class="bi bi-cart me-1"></i>Ordenes</a></li>
                     </ul>
                     <div class="tab-content p-3 border border-top-0 rounded-bottom">
@@ -86,6 +87,13 @@
                                 <button class="btn btn-sm btn-success" onclick="showFleetModal()"><i class="bi bi-plus me-1"></i>Registrar vehiculo</button>
                             </div>
                             <div id="fleetList"></div>
+                        </div>
+                        <div class="tab-pane fade" id="tabRepresentantes">
+                            <div class="d-flex justify-content-between mb-2">
+                                <h6 class="mb-0">Representantes / Encargados de la empresa</h6>
+                                <button class="btn btn-sm btn-success" onclick="showRepresentativeModal()"><i class="bi bi-plus-circle me-1"></i>Registrar representante</button>
+                            </div>
+                            <div id="representativesList"></div>
                         </div>
                         <div class="tab-pane fade" id="tabOrdenes"><div id="ordersList"></div></div>
                     </div>
@@ -188,11 +196,72 @@
                         <div class="col-6 mb-3"><label class="form-label">Combustible</label><select class="form-select" id="vCombustible" name="tipo_combustible"><option value="gasolina">Gasolina</option><option value="gasoil">Gasoil</option><option value="otro">Otro</option></select></div>
                     </div>
                     <div class="mb-3"><label class="form-label">Kilometraje actual</label><input type="number" class="form-control" id="vKm" name="kilometraje_actual" min="0" value="0"></div>
+                    <div class="mb-3" id="vRepresentanteWrapper"><label class="form-label">Representante que gestiona <span class="text-danger">*</span></label><select class="form-select" id="vRepresentante" name="representante_cedula" required><option value="">Seleccione un representante...</option></select><div class="invalid-feedback"></div></div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success" onclick="saveFleetVehicle()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="representativeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="representativeModalTitle">Registrar Representante</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="representativeForm">
+                    <input type="hidden" id="editRepId">
+                    <div class="mb-3">
+                        <label class="form-label">Cédula <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <select class="form-select" id="repCedulaPrefijo" name="cedula_prefijo" style="max-width:90px;">
+                                <option value="V">V</option>
+                                <option value="E">E</option>
+                                <option value="J">J</option>
+                                <option value="G">G</option>
+                                <option value="P">P</option>
+                            </select>
+                            <input type="text" class="form-control" id="repCedulaNumero" name="cedula_numero" placeholder="12345678" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3"><label class="form-label">Nombre <span class="text-danger">*</span></label><input type="text" class="form-control" id="repNombre" name="nombre" required></div>
+                        <div class="col-6 mb-3"><label class="form-label">Apellido</label><input type="text" class="form-control" id="repApellido" name="apellido"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3"><label class="form-label">Teléfono <span class="text-danger">*</span></label><input type="text" class="form-control" id="repTelefono" name="telefono" placeholder="04121234567" required></div>
+                        <div class="col-6 mb-3"><label class="form-label">Email</label><input type="email" class="form-control" id="repEmail" name="email"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Cargo <span class="text-danger">*</span></label>
+                            <select class="form-select" id="repCargo" name="cargo">
+                                <option value="Representante legal">Representante legal</option>
+                                <option value="Encargado de flota">Encargado de flota</option>
+                                <option value="Persona autorizada">Persona autorizada</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Estado</label>
+                            <select class="form-select" id="repEstado" name="estado">
+                                <option value="1">Activo</option>
+                                <option value="0">Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="saveRepresentative()">Guardar</button>
             </div>
         </div>
     </div>

@@ -115,6 +115,7 @@ def get_one(rif):
             return deny()
         company['flota'] = model.get_fleet(company['cedula'])
         company['ordenes'] = model.get_orders(company['cedula'])
+        company['representantes'] = model.get_representatives(company['cedula'])
         return jsonify({"status": "success", "data": company})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -178,3 +179,49 @@ def delete(rif):
         return jsonify({"status": "success", "message": "Empresa eliminada correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
+
+
+@company_bp.route('/<path:rif>/representatives', methods=['POST'])
+def add_representative(rif):
+    try:
+        auth = require_login()
+        if auth:
+            return auth
+        if not is_employee():
+            return deny()
+        data = request.get_json() or {}
+        errors = {}
+        cedula, prefijo, _ = normalize_cedula(errors, data, field='cedula', required=True)
+        clean = {
+            'cedula': cedula,
+            'cedula_prefijo': prefijo,
+            'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=100, person=True),
+            'apellido': optional_text(errors, 'apellido', data.get('apellido'), 'El apellido', max_len=100, person=True),
+            'telefono': normalize_phone(errors, data.get('telefono')),
+            'email': normalize_email(errors, data.get('email'), required=False),
+            'cargo': require_text(errors, 'cargo', data.get('cargo'), 'El cargo', min_len=2, max_len=50),
+            'estado': int(data.get('estado', 1))
+        }
+        if errors:
+            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+        
+        model.add_representative(rif, clean)
+        return jsonify({"status": "success", "message": "Representante guardado correctamente."})
+    except Exception as e:
+        return jsonify({"status": "error", "message": "No se pudo registrar el representante."}), 500
+
+
+@company_bp.route('/representatives/<int:rid>/toggle', methods=['PUT'])
+def toggle_representative(rid):
+    try:
+        auth = require_login()
+        if auth:
+            return auth
+        if not is_employee():
+            return deny()
+        data = request.get_json() or {}
+        estado = int(data.get('estado', 1))
+        model.toggle_representative_relation(rid, estado)
+        return jsonify({"status": "success", "message": "Estado del representante actualizado correctamente."})
+    except Exception:
+        return jsonify({"status": "error", "message": "No se pudo actualizar el estado del representante."}), 500

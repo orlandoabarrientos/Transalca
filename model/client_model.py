@@ -17,7 +17,7 @@ class ClientModel(Connection):
     def get_all(self, search=None, estado=None, tipo_cliente='persona'):
         sql = (
             "SELECT c.*, "
-            "(SELECT COUNT(*) FROM vehiculos v WHERE v.cliente_cedula = c.cedula AND v.estado = 1) as vehiculos_count "
+            "(SELECT COUNT(*) FROM cliente_vehiculo cv INNER JOIN vehiculos v ON cv.vehiculo_placa = v.placa WHERE cv.cliente_cedula = c.cedula AND cv.estado = 1 AND v.estado = 1) as vehiculos_count "
             "FROM clientes c WHERE c.cedula != 'V-00000000'"
         )
         params = []
@@ -121,7 +121,7 @@ class ClientModel(Connection):
 
     def get_vehicles(self, cedula):
         return self.fetch_all("transalca",
-            "SELECT v.*, v.placa as id FROM vehiculos v WHERE cliente_cedula=%s AND estado=1 ORDER BY created_at DESC",
+            "SELECT v.*, v.placa as id FROM vehiculos v INNER JOIN cliente_vehiculo cv ON v.placa = cv.vehiculo_placa WHERE cv.cliente_cedula=%s AND cv.estado=1 AND v.estado=1 ORDER BY cv.created_at DESC",
             (cedula,))
 
     def get_services(self, cedula):
@@ -129,7 +129,8 @@ class ClientModel(Connection):
             "SELECT bv.*, v.placa, v.marca, v.modelo "
             "FROM bitacora_vehiculo bv "
             "INNER JOIN vehiculos v ON bv.vehiculo_placa = v.placa "
-            "WHERE v.cliente_cedula=%s ORDER BY bv.fecha DESC LIMIT 50",
+            "INNER JOIN cliente_vehiculo cv ON v.placa = cv.vehiculo_placa "
+            "WHERE cv.cliente_cedula=%s AND cv.estado=1 AND v.estado=1 ORDER BY bv.fecha DESC LIMIT 50",
             (cedula,))
 
     def get_tickets(self, cedula):
@@ -156,5 +157,6 @@ class ClientModel(Connection):
             "SELECT bv.*, v.placa, v.marca, v.modelo "
             "FROM bitacora_vehiculo bv "
             "INNER JOIN vehiculos v ON bv.vehiculo_placa = v.placa "
-            "WHERE v.cliente_cedula=%s ORDER BY bv.fecha DESC LIMIT 100",
+            "INNER JOIN cliente_vehiculo cv ON v.placa = cv.vehiculo_placa "
+            "WHERE cv.cliente_cedula=%s AND cv.estado=1 AND v.estado=1 ORDER BY bv.fecha DESC LIMIT 100",
             (cedula,))

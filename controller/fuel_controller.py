@@ -15,8 +15,14 @@ def load_vehicle(vid):
     vehicle = vehicle_model.get_by_id(vid)
     if not vehicle:
         return None, (jsonify({"status": "error", "message": "Vehiculo no encontrado"}), 404)
-    if not can_access_client(vehicle.get('cliente_cedula')):
-        return None, (jsonify({"status": "error", "message": "No autorizado"}), 403)
+    from flask import session
+    from controller._guards import is_employee, is_client
+    if is_employee():
+        return vehicle, None
+    if is_client():
+        linked_clients = vehicle.get('cliente_cedula', '').split(',')
+        if session.get('user_cedula') not in linked_clients:
+            return None, (jsonify({"status": "error", "message": "No autorizado"}), 403)
     return vehicle, None
 
 

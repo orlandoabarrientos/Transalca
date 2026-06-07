@@ -1,4 +1,5 @@
 let currentCompanyRif = null;
+let currentCompanyRepresentatives = [];
 
 $(document).ready(function () {
     $('#sidebarContainer').load('/components/admin_sidebar.html', () => {
@@ -59,10 +60,26 @@ $(document).ready(function () {
         vPlaca: { required: true, minLength: 5, maxLength: 10, requiredMsg: 'Placa requerida', maxLengthMsg: 'La placa no puede superar los 10 caracteres.' },
         vColor: { maxLength: 20, maxLengthMsg: 'El color no puede superar los 20 caracteres.' },
         vTipo: { maxLength: 30, maxLengthMsg: 'El tipo de vehículo no puede superar los 30 caracteres.' },
-        vKm: { min: 0, minMsg: 'El kilometraje no puede ser negativo' }
+        vKm: { min: 0, minMsg: 'El kilometraje no puede ser negativo' },
+        vRepresentante: {
+            custom: v => {
+                const vid = $('#editVehicleId').val();
+                if (vid) return true;
+                return !!v;
+            },
+            customMsg: 'Seleccione el representante que gestiona el registro'
+        }
+    });
+    Validator.setRules('representativeForm', {
+        repCedulaNumero: { required: true, pattern: /^\d{7,8}$/, maxLength: 8, requiredMsg: 'Cedula requerida', patternMsg: 'Debe tener 7 o 8 digitos', maxLengthMsg: 'La cedula no puede superar los 8 caracteres.' },
+        repNombre: { required: true, minLength: 2, maxLength: 50, requiredMsg: 'Nombre requerido', maxLengthMsg: 'El nombre no puede superar los 50 caracteres.' },
+        repApellido: { maxLength: 50, maxLengthMsg: 'El apellido no puede superar los 50 caracteres.' },
+        repTelefono: { required: true, pattern: /^04\d{9}$/, maxLength: 11, requiredMsg: 'Telefono requerido', patternMsg: 'Debe comenzar por 04 con 11 digitos', maxLengthMsg: 'El telefono no puede superar los 11 caracteres.' },
+        repEmail: { email: true, maxLength: 50, maxLengthMsg: 'El correo no puede superar los 50 caracteres.' }
     });
     Validator.setupRealtime('companyForm');
     Validator.setupRealtime('fleetForm');
+    Validator.setupRealtime('representativeForm');
     $('#fRepresentante').on('input', () => {
         Validator.validateField('companyForm', 'fRepresentanteCedula');
         Validator.validateField('companyForm', 'fRepresentanteTelefono');
@@ -263,6 +280,8 @@ function showCompanyDetail(rif) {
         $('#detDireccion').text(c.direccion || '-');
         renderFleet(c.flota || []);
         renderCompanyOrders(c.ordenes || []);
+        currentCompanyRepresentatives = c.representantes || [];
+        renderRepresentatives(currentCompanyRepresentatives);
         $('#detailPanel').slideDown(200);
         $('html,body').animate({ scrollTop: $('#detailPanel').offset().top - 80 }, 300);
     });
@@ -314,10 +333,27 @@ function showFleetModal(vehicle) {
         $('#vTipo').val(vehicle.tipo_vehiculo);
         $('#vCombustible').val(vehicle.tipo_combustible || 'gasolina');
         $('#vKm').val(vehicle.kilometraje_actual || 0);
+        $('#vRepresentanteWrapper').hide();
+        $('#vRepresentante').prop('required', false).val('');
     } else {
         $('#fleetModalTitle').text('Registrar vehiculo de flota');
         $('#editVehicleId').val('');
         $('#vCombustible').val('gasolina');
+        $('#vRepresentanteWrapper').show();
+        $('#vRepresentante').prop('required', true);
+        
+        // Populate representatives dropdown
+        const activeReps = currentCompanyRepresentatives.filter(r => r.estado === 1);
+        let repHtml = '<option value="">Seleccione un representante...</option>';
+        if (activeReps.length === 0) {
+            repHtml = '<option value="">Debe registrar al menos un representante activo primero...</option>';
+        } else {
+            activeReps.forEach(r => {
+                const fullname = `${r.nombre} ${r.apellido || ''}`.trim();
+                repHtml += `<option value="${escapeHtml(r.cedula)}">${escapeHtml(fullname)} (${escapeHtml(r.cargo)})</option>`;
+            });
+        }
+        $('#vRepresentante').html(repHtml);
     }
     if (window.jQuery?.fn?.select2) window.jQuery('#vCombustible').trigger('change');
     new bootstrap.Modal('#fleetModal').show();
@@ -325,7 +361,7 @@ function showFleetModal(vehicle) {
 }
 
 function fleetPayload() {
-    return {
+    const payload = {
         marca: $('#vMarca').val(),
         modelo: $('#vModelo').val(),
         anio: parseInt($('#vAnio').val()) || null,
@@ -335,6 +371,11 @@ function fleetPayload() {
         tipo_combustible: $('#vCombustible').val(),
         kilometraje_actual: parseInt($('#vKm').val()) || 0
     };
+    const vid = $('#editVehicleId').val();
+    if (!vid) {
+        payload.representante_cedula = $('#vRepresentante').val();
+    }
+    return payload;
 }
 
 function saveFleetVehicle() {
@@ -412,4 +453,115 @@ async function validateUniqueCompanyEmail() {
         updateFormSubmitState('companyForm');
     } catch (e) {}
     return true;
+}
+
+function renderRepresentatives(items) {
+    if (!items.length) {
+        $('#representativesList').html('<p class="text-muted text-center py-3">Sin representantes registrados</p>');
+        return;
+    }
+    let html = '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Cedula</th><th>Nombre Completo</th><th>Cargo</th><th>Telefono</th><th>Email</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
+    items.forEach(r => {
+        const badgeClass = r.estado ? 'bg-success' : 'bg-secondary';
+        const badgeText = r.estado ? 'Activo' : 'Inactivo';
+        const toggleIcon = r.estado ? 'bi-toggle-on text-success' : 'bi-toggle-off text-muted';
+        const toggleTitle = r.estado ? 'Desactivar representante' : 'Activar representante';
+        const fullname = `${r.nombre} ${r.apellido || ''}`.trim();
+        html += `<tr>
+            <td><strong>${escapeHtml(r.cedula || '')}</strong></td>
+            <td>${escapeHtml(fullname)}</td>
+            <td>${escapeHtml(r.cargo || '')}</td>
+            <td>${escapeHtml(r.telefono || '')}</td>
+            <td>${escapeHtml(r.email || '-')}</td>
+            <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline-warning me-1" onclick="editRepresentative(${JSON.stringify(r).replace(/"/g, '&quot;')})" title="Modificar"><i class="bi bi-pencil-square"></i></button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleRepresentative(${r.id}, ${r.estado ? 0 : 1})" title="${toggleTitle}"><i class="bi ${toggleIcon} fs-5"></i></button>
+            </td>
+        </tr>`;
+    });
+    html += '</tbody></table></div>';
+    $('#representativesList').html(html);
+}
+
+function showRepresentativeModal() {
+    $('#representativeModalTitle').text('Registrar Representante');
+    Validator.clearForm('representativeForm');
+    $('#editRepId').val('');
+    $('#repCedulaPrefijo').val('V').prop('disabled', false);
+    $('#repCedulaNumero').val('').prop('disabled', false);
+    $('#repNombre').val('');
+    $('#repApellido').val('');
+    $('#repTelefono').val('');
+    $('#repEmail').val('');
+    $('#repCargo').val('Representante legal');
+    $('#repEstado').val('1');
+    new bootstrap.Modal('#representativeModal').show();
+    Validator.initTracking('representativeForm');
+}
+
+function editRepresentative(r) {
+    $('#representativeModalTitle').text('Modificar Representante');
+    Validator.clearForm('representativeForm');
+    $('#editRepId').val(r.id);
+    const doc = splitRifValue(r.cedula, 'V');
+    $('#repCedulaPrefijo').val(doc.prefix || 'V').prop('disabled', true);
+    $('#repCedulaNumero').val(doc.number || '').prop('disabled', true);
+    $('#repNombre').val(r.nombre);
+    $('#repApellido').val(r.apellido || '');
+    $('#repTelefono').val(r.telefono || '');
+    $('#repEmail').val(r.email || '');
+    $('#repCargo').val(r.cargo || 'Otro');
+    $('#repEstado').val(r.estado);
+    new bootstrap.Modal('#representativeModal').show();
+    Validator.initTracking('representativeForm');
+}
+
+function saveRepresentative() {
+    if (!currentCompanyRif || !Validator.validate('representativeForm')) {
+        showToast('Corrija los errores del formulario', 'warning');
+        return;
+    }
+    const data = {
+        cedula_prefijo: $('#repCedulaPrefijo').val(),
+        cedula_numero: $('#repCedulaNumero').val(),
+        cedula: buildDocumentValue('repCedulaPrefijo', 'repCedulaNumero'),
+        nombre: $('#repNombre').val(),
+        apellido: $('#repApellido').val(),
+        telefono: $('#repTelefono').val(),
+        email: $('#repEmail').val(),
+        cargo: $('#repCargo').val(),
+        estado: parseInt($('#repEstado').val())
+    };
+    const url = `/api/companies/${encodeURIComponent(currentCompanyRif)}/representatives`;
+    const btn = document.querySelector('#representativeModal .modal-footer .btn-success');
+    setButtonLoading(btn, true, 'Guardando...');
+    $.ajax({
+        url, type: 'POST', contentType: 'application/json', data: JSON.stringify(data),
+        success: function (r) {
+            showToast(r.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('representativeModal'))?.hide();
+            showCompanyDetail(currentCompanyRif);
+        },
+        error: function (x) {
+            if (x.responseJSON?.errors) Validator.showServerErrors('representativeForm', x.responseJSON.errors);
+            showToast(x.responseJSON?.message || 'No se pudo guardar el representante', 'error');
+        },
+        complete: function () { setButtonLoading(btn, false); }
+    });
+}
+
+function toggleRepresentative(relationId, targetState) {
+    if (!currentCompanyRif) return;
+    const actionText = targetState ? 'activar' : 'desactivar';
+    confirmAction(`¿Estás seguro de que deseas ${actionText} a este representante?`, () => {
+        $.ajax({
+            url: `/api/companies/representatives/${relationId}/toggle`,
+            type: 'PUT',
+            contentType: 'application/json',
+            data: JSON.stringify({ estado: targetState }),
+            success: r => { showToast(r.message, 'success'); showCompanyDetail(currentCompanyRif); },
+            error: x => showToast(x.responseJSON?.message || 'No se pudo cambiar el estado del representante', 'error')
+        });
+    });
 }
