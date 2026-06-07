@@ -92,10 +92,23 @@ class VehicleModel(Connection):
                 # If representative_cedula is provided (for company fleet vehicles), record the operation
                 representante_cedula = data.get('representante_cedula', '').strip()
                 if representante_cedula:
+                    # Look up relationship ID in empresa_representante
+                    rep_rel = self.fetch_one("transalca",
+                        "SELECT id FROM empresa_representante WHERE empresa_rif = %s AND representante_cedula = %s",
+                        (cliente_cedula, representante_cedula))
+                    if not rep_rel:
+                        # Auto-create the relationship if not found (fallback)
+                        rep_id = self.insert("transalca",
+                            "INSERT INTO empresa_representante (empresa_rif, representante_cedula, cargo, estado) "
+                            "VALUES (%s, %s, 'Otro', 1)",
+                            (cliente_cedula, representante_cedula))
+                    else:
+                        rep_id = rep_rel['id']
+                    
                     self.insert("transalca",
-                        "INSERT INTO empresa_vehiculo_representante (empresa_rif, vehiculo_placa, representante_cedula, tipo_operacion) "
-                        "VALUES (%s, %s, %s, 'registro')",
-                        (cliente_cedula, placa, representante_cedula))
+                        "INSERT INTO empresa_vehiculo_representante (empresa_representante_id, vehiculo_placa, tipo_operacion) "
+                        "VALUES (%s, %s, 'registro')",
+                        (rep_id, placa))
             conn.commit()
             return placa
         except Exception:

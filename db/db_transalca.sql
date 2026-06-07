@@ -223,9 +223,8 @@ CREATE TABLE `empresa_representante` (
 
 CREATE TABLE `empresa_vehiculo_representante` (
   `id` int(11) NOT NULL,
-  `empresa_rif` varchar(20) NOT NULL,
+  `empresa_representante_id` int(11) NOT NULL,
   `vehiculo_placa` varchar(20) NOT NULL,
-  `representante_cedula` varchar(20) NOT NULL,
   `tipo_operacion` varchar(50) NOT NULL DEFAULT 'registro',
   `fecha` timestamp NOT NULL DEFAULT current_timestamp(),
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -1161,8 +1160,7 @@ ALTER TABLE `empresa_representante`
 ALTER TABLE `empresa_vehiculo_representante`
   ADD PRIMARY KEY (`id`),
   ADD KEY `fk_evr_vehiculo` (`vehiculo_placa`),
-  ADD KEY `fk_evr_representante` (`representante_cedula`),
-  ADD KEY `fk_evr_empresa` (`empresa_rif`);
+  ADD KEY `fk_evr_empresa_representante` (`empresa_representante_id`);
 
 ALTER TABLE `historial_puntos`
   ADD PRIMARY KEY (`id`),
@@ -1417,9 +1415,8 @@ ALTER TABLE `empresa_representante`
   ADD CONSTRAINT `fk_er_representante` FOREIGN KEY (`representante_cedula`) REFERENCES `clientes` (`cedula`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE `empresa_vehiculo_representante`
-  ADD CONSTRAINT `fk_evr_empresa` FOREIGN KEY (`empresa_rif`) REFERENCES `empresas` (`rif`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_evr_vehiculo` FOREIGN KEY (`vehiculo_placa`) REFERENCES `vehiculos` (`placa`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_evr_representante` FOREIGN KEY (`representante_cedula`) REFERENCES `clientes` (`cedula`) ON DELETE CASCADE ON UPDATE CASCADE;
+  ADD CONSTRAINT `fk_evr_empresa_representante` FOREIGN KEY (`empresa_representante_id`) REFERENCES `empresa_representante` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 ALTER TABLE `historial_puntos`
   ADD CONSTRAINT `historial_puntos_ibfk_1` FOREIGN KEY (`tarjeta_id`) REFERENCES `tarjeta_fidelidad` (`id`) ON DELETE CASCADE;
