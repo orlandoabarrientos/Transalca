@@ -13,7 +13,12 @@ $(document).ready(function() {
         rif: { required: true, pattern: /^\d{9}$/, maxLength: 9, requiredMsg: 'El RIF es obligatorio.', patternMsg: 'El RIF debe tener 9 dígitos.', maxLengthMsg: 'El RIF no puede superar los 9 caracteres.' },
         email: { email: true, maxLength: 50, maxLengthMsg: 'El correo no puede superar los 50 caracteres.' },
         telefono: { pattern: /^$|^04\d{9}$/, maxLength: 11, patternMsg: 'Debe tener 11 dígitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
-        direccion: { maxLength: 40, maxLengthMsg: 'La dirección no puede superar los 40 caracteres.' }
+        direccion: {
+            maxLength: 40,
+            maxLengthMsg: 'La dirección no puede superar los 40 caracteres.',
+            custom: v => !v || v.trim().length > 0,
+            customMsg: 'La dirección no puede contener solo espacios en blanco.'
+        }
     });
     Validator.setupRealtime('supplierForm');
     document.getElementById('rif')?.addEventListener('input', validateUniqueSupplierRif);

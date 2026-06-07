@@ -203,7 +203,7 @@ CREATE TABLE `empresas` (
   `cliente_cedula` varchar(20) NOT NULL,
   `rif` varchar(20) NOT NULL,
   `rif_prefijo` varchar(2) DEFAULT NULL,
-  `razon_social` varchar(200) NOT NULL,
+  `razon_social` varchar(60) NOT NULL,
   `nombre_comercial` varchar(200) DEFAULT NULL,
   `representante_nombre` varchar(150) DEFAULT NULL,
   `representante_cedula_prefijo` varchar(2) DEFAULT NULL,

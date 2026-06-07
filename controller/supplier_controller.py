@@ -11,6 +11,9 @@ model = SupplierModel()
 def _validate_supplier(data):
     errors = {}
     rif, rif_prefijo, _ = normalize_rif(errors, data)
+    direccion_raw = data.get('direccion')
+    if direccion_raw is not None and str(direccion_raw) != '' and not str(direccion_raw).strip():
+        errors['direccion'] = 'La direccion no puede contener solo espacios en blanco.'
     clean = {
         'rif': rif,
         'rif_prefijo': rif_prefijo,

@@ -31,6 +31,7 @@ $(document).ready(function() {
     });
     Validator.setupRealtime('productForm');
     document.getElementById('codigo')?.addEventListener('input', validateUniqueProductCodigo);
+    document.getElementById('product_imagen')?.addEventListener('change', onProductImageSelected);
     $('#productsPerPageSelect').on('change', function() {
         productsPerPage = parseInt($(this).val()) || 30;
         loadData(1);
@@ -47,8 +48,17 @@ function loadData(page = 1) {
         if (!tbody) return;
         tbody.innerHTML = '';
         (res.data || []).forEach(p => {
+            const imgPath = p.imagen && p.imagen !== 'default_product.png' ? `/public/assets/product_imgs/${p.imagen}` : '/public/assets/images/no-image.png';
             tbody.innerHTML += `<tr class="fade-in-up">
-                <td><strong>${escapeHtml(p.nombre)}</strong><br><small class="text-muted">${escapeHtml(p.codigo)}</small></td>
+                <td>
+                    <div class="d-flex align-items-center gap-3">
+                        <img src="${imgPath}" onerror="this.src='/public/assets/images/no-image.png'" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;" class="border shadow-sm">
+                        <div>
+                            <strong>${escapeHtml(p.nombre)}</strong><br>
+                            <small class="text-muted">${escapeHtml(p.codigo)}</small>
+                        </div>
+                    </div>
+                </td>
                 <td>${escapeHtml(p.categoria_nombre || '-')}</td>
                 <td>${escapeHtml(p.marca_nombre || '-')}</td>
                 <td>${escapeHtml(p.sucursal_nombre || 'Todas')}</td>
@@ -156,6 +166,9 @@ function openModal(codigo = null) {
     Validator.clearForm('productForm');
     document.getElementById('productOldCodigo').value = codigo ? decodeURIComponent(codigo) : '';
     document.getElementById('modalTitle').textContent = codigo ? 'Modificar Producto' : 'Registrar Producto';
+    const fileInput = document.getElementById('product_imagen');
+    if (fileInput) fileInput.value = '';
+    setProductPreview('');
     new bootstrap.Modal(document.getElementById('productModal')).show();
     Validator.initTracking('productForm');
 }
@@ -172,15 +185,26 @@ function editData(codigo) {
         document.getElementById('descripcion').value = p.descripcion || '';
         document.getElementById('precio').value = p.precio || '';
         const catSel = document.getElementById('categoria');
-        if (catSel) catSel.value = p.categoria || '';
+        if (catSel) {
+            catSel.value = p.categoria || '';
+            if (window.jQuery?.fn?.select2) window.jQuery(catSel).trigger('change.select2');
+        }
         const brandSel = document.getElementById('marca');
-        if (brandSel) brandSel.value = p.marca || '';
+        if (brandSel) {
+            brandSel.value = p.marca || '';
+            if (window.jQuery?.fn?.select2) window.jQuery(brandSel).trigger('change.select2');
+        }
         const sucSel = document.getElementById('sucursal_id');
         if (sucSel) {
             const ids = String(p.sucursal_ids || '').split(',').filter(Boolean);
             Array.from(sucSel.options).forEach(opt => { opt.selected = ids.includes(opt.value); });
             if (window.jQuery?.fn?.select2) window.jQuery(sucSel).trigger('change.select2');
         }
+        const fileInput = document.getElementById('product_imagen');
+        if (fileInput) fileInput.value = '';
+        const imgPath = p.imagen && p.imagen !== 'default_product.png' ? `/public/assets/product_imgs/${p.imagen}` : '/public/assets/images/no-image.png';
+        setProductPreview(imgPath);
+        
         document.getElementById('modalTitle').textContent = 'Modificar Producto';
         new bootstrap.Modal(document.getElementById('productModal')).show();
         Validator.initTracking('productForm');
@@ -190,21 +214,30 @@ function editData(codigo) {
 function saveData() {
     if (!Validator.validate('productForm')) return showToast('Corrija los errores', 'warning');
     const oldCodigo = document.getElementById('productOldCodigo').value;
-    const data = {
-        codigo: document.getElementById('codigo').value,
-        nombre: document.getElementById('nombre').value,
-        descripcion: document.getElementById('descripcion').value,
-        precio: document.getElementById('precio').value,
-        categoria: document.getElementById('categoria')?.value || null,
-        marca: document.getElementById('marca')?.value || null,
-        sucursal_ids: Array.from(document.getElementById('sucursal_id')?.selectedOptions || []).map(o => o.value)
-    };
+    const formData = new FormData();
+    formData.append('codigo', document.getElementById('codigo').value);
+    formData.append('nombre', document.getElementById('nombre').value);
+    formData.append('descripcion', document.getElementById('descripcion').value);
+    formData.append('precio', document.getElementById('precio').value);
+    formData.append('categoria', document.getElementById('categoria')?.value || '');
+    formData.append('marca', document.getElementById('marca')?.value || '');
+    
+    const selectedSucs = Array.from(document.getElementById('sucursal_id')?.selectedOptions || []).map(o => o.value);
+    selectedSucs.forEach(id => formData.append('sucursal_ids', id));
+
+    const fileInput = document.getElementById('product_imagen');
+    if (fileInput && fileInput.files.length > 0) {
+        formData.append('imagen', fileInput.files[0]);
+    }
+    if (oldCodigo) {
+        formData.append('old_codigo', oldCodigo);
+    }
+    
     const saveBtn = document.querySelector('#productModal .btn-success');
     const url = oldCodigo ? '/api/products/update' : '/api/products/';
     const method = oldCodigo ? 'PUT' : 'POST';
-    if (oldCodigo) data.old_codigo = oldCodigo;
     setButtonLoading(saveBtn, true, 'Guardando...');
-    apiCall(url, method, data).then(res => {
+    apiCall(url, method, formData).then(res => {
         setButtonLoading(saveBtn, false);
         if (res.status === 'error') {
             Validator.showServerErrors('productForm', res.errors);
@@ -214,6 +247,36 @@ function saveData() {
         showToast(res.message);
         loadData(currentProductPage);
     });
+}
+
+function onProductImageSelected(e) {
+    const file = e?.target?.files?.[0];
+    if (!file) {
+        setProductPreview('');
+        return;
+    }
+    if (!['image/png', 'image/jpeg', 'image/webp', 'image/jpg'].includes(file.type)) {
+        e.target.value = '';
+        setProductPreview('');
+        return showToast('El archivo debe ser una imagen png, jpg, jpeg o webp', 'warning');
+    }
+    const reader = new FileReader();
+    reader.onload = function (evt) {
+        setProductPreview(evt?.target?.result || '');
+    };
+    reader.readAsDataURL(file);
+}
+
+function setProductPreview(src) {
+    const img = document.getElementById('productImagePreview');
+    if (!img) return;
+    if (!src) {
+        img.style.display = 'none';
+        img.src = '';
+        return;
+    }
+    img.src = src;
+    img.style.display = '';
 }
 
 function toggleEstado(codigo) {

@@ -60,6 +60,7 @@
                     <div class="mb-3">
                         <label class="form-label">Dirección</label>
                         <input type="text" class="form-control" id="direccion" name="direccion" maxlength="40">
+                        <div class="invalid-feedback"></div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Teléfono</label>
@@ -103,7 +104,12 @@ $(document).ready(function() {
         nombre: { required: true, minLength: 3, maxLength: 30, requiredMsg: 'El nombre es requerido', minLengthMsg: 'Mínimo 3 caracteres', maxLengthMsg: 'El nombre no puede superar los 30 caracteres.' },
         telefono: { pattern: /^$|^04\d{9}$/, maxLength: 11, patternMsg: 'Debe tener 11 dígitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
         email: { email: true, maxLength: 50, maxLengthMsg: 'El correo no puede superar los 50 caracteres.' },
-        direccion: { maxLength: 40, maxLengthMsg: 'La dirección no puede superar los 40 caracteres.' }
+        direccion: {
+            maxLength: 40,
+            maxLengthMsg: 'La dirección no puede superar los 40 caracteres.',
+            custom: v => !v || v.trim().length > 0,
+            customMsg: 'La dirección no puede contener solo espacios en blanco.'
+        }
     });
     Validator.setupRealtime('sucursalForm');
     document.getElementById('email')?.addEventListener('input', debounce(validateUniqueSucursalEmail, 350));

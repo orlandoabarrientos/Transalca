@@ -173,7 +173,8 @@ class ProductModel(Connection):
             'descripcion': data.get('descripcion', '').strip(),
             'precio': float(data['precio']),
             'categoria': data.get('categoria') or None,
-            'marca': data.get('marca') or None
+            'marca': data.get('marca') or None,
+            'imagen': data.get('imagen') or 'default_product.png'
         }
         keys = [k for k in values if k in columns]
         pid = self.insert("transalca",
@@ -192,6 +193,8 @@ class ProductModel(Connection):
             'categoria': data.get('categoria') or None,
             'marca': data.get('marca') or None
         }
+        if 'imagen' in data:
+            values['imagen'] = data['imagen']
         keys = [k for k in values if k in columns]
         params = [values[k] for k in keys] + [old_codigo]
         res = self.update("transalca",

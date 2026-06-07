@@ -296,6 +296,7 @@ function showVehicleModal(vehicleData) {
         $('#vehicleModalTitle').text('Registrar Vehículo');
         $('#editVehicleId').val('');
     }
+    if (window.jQuery?.fn?.select2) window.jQuery('#vCombustible').trigger('change');
     new bootstrap.Modal('#vehicleModal').show();
     Validator.initTracking('vehicleForm');
 }
@@ -492,6 +493,7 @@ function scanVehicleTitleAndFillAdmin(file) {
             if (d.tipo_vehiculo) $('#vTipo').val(d.tipo_vehiculo);
             if (d.tipo_combustible && isValidConstant('TIPOS_COMBUSTIBLE', d.tipo_combustible)) {
                 $('#vCombustible').val(d.tipo_combustible);
+                if (window.jQuery?.fn?.select2) window.jQuery('#vCombustible').trigger('change');
             }
             showToast('Datos del documento cargados automáticamente', 'success');
         },

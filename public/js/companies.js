@@ -11,7 +11,7 @@ $(document).ready(function () {
     Validator.setRules('companyForm', {
         fRifPrefijo: { required: true, custom: v => ['J', 'G', 'V', 'E', 'P'].includes(v), customMsg: 'El valor seleccionado no es valido. Recargue la pagina e intentelo nuevamente.' },
         fRif: { required: true, pattern: /^\d{9}$/, maxLength: 9, requiredMsg: 'RIF requerido', patternMsg: 'El RIF debe tener 9 digitos', maxLengthMsg: 'El RIF no puede superar los 9 caracteres.' },
-        fRazonSocial: { required: true, minLength: 2, maxLength: 100, requiredMsg: 'Razon social requerida', maxLengthMsg: 'La razón social no puede superar los 100 caracteres.' },
+        fRazonSocial: { required: true, minLength: 2, maxLength: 60, requiredMsg: 'Razon social requerida', maxLengthMsg: 'La razón social no puede superar los 60 caracteres.' },
         fNombreComercial: { maxLength: 100, maxLengthMsg: 'El nombre comercial no puede superar los 100 caracteres.' },
         fRepresentante: { maxLength: 30, maxLengthMsg: 'El nombre del representante no puede superar los 30 caracteres.' },
         fRepresentanteCedula: {
@@ -240,14 +240,14 @@ function editCompany(rif) {
 
 function deleteCompany(rif) {
     rif = decodeURIComponent(rif);
-    confirmAction('Estas seguro de que deseas eliminar esta empresa?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar esta empresa?', () => {
         $.ajax({
             url: `/api/companies/${encodeURIComponent(rif)}/toggle`,
             type: 'PUT',
             success: r => { showToast(r.message, 'success'); loadCompanies(); loadCompanyStats(); hideCompanyDetail(); },
             error: x => showToast(x.responseJSON?.message || 'No se pudo eliminar la empresa', 'error')
         });
-    }, { confirmColor: '#dc3545' });
+    });
 }
 
 function showCompanyDetail(rif) {
@@ -319,6 +319,7 @@ function showFleetModal(vehicle) {
         $('#editVehicleId').val('');
         $('#vCombustible').val('gasolina');
     }
+    if (window.jQuery?.fn?.select2) window.jQuery('#vCombustible').trigger('change');
     new bootstrap.Modal('#fleetModal').show();
     Validator.initTracking('fleetForm');
 }
@@ -360,14 +361,14 @@ function editFleetVehicle(vid) {
 
 function deleteFleetVehicle(vid) {
     vid = decodeURIComponent(vid);
-    confirmAction('Estas seguro de que deseas eliminar este vehiculo?', () => {
+    confirmAction('¿Estás seguro de que deseas eliminar este vehículo?', () => {
         $.ajax({
             url: `/api/clients/${encodeURIComponent(currentCompanyRif)}/vehicles/${encodeURIComponent(vid)}`,
             type: 'DELETE',
             success: r => { showToast(r.message, 'success'); showCompanyDetail(currentCompanyRif); },
-            error: x => showToast(x.responseJSON?.message || 'No se pudo eliminar el vehiculo', 'error')
+            error: x => showToast(x.responseJSON?.message || 'No se pudo eliminar el vehículo', 'error')
         });
-    }, { confirmColor: '#dc3545' });
+    });
 }
 
 async function validateUniqueCompanyRif() {

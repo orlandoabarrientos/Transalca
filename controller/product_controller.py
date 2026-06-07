@@ -1,10 +1,36 @@
 from flask import Blueprint, request, jsonify, session
 from model.product_model import ProductModel
+import os
+import time
+from werkzeug.utils import secure_filename
 
 from config.validation import SELECT_TAMPER_MESSAGE, normalize_decimal, optional_text, require_text
 
 product_bp = Blueprint('products', __name__)
 model = ProductModel()
+
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'public', 'assets', 'product_imgs')
+
+def _save_image(file, codigo):
+    if not file or file.filename == '':
+        return None, None
+    allowed = {'png', 'jpg', 'jpeg', 'webp'}
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in allowed:
+        return None, "Solo se permiten imagenes png, jpg, jpeg o webp."
+    if file.mimetype not in {'image/png', 'image/jpeg', 'image/webp', 'image/jpg'}:
+        return None, "El archivo no es una imagen valida."
+    file.seek(0, os.SEEK_END)
+    size = file.tell()
+    file.seek(0)
+    if size > 2 * 1024 * 1024:
+        return None, "La imagen no debe superar los 2MB."
+    safe_codigo = secure_filename(codigo)
+    filename = f"prod_{safe_codigo}_{int(time.time())}.{ext}"
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(filepath)
+    return filename, None
 
 
 
@@ -193,7 +219,12 @@ def create():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        data, errors = _validate_product(request.get_json() or {})
+        if request.is_json:
+            raw = request.get_json() or {}
+        else:
+            raw = request.form.to_dict()
+            raw['sucursal_ids'] = request.form.getlist('sucursal_ids')
+        data, errors = _validate_product(raw)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         existing = model.get_by_codigo(data['codigo'])
@@ -201,12 +232,22 @@ def create():
             if existing['estado'] == 1:
                 return jsonify({"status": "error", "message": "Este codigo ya esta registrado", "errors": {"codigo": "Este codigo ya esta registrado."}}), 400
             else:
+                imagen_file = request.files.get('imagen')
+                if imagen_file and imagen_file.filename != '':
+                    filename, img_err = _save_image(imagen_file, data['codigo'])
+                    if img_err:
+                        return jsonify({"status": "error", "message": "Error al subir la imagen", "errors": {"imagen": img_err}}), 400
+                    data['imagen'] = filename
                 model.update_product(existing['codigo'], data)
                 model.update("transalca", "UPDATE productos SET estado = 1 WHERE codigo = %s", (existing['codigo'],))
-
                 return jsonify({"status": "success", "message": "Producto registrado correctamente", "codigo": existing['codigo']})
+        imagen_file = request.files.get('imagen')
+        if imagen_file and imagen_file.filename != '':
+            filename, img_err = _save_image(imagen_file, data['codigo'])
+            if img_err:
+                return jsonify({"status": "error", "message": "Error al subir la imagen", "errors": {"imagen": img_err}}), 400
+            data['imagen'] = filename
         model.create(data)
-
         return jsonify({"status": "success", "message": "Producto registrado correctamente", "codigo": data['codigo']})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar el producto"}), 500
@@ -217,7 +258,11 @@ def update():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        raw = request.get_json() or {}
+        if request.is_json:
+            raw = request.get_json() or {}
+        else:
+            raw = request.form.to_dict()
+            raw['sucursal_ids'] = request.form.getlist('sucursal_ids')
         old_codigo = raw.get('old_codigo', '')
         data, errors = _validate_product(raw, old_codigo)
         if not old_codigo:
@@ -226,8 +271,23 @@ def update():
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         if data['codigo'] != old_codigo and model.codigo_exists(data['codigo']):
             return jsonify({"status": "error", "message": "Este codigo ya esta registrado", "errors": {"codigo": "Este codigo ya esta registrado."}}), 400
+        imagen_file = request.files.get('imagen')
+        if imagen_file and imagen_file.filename != '':
+            filename, img_err = _save_image(imagen_file, data['codigo'])
+            if img_err:
+                return jsonify({"status": "error", "message": "Error al subir la imagen", "errors": {"imagen": img_err}}), 400
+            data['imagen'] = filename
+            existing = model.get_by_codigo(old_codigo)
+            if existing:
+                old_img = existing.get('imagen')
+                if old_img and old_img != 'default_product.png':
+                    old_path = os.path.join(UPLOAD_FOLDER, old_img)
+                    if os.path.exists(old_path):
+                        try:
+                            os.remove(old_path)
+                        except OSError:
+                            pass
         model.update_product(old_codigo, data)
-
         return jsonify({"status": "success", "message": "Producto modificado correctamente"})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el producto"}), 500

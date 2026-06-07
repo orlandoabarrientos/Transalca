@@ -107,6 +107,11 @@
                         <select class="form-select" id="sucursal_id" name="sucursal_id" multiple required></select>
                         <div class="invalid-feedback"></div>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Imagen del Producto (Opcional)</label>
+                        <input type="file" class="form-control" id="product_imagen" name="imagen" accept="image/png, image/jpeg, image/jpg, image/webp">
+                        <img id="productImagePreview" class="product-form-image border shadow-sm mt-2" alt="Vista previa" style="width:100%; max-height:160px; object-fit:cover; border-radius:10px; display:none;">
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">

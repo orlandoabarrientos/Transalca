@@ -29,7 +29,7 @@ def _validate_company(data, require_rif=True):
         rif, prefix, _ = normalize_rif(errors, data)
         clean['rif'] = rif
         clean['rif_prefijo'] = prefix
-    clean['razon_social'] = require_text(errors, 'razon_social', data.get('razon_social'), 'La razon social', min_len=2, max_len=200, allow_serial=True)
+    clean['razon_social'] = require_text(errors, 'razon_social', data.get('razon_social'), 'La razon social', min_len=2, max_len=60, allow_serial=True)
     clean['nombre_comercial'] = optional_text(errors, 'nombre_comercial', data.get('nombre_comercial'), 'El nombre comercial', max_len=200)
     clean['telefono'] = normalize_phone(errors, data.get('telefono'))
     clean['email'] = normalize_email(errors, data.get('email'), required=False)

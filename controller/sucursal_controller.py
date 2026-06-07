@@ -10,6 +10,9 @@ model = SucursalModel()
 
 def _validate_sucursal(data):
     errors = {}
+    direccion_raw = data.get('direccion')
+    if direccion_raw is not None and str(direccion_raw) != '' and not str(direccion_raw).strip():
+        errors['direccion'] = 'La direccion no puede contener solo espacios en blanco.'
     clean = {
         'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=200, allow_serial=False),
         'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40),
