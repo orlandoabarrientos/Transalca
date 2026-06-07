@@ -212,8 +212,8 @@ def solicitar_validacion():
             return jsonify({"status": "success", "message": "Ya existe una solicitud de validacion pendiente."})
 
         model.insert("transalca",
-            "INSERT INTO solicitudes_validacion (tipo, orden_venta_id, cliente_cedula, estado) VALUES (%s, %s, %s, 'pendiente')",
-            (tipo, orden_id, session['user_cedula']))
+            "INSERT INTO solicitudes_validacion (tipo, orden_venta_id, estado) VALUES (%s, %s, 'pendiente')",
+            (tipo, orden_id))
 
         return jsonify({"status": "success", "message": "Solicitud de validacion enviada al administrador."})
     except Exception as e:
@@ -246,7 +246,7 @@ def get_solicitudes_pendientes():
                 "id": r['id'],
                 "tipo": r['tipo'],
                 "orden_venta_id": r['orden_venta_id'],
-                "cliente_cedula": r['cliente_cedula'],
+                "cliente_cedula": orden.get('cliente_cedula', ''),
                 "cliente_nombre": f"{client.get('nombre', '')} {client.get('apellido', '')}",
                 "cliente_email": client.get('email', ''),
                 "cliente_telefono": client.get('telefono', ''),
@@ -286,7 +286,7 @@ def responder_validacion():
         revisado_por = session['user_cedula']
         estado_solicitud = 'aprobada' if respuesta == 'aprobar' else 'rechazada'
 
-        model.update("transalca", "UPDATE solicitudes_validacion SET estado = %s WHERE id = %s", (estado_solicitud, solicitud_id))
+        model.update("transalca", "UPDATE solicitudes_validacion SET estado = %s, revisado_por = %s WHERE id = %s", (estado_solicitud, revisado_por, solicitud_id))
 
         orden_id = req['orden_venta_id']
         orden = model.fetch_one("transalca", "SELECT cliente_cedula FROM ordenes_venta WHERE id = %s", (orden_id,))
@@ -304,9 +304,7 @@ def responder_validacion():
                     notification_model.notify_payment_status(orden.get('cliente_cedula'), orden_id, False, 'Validacion de pago rechazada por el equipo.')
             msg = "Validacion rechazada."
 
-
-
-
         return jsonify({"status": "success", "message": msg})
     except Exception as e:
         return jsonify({"status": "error", "message": "Error al procesar respuesta"}), 500
+

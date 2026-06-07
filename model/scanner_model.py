@@ -8,23 +8,6 @@ from model.connection import Connection
 class ScannerModel(Connection):
     def __init__(self):
         super().__init__()
-        self._ensure_validation_table()
-
-    def _ensure_validation_table(self):
-        sql = """
-        CREATE TABLE IF NOT EXISTS `solicitudes_validacion` (
-          `id` INT AUTO_INCREMENT PRIMARY KEY,
-          `tipo` VARCHAR(50) NOT NULL,
-          `orden_venta_id` INT NOT NULL,
-          `cliente_cedula` VARCHAR(20) NOT NULL,
-          `estado` VARCHAR(20) NOT NULL DEFAULT 'pendiente',
-          `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-        """
-        try:
-            self.update("transalca", sql)
-        except Exception as e:
-            print("Error creating validation table:", e)
 
     def _qr_columns(self):
         rows = self.fetch_all("transalca", "SHOW COLUMNS FROM qr_codes")

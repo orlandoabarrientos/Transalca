@@ -200,19 +200,34 @@ CREATE TABLE `detalle_orden_venta_servicios` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `empresas` (
-  `cliente_cedula` varchar(20) NOT NULL,
   `rif` varchar(20) NOT NULL,
   `rif_prefijo` varchar(2) DEFAULT NULL,
   `razon_social` varchar(60) NOT NULL,
   `nombre_comercial` varchar(200) DEFAULT NULL,
-  `representante_nombre` varchar(150) DEFAULT NULL,
-  `representante_cedula_prefijo` varchar(2) DEFAULT NULL,
-  `representante_cedula` varchar(20) DEFAULT NULL,
-  `representante_telefono` varchar(20) DEFAULT NULL,
-  `representante_email` varchar(150) DEFAULT NULL,
   `sector` varchar(150) DEFAULT NULL,
   `limite_credito` decimal(10,2) DEFAULT 0.00,
   `dias_credito` int(11) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `empresa_representante` (
+  `id` int(11) NOT NULL,
+  `empresa_rif` varchar(20) NOT NULL,
+  `representante_cedula` varchar(20) NOT NULL,
+  `cargo` varchar(50) NOT NULL DEFAULT 'Otro',
+  `estado` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `empresa_vehiculo_representante` (
+  `id` int(11) NOT NULL,
+  `empresa_rif` varchar(20) NOT NULL,
+  `vehiculo_placa` varchar(20) NOT NULL,
+  `representante_cedula` varchar(20) NOT NULL,
+  `tipo_operacion` varchar(50) NOT NULL DEFAULT 'registro',
+  `fecha` timestamp NOT NULL DEFAULT current_timestamp(),
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -909,6 +924,16 @@ CREATE TABLE `qr_codes` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE `solicitudes_validacion` (
+  `id` int(11) NOT NULL,
+  `tipo` varchar(50) NOT NULL,
+  `orden_venta_id` int(11) NOT NULL,
+  `estado` varchar(20) NOT NULL DEFAULT 'pendiente',
+  `revisado_por` varchar(20) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
 CREATE TABLE `reglas_mantenimiento` (
   `id` int(11) NOT NULL,
   `nombre` varchar(200) NOT NULL,
@@ -1027,8 +1052,16 @@ CREATE TABLE `ticket_respuestas` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE `vehiculos` (
+CREATE TABLE `cliente_vehiculo` (
+  `id` int(11) NOT NULL,
   `cliente_cedula` varchar(20) NOT NULL,
+  `vehiculo_placa` varchar(20) NOT NULL,
+  `estado` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `vehiculos` (
   `marca` varchar(100) NOT NULL,
   `modelo` varchar(100) NOT NULL,
   `anio` smallint(6) DEFAULT NULL,
@@ -1112,9 +1145,24 @@ ALTER TABLE `detalle_orden_venta_servicios`
   ADD KEY `orden_id` (`orden_id`),
   ADD KEY `servicio_id` (`servicio_id`);
 
+ALTER TABLE `cliente_vehiculo`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_cliente_vehiculo` (`cliente_cedula`, `vehiculo_placa`),
+  ADD KEY `fk_cv_vehiculo` (`vehiculo_placa`);
+
 ALTER TABLE `empresas`
-  ADD PRIMARY KEY (`cliente_cedula`),
-  ADD UNIQUE KEY `rif` (`rif`);
+  ADD PRIMARY KEY (`rif`);
+
+ALTER TABLE `empresa_representante`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_empresa_representante` (`empresa_rif`, `representante_cedula`),
+  ADD KEY `fk_er_representante` (`representante_cedula`);
+
+ALTER TABLE `empresa_vehiculo_representante`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_evr_vehiculo` (`vehiculo_placa`),
+  ADD KEY `fk_evr_representante` (`representante_cedula`),
+  ADD KEY `fk_evr_empresa` (`empresa_rif`);
 
 ALTER TABLE `historial_puntos`
   ADD PRIMARY KEY (`id`),
@@ -1174,6 +1222,10 @@ ALTER TABLE `qr_codes`
   ADD KEY `fk_qr_orden` (`orden_venta_id`),
   ADD KEY `fk_qr_usuario` (`usuario_cedula`);
 
+ALTER TABLE `solicitudes_validacion`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_sv_orden_venta` (`orden_venta_id`);
+
 ALTER TABLE `reglas_mantenimiento`
   ADD PRIMARY KEY (`id`);
 
@@ -1219,8 +1271,7 @@ ALTER TABLE `ticket_respuestas`
   ADD KEY `ticket_id` (`ticket_id`);
 
 ALTER TABLE `vehiculos`
-  ADD PRIMARY KEY (`placa`),
-  ADD KEY `idx_vehiculo_cliente` (`cliente_cedula`);
+  ADD PRIMARY KEY (`placa`);
 
 ALTER TABLE `bitacora_vehiculo`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
@@ -1232,6 +1283,15 @@ ALTER TABLE `comisiones_mecanico`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `comprobantes_pago`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `cliente_vehiculo`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `empresa_representante`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `empresa_vehiculo_representante`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `consumo_combustible`
@@ -1274,6 +1334,9 @@ ALTER TABLE `promociones`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `qr_codes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `solicitudes_validacion`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 ALTER TABLE `reglas_mantenimiento`
@@ -1342,8 +1405,21 @@ ALTER TABLE `detalle_orden_venta_servicios`
   ADD CONSTRAINT `detalle_orden_venta_servicios_ibfk_1` FOREIGN KEY (`orden_id`) REFERENCES `ordenes_venta` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `detalle_orden_venta_servicios_ibfk_2` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id`);
 
+ALTER TABLE `cliente_vehiculo`
+  ADD CONSTRAINT `fk_cv_cliente` FOREIGN KEY (`cliente_cedula`) REFERENCES `clientes` (`cedula`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_cv_vehiculo` FOREIGN KEY (`vehiculo_placa`) REFERENCES `vehiculos` (`placa`) ON DELETE CASCADE ON UPDATE CASCADE;
+
 ALTER TABLE `empresas`
-  ADD CONSTRAINT `fk_empresas_cliente` FOREIGN KEY (`cliente_cedula`) REFERENCES `clientes` (`cedula`) ON DELETE CASCADE ON UPDATE CASCADE;
+  ADD CONSTRAINT `fk_empresas_cliente` FOREIGN KEY (`rif`) REFERENCES `clientes` (`cedula`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `empresa_representante`
+  ADD CONSTRAINT `fk_er_empresa` FOREIGN KEY (`empresa_rif`) REFERENCES `empresas` (`rif`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_er_representante` FOREIGN KEY (`representante_cedula`) REFERENCES `clientes` (`cedula`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `empresa_vehiculo_representante`
+  ADD CONSTRAINT `fk_evr_empresa` FOREIGN KEY (`empresa_rif`) REFERENCES `empresas` (`rif`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_evr_vehiculo` FOREIGN KEY (`vehiculo_placa`) REFERENCES `vehiculos` (`placa`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_evr_representante` FOREIGN KEY (`representante_cedula`) REFERENCES `clientes` (`cedula`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE `historial_puntos`
   ADD CONSTRAINT `historial_puntos_ibfk_1` FOREIGN KEY (`tarjeta_id`) REFERENCES `tarjeta_fidelidad` (`id`) ON DELETE CASCADE;
@@ -1376,6 +1452,9 @@ ALTER TABLE `qr_codes`
   ADD CONSTRAINT `fk_qr_promocion` FOREIGN KEY (`promocion_id`) REFERENCES `promociones` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_qr_servicio` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
+ALTER TABLE `solicitudes_validacion`
+  ADD CONSTRAINT `fk_sv_orden_venta` FOREIGN KEY (`orden_venta_id`) REFERENCES `ordenes_venta` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
 ALTER TABLE `servicio_mecanico`
   ADD CONSTRAINT `servicio_mecanico_ibfk_1` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id`),
   ADD CONSTRAINT `servicio_mecanico_ibfk_2` FOREIGN KEY (`mecanico_cedula`) REFERENCES `mecanicos` (`cedula`) ON UPDATE CASCADE,
@@ -1402,8 +1481,7 @@ ALTER TABLE `tickets_soporte`
 ALTER TABLE `ticket_respuestas`
   ADD CONSTRAINT `ticket_respuestas_ibfk_1` FOREIGN KEY (`ticket_id`) REFERENCES `tickets_soporte` (`id`) ON DELETE CASCADE;
 
-ALTER TABLE `vehiculos`
-  ADD CONSTRAINT `vehiculos_ibfk_1` FOREIGN KEY (`cliente_cedula`) REFERENCES `clientes` (`cedula`) ON UPDATE CASCADE;
+
 DELIMITER //
 
 CREATE TRIGGER trg_bitacora_categorias_insert
