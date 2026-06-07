@@ -172,11 +172,6 @@ function loadCards() {
         }
     });
 }
-        if (!res.data?.length) {
-            loadPromotionCardTemplates(container);
-        }
-    });
-}
 
 function loadPromotionCardTemplates(container) {
     apiCall('/api/promotions/active').then(res => {

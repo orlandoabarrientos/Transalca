@@ -32,6 +32,7 @@ $(document).ready(function() {
                         updateFormSubmitState('paymentMethodForm');
                     });
             }, 350);
+        });
     }
     loadPaymentMethods();
 });

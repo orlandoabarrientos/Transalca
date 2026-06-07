@@ -706,12 +706,8 @@ function enhanceSearchableSelects(root = document) {
                     minimumResultsForSearch: select.hasAttribute('data-no-search') ? Infinity : 0
                 };
                 if (firstEmptyOption) {
-                    const text = firstEmptyOption.textContent.trim();
-                    const isAllOption = ['todo', 'toda'].some(word => text.toLowerCase().startsWith(word));
-                    if (!isAllOption) {
-                        config.placeholder = text;
-                        config.allowClear = true;
-                    }
+                    config.placeholder = firstEmptyOption.textContent.trim();
+                    config.allowClear = true;
                 }
                 if (modal) config.dropdownParent = window.jQuery(modal);
                 $select.select2(config);
@@ -759,12 +755,24 @@ class TablePaginator {
     
     initDom() {
         const card = this.element.closest('.card') || this.element.parentElement;
-        let pInfo = card.parentElement.querySelector('.pagination-info-wrap');
+        let pInfo = card.nextElementSibling && card.nextElementSibling.classList.contains('pagination-info-wrap') 
+            ? card.nextElementSibling 
+            : null;
         if (!pInfo) {
             pInfo = document.createElement('div');
             pInfo.className = 'd-flex justify-content-between align-items-center px-2 mb-4 pagination-info-wrap';
             pInfo.innerHTML = `
-                <div class="text-muted small paginator-info">Mostrando 0 a 0 de 0 registros</div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="text-muted small paginator-info">Mostrando 0 a 0 de 0 registros</div>
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="text-muted small" style="white-space: nowrap; font-size: 0.8rem;">Mostrar:</span>
+                        <select class="form-select form-select-sm paginator-limit-select" style="width: auto; font-size: 0.75rem; padding: 0.2rem 1.6rem 0.2rem 0.4rem; height: 1.8rem; border-color: rgba(233, 93, 15, 0.2); border-radius: 4px;">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                        </select>
+                    </div>
+                </div>
                 <nav aria-label="Navegación">
                     <ul class="pagination pagination-sm mb-0 animate-fade-in paginator-controls">
                     </ul>
@@ -774,6 +782,7 @@ class TablePaginator {
         }
         this.infoEl = pInfo.querySelector('.paginator-info');
         this.controlsEl = pInfo.querySelector('.paginator-controls');
+        this.limitSelect = pInfo.querySelector('.paginator-limit-select');
     }
     
     initEvents() {
@@ -803,6 +812,15 @@ class TablePaginator {
                 });
             }
         });
+
+        if (this.limitSelect) {
+            this.limitSelect.value = this.perPage;
+            this.limitSelect.addEventListener('change', () => {
+                this.perPage = parseInt(this.limitSelect.value) || 30;
+                this.currentPage = 1;
+                this.apply();
+            });
+        }
     }
     
     updateData(newData) {

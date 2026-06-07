@@ -31,10 +31,14 @@ $(document).ready(function() {
     });
     Validator.setupRealtime('productForm');
     document.getElementById('codigo')?.addEventListener('input', validateUniqueProductCodigo);
+    $('#productsPerPageSelect').on('change', function() {
+        productsPerPage = parseInt($(this).val()) || 30;
+        loadData(1);
+    });
 });
 
 let currentProductPage = 1;
-const productsPerPage = 30;
+let productsPerPage = 30;
 
 function loadData(page = 1) {
     currentProductPage = page;
