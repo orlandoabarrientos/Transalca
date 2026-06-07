@@ -13,7 +13,7 @@ $(document).ready(function() {
         rif: { required: true, pattern: /^\d{9}$/, maxLength: 9, requiredMsg: 'El RIF es obligatorio.', patternMsg: 'El RIF debe tener 9 dígitos.', maxLengthMsg: 'El RIF no puede superar los 9 caracteres.' },
         email: { email: true, maxLength: 50, maxLengthMsg: 'El correo no puede superar los 50 caracteres.' },
         telefono: { pattern: /^$|^04\d{9}$/, maxLength: 11, patternMsg: 'Debe tener 11 dígitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
-        direccion: { maxLength: 200, maxLengthMsg: 'La dirección no puede superar los 200 caracteres.' }
+        direccion: { maxLength: 40, maxLengthMsg: 'La dirección no puede superar los 40 caracteres.' }
     });
     Validator.setupRealtime('supplierForm');
     document.getElementById('rif')?.addEventListener('input', validateUniqueSupplierRif);
@@ -21,29 +21,34 @@ $(document).ready(function() {
     document.getElementById('email')?.addEventListener('input', validateUniqueSupplierEmail);
 });
 
+let paginator = null;
+
 function loadData() {
     apiCall('/api/suppliers/').then(res => {
-        const tbody = document.getElementById('supplierBody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        (res.data || []).forEach(s => {
-            const actionBtn = s.total_ordenes > 0 
-                ? `<button class="btn btn-icon btn-sm btn-outline-danger" onclick="toggleEstado('${encodeURIComponent(s.rif)}', true)" title="Desactivar Proveedor"><i class="bi bi-slash-circle"></i></button>`
-                : `<button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${encodeURIComponent(s.rif)}', false)" title="Eliminar Proveedor"><i class="bi bi-trash"></i></button>`;
-            tbody.innerHTML += `<tr class="fade-in-up">
-                <td><strong>${escapeHtml(s.nombre)}</strong></td>
-                <td>${escapeHtml(s.rif)}</td>
-                <td>${escapeHtml(s.telefono || '-')}</td>
-                <td>${escapeHtml(s.email || '-')}</td>
-                <td>${statusBadge(s.estado)}</td>
-                <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(s.rif)}')" title="Modificar Proveedor"><i class="bi bi-pencil"></i></button>
-                    ${actionBtn}
-                </td>
-            </tr>`;
-        });
-        if (!res.data?.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-truck"></i><p>No hay proveedores registrados</p></div></td></tr>';
+        if (!paginator) {
+            paginator = new TablePaginator('supplierBody', {
+                allData: res.data || [],
+                itemName: 'proveedores',
+                renderRow: (s) => {
+                    const actionBtn = s.total_ordenes > 0 
+                        ? `<button class="btn btn-icon btn-sm btn-outline-danger" onclick="toggleEstado('${encodeURIComponent(s.rif)}', true)" title="Desactivar Proveedor"><i class="bi bi-slash-circle"></i></button>`
+                        : `<button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${encodeURIComponent(s.rif)}', false)" title="Eliminar Proveedor"><i class="bi bi-trash"></i></button>`;
+                    return `<tr class="fade-in-up">
+                        <td><strong>${escapeHtml(s.nombre)}</strong></td>
+                        <td>${escapeHtml(s.rif)}</td>
+                        <td>${escapeHtml(s.telefono || '-')}</td>
+                        <td>${escapeHtml(s.email || '-')}</td>
+                        <td>${statusBadge(s.estado)}</td>
+                        <td>
+                            <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(s.rif)}')" title="Modificar Proveedor"><i class="bi bi-pencil"></i></button>
+                            ${actionBtn}
+                        </td>
+                    </tr>`;
+                },
+                onEmpty: () => '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-truck"></i><p>No hay proveedores registrados</p></div></td></tr>'
+            });
+        } else {
+            paginator.updateData(res.data || []);
         }
     });
 }

@@ -27,7 +27,7 @@ def _validate_client(data, require_cedula=True):
     clean['apellido'] = require_text(errors, 'apellido', data.get('apellido'), 'El apellido', min_len=2, max_len=100, person=True)
     clean['telefono'] = normalize_phone(errors, data.get('telefono'))
     clean['email'] = normalize_email(errors, data.get('email'), required=False)
-    clean['direccion'] = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=300)
+    clean['direccion'] = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40)
     if require_cedula:
         cedula, prefijo, _ = normalize_cedula(errors, data)
         clean['cedula'] = cedula

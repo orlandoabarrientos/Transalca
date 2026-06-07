@@ -320,8 +320,21 @@ const Validator = {
         if (!form) return;
         if (form.dataset.validatorRealtimeBound === '1') return;
         form.dataset.validatorRealtimeBound = '1';
+        
+        // Dynamically apply HTML maxlength attribute based on validation rules
+        const rules = this.rules[formId];
+        if (rules) {
+            for (const [field, fieldRules] of Object.entries(rules)) {
+                if (fieldRules && fieldRules.maxLength) {
+                    const el = document.getElementById(field) || document.querySelector(`#${formId} [name="${cssEscapeValue(field)}"]`);
+                    if (el && !el.hasAttribute('maxlength')) {
+                        el.setAttribute('maxlength', fieldRules.maxLength);
+                    }
+                }
+            }
+        }
+
         form.querySelectorAll('input, select, textarea').forEach(el => {
-            let timeoutId = null;
             const handler = () => {
                 if (el.id) {
                     Validator.validateField(formId, el.id);
@@ -342,12 +355,7 @@ const Validator = {
             };
             el.addEventListener('input', () => {
                 delete el.dataset.externalError;
-                if (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'email' || el.type === 'password' || el.type === 'tel' || el.type === 'number')) {
-                    if (timeoutId) clearTimeout(timeoutId);
-                    timeoutId = setTimeout(handler, 300);
-                } else {
-                    handler();
-                }
+                handler();
             });
             el.addEventListener('change', handler);
         });
@@ -686,24 +694,30 @@ function enhanceSearchableSelects(root = document) {
             if (shouldRebuild && $select.hasClass('select2-hidden-accessible')) {
                 $select.select2('destroy');
             }
+            const optionsCount = String(select.options?.length || 0);
+            if ($select.hasClass('select2-hidden-accessible') && select.dataset.select2OptionsCount !== optionsCount) {
+                select.dataset.select2OptionsCount = optionsCount;
+                $select.select2('destroy');
+            }
             if (!$select.hasClass('select2-hidden-accessible')) {
                 const firstEmptyOption = select.querySelector('option[value=""]');
                 const config = {
                     width: select.style.width || '100%',
                     minimumResultsForSearch: select.hasAttribute('data-no-search') ? Infinity : 0
                 };
-                if (firstEmptyOption) config.placeholder = firstEmptyOption.textContent.trim();
+                if (firstEmptyOption) {
+                    const text = firstEmptyOption.textContent.trim();
+                    const isAllOption = ['todo', 'toda'].some(word => text.toLowerCase().startsWith(word));
+                    if (!isAllOption) {
+                        config.placeholder = text;
+                        config.allowClear = true;
+                    }
+                }
                 if (modal) config.dropdownParent = window.jQuery(modal);
                 $select.select2(config);
                 select.dataset.select2Ready = '1';
                 select.dataset.select2Parent = modalId;
-                select.dataset.select2OptionsCount = String(select.options?.length || 0);
-            } else {
-                const optionsCount = String(select.options?.length || 0);
-                if (select.dataset.select2OptionsCount !== optionsCount) {
-                    select.dataset.select2OptionsCount = optionsCount;
-                    $select.trigger('change.select2');
-                }
+                select.dataset.select2OptionsCount = optionsCount;
             }
             $select.off('.transalcaSelect2');
             $select.on('change.transalcaSelect2 select2:select.transalcaSelect2 select2:clear.transalcaSelect2', () => {
@@ -717,6 +731,236 @@ function enhanceSearchableSelects(root = document) {
             syncSelect2ValidationState(select);
         });
     });
+}
+
+class TablePaginator {
+    constructor(element, options) {
+        this.element = typeof element === 'string' ? document.getElementById(element) : element;
+        if (!this.element) return;
+        this.isTable = this.element.tagName === 'TABLE';
+        this.tbody = this.isTable ? this.element.querySelector('tbody') : this.element;
+        this.allData = options.allData || [];
+        this.perPage = options.perPage || 30;
+        this.currentPage = 1;
+        this.renderRow = options.renderRow;
+        this.onEmpty = options.onEmpty || (() => {
+            return this.isTable 
+                ? '<tr><td colspan="20" class="text-center py-4 text-muted">No se encontraron registros</td></tr>'
+                : '<div class="p-3 text-muted text-center">No se encontraron registros</div>';
+        });
+        this.searchSelector = options.searchSelector;
+        this.filterSelectors = options.filterSelectors || [];
+        this.itemName = options.itemName || 'registros';
+        
+        this.initDom();
+        this.initEvents();
+        this.apply();
+    }
+    
+    initDom() {
+        const card = this.element.closest('.card') || this.element.parentElement;
+        let pInfo = card.parentElement.querySelector('.pagination-info-wrap');
+        if (!pInfo) {
+            pInfo = document.createElement('div');
+            pInfo.className = 'd-flex justify-content-between align-items-center px-2 mb-4 pagination-info-wrap';
+            pInfo.innerHTML = `
+                <div class="text-muted small paginator-info">Mostrando 0 a 0 de 0 registros</div>
+                <nav aria-label="Navegación">
+                    <ul class="pagination pagination-sm mb-0 animate-fade-in paginator-controls">
+                    </ul>
+                </nav>
+            `;
+            card.parentNode.insertBefore(pInfo, card.nextSibling);
+        }
+        this.infoEl = pInfo.querySelector('.paginator-info');
+        this.controlsEl = pInfo.querySelector('.paginator-controls');
+    }
+    
+    initEvents() {
+        let searchInput = null;
+        if (this.searchSelector) {
+            searchInput = document.querySelector(this.searchSelector);
+        } else {
+            const card = this.element.closest('.card') || this.element.parentElement;
+            searchInput = card.previousElementSibling?.querySelector?.('input[type="search"], .auto-table-search') || 
+                          card.querySelector('input[id*="search" i], input[name*="search" i], .table-search-input');
+        }
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                this.currentPage = 1;
+                this.apply();
+            });
+            this.searchInput = searchInput;
+        }
+        
+        this.filterSelectors.forEach(f => {
+            const el = document.querySelector(f.selector);
+            if (el) {
+                el.addEventListener('change', () => {
+                    this.currentPage = 1;
+                    this.apply();
+                });
+            }
+        });
+    }
+    
+    updateData(newData) {
+        this.allData = newData || [];
+        this.currentPage = 1;
+        this.apply();
+    }
+    
+    apply() {
+        let filtered = [...this.allData];
+        
+        if (this.searchInput) {
+            const q = this.searchInput.value.trim().toLowerCase();
+            if (q) {
+                filtered = filtered.filter(item => {
+                    return Object.values(item).some(val => 
+                        val !== null && val !== undefined && 
+                        String(val).toLowerCase().includes(q)
+                    );
+                });
+            }
+        }
+        
+        this.filterSelectors.forEach(f => {
+            const el = document.querySelector(f.selector);
+            if (el && el.value !== '') {
+                const val = el.value;
+                filtered = filtered.filter(item => f.filterFn(item, val));
+            }
+        });
+        
+        const total = filtered.length;
+        const pages = Math.ceil(total / this.perPage);
+        if (this.currentPage > pages && pages > 0) {
+            this.currentPage = pages;
+        }
+        
+        const start = total ? (this.currentPage - 1) * this.perPage + 1 : 0;
+        const end = Math.min(this.currentPage * this.perPage, total);
+        
+        if (this.infoEl) {
+            this.infoEl.textContent = `Mostrando ${start} a ${end} de ${total} ${this.itemName}`;
+        }
+        
+        if (!this.tbody) return;
+        this.tbody.innerHTML = '';
+        if (total === 0) {
+            this.tbody.innerHTML = this.onEmpty();
+            if (this.controlsEl) this.controlsEl.innerHTML = '';
+            return;
+        }
+        
+        const pageData = filtered.slice((this.currentPage - 1) * this.perPage, this.currentPage * this.perPage);
+        pageData.forEach((item, index) => {
+            const actualIndex = (this.currentPage - 1) * this.perPage + index;
+            const trHtmlOrEl = this.renderRow(item, actualIndex);
+            if (typeof trHtmlOrEl === 'string') {
+                this.tbody.innerHTML += trHtmlOrEl;
+            } else if (trHtmlOrEl instanceof HTMLElement) {
+                this.tbody.appendChild(trHtmlOrEl);
+            }
+        });
+        
+        hydrateDualPrices(this.tbody);
+        normalizeActionButtons(this.tbody);
+        
+        this.renderControls(total, pages);
+    }
+    
+    renderControls(total, pages) {
+        if (!this.controlsEl) return;
+        this.controlsEl.innerHTML = '';
+        if (pages <= 1) return;
+        
+        const page = this.currentPage;
+        
+        const prevLi = document.createElement('li');
+        prevLi.className = `page-item ${page === 1 ? 'disabled' : ''}`;
+        prevLi.innerHTML = `<a class="page-link" href="#"><i class="bi bi-chevron-left"></i></a>`;
+        if (page > 1) {
+            prevLi.querySelector('a').addEventListener('click', (e) => {
+                e.preventDefault();
+                this.currentPage = page - 1;
+                this.apply();
+            });
+        }
+        this.controlsEl.appendChild(prevLi);
+        
+        const maxVisible = 5;
+        let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
+        let endPage = startPage + maxVisible - 1;
+        
+        if (endPage > pages) {
+            endPage = pages;
+            startPage = Math.max(1, endPage - maxVisible + 1);
+        }
+        
+        if (startPage > 1) {
+            const firstLi = document.createElement('li');
+            firstLi.className = 'page-item';
+            firstLi.innerHTML = `<a class="page-link" href="#">1</a>`;
+            firstLi.querySelector('a').addEventListener('click', (e) => {
+                e.preventDefault();
+                this.currentPage = 1;
+                this.apply();
+            });
+            this.controlsEl.appendChild(firstLi);
+            
+            if (startPage > 2) {
+                const ellipsisLi = document.createElement('li');
+                ellipsisLi.className = 'page-item disabled';
+                ellipsisLi.innerHTML = `<span class="page-link">...</span>`;
+                this.controlsEl.appendChild(ellipsisLi);
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${page === i ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+            li.querySelector('a').addEventListener('click', (e) => {
+                e.preventDefault();
+                this.currentPage = i;
+                this.apply();
+            });
+            this.controlsEl.appendChild(li);
+        }
+        
+        if (endPage < pages) {
+            if (endPage < pages - 1) {
+                const ellipsisLi = document.createElement('li');
+                ellipsisLi.className = 'page-item disabled';
+                ellipsisLi.innerHTML = `<span class="page-link">...</span>`;
+                this.controlsEl.appendChild(ellipsisLi);
+            }
+            const lastLi = document.createElement('li');
+            lastLi.className = 'page-item';
+            lastLi.innerHTML = `<a class="page-link" href="#">${pages}</a>`;
+            lastLi.querySelector('a').addEventListener('click', (e) => {
+                e.preventDefault();
+                this.currentPage = pages;
+                this.apply();
+            });
+            this.controlsEl.appendChild(lastLi);
+        }
+        
+        const nextLi = document.createElement('li');
+        nextLi.className = `page-item ${page === pages ? 'disabled' : ''}`;
+        nextLi.innerHTML = `<a class="page-link" href="#"><i class="bi bi-chevron-right"></i></a>`;
+        if (page < pages) {
+            nextLi.querySelector('a').addEventListener('click', (e) => {
+                e.preventDefault();
+                this.currentPage = page + 1;
+                this.apply();
+            });
+        }
+        this.controlsEl.appendChild(nextLi);
+    }
 }
 
 function installListSearches(root = document) {
@@ -743,6 +987,11 @@ function installListSearches(root = document) {
         wrap.appendChild(input);
         card.parentNode.insertBefore(wrap, card);
         input.addEventListener('input', () => {
+            if (table.paginator) {
+                table.paginator.currentPage = 1;
+                table.paginator.apply();
+                return;
+            }
             const term = input.value.trim().toLowerCase();
             table.querySelectorAll('tbody tr').forEach(row => {
                 if (row.querySelector('.empty-state')) return;

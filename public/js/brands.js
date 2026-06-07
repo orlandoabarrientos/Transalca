@@ -54,24 +54,27 @@ $(document).ready(function() {
     }
 });
 
+let paginator = null;
+
 function loadData() {
     apiCall('/api/brands/').then(res => {
-        const tbody = document.getElementById('brandBody');
-        if(!tbody) return;
-        tbody.innerHTML = '';
-        (res.data || []).forEach(b => {
-            tbody.innerHTML += `<tr class="fade-in-up">
-                <td><strong>${escapeHtml(b.nombre)}</strong></td>
-                <td>${escapeHtml(b.descripcion || '-')}</td>
-                <td>${b.total_productos || 0}</td>
-                <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${escape(b.nombre)}')" title="Modificar Marca"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${escape(b.nombre)}')" title="Eliminar Marca"><i class="bi bi-trash"></i></button>
-                </td>
-            </tr>`;
-        });
-        if (!res.data?.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-award"></i><p>No hay marcas registradas</p></div></td></tr>';
+        if (!paginator) {
+            paginator = new TablePaginator('brandBody', {
+                allData: res.data || [],
+                itemName: 'marcas',
+                renderRow: (b) => `<tr class="fade-in-up">
+                    <td><strong>${escapeHtml(b.nombre)}</strong></td>
+                    <td>${escapeHtml(b.descripcion || '-')}</td>
+                    <td>${b.total_productos || 0}</td>
+                    <td>
+                        <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${escape(b.nombre)}')" title="Modificar Marca"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${escape(b.nombre)}')" title="Eliminar Marca"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>`,
+                onEmpty: () => '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-award"></i><p>No hay marcas registradas</p></div></td></tr>'
+            });
+        } else {
+            paginator.updateData(res.data || []);
         }
     });
 }

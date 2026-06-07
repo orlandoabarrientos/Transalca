@@ -19,35 +19,42 @@ $(document).ready(function() {
     document.getElementById('cedula_prefijo')?.addEventListener('change', validateUniqueMechanicCedula);
 });
 
+let paginator = null;
+
 function loadData() {
     apiCall('/api/mechanics/').then(res => {
-        const tbody = document.getElementById('mechanicBody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        (res.data || []).forEach(m => {
-            const actionBtn = m.total_servicios > 0 
-                ? `<button class="btn btn-icon btn-sm btn-outline-danger" onclick="deleteData('${encodeURIComponent(m.cedula)}', true)" title="Desactivar Mecánico"><i class="bi bi-slash-circle"></i></button>`
-                : `<button class="btn btn-icon btn-sm btn-warning" onclick="deleteData('${encodeURIComponent(m.cedula)}', false)" title="Eliminar Mecánico"><i class="bi bi-trash"></i></button>`;
-            tbody.innerHTML += `<tr class="fade-in-up">
-                <td>
-                    <div class="d-flex align-items-center gap-4 py-2">
-                        <img src="/public/assets/profile_pics/${escapeHtml(m.foto_perfil || 'default.png')}" style="width: 96px; height: 120px;" class="rounded shadow-sm object-fit-cover border">
-                        <div>
-                            <h6 class="mb-0 fw-bold">${escapeHtml(`${m.nombre || ''} ${m.apellido || ''}`.trim())}</h6>
-                            <small class="text-muted"><i class="bi bi-person-badge me-1"></i>${escapeHtml(m.cedula || '-')}</small>
-                        </div>
-                    </div>
-                </td>
-                <td>${escapeHtml(m.especialidad || '-')}</td>
-                <td>${escapeHtml(m.telefono || '-')}</td>
-                <td>${statusBadge(m.estado)}</td>
-                <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(m.cedula)}')" title="Modificar Mecánico"><i class="bi bi-pencil"></i></button>
-                    ${actionBtn}
-                </td>
-            </tr>`;
-        });
-        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-person-badge"></i><p>No hay mecánicos registrados</p></div></td></tr>';
+        if (!paginator) {
+            paginator = new TablePaginator('mechanicBody', {
+                allData: res.data || [],
+                itemName: 'mecánicos',
+                renderRow: (m) => {
+                    const actionBtn = m.total_servicios > 0 
+                        ? `<button class="btn btn-icon btn-sm btn-outline-danger" onclick="deleteData('${encodeURIComponent(m.cedula)}', true)" title="Desactivar Mecánico"><i class="bi bi-slash-circle"></i></button>`
+                        : `<button class="btn btn-icon btn-sm btn-warning" onclick="deleteData('${encodeURIComponent(m.cedula)}', false)" title="Eliminar Mecánico"><i class="bi bi-trash"></i></button>`;
+                    return `<tr class="fade-in-up">
+                        <td>
+                            <div class="d-flex align-items-center gap-4 py-2">
+                                <img src="/public/assets/profile_pics/${escapeHtml(m.foto_perfil || 'default.png')}" style="width: 96px; height: 120px;" class="rounded shadow-sm object-fit-cover border">
+                                <div>
+                                    <h6 class="mb-0 fw-bold">${escapeHtml(`${m.nombre || ''} ${m.apellido || ''}`.trim())}</h6>
+                                    <small class="text-muted"><i class="bi bi-person-badge me-1"></i>${escapeHtml(m.cedula || '-')}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${escapeHtml(m.especialidad || '-')}</td>
+                        <td>${escapeHtml(m.telefono || '-')}</td>
+                        <td>${statusBadge(m.estado)}</td>
+                        <td>
+                            <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(m.cedula)}')" title="Modificar Mecánico"><i class="bi bi-pencil"></i></button>
+                            ${actionBtn}
+                        </td>
+                    </tr>`;
+                },
+                onEmpty: () => '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-person-badge"></i><p>No hay mecánicos registrados</p></div></td></tr>'
+            });
+        } else {
+            paginator.updateData(res.data || []);
+        }
     });
 }
 

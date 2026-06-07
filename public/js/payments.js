@@ -9,50 +9,63 @@ $(document).ready(function() {
     loadAll();
 });
 
+let pendingPaginator = null;
+let allPaginator = null;
+
 function loadPending() {
     apiCall('/api/payments/pending').then(res => {
-        const tbody = document.getElementById('pendingBody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        (res.data || []).forEach(p => {
-            const comprobante = p.imagen_url || p.comprobante_url || '';
-            tbody.innerHTML += `<tr class="fade-in-up">
-                <td>#${p.id}</td>
-                <td>#${p.orden_venta_id}</td>
-                <td>${comprobante ? `<a href="#" class="btn btn-sm btn-outline-orange" onclick="viewComp(${p.id})"><i class="bi bi-image me-1"></i>Ver</a>` : '-'}</td>
-                <td>${escapeHtml(p.metodo_pago || '-')}</td>
-                <td>${formatDate(p.fecha)}</td>
-                <td>
-                    <button class="btn btn-sm btn-success" onclick="viewComp(${p.id})"><i class="bi bi-check-lg me-1"></i>Revisar pago</button>
-                </td>
-            </tr>`;
-        });
-        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-credit-card"></i><p>Sin pagos pendientes</p></div></td></tr>';
+        if (!pendingPaginator) {
+            pendingPaginator = new TablePaginator('pendingBody', {
+                allData: res.data || [],
+                itemName: 'pagos pendientes',
+                renderRow: (p) => {
+                    const comprobante = p.imagen_url || p.comprobante_url || '';
+                    return `<tr class="fade-in-up">
+                        <td>#${p.id}</td>
+                        <td>#${p.orden_venta_id}</td>
+                        <td>${comprobante ? `<a href="#" class="btn btn-sm btn-outline-orange" onclick="viewComp(${p.id})"><i class="bi bi-image me-1"></i>Ver</a>` : '-'}</td>
+                        <td>${escapeHtml(p.metodo_pago || '-')}</td>
+                        <td>${formatDate(p.fecha)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-success" onclick="viewComp(${p.id})"><i class="bi bi-check-lg me-1"></i>Revisar pago</button>
+                        </td>
+                    </tr>`;
+                },
+                onEmpty: () => '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-credit-card"></i><p>Sin pagos pendientes</p></div></td></tr>'
+            });
+        } else {
+            pendingPaginator.updateData(res.data || []);
+        }
     });
 }
 
 function loadAll() {
     apiCall('/api/payments/').then(res => {
-        const tbody = document.getElementById('allBody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        (res.data || []).forEach(p => {
-            const stateLower = String(p.estado || '').toLowerCase();
-            const badge = ['aprobado', 'aprobada', 'verificado', 'verificada', 'pagado', 'activo'].includes(stateLower) ? 'badge-active' : ['pendiente', 'procesando'].includes(stateLower) ? 'badge-pending' : 'badge-inactive';
-            let stateHtml = `<span class="badge-status ${badge}">${escapeHtml(p.estado || '-')}</span>`;
-            if (stateLower === 'rechazado' || stateLower === 'rechazada') {
-                stateHtml += ` <button class="btn btn-xs btn-outline-danger ms-1 py-0 px-1" title="Ver motivo de rechazo" data-reason="${escapeHtml(p.observaciones || 'No se especificó un motivo')}" onclick="showRejectionReason(this)" style="font-size: 0.75rem;"><i class="bi bi-info-circle"></i></button>`;
-            }
-            tbody.innerHTML += `<tr class="fade-in-up">
-                <td>#${p.id}</td>
-                <td>#${p.orden_venta_id}</td>
-                <td>${escapeHtml(p.metodo_pago || '-')}</td>
-                <td>${stateHtml}</td>
-                <td>${formatDate(p.fecha)}</td>
-                <td>${escapeHtml(p.revisado_por_nombre || p.revisado_por || '-')}</td>
-            </tr>`;
-        });
-        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-credit-card"></i><p>Sin pagos</p></div></td></tr>';
+        if (!allPaginator) {
+            allPaginator = new TablePaginator('allBody', {
+                allData: res.data || [],
+                itemName: 'pagos',
+                renderRow: (p) => {
+                    const stateLower = String(p.estado || '').toLowerCase();
+                    const badge = ['aprobado', 'aprobada', 'verificado', 'verificada', 'pagado', 'activo'].includes(stateLower) ? 'badge-active' : ['pendiente', 'procesando'].includes(stateLower) ? 'badge-pending' : 'badge-inactive';
+                    let stateHtml = `<span class="badge-status ${badge}">${escapeHtml(p.estado || '-')}</span>`;
+                    if (stateLower === 'rechazado' || stateLower === 'rechazada') {
+                        stateHtml += ` <button class="btn btn-xs btn-outline-danger ms-1 py-0 px-1" title="Ver motivo de rechazo" data-reason="${escapeHtml(p.observaciones || 'No se especificó un motivo')}" onclick="showRejectionReason(this)" style="font-size: 0.75rem;"><i class="bi bi-info-circle"></i></button>`;
+                    }
+                    return `<tr class="fade-in-up">
+                        <td>#${p.id}</td>
+                        <td>#${p.orden_venta_id}</td>
+                        <td>${escapeHtml(p.metodo_pago || '-')}</td>
+                        <td>${stateHtml}</td>
+                        <td>${formatDate(p.fecha)}</td>
+                        <td>${escapeHtml(p.revisado_por_nombre || p.revisado_por || '-')}</td>
+                    </tr>`;
+                },
+                onEmpty: () => '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-credit-card"></i><p>Sin pagos</p></div></td></tr>'
+            });
+        } else {
+            allPaginator.updateData(res.data || []);
+        }
     });
 }
 

@@ -54,24 +54,27 @@ $(document).ready(function() {
     }
 });
 
+let paginator = null;
+
 function loadData() {
     apiCall('/api/categories/').then(res => {
-        const tbody = document.getElementById('categoryBody');
-        if(!tbody) return;
-        tbody.innerHTML = '';
-        (res.data || []).forEach(c => {
-            tbody.innerHTML += `<tr class="fade-in-up">
-                <td><strong>${escapeHtml(c.nombre)}</strong></td>
-                <td>${escapeHtml(c.descripcion || '-')}</td>
-                <td>${c.total_productos || 0}</td>
-                <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${escape(c.nombre)}')" title="Modificar Categoría"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${escape(c.nombre)}')" title="Eliminar Categoría"><i class="bi bi-trash"></i></button>
-                </td>
-            </tr>`;
-        });
-        if (!res.data?.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-tags"></i><p>No hay categorías registradas</p></div></td></tr>';
+        if (!paginator) {
+            paginator = new TablePaginator('categoryBody', {
+                allData: res.data || [],
+                itemName: 'categorías',
+                renderRow: (c) => `<tr class="fade-in-up">
+                    <td><strong>${escapeHtml(c.nombre)}</strong></td>
+                    <td>${escapeHtml(c.descripcion || '-')}</td>
+                    <td>${c.total_productos || 0}</td>
+                    <td>
+                        <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${escape(c.nombre)}')" title="Modificar Categoría"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${escape(c.nombre)}')" title="Eliminar Categoría"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>`,
+                onEmpty: () => '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-tags"></i><p>No hay categorías registradas</p></div></td></tr>'
+            });
+        } else {
+            paginator.updateData(res.data || []);
         }
     });
 }

@@ -7,7 +7,6 @@ $(document).ready(function () {
     $('#navbarContainer').load('/components/admin_navbar.html', () => loadNavSession());
     loadCompanies();
     loadCompanyStats();
-    $('#searchInput').on('input', debounce(loadCompanies, 300));
     $('#filterEstado').on('change', loadCompanies);
     Validator.setRules('companyForm', {
         fRifPrefijo: { required: true, custom: v => ['J', 'G', 'V', 'E', 'P'].includes(v), customMsg: 'El valor seleccionado no es valido. Recargue la pagina e intentelo nuevamente.' },
@@ -41,7 +40,7 @@ $(document).ready(function () {
         fSector: { maxLength: 50, maxLengthMsg: 'El sector no puede superar los 50 caracteres.' },
         fTelefono: { required: true, pattern: /^04\d{9}$/, maxLength: 11, requiredMsg: 'Telefono requerido', patternMsg: 'Debe tener 11 digitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
         fEmail: { email: true, maxLength: 50, maxLengthMsg: 'El correo no puede superar los 50 caracteres.' },
-        fDireccion: { maxLength: 200, maxLengthMsg: 'La dirección no puede superar los 200 caracteres.' },
+        fDireccion: { maxLength: 40, maxLengthMsg: 'La dirección no puede superar los 40 caracteres.' },
         fLimiteCredito: { min: 0, minMsg: 'El límite no puede ser negativo' },
         fDiasCredito: { min: 0, minMsg: 'Los días no pueden ser negativos' }
     });
@@ -97,37 +96,41 @@ function loadCompanyStats() {
     });
 }
 
+let paginator = null;
+
 function loadCompanies() {
-    const q = $('#searchInput').val();
     const estado = $('#filterEstado').val();
     let url = '/api/companies/?';
-    if (q) url += `q=${encodeURIComponent(q)}&`;
     if (estado !== '') url += `estado=${estado}&`;
     $.get(url, function (r) {
-        const tbody = $('#companiesTableBody');
-        tbody.empty();
-        if (!r.data || !r.data.length) {
-            tbody.html('<tr><td colspan="7" class="text-center py-4 text-muted">No se encontraron empresas</td></tr>');
-            return;
+        if (!paginator) {
+            paginator = new TablePaginator('companiesTableBody', {
+                allData: r.data || [],
+                itemName: 'empresas',
+                searchSelector: '#searchInput',
+                renderRow: (c) => {
+                    const credito = companyCreditBadge(c.estado_credito);
+                    const vencimiento = c.credito_vencimiento ? `<small class="d-block text-muted">Fin: ${formatCompanyDate(c.credito_vencimiento)}</small>` : '';
+                    return `
+                        <tr style="cursor:pointer" onclick="showCompanyDetail('${encodeURIComponent(c.rif)}')">
+                            <td><strong>${escapeHtml(c.rif || '')}</strong></td>
+                            <td>${escapeHtml(c.razon_social || c.nombre || '')}</td>
+                            <td>${escapeHtml(c.telefono || '')}</td>
+                            <td>${escapeHtml(c.email || '')}</td>
+                            <td><span class="badge bg-info">${c.flota_count || 0}</span></td>
+                            <td>${credito}${vencimiento}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning me-1" onclick="event.stopPropagation(); editCompany('${encodeURIComponent(c.rif)}')" title="Modificar Empresa"><i class="bi bi-pencil-square"></i></button>
+                                <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteCompany('${encodeURIComponent(c.rif)}')" title="Eliminar Empresa"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                },
+                onEmpty: () => '<tr><td colspan="7" class="text-center py-4 text-muted">No se encontraron empresas</td></tr>'
+            });
+        } else {
+            paginator.updateData(r.data || []);
         }
-        r.data.forEach(c => {
-            const credito = companyCreditBadge(c.estado_credito);
-            const vencimiento = c.credito_vencimiento ? `<small class="d-block text-muted">Fin: ${formatCompanyDate(c.credito_vencimiento)}</small>` : '';
-            tbody.append(`
-                <tr style="cursor:pointer" onclick="showCompanyDetail('${encodeURIComponent(c.rif)}')">
-                    <td><strong>${escapeHtml(c.rif || '')}</strong></td>
-                    <td>${escapeHtml(c.razon_social || c.nombre || '')}</td>
-                    <td>${escapeHtml(c.telefono || '')}</td>
-                    <td>${escapeHtml(c.email || '')}</td>
-                    <td><span class="badge bg-info">${c.flota_count || 0}</span></td>
-                    <td>${credito}${vencimiento}</td>
-                    <td>
-                        <button class="btn btn-sm btn-warning me-1" onclick="event.stopPropagation(); editCompany('${encodeURIComponent(c.rif)}')" title="Modificar Empresa"><i class="bi bi-pencil-square"></i></button>
-                        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteCompany('${encodeURIComponent(c.rif)}')" title="Eliminar Empresa"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>
-            `);
-        });
         hydrateDualPrices();
     });
 }

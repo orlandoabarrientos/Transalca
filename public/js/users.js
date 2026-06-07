@@ -15,7 +15,7 @@ $(document).ready(function() {
         cedula: { required: true, pattern: /^\d{7,8}$/, maxLength: 8, requiredMsg: 'La cédula es obligatoria.', patternMsg: 'La cédula debe tener 7 u 8 dígitos.', maxLengthMsg: 'La cédula no puede superar los 8 caracteres.' },
         email: { required: true, email: true, maxLength: 50, requiredMsg: 'El correo es obligatorio', maxLengthMsg: 'El correo no puede superar los 50 caracteres.' },
         telefono: { pattern: /^$|^04\d{9}$/, maxLength: 11, patternMsg: 'Debe tener 11 dígitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
-        direccion: { maxLength: 200, maxLengthMsg: 'La dirección no puede superar los 200 caracteres.' },
+        direccion: { maxLength: 40, maxLengthMsg: 'La dirección no puede superar los 40 caracteres.' },
         tipo: { required: true, custom: v => ['cliente', 'empleado'].includes(v), customMsg: 'El valor seleccionado no es válido. Recargue la página e inténtelo nuevamente' },
         rol_id: { required: true, requiredMsg: 'El rol es obligatorio' }
     });
@@ -25,29 +25,36 @@ $(document).ready(function() {
     document.getElementById('email')?.addEventListener('input', () => validateUniqueUser('email'));
 });
 
+let paginator = null;
+
 function loadData() {
     const tipo = document.getElementById('filterTipo')?.value || '';
     const url = tipo ? `/api/users/?tipo=${tipo}` : '/api/users/';
     apiCall(url).then(res => {
-        const tbody = document.getElementById('userBody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        (res.data || []).forEach(u => {
-            const tipoBadge = u.tipo === 'empleado' ? '<span class="badge-status badge-info">Empleado</span>' : '<span class="badge-status badge-pending">Cliente</span>';
-            tbody.innerHTML += `<tr class="fade-in-up">
-                <td class="col-id">${u.id}</td>
-                <td><strong>${escapeHtml(`${u.nombre || ''} ${u.apellido || ''}`.trim())}</strong></td>
-                <td>${escapeHtml(u.cedula || '-')}</td>
-                <td>${escapeHtml(u.email || '-')}</td>
-                <td>${tipoBadge}</td>
-                <td>${escapeHtml(u.roles || '-')}</td>
-                <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${u.id})" title="Modificar Usuario"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${u.id})" title="Eliminar Usuario"><i class="bi bi-trash"></i></button>
-                </td>
-            </tr>`;
-        });
-        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-people"></i><p>No hay usuarios registrados</p></div></td></tr>';
+        if (!paginator) {
+            paginator = new TablePaginator('userBody', {
+                allData: res.data || [],
+                itemName: 'usuarios',
+                renderRow: (u) => {
+                    const tipoBadge = u.tipo === 'empleado' ? '<span class="badge-status badge-info">Empleado</span>' : '<span class="badge-status badge-pending">Cliente</span>';
+                    return `<tr class="fade-in-up">
+                        <td class="col-id">${u.id}</td>
+                        <td><strong>${escapeHtml(`${u.nombre || ''} ${u.apellido || ''}`.trim())}</strong></td>
+                        <td>${escapeHtml(u.cedula || '-')}</td>
+                        <td>${escapeHtml(u.email || '-')}</td>
+                        <td>${tipoBadge}</td>
+                        <td>${escapeHtml(u.roles || '-')}</td>
+                        <td>
+                            <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${u.id})" title="Modificar Usuario"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${u.id})" title="Eliminar Usuario"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>`;
+                },
+                onEmpty: () => '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-people"></i><p>No hay usuarios registrados</p></div></td></tr>'
+            });
+        } else {
+            paginator.updateData(res.data || []);
+        }
     });
 }
 

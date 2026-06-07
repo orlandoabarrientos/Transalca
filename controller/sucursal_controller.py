@@ -12,7 +12,7 @@ def _validate_sucursal(data):
     errors = {}
     clean = {
         'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=200, allow_serial=False),
-        'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=300),
+        'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40),
         'telefono': normalize_phone(errors, data.get('telefono'), required=False),
         'email': normalize_email(errors, data.get('email'), required=False)
     }

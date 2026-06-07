@@ -4,23 +4,28 @@ $(document).ready(function() {
     loadData();
 });
 
+let paginator = null;
+
 function loadData() {
     apiCall('/api/backup/').then(res => {
-        const tbody = document.getElementById('backupBody');
-        if(!tbody) return;
-        tbody.innerHTML = '';
-        (res.data || []).forEach(b => {
-            tbody.innerHTML += `<tr class="fade-in-up">
-                <td><i class="bi bi-file-earmark-zip me-2" style="color:var(--primary);"></i><strong>${b.filename}</strong></td>
-                <td>${b.size || '-'}</td>
-                <td>${b.date || '-'}</td>
-                <td>
-                    <a href="/api/backup/download/${b.filename}" class="btn btn-icon btn-outline-orange btn-sm" title="Descargar Respaldo"><i class="bi bi-download"></i></a>
-                    <button class="btn btn-icon btn-sm btn-danger" onclick="deleteBackup('${b.filename}')" title="Eliminar Respaldo"><i class="bi bi-trash"></i></button>
-                </td>
-            </tr>`;
-        });
-        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-database"></i><p>Sin respaldos registrados</p></div></td></tr>';
+        if (!paginator) {
+            paginator = new TablePaginator('backupBody', {
+                allData: res.data || [],
+                itemName: 'respaldos',
+                renderRow: (b) => `<tr class="fade-in-up">
+                    <td><i class="bi bi-file-earmark-zip me-2" style="color:var(--primary);"></i><strong>${escapeHtml(b.filename)}</strong></td>
+                    <td>${escapeHtml(b.size || '-')}</td>
+                    <td>${escapeHtml(b.date || '-')}</td>
+                    <td>
+                        <a href="/api/backup/download/${escapeHtml(b.filename)}" class="btn btn-icon btn-outline-orange btn-sm" title="Descargar Respaldo"><i class="bi bi-download"></i></a>
+                        <button class="btn btn-icon btn-sm btn-danger" onclick="deleteBackup('${escapeHtml(b.filename)}')" title="Eliminar Respaldo"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>`,
+                onEmpty: () => '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-database"></i><p>Sin respaldos registrados</p></div></td></tr>'
+            });
+        } else {
+            paginator.updateData(res.data || []);
+        }
     });
 }
 

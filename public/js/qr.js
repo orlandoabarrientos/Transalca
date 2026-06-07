@@ -12,31 +12,38 @@ $(document).ready(function () {
     $('#utilidad_tipo, #tipo').on('change', toggleUtilityFields);
 });
 
+let paginator = null;
+
 function loadData() {
     apiCall('/api/qr/').then(res => {
-        const tbody = document.getElementById('qrBody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        (res.data || []).forEach(q => {
-            const utilidad = q.utilidad || 'sin utilidad';
-            const utilidadEstado = q.utilidad_estado || 'activa';
-            const utilidadTexto = utilidadEstado === 'activa' ? utilidad : `${utilidad} (${utilidadEstado})`;
-            const contenido = (q.contenido_resumen || q.contenido || '').toString();
-            tbody.innerHTML += `<tr class="fade-in-up">
-                <td class="col-id">${q.id}</td>
-                <td><span class="badge-status badge-info">${q.tipo}</span></td>
-                <td>${escapeHtml(utilidadTexto)}</td>
-                <td>${escapeHtml(contenido.substring(0, 50))}${contenido.length > 50 ? '...' : ''}</td>
-                <td>${q.usuario_nombre || 'N/A'}</td>
-                <td>${formatDate(q.created_at)}</td>
-                <td>
-                    <button class="btn btn-icon btn-outline-info btn-sm" onclick="viewQRImage(${q.id})" title="Ver Codigo QR"><i class="bi bi-qr-code-scan"></i></button>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${q.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="deleteQR(${q.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
-                </td>
-            </tr>`;
-        });
-        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-qr-code"></i><p>Sin codigos QR</p></div></td></tr>';
+        if (!paginator) {
+            paginator = new TablePaginator('qrBody', {
+                allData: res.data || [],
+                itemName: 'códigos QR',
+                renderRow: (q) => {
+                    const utilidad = q.utilidad || 'sin utilidad';
+                    const utilidadEstado = q.utilidad_estado || 'activa';
+                    const utilidadTexto = utilidadEstado === 'activa' ? utilidad : `${utilidad} (${utilidadEstado})`;
+                    const contenido = (q.contenido_resumen || q.contenido || '').toString();
+                    return `<tr class="fade-in-up">
+                        <td class="col-id">${q.id}</td>
+                        <td><span class="badge-status badge-info">${q.tipo}</span></td>
+                        <td>${escapeHtml(utilidadTexto)}</td>
+                        <td>${escapeHtml(contenido.substring(0, 50))}${contenido.length > 50 ? '...' : ''}</td>
+                        <td>${q.usuario_nombre || 'N/A'}</td>
+                        <td>${formatDate(q.created_at)}</td>
+                        <td>
+                            <button class="btn btn-icon btn-outline-info btn-sm" onclick="viewQRImage(${q.id})" title="Ver Codigo QR"><i class="bi bi-qr-code-scan"></i></button>
+                            <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${q.id})" title="Editar"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-icon btn-sm btn-warning" onclick="deleteQR(${q.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>`;
+                },
+                onEmpty: () => '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-qr-code"></i><p>Sin codigos QR</p></div></td></tr>'
+            });
+        } else {
+            paginator.updateData(res.data || []);
+        }
     });
 }
 

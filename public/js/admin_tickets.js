@@ -54,36 +54,42 @@ async function loadAdminTickets() {
     }
 }
 
-function renderAdminTicketsList() {
-    const box = $('#adminTicketsList');
-    box.empty();
-    if (!adminTicketState.tickets.length) {
-        box.html('<div class="p-3 text-muted">Sin tickets para este filtro.</div>');
-        return;
-    }
-    adminTicketState.tickets.forEach(t => {
-        const active = Number(t.id) === Number(adminTicketState.selectedId) ? 'active' : '';
-        box.append(`
-            <button type="button" class="list-group-item list-group-item-action ${active}" data-ticket-id="${t.id}">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div class="text-start">
-                        <div class="fw-semibold">#${t.id} ${escapeHtml(t.asunto || '')}</div>
-                        <div class="small text-muted">${escapeHtml((t.cliente_nombre || '') + ' ' + (t.cliente_apellido || ''))}</div>
-                        <div class="small text-muted">${formatDate(t.created_at)}</div>
-                    </div>
-                    <div class="text-end">
-                        <div>${estadoBadge(t.estado || 'abierto')}</div>
-                        <div class="mt-1">${estadoBadge(t.prioridad || 'media')}</div>
-                    </div>
-                </div>
-            </button>
-        `);
-    });
+let paginator = null;
 
-    box.find('[data-ticket-id]').on('click', async function () {
-        const id = $(this).data('ticket-id');
-        await openAdminTicket(id);
-    });
+function renderAdminTicketsList() {
+    if (!paginator) {
+        paginator = new TablePaginator('adminTicketsList', {
+            allData: adminTicketState.tickets,
+            itemName: 'tickets',
+            renderRow: (t) => {
+                const active = Number(t.id) === Number(adminTicketState.selectedId) ? 'active' : '';
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `list-group-item list-group-item-action ${active}`;
+                btn.dataset.ticketId = t.id;
+                btn.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="text-start">
+                            <div class="fw-semibold">#${t.id} ${escapeHtml(t.asunto || '')}</div>
+                            <div class="small text-muted">${escapeHtml((t.cliente_nombre || '') + ' ' + (t.cliente_apellido || ''))}</div>
+                            <div class="small text-muted">${formatDate(t.created_at)}</div>
+                        </div>
+                        <div class="text-end">
+                            <div>${estadoBadge(t.estado || 'abierto')}</div>
+                            <div class="mt-1">${estadoBadge(t.prioridad || 'media')}</div>
+                        </div>
+                    </div>
+                `;
+                btn.addEventListener('click', async () => {
+                    await openAdminTicket(t.id);
+                });
+                return btn;
+            },
+            onEmpty: () => '<div class="p-3 text-muted">Sin tickets para este filtro.</div>'
+        });
+    } else {
+        paginator.updateData(adminTicketState.tickets);
+    }
 }
 
 async function openAdminTicket(ticketId, silent = false) {

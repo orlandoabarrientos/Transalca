@@ -36,7 +36,7 @@ def update_profile():
         clean = {
             'nombre': require_text(errors, 'fNombre', data.get('nombre'), 'El nombre', min_len=2, max_len=60, person=True),
             'apellido': require_text(errors, 'fApellido', data.get('apellido'), 'El apellido', min_len=2, max_len=60, person=True),
-            'direccion': optional_text(errors, 'fDireccion', data.get('direccion'), 'La direccion', max_len=255)
+            'direccion': optional_text(errors, 'fDireccion', data.get('direccion'), 'La direccion', max_len=40)
         }
         current = model.get_profile(session['user_id'])
         if current and current.get('tipo') == 'cliente':

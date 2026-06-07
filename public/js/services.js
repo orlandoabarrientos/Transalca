@@ -44,27 +44,30 @@ $(document).ready(function() {
     }
 });
 
+let paginator = null;
+
 function loadData() {
     apiCall('/api/services/').then(res => {
-        const tbody = document.getElementById('serviceBody');
-        if(!tbody) return;
-        tbody.innerHTML = '';
-        (res.data || []).forEach(s => {
-            tbody.innerHTML += `<tr class="fade-in-up">
-                <td class="col-id">${s.id}</td>
-                <td><strong>${s.nombre}</strong></td>
-                <td><span class="badge-status badge-info">${s.tipo || 'general'}</span></td>
-                <td>${s.sucursal_nombre || 'Todas'}</td>
-                <td class="fw-bold" style="color:var(--primary);" data-usd-price="${s.precio}">${formatUsdBs(s.precio)}</td>
-                <td>${s.duracion_estimada || '-'} min</td>
-                <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${s.id})" title="Modificar Servicio"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${s.id})" title="Eliminar Servicio"><i class="bi bi-trash"></i></button>
-                </td>
-            </tr>`;
-        });
-        if (!res.data?.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-wrench-adjustable"></i><p>No hay servicios registrados</p></div></td></tr>';
+        if (!paginator) {
+            paginator = new TablePaginator('serviceBody', {
+                allData: res.data || [],
+                itemName: 'servicios',
+                renderRow: (s) => `<tr class="fade-in-up">
+                    <td class="col-id">${s.id}</td>
+                    <td><strong>${escapeHtml(s.nombre)}</strong></td>
+                    <td><span class="badge-status badge-info">${escapeHtml(s.tipo || 'general')}</span></td>
+                    <td>${escapeHtml(s.sucursal_nombre || 'Todas')}</td>
+                    <td class="fw-bold" style="color:var(--primary);" data-usd-price="${s.precio}">${formatUsdBs(s.precio)}</td>
+                    <td>${s.duracion_estimada || '-'} min</td>
+                    <td>
+                        <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${s.id})" title="Modificar Servicio"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado(${s.id})" title="Eliminar Servicio"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>`,
+                onEmpty: () => '<tr><td colspan="7" class="text-center py-4"><div class="empty-state"><i class="bi bi-wrench-adjustable"></i><p>No hay servicios registrados</p></div></td></tr>'
+            });
+        } else {
+            paginator.updateData(res.data || []);
         }
     });
 }

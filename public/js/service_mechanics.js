@@ -112,41 +112,48 @@ async function loadMechanics() {
     } catch (e) { }
 }
 
+let paginator = null;
+
 async function loadAssignments() {
     try {
         const res = await apiCall('/api/service-mechanics/');
         const assignments = res.data || [];
-        const tbody = document.getElementById('assignmentBody');
-        tbody.innerHTML = '';
-
+        
         let noAssigned = 0;
-
         assignments.forEach(a => {
             const hasMechanic = !!(a.mecanico_cedula || '').trim();
             if (!hasMechanic) noAssigned += 1;
-
-            const mechanicHtml = hasMechanic
-                ? `<div><strong>${a.mecanico_nombre || a.mecanico_cedula}</strong><br><small class="text-muted">${a.mecanico_cedula}</small></div>`
-                : '<span class="badge-status badge-pending">Sin asignar</span>';
-
-            tbody.innerHTML += `<tr class="fade-in-up">
-                <td class="col-id">${a.id}</td>
-                <td><strong>${a.servicio_nombre || '-'}</strong></td>
-                <td>${a.orden_venta_id || '-'}</td>
-                <td>${mechanicHtml}</td>
-                <td>${statusSelect(a.id, a.estado)}</td>
-                <td>${formatDate(a.fecha)}</td>
-                <td>${a.observaciones || '-'}</td>
-                <td>
-                    ${!hasMechanic ? `<button class="btn btn-icon btn-outline-orange btn-sm" title="Asignar Mecánico" onclick="openMechanicModal(${a.id})"><i class="bi bi-person-plus"></i></button>` : ''}
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editAssignment(${a.id})" title="Modificar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="deleteAssignment(${a.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
-                </td>
-            </tr>`;
         });
 
-        if (!assignments.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="empty-state"><i class="bi bi-tools"></i><p>No hay registros de servicio mecánico</p></div></td></tr>';
+        if (!paginator) {
+            paginator = new TablePaginator('assignmentBody', {
+                allData: assignments,
+                itemName: 'servicios mecánicos',
+                renderRow: (a) => {
+                    const hasMechanic = !!(a.mecanico_cedula || '').trim();
+                    const mechanicHtml = hasMechanic
+                        ? `<div><strong>${escapeHtml(a.mecanico_nombre || a.mecanico_cedula)}</strong><br><small class="text-muted">${escapeHtml(a.mecanico_cedula)}</small></div>`
+                        : '<span class="badge-status badge-pending">Sin asignar</span>';
+
+                    return `<tr class="fade-in-up">
+                        <td class="col-id">${a.id}</td>
+                        <td><strong>${escapeHtml(a.servicio_nombre || '-')}</strong></td>
+                        <td>${a.orden_venta_id || '-'}</td>
+                        <td>${mechanicHtml}</td>
+                        <td>${statusSelect(a.id, a.estado)}</td>
+                        <td>${formatDate(a.fecha)}</td>
+                        <td>${escapeHtml(a.observaciones || '-')}</td>
+                        <td>
+                            ${!hasMechanic ? `<button class="btn btn-icon btn-outline-orange btn-sm" title="Asignar Mecánico" onclick="openMechanicModal(${a.id})"><i class="bi bi-person-plus"></i></button>` : ''}
+                            <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editAssignment(${a.id})" title="Modificar"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-icon btn-sm btn-warning" onclick="deleteAssignment(${a.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>`;
+                },
+                onEmpty: () => '<tr><td colspan="8" class="text-center py-4"><div class="empty-state"><i class="bi bi-tools"></i><p>No hay registros de servicio mecánico</p></div></td></tr>'
+            });
+        } else {
+            paginator.updateData(assignments);
         }
 
         document.getElementById('statTotal').textContent = assignments.length;

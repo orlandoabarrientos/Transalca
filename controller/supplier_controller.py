@@ -17,7 +17,7 @@ def _validate_supplier(data):
         'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=150, allow_serial=False),
         'telefono': normalize_phone(errors, data.get('telefono'), required=False),
         'email': normalize_email(errors, data.get('email'), required=False),
-        'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=255)
+        'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40)
     }
     return clean, errors
 

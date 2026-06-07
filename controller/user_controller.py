@@ -22,7 +22,7 @@ def _validate_user(data, require_password=False, current_id=None):
         'cedula_prefijo': cedula_prefijo,
         'email': normalize_email(errors, data.get('email')),
         'telefono': normalize_phone(errors, data.get('telefono'), required=False),
-        'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=255),
+        'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40),
         'tipo': validate_choice(errors, 'tipo', data.get('tipo') or 'empleado', TIPOS_USUARIO)
     }
 

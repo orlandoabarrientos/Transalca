@@ -88,7 +88,7 @@ def do_register():
         cedula, cedula_prefijo, _ = normalize_cedula(errors, data)
         telefono = normalize_phone(errors, data.get('telefono'))
         email = normalize_email(errors, data.get('email'))
-        direccion = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=300)
+        direccion = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40)
         if not data.get('password') or not re.match(PASSWORD_REGEX, data.get('password', '')):
             errors['password'] = 'La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial.'
         if data.get('password') != data.get('confirm_password'):

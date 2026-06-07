@@ -5,7 +5,6 @@ $(document).ready(function () {
         document.querySelector('[data-page="purchase_orders"]')?.classList.add('active');
     });
     $('#navbarContainer').load('/components/admin_navbar.html', () => loadNavSession());
-    $('#searchInput').on('input', debounce(loadOrders, 300));
     $('#filterEstado').on('change', loadOrders);
 
     Validator.setRules('createOrderForm', {
@@ -35,52 +34,49 @@ function loadStats() {
     });
 }
 
+let paginator = null;
+
 function loadOrders() {
-    const tbody = $('#ordersTableBody');
-    tbody.html('<tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-warning" role="status"></div></td></tr>');
-    const q = $('#searchInput').val();
     const estado = $('#filterEstado').val();
     let url = '/api/purchase-orders/?';
-    if (q) url += `q=${encodeURIComponent(q)}&`;
     if (estado) url += `estado=${encodeURIComponent(estado)}&`;
 
     $.get(url, function (r) {
-        tbody.empty();
-        if (r.status !== 'success') {
-            tbody.html('<tr><td colspan="8" class="text-center py-4 text-danger">No se pudieron cargar las órdenes de compra.</td></tr>');
-            return;
-        }
-        if (!r.data || !r.data.length) {
-            tbody.html('<tr><td colspan="8" class="text-center py-4 text-muted">No hay órdenes de compra registradas.</td></tr>');
-            return;
-        }
-        r.data.forEach(o => {
-            const dateStr = formatDate(o.fecha);
-            const total = Number(o.total || 0);
-            const isBought = String(o.estado || '').toLowerCase() === 'comprado';
-            const statusBadge = isBought
-                ? '<span class="badge-status badge-active">Comprado</span>'
-                : '<span class="badge-status badge-pending">Pendiente</span>';
+        if (!paginator) {
+            paginator = new TablePaginator('ordersTableBody', {
+                allData: r.data || [],
+                itemName: 'órdenes de compra',
+                searchSelector: '#searchInput',
+                renderRow: (o) => {
+                    const dateStr = formatDate(o.fecha);
+                    const total = Number(o.total || 0);
+                    const isBought = String(o.estado || '').toLowerCase() === 'comprado';
+                    const statusBadge = isBought
+                        ? '<span class="badge-status badge-active">Comprado</span>'
+                        : '<span class="badge-status badge-pending">Pendiente</span>';
 
-            tbody.append(`
-                <tr>
-                    <td>#${o.id}</td>
-                    <td>${escapeHtml(o.proveedor_nombre || '')}</td>
-                    <td>${escapeHtml(o.proveedor_rif || '')}</td>
-                    <td>${escapeHtml(o.sucursal_nombre || '')}</td>
-                    <td data-usd-price="${total}">${formatUsdBs(total)}</td>
-                    <td>${dateStr}</td>
-                    <td>${statusBadge}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-orange me-1" title="Ver detalle" onclick="viewOrderDetails(${o.id})"><i class="bi bi-eye"></i></button>
-                        <button class="btn btn-sm btn-success me-1" title="Marcar como Comprado" onclick="markOrderAsBought(${o.id})" ${isBought ? 'disabled' : ''}><i class="bi bi-cart-check"></i> Comprado</button>
-                        <button class="btn btn-sm btn-danger" title="Ver PDF" onclick="downloadOrderPdf(${o.id})"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
-                    </td>
-                </tr>
-            `);
-        });
-        hydrateDualPrices();
-        enhanceSearchableSelects();
+                    return `
+                        <tr>
+                            <td>#${o.id}</td>
+                            <td>${escapeHtml(o.proveedor_nombre || '')}</td>
+                            <td>${escapeHtml(o.proveedor_rif || '')}</td>
+                            <td>${escapeHtml(o.sucursal_nombre || '')}</td>
+                            <td data-usd-price="${total}">${formatUsdBs(total)}</td>
+                            <td>${dateStr}</td>
+                            <td>${statusBadge}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-orange me-1" title="Ver detalle" onclick="viewOrderDetails(${o.id})"><i class="bi bi-eye"></i></button>
+                                <button class="btn btn-sm btn-success me-1" title="Marcar como Comprado" onclick="markOrderAsBought(${o.id})" ${isBought ? 'disabled' : ''}><i class="bi bi-cart-check"></i> Comprado</button>
+                                <button class="btn btn-sm btn-danger" title="Ver PDF" onclick="downloadOrderPdf(${o.id})"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            </td>
+                        </tr>
+                    `;
+                },
+                onEmpty: () => '<tr><td colspan="8" class="text-center py-4 text-muted">No hay órdenes de compra registradas.</td></tr>'
+            });
+        } else {
+            paginator.updateData(r.data || []);
+        }
     });
 }
 

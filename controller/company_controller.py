@@ -33,7 +33,7 @@ def _validate_company(data, require_rif=True):
     clean['nombre_comercial'] = optional_text(errors, 'nombre_comercial', data.get('nombre_comercial'), 'El nombre comercial', max_len=200)
     clean['telefono'] = normalize_phone(errors, data.get('telefono'))
     clean['email'] = normalize_email(errors, data.get('email'), required=False)
-    clean['direccion'] = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=300)
+    clean['direccion'] = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40)
     clean['representante_nombre'] = optional_text(errors, 'representante_nombre', data.get('representante_nombre'), 'El representante', max_len=150, allow_serial=False)
     rep_required = bool(clean['representante_nombre'])
     rep_cedula, rep_prefijo, _ = normalize_cedula(errors, data, field='representante_cedula', required=rep_required)

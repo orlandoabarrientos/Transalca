@@ -3,7 +3,6 @@ $(document).ready(function () {
         document.querySelector('[data-page="credit"]')?.classList.add('active');
     });
     $('#navbarContainer').load('/components/admin_navbar.html', () => loadNavSession());
-    $('#searchInput').on('input', debounce(loadCredits, 300));
     $('#filterEstado').on('change', loadCredits);
     Validator.setRules('creditDatesForm', {
         creditStartDate: { required: true, requiredMsg: 'Fecha de inicio requerida' },
@@ -63,51 +62,49 @@ function loadCreditStats() {
     });
 }
 
+let paginator = null;
+
 function loadCredits() {
-    const tbody = $('#creditTableBody');
-    tbody.html('<tr><td colspan="11" class="text-center py-4"><div class="spinner-border text-warning" role="status"></div></td></tr>');
-    const q = $('#searchInput').val();
     const estado = $('#filterEstado').val();
     let url = '/api/credit/?';
-    if (q) url += `q=${encodeURIComponent(q)}&`;
     if (estado) url += `estado=${encodeURIComponent(estado)}&`;
     $.get(url, function (r) {
-        tbody.empty();
-        if (r.status !== 'success') {
-            tbody.html('<tr><td colspan="11" class="text-center py-4 text-danger">No se pudieron cargar los créditos.</td></tr>');
-            return;
+        if (!paginator) {
+            paginator = new TablePaginator('creditTableBody', {
+                allData: r.data || [],
+                itemName: 'créditos',
+                searchSelector: '#searchInput',
+                renderRow: (o) => {
+                    const startDate = dateOnly(o.fecha_inicio_credito || o.fecha);
+                    const endDate = dateOnly(o.fecha_vencimiento_credito || '');
+                    const days = daysUntil(endDate);
+                    const debt = Number(o.monto_deuda ?? o.total ?? 0);
+                    const paid = String(o.credito_estado || '').toLowerCase() === 'pagado' || debt <= 0;
+                    return `
+                        <tr>
+                            <td>#${o.id}</td>
+                            <td>${escapeHtml(o.razon_social || o.nombre || '')}</td>
+                            <td>${escapeHtml(o.rif || '')}</td>
+                            <td data-usd-price="${o.total || 0}">${formatUsdBs(o.total || 0)}</td>
+                            <td data-usd-price="${debt}">${formatUsdBs(debt)}</td>
+                            <td>${escapeHtml(o.metodo_pago_nombre || o.metodo_pago || '')}</td>
+                            <td>${startDate ? formatCreditDate(startDate) : 'N/A'}</td>
+                            <td>${endDate ? formatCreditDate(endDate) : 'N/A'}</td>
+                            <td>${renderDaysLeft(days)}</td>
+                            <td>${creditStatusBadge(o.credito_estado || 'activo')}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning me-1" title="Modificar crédito" onclick="showCreditDatesModal(${o.id}, '${startDate || ''}', '${endDate || ''}')"><i class="bi bi-pencil-square"></i></button>
+                                <button class="btn btn-sm btn-success me-1" title="Registrar abono" onclick="showCreditPaymentModal(${o.id}, ${debt})" ${paid ? 'disabled' : ''}><i class="bi bi-cash-coin"></i> Abonar</button>
+                                <button class="btn btn-sm btn-success" title="Pagado" onclick="markCreditPaid(${o.id})" ${paid ? 'disabled' : ''}><i class="bi bi-check2-circle"></i> Pagado</button>
+                            </td>
+                        </tr>
+                    `;
+                },
+                onEmpty: () => '<tr><td colspan="11" class="text-center py-4 text-muted">No hay créditos registrados.</td></tr>'
+            });
+        } else {
+            paginator.updateData(r.data || []);
         }
-        if (!r.data || !r.data.length) {
-            tbody.html('<tr><td colspan="11" class="text-center py-4 text-muted">No hay créditos registrados.</td></tr>');
-            return;
-        }
-        r.data.forEach(o => {
-            const startDate = dateOnly(o.fecha_inicio_credito || o.fecha);
-            const endDate = dateOnly(o.fecha_vencimiento_credito || '');
-            const days = daysUntil(endDate);
-            const debt = Number(o.monto_deuda ?? o.total ?? 0);
-            const paid = String(o.credito_estado || '').toLowerCase() === 'pagado' || debt <= 0;
-            tbody.append(`
-                <tr>
-                    <td>#${o.id}</td>
-                    <td>${escapeHtml(o.razon_social || o.nombre || '')}</td>
-                    <td>${escapeHtml(o.rif || '')}</td>
-                    <td data-usd-price="${o.total || 0}">${formatUsdBs(o.total || 0)}</td>
-                    <td data-usd-price="${debt}">${formatUsdBs(debt)}</td>
-                    <td>${escapeHtml(o.metodo_pago_nombre || o.metodo_pago || '')}</td>
-                    <td>${startDate ? formatCreditDate(startDate) : 'N/A'}</td>
-                    <td>${endDate ? formatCreditDate(endDate) : 'N/A'}</td>
-                    <td>${renderDaysLeft(days)}</td>
-                    <td>${creditStatusBadge(o.credito_estado || 'activo')}</td>
-                    <td>
-                        <button class="btn btn-sm btn-warning me-1" title="Modificar crédito" onclick="showCreditDatesModal(${o.id}, '${startDate || ''}', '${endDate || ''}')"><i class="bi bi-pencil-square"></i></button>
-                        <button class="btn btn-sm btn-success me-1" title="Registrar abono" onclick="showCreditPaymentModal(${o.id}, ${debt})" ${paid ? 'disabled' : ''}><i class="bi bi-cash-coin"></i> Abonar</button>
-                        <button class="btn btn-sm btn-success" title="Pagado" onclick="markCreditPaid(${o.id})" ${paid ? 'disabled' : ''}><i class="bi bi-check2-circle"></i> Pagado</button>
-                    </td>
-                </tr>
-            `);
-        });
-        hydrateDualPrices();
         enhanceSearchableSelects();
     });
 }
@@ -189,7 +186,7 @@ function saveCreditDates() {
         return;
     }
     const id = $('#creditOrderId').val();
-    const btn = document.querySelector('#creditDatesModal .btn-warning');
+    const btn = document.querySelector('#creditDatesModal .btn-orange') || document.querySelector('#creditDatesModal .btn-warning');
     setButtonLoading(btn, true, 'Modificando...');
     apiCall(`/api/credit/${id}/dates`, 'PUT', { fecha_inicio: start, fecha_fin: end }).then(r => {
         if (r.status === 'success') {
@@ -241,7 +238,7 @@ function saveCreditPayment() {
         setFieldError(document.getElementById('creditPaymentAmount'), 'El abono no puede ser mayor a la deuda.');
         return;
     }
-    const btn = document.querySelector('#creditPaymentModal .btn-success');
+    const btn = document.querySelector('#creditPaymentModal .btn-orange') || document.querySelector('#creditPaymentModal .btn-success');
     setButtonLoading(btn, true, 'Registrando...');
     apiCall(`/api/credit/${id}/payment`, 'PUT', { monto: amount }).then(r => {
         if (r.status === 'success') {

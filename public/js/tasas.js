@@ -12,26 +12,29 @@ $(document).ready(function() {
     Validator.setupRealtime('tasaForm');
 });
 
+let paginator = null;
+
 function loadData() {
     apiCall('/api/tasas/').then(res => {
-        const tbody = document.getElementById('tasaBody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
         const data = res.data || [];
-        data.forEach(t => {
-            tbody.innerHTML += `<tr class="fade-in-up">
-                <td class="col-id">${t.id}</td>
-                <td>${formatDate(t.fecha)}</td>
-                <td class="fw-bold" style="color:var(--primary);">${parseFloat(t.monto).toFixed(2)} Bs</td>
-                <td>${t.fuente}</td>
-                <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${t.id}, '${t.fecha}', ${t.monto}, '${t.fuente}')" title="Modificar Tasa"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-outline-danger" onclick="deleteData(${t.id})" title="Eliminar Tasa"><i class="bi bi-trash"></i></button>
-                </td>
-            </tr>`;
-        });
-        if (!data.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-currency-dollar"></i><p>No hay tasas registradas</p></div></td></tr>';
+        if (!paginator) {
+            paginator = new TablePaginator('tasaBody', {
+                allData: data,
+                itemName: 'tasas',
+                renderRow: (t) => `<tr class="fade-in-up">
+                    <td class="col-id">${t.id}</td>
+                    <td>${formatDate(t.fecha)}</td>
+                    <td class="fw-bold" style="color:var(--primary);">${parseFloat(t.monto).toFixed(2)} Bs</td>
+                    <td>${escapeHtml(t.fuente)}</td>
+                    <td>
+                        <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${t.id}, '${t.fecha}', ${t.monto}, '${escapeHtml(t.fuente)}')" title="Modificar Tasa"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-icon btn-sm btn-outline-danger" onclick="deleteData(${t.id})" title="Eliminar Tasa"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>`,
+                onEmpty: () => '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-currency-dollar"></i><p>No hay tasas registradas</p></div></td></tr>'
+            });
+        } else {
+            paginator.updateData(data);
         }
         if (data.length > 0) {
             document.getElementById('statLatest').textContent = parseFloat(data[0].monto).toFixed(2);

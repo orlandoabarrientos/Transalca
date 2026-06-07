@@ -32,43 +32,35 @@ $(document).ready(function() {
                         updateFormSubmitState('paymentMethodForm');
                     });
             }, 350);
-        });
     }
-    $('#paymentMethodSearch').on('input', renderPaymentMethods);
     loadPaymentMethods();
 });
+let paginator = null;
 
 function loadPaymentMethods() {
     apiCall('/api/payment-methods/').then(res => {
         paymentMethodsCache = res.data || [];
-        renderPaymentMethods();
+        if (!paginator) {
+            paginator = new TablePaginator('paymentMethodBody', {
+                allData: paymentMethodsCache,
+                itemName: 'métodos de pago',
+                searchSelector: '#paymentMethodSearch',
+                renderRow: (item) => `<tr>
+                    <td><strong>${escapeHtml(item.nombre)}</strong></td>
+                    <td style="white-space: pre-line;">${escapeHtml(item.datos_pago || '')}</td>
+                    <td>${item.permite_credito ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-secondary">No</span>'}</td>
+                    <td><span class="badge bg-info">${(item.moneda || 'usd').toUpperCase()}</span></td>
+                    <td>
+                        <button class="btn btn-icon btn-sm btn-warning" onclick="editPaymentMethod(${item.id})" title="Modificar método de pago"><i class="bi bi-pencil-square"></i></button>
+                        <button class="btn btn-icon btn-sm btn-danger" onclick="deletePaymentMethod(${item.id})" title="Eliminar método de pago"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>`,
+                onEmpty: () => '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-wallet2"></i><p>No hay métodos de pago registrados</p></div></td></tr>'
+            });
+        } else {
+            paginator.updateData(paymentMethodsCache);
+        }
     });
-}
-
-function renderPaymentMethods() {
-    const q = ($('#paymentMethodSearch').val() || '').toLowerCase().trim();
-    const rows = paymentMethodsCache.filter(item => {
-        const text = `${item.nombre || ''} ${item.datos_pago || ''}`.toLowerCase();
-        return !q || text.includes(q);
-    });
-    const tbody = document.getElementById('paymentMethodBody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    rows.forEach(item => {
-        tbody.innerHTML += `<tr>
-            <td><strong>${escapeHtml(item.nombre)}</strong></td>
-            <td style="white-space: pre-line;">${escapeHtml(item.datos_pago || '')}</td>
-            <td>${item.permite_credito ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-secondary">No</span>'}</td>
-            <td><span class="badge bg-info">${(item.moneda || 'usd').toUpperCase()}</span></td>
-            <td>
-                <button class="btn btn-icon btn-sm btn-warning" onclick="editPaymentMethod(${item.id})" title="Modificar método de pago"><i class="bi bi-pencil-square"></i></button>
-                <button class="btn btn-icon btn-sm btn-danger" onclick="deletePaymentMethod(${item.id})" title="Eliminar método de pago"><i class="bi bi-trash"></i></button>
-            </td>
-        </tr>`;
-    });
-    if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-wallet2"></i><p>No hay métodos de pago registrados</p></div></td></tr>';
-    }
 }
 
 function openPaymentMethodModal() {
@@ -78,7 +70,7 @@ function openPaymentMethodModal() {
     document.getElementById('moneda').value = 'usd';
     document.getElementById('datos_pago').value = '';
     document.getElementById('paymentMethodModalTitle').textContent = 'Registrar Método de Pago';
-    document.getElementById('btnSavePaymentMethod').innerHTML = '<i class="bi bi-plus-circle me-1"></i>Registrar';
+    document.getElementById('btnSavePaymentMethod').innerHTML = '<i class="bi bi-check-circle me-1"></i>Guardar';
     new bootstrap.Modal(document.getElementById('paymentMethodModal')).show();
     Validator.initTracking('paymentMethodForm');
 }
@@ -93,7 +85,7 @@ function editPaymentMethod(id) {
         document.getElementById('permite_credito').checked = !!item.permite_credito;
         document.getElementById('moneda').value = item.moneda || 'usd';
         document.getElementById('paymentMethodModalTitle').textContent = 'Modificar Método de Pago';
-        document.getElementById('btnSavePaymentMethod').innerHTML = '<i class="bi bi-pencil-square me-1"></i>Modificar';
+        document.getElementById('btnSavePaymentMethod').innerHTML = '<i class="bi bi-check-circle me-1"></i>Guardar';
         new bootstrap.Modal(document.getElementById('paymentMethodModal')).show();
         Validator.initTracking('paymentMethodForm');
     });

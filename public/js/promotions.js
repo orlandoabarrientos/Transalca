@@ -64,166 +64,114 @@ $(document).ready(function () {
     }
 });
 
+let promoPaginator = null;
+let cardsPaginator = null;
+
 function loadPromos() {
     apiCall('/api/promotions/').then(res => {
-        const tbody = document.getElementById('promoBody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        (res.data || []).forEach(p => {
-            tbody.innerHTML += `<tr class="fade-in-up">
-                <td class="col-id">${escapeHtml(p.id)}</td>
-                <td><strong>${escapeHtml(p.nombre)}</strong></td>
-                <td><span class="badge-status badge-info">${escapeHtml(p.tipo)}</span></td>
-                <td>${escapeHtml(p.puntos_requeridos)}</td>
-                <td>${escapeHtml(p.recompensa || '-')}</td>
-                <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${Number(p.id)})" title="Modificar Promoción"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-warning" onclick="deletePromo(${Number(p.id)})" title="Eliminar Promoción"><i class="bi bi-trash"></i></button>
-                </td>
-            </tr>`;
-        });
-        if (!res.data?.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-gift"></i><p>No hay promociones registradas</p></div></td></tr>';
+        if (!promoPaginator) {
+            promoPaginator = new TablePaginator('promoBody', {
+                allData: res.data || [],
+                itemName: 'promociones',
+                renderRow: (p) => `<tr class="fade-in-up">
+                    <td class="col-id">${escapeHtml(p.id)}</td>
+                    <td><strong>${escapeHtml(p.nombre)}</strong></td>
+                    <td><span class="badge-status badge-info">${escapeHtml(p.tipo)}</span></td>
+                    <td>${escapeHtml(p.puntos_requeridos)}</td>
+                    <td>${escapeHtml(p.recompensa || '-')}</td>
+                    <td>
+                        <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${Number(p.id)})" title="Modificar Promoción"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-icon btn-sm btn-warning" onclick="deletePromo(${Number(p.id)})" title="Eliminar Promoción"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>`,
+                onEmpty: () => '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-gift"></i><p>No hay promociones registradas</p></div></td></tr>'
+            });
+        } else {
+            promoPaginator.updateData(res.data || []);
         }
     });
 }
 
-function formatCardNumber(id) {
-    const padded = String(id || 0).padStart(8, '0');
-    return `4318 0092 ${padded.slice(0, 4)} ${padded.slice(4)}`;
-}
-
-function getCardBackground(imagenTarjeta) {
-    if (imagenTarjeta) {
-        const url = `/public/assets/images/${encodeURIComponent(imagenTarjeta)}`;
-        return `url('${url}')`;
-    }
-    return 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)';
-}
-
-function dateFromValue(value) {
-    if (!value) return null;
-    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-
-    const text = String(value).trim();
-    const dateOnly = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (dateOnly) {
-        return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
-    }
-
-    const parsed = new Date(text);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function addOneMonth(value) {
-    const date = dateFromValue(value);
-    if (!date) return null;
-
-    const targetMonth = date.getMonth() + 1;
-    let result = new Date(date.getFullYear(), targetMonth, date.getDate());
-    if (result.getMonth() !== targetMonth % 12) {
-        result = new Date(date.getFullYear(), targetMonth + 1, 0);
-    }
-    return result;
-}
-
-function formatDisplayDate(value) {
-    const date = dateFromValue(value);
-    if (!date) return '';
-
-    return date.toLocaleDateString('es-VE', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
-}
-
-function getPromotionExpiryText(card) {
-    const expiryDate = dateFromValue(card.fecha_vencimiento_promocion) ||
-        addOneMonth(card.fecha_aplicacion_promocion || card.fecha_creacion);
-    return formatDisplayDate(expiryDate);
-}
-
-function buildCompletedPromoAlert(card, accumulated, required) {
-    if (required <= 0 || accumulated < required) return '';
-
-    const expiryText = getPromotionExpiryText(card);
-    let html = '<div class="completed-promo-alert mb-2">' +
-        '<i class="bi bi-check-circle-fill me-1"></i>Promoci&oacute;n completada. Puede utilizar su promoci&oacute;n.';
-    if (expiryText) {
-        html += `<small>V&aacute;lida hasta el ${escapeHtml(expiryText)}.</small>`;
-    }
-    html += '</div>';
-    return html;
-}
-
 function loadCards() {
     apiCall('/api/promotions/cards').then(res => {
-        const container = document.getElementById('cardsBody');
-        if (!container) return;
-        container.innerHTML = '';
-        (res.data || []).forEach(c => {
-            const accumulated = c.puntos_acumulados || 0;
-            const required = c.puntos_requeridos || 0;
+        if (!res.data?.length) {
+            const container = document.getElementById('cardsBody');
+            if (container) loadPromotionCardTemplates(container);
+            return;
+        }
+        if (!cardsPaginator) {
+            cardsPaginator = new TablePaginator('cardsBody', {
+                allData: res.data || [],
+                itemName: 'tarjetas',
+                renderRow: (c) => {
+                    const accumulated = c.puntos_acumulados || 0;
+                    const required = c.puntos_requeridos || 0;
 
-            let slotsHtml = '<div class="punch-card-grid">';
-            for (let i = 1; i <= required; i++) {
-                const isReward = (i === required);
-                const isFilled = (i <= accumulated);
+                    let slotsHtml = '<div class="punch-card-grid">';
+                    for (let i = 1; i <= required; i++) {
+                        const isReward = (i === required);
+                        const isFilled = (i <= accumulated);
 
-                let slotClass = 'punch-slot';
-                if (isReward) slotClass += ' reward-slot';
-                if (isFilled) slotClass += ' filled';
+                        let slotClass = 'punch-slot';
+                        if (isReward) slotClass += ' reward-slot';
+                        if (isFilled) slotClass += ' filled';
 
-                let slotContent = '';
-                if (isReward) {
-                    slotContent = isFilled ? '<i class="bi bi-gift-fill"></i>' : '<i class="bi bi-gift"></i>';
-                } else {
-                    slotContent = i;
-                }
+                        let slotContent = '';
+                        if (isReward) {
+                            slotContent = isFilled ? '<i class="bi bi-gift-fill"></i>' : '<i class="bi bi-gift"></i>';
+                        } else {
+                            slotContent = i;
+                        }
 
-                slotsHtml += `<div class="${slotClass}">${slotContent}</div>`;
-            }
-            slotsHtml += '</div>';
+                        slotsHtml += `<div class="${slotClass}">${slotContent}</div>`;
+                    }
+                    slotsHtml += '</div>';
 
-            const bg = getCardBackground(c.imagen_tarjeta);
-            const cardNum = formatCardNumber(c.id);
-            const statusClass = c.canjeada ? 'redeemed-badge' : 'active-badge';
-            const statusText = c.canjeada ? 'Canjeada' : 'Activa';
-            const completedAlertHtml = buildCompletedPromoAlert(c, accumulated, required);
+                    const bg = getCardBackground(c.imagen_tarjeta);
+                    const cardNum = formatCardNumber(c.id);
+                    const statusClass = c.canjeada ? 'redeemed-badge' : 'active-badge';
+                    const statusText = c.canjeada ? 'Canjeada' : 'Activa';
+                    const completedAlertHtml = buildCompletedPromoAlert(c, accumulated, required);
 
-            container.innerHTML += `<div class="loyalty-card-wrapper fade-in-up">
-                <div class="fidelity-card-physical" style="background: ${bg};">
-                    <div class="card-meta-row">
-                        <span class="card-brand-logo">TRANSALCA</span>
-                        <span class="card-status-badge ${statusClass}">${statusText}</span>
-                    </div>
-                    <div class="card-meta-row mt-2">
-                        <div class="card-chip-gold"></div>
-                        <i class="bi bi-wifi card-contactless"></i>
-                    </div>
-                    <div class="card-number-display">${cardNum}</div>
-                    <div class="card-holder-row">
-                        <div>
-                            <div class="card-holder-name">${escapeHtml(c.cliente_nombre || 'N/A')}</div>
-                            <div class="card-holder-cedula">C.I. ${escapeHtml(c.cliente_cedula_display || c.cliente_cedula || '-')}</div>
+                    return `<div class="loyalty-card-wrapper fade-in-up">
+                        <div class="fidelity-card-physical" style="background: ${bg};">
+                            <div class="card-meta-row">
+                                <span class="card-brand-logo">TRANSALCA</span>
+                                <span class="card-status-badge ${statusClass}">${statusText}</span>
+                            </div>
+                            <div class="card-meta-row mt-2">
+                                <div class="card-chip-gold"></div>
+                                <i class="bi bi-wifi card-contactless"></i>
+                            </div>
+                            <div class="card-number-display">${cardNum}</div>
+                            <div class="card-holder-row">
+                                <div>
+                                    <div class="card-holder-name">${escapeHtml(c.cliente_nombre || 'N/A')}</div>
+                                    <div class="card-holder-cedula">C.I. ${escapeHtml(c.cliente_cedula_display || c.cliente_cedula || '-')}</div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="card-stamps-panel">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <strong class="text-orange fs-6" style="font-weight:700;">${escapeHtml(c.promo_nombre || 'Promoción')}</strong>
-                        <span class="small text-muted" style="font-weight:600;">${accumulated} / ${required} Puntos</span>
-                    </div>
-                    <p class="small text-muted mb-2">${escapeHtml(c.promo_descripcion || '')}</p>
-                    <div class="small mb-2"><strong class="text-orange">Recompensa:</strong> ${escapeHtml(c.recompensa || '-')}</div>
-                    ${completedAlertHtml}
-                    ${slotsHtml}
-                    ${!c.canjeada ? `<button class="btn btn-sm btn-outline-orange w-100 mt-2" onclick="addPoint(${Number(c.id)})"><i class="bi bi-plus-circle me-1"></i>Registrar punto</button>` : ''}
-                </div>
-            </div>`;
-        });
+                        <div class="card-stamps-panel">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <strong class="text-orange fs-6" style="font-weight:700;">${escapeHtml(c.promo_nombre || 'Promoción')}</strong>
+                                <span class="small text-muted" style="font-weight:600;">${accumulated} / ${required} Puntos</span>
+                            </div>
+                            <p class="small text-muted mb-2">${escapeHtml(c.promo_descripcion || '')}</p>
+                            <div class="small mb-2"><strong class="text-orange">Recompensa:</strong> ${escapeHtml(c.recompensa || '-')}</div>
+                            ${completedAlertHtml}
+                            ${slotsHtml}
+                            ${!c.canjeada ? `<button class="btn btn-sm btn-outline-orange w-100 mt-2" onclick="addPoint(${Number(c.id)})"><i class="bi bi-plus-circle me-1"></i>Registrar punto</button>` : ''}
+                        </div>
+                    </div>`;
+                },
+                onEmpty: () => '<div class="text-center py-5 w-100"><div class="empty-state"><i class="bi bi-credit-card"></i><p>No hay tarjetas registradas</p></div></div>'
+            });
+        } else {
+            cardsPaginator.updateData(res.data || []);
+        }
+    });
+}
         if (!res.data?.length) {
             loadPromotionCardTemplates(container);
         }

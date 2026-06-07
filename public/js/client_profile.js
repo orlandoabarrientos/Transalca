@@ -97,7 +97,7 @@ function bindProfileEvents() {
         fNombre: { required: true, minLength: 2, maxLength: 30, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El nombre es obligatorio', patternMsg: 'El nombre solo puede contener letras', maxLengthMsg: 'El nombre no puede superar los 30 caracteres.' },
         fApellido: { required: true, minLength: 2, maxLength: 30, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'El apellido es obligatorio', patternMsg: 'El apellido solo puede contener letras', maxLengthMsg: 'El apellido no puede superar los 30 caracteres.' },
         fTelefono: { required: true, pattern: PHONE_REGEX_PROFILE, maxLength: 11, requiredMsg: 'El telefono es obligatorio', patternMsg: 'Debe tener 11 digitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
-        fDireccion: { maxLength: 200, maxLengthMsg: 'La dirección no puede superar los 200 caracteres.' }
+        fDireccion: { maxLength: 40, maxLengthMsg: 'La dirección no puede superar los 40 caracteres.' }
     });
     Validator.setRules('vehicleForm', {
         vMarca: { required: true, minLength: 2, maxLength: 30, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9 .-]+$/, requiredMsg: 'La marca es obligatoria', patternMsg: 'La marca tiene caracteres invalidos', maxLengthMsg: 'La marca no puede superar los 30 caracteres.' },

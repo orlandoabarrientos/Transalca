@@ -69,51 +69,65 @@ function loadReportData() {
     });
 }
 
+let paginator = null;
+
 function renderTable(type, data) {
     const head = document.getElementById('reportHead');
-    const body = document.getElementById('reportBody');
 
     if (data.length === 0) {
         head.innerHTML = '';
-        body.innerHTML = '<tr><td class="text-center py-4 text-muted"><i class="bi bi-inbox fs-2 d-block mb-2"></i>No hay registros para este periodo</td></tr>';
+        document.getElementById('reportBody').innerHTML = '<tr><td class="text-center py-4 text-muted"><i class="bi bi-inbox fs-2 d-block mb-2"></i>No hay registros para este periodo</td></tr>';
+        if (paginator) {
+            if (paginator.controlsEl) paginator.controlsEl.innerHTML = '';
+            if (paginator.infoEl) paginator.infoEl.textContent = '';
+        }
         return;
     }
 
     let hHtml = '<tr>';
-    let bHtml = '';
-
     if (type === 'sales') {
         hHtml += '<th>ID</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Estado</th>';
-        data.forEach(d => {
-            const st = String(d.estado || '').toLowerCase();
-            const color = ['aprobada', 'aprobado', 'completada', 'completado', 'entregada', 'entregado', 'verificado', 'verificada', 'pagado', 'activo'].includes(st) ? 'active' : ['pendiente', 'procesando', 'enviada'].includes(st) ? 'pending' : 'inactive';
-            bHtml += `<tr><td>#${d.id}</td><td>${d.cliente}</td><td>${formatDate(d.fecha)}</td><td data-usd-price="${d.total}">${formatUsdBs(d.total)}</td><td><span class="badge-status badge-${color}">${d.estado}</span></td></tr>`;
-        });
     } else if (type === 'payments') {
         hHtml += '<th>ID</th><th>Orden</th><th>Cliente</th><th>Referencia</th><th>Monto</th><th>Método</th><th>Estado</th><th>Fecha</th>';
-        data.forEach(d => {
-            const st = String(d.estado || '').toLowerCase();
-            const color = ['aprobado', 'aprobada', 'verificado', 'verificada', 'pagado', 'activo'].includes(st) ? 'active' : ['pendiente', 'procesando'].includes(st) ? 'pending' : 'inactive';
-            bHtml += `<tr><td>#${d.id}</td><td><a href="#">#${d.orden_id}</a></td><td>${d.cliente}</td><td>${d.referencia}</td><td>${d.monto} ${d.moneda}</td><td>${d.metodo}</td><td><span class="badge-status badge-${color}">${d.estado}</span></td><td>${formatDate(d.fecha)}</td></tr>`;
-        });
     } else if (type === 'inventory') {
         hHtml += '<th>ID</th><th>Producto</th><th>Código</th><th>Motivo</th><th>Tipo</th><th>Cantidad</th><th>Fecha</th>';
-        data.forEach(d => bHtml += `<tr><td>#${d.id}</td><td>${d.producto}</td><td><small class="text-muted">${d.codigo}</small></td><td>${d.motivo}</td><td><span class="badge-status ${d.tipo === 'entrada' ? 'badge-active' : 'badge-inactive'}">${d.tipo}</span></td><td>${d.cantidad}</td><td>${formatDate(d.fecha)}</td></tr>`);
     } else if (type === 'mechanics') {
         hHtml += '<th>Mecánico</th><th>Servicios Asignados</th><th>Completados</th><th>Performance</th><th>Ingreso Generado</th>';
-        data.forEach(d => {
-            const perf = d.total_asignados > 0 ? Math.round((d.total_completados / d.total_asignados) * 100) : 0;
-            const perfColor = perf > 80 ? 'success' : perf > 50 ? 'warning' : 'danger';
-            bHtml += `<tr><td><strong>${d.mecanico_nombre}</strong></td><td>${d.total_asignados}</td><td>${d.total_completados}</td><td><div class="progress" style="height:6px;width:80px;display:inline-flex;align-items:center;margin-right:8px;"><div class="progress-bar bg-${perfColor}" style="width:${perf}%"></div></div><small>${perf}%</small></td><td>$${formatCurrency(d.ingreso_generado)}</td></tr>`;
-        });
     } else if (type === 'bitacora') {
         hHtml += '<th>ID</th><th>Fecha</th><th>Usuario</th><th>Módulo</th><th>Acción</th><th>Descripción</th><th>IP</th>';
-        data.forEach(d => bHtml += `<tr><td>${d.id}</td><td>${formatDate(d.fecha)}</td><td>${d.usuario}</td><td><span class="badge-status badge-info">${d.modulo}</span></td><td><strong>${d.accion}</strong></td><td>${d.descripcion}</td><td><small class="text-muted">${d.ip}</small></td></tr>`);
     }
     hHtml += '</tr>';
-
     head.innerHTML = hHtml;
-    body.innerHTML = bHtml;
+
+    if (!paginator) {
+        paginator = new TablePaginator('reportBody', {
+            allData: data,
+            itemName: 'registros',
+            renderRow: (d) => {
+                if (currentReport === 'sales') {
+                    const st = String(d.estado || '').toLowerCase();
+                    const color = ['aprobada', 'aprobado', 'completada', 'completado', 'entregada', 'entregado', 'verificado', 'verificada', 'pagado', 'activo'].includes(st) ? 'active' : ['pendiente', 'procesando', 'enviada'].includes(st) ? 'pending' : 'inactive';
+                    return `<tr><td>#${d.id}</td><td>${escapeHtml(d.cliente)}</td><td>${formatDate(d.fecha)}</td><td data-usd-price="${d.total}">${formatUsdBs(d.total)}</td><td><span class="badge-status badge-${color}">${escapeHtml(d.estado)}</span></td></tr>`;
+                } else if (currentReport === 'payments') {
+                    const st = String(d.estado || '').toLowerCase();
+                    const color = ['aprobado', 'aprobada', 'verificado', 'verificada', 'pagado', 'activo'].includes(st) ? 'active' : ['pendiente', 'procesando'].includes(st) ? 'pending' : 'inactive';
+                    return `<tr><td>#${d.id}</td><td><a href="#">#${d.orden_id}</a></td><td>${escapeHtml(d.cliente)}</td><td>${escapeHtml(d.referencia)}</td><td>${escapeHtml(d.monto)} ${escapeHtml(d.moneda)}</td><td>${escapeHtml(d.metodo)}</td><td><span class="badge-status badge-${color}">${escapeHtml(d.estado)}</span></td><td>${formatDate(d.fecha)}</td></tr>`;
+                } else if (currentReport === 'inventory') {
+                    return `<tr><td>#${d.id}</td><td>${escapeHtml(d.producto)}</td><td><small class="text-muted">${escapeHtml(d.codigo)}</small></td><td>${escapeHtml(d.motivo)}</td><td><span class="badge-status ${d.tipo === 'entrada' ? 'badge-active' : 'badge-inactive'}">${escapeHtml(d.tipo)}</span></td><td>${escapeHtml(d.cantidad)}</td><td>${formatDate(d.fecha)}</td></tr>`;
+                } else if (currentReport === 'mechanics') {
+                    const perf = d.total_asignados > 0 ? Math.round((d.total_completados / d.total_asignados) * 100) : 0;
+                    const perfColor = perf > 80 ? 'success' : perf > 50 ? 'warning' : 'danger';
+                    return `<tr><td><strong>${escapeHtml(d.mecanico_nombre)}</strong></td><td>${d.total_asignados}</td><td>${d.total_completados}</td><td><div class="progress" style="height:6px;width:80px;display:inline-flex;align-items:center;margin-right:8px;"><div class="progress-bar bg-${perfColor}" style="width:${perf}%"></div></div><small>${perf}%</small></td><td>$${formatCurrency(d.ingreso_generado)}</td></tr>`;
+                } else if (currentReport === 'bitacora') {
+                    return `<tr><td>${d.id}</td><td>${formatDate(d.fecha)}</td><td>${escapeHtml(d.usuario)}</td><td><span class="badge-status badge-info">${escapeHtml(d.modulo)}</span></td><td><strong>${escapeHtml(d.accion)}</strong></td><td>${escapeHtml(d.descripcion)}</td><td><small class="text-muted">${escapeHtml(d.ip)}</small></td></tr>`;
+                }
+                return '';
+            },
+            onEmpty: () => '<tr><td class="text-center py-4 text-muted"><i class="bi bi-inbox fs-2 d-block mb-2"></i>No hay registros para este periodo</td></tr>'
+        });
+    } else {
+        paginator.updateData(data);
+    }
 }
 
 function openExportModal() {

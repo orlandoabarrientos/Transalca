@@ -34,7 +34,7 @@ $(document).ready(function() {
 });
 
 let currentProductPage = 1;
-const productsPerPage = 20;
+const productsPerPage = 30;
 
 function loadData(page = 1) {
     currentProductPage = page;

@@ -9,7 +9,6 @@ $(document).ready(function () {
     loadClients();
     loadStats();
 
-    $('#searchInput').on('input', debounce(loadClients, 300));
     $('#filterEstado').on('change', loadClients);
     $('#btnVehicleCarnet').on('click', () => $('#vCarnetFile').trigger('click'));
     $('#vCarnetFile').on('change', function () {
@@ -24,7 +23,7 @@ $(document).ready(function () {
         fApellido: { required: true, pattern: /^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$/u, maxLength: 30, requiredMsg: 'Apellido requerido', patternMsg: 'Solo letras y espacios', maxLengthMsg: 'El apellido no puede superar los 30 caracteres.' },
         fTelefono: { required: true, pattern: /^04\d{9}$/, maxLength: 11, requiredMsg: 'Teléfono requerido', patternMsg: 'Debe tener 11 dígitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
         fEmail: { email: true, maxLength: 50, maxLengthMsg: 'El correo no puede superar los 50 caracteres.' },
-        fDireccion: { maxLength: 200, maxLengthMsg: 'La dirección no puede superar los 200 caracteres.' }
+        fDireccion: { maxLength: 40, maxLengthMsg: 'La dirección no puede superar los 40 caracteres.' }
     });
     Validator.setRules('vehicleForm', {
         vMarca: { required: true, minLength: 2, maxLength: 30, requiredMsg: 'Marca requerida', maxLengthMsg: 'La marca no puede superar los 30 caracteres.' },
@@ -63,35 +62,37 @@ function loadStats() {
     });
 }
 
+let paginator = null;
+
 function loadClients() {
-    const q = $('#searchInput').val();
     const estado = $('#filterEstado').val();
     let url = '/api/clients/?';
-    if (q) url += `q=${encodeURIComponent(q)}&`;
     if (estado !== '') url += `estado=${estado}&`;
 
     $.get(url, function (r) {
-        const tbody = $('#clientsTableBody');
-        tbody.empty();
-        if (!r.data || r.data.length === 0) {
-            tbody.html('<tr><td colspan="6" class="text-center py-4 text-muted">No se encontraron clientes</td></tr>');
-            return;
+        if (!paginator) {
+            paginator = new TablePaginator('clientsTableBody', {
+                allData: r.data || [],
+                itemName: 'clientes',
+                searchSelector: '#searchInput',
+                renderRow: (c) => `
+                    <tr style="cursor:pointer" onclick="showDetail('${c.cedula}')">
+                        <td><strong>${escapeHtml(c.cedula)}</strong></td>
+                        <td>${escapeHtml(c.nombre)} ${escapeHtml(c.apellido)}</td>
+                        <td>${escapeHtml(c.telefono || '') || '<span class="text-muted">—</span>'}</td>
+                        <td>${escapeHtml(c.email || '') || '<span class="text-muted">—</span>'}</td>
+                        <td><span class="badge bg-info">${c.vehiculos_count || 0}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); editClient('${c.cedula}')" title="Modificar Cliente"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); toggleClient('${c.cedula}')" title="Eliminar Cliente"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                `,
+                onEmpty: () => '<tr><td colspan="6" class="text-center py-4 text-muted">No se encontraron clientes</td></tr>'
+            });
+        } else {
+            paginator.updateData(r.data || []);
         }
-        r.data.forEach(c => {
-            tbody.append(`
-                <tr style="cursor:pointer" onclick="showDetail('${c.cedula}')">
-                    <td><strong>${c.cedula}</strong></td>
-                    <td>${c.nombre} ${c.apellido}</td>
-                    <td>${c.telefono || '<span class="text-muted">—</span>'}</td>
-                    <td>${c.email || '<span class="text-muted">—</span>'}</td>
-                    <td><span class="badge bg-info">${c.vehiculos_count || 0}</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); editClient('${c.cedula}')" title="Modificar Cliente"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); toggleClient('${c.cedula}')" title="Eliminar Cliente"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>
-            `);
-        });
     });
 }
 

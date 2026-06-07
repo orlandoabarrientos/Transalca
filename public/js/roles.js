@@ -56,23 +56,28 @@ $(document).ready(function() {
     Validator.setupRealtime('roleForm');
 });
 
+let paginator = null;
+
 function loadData() {
     apiCall('/api/roles/').then(res => {
-        const tbody = document.getElementById('roleBody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        (res.data || []).forEach(r => {
-            tbody.innerHTML += `<tr class="fade-in-up">
-                <td class="col-id">${r.id}</td>
-                <td><strong>${escapeHtml(r.nombre)}</strong></td>
-                <td>${escapeHtml(r.descripcion || '-')}</td>
-                <td>
-                    <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${r.id})" title="Modificar rol"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-icon btn-sm btn-outline-danger" onclick="toggleEstado(${r.id})" title="Eliminar rol"><i class="bi bi-trash"></i></button>
-                </td>
-            </tr>`;
-        });
-        if (!res.data?.length) tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-shield-lock"></i><p>Sin roles</p></div></td></tr>';
+        if (!paginator) {
+            paginator = new TablePaginator('roleBody', {
+                allData: res.data || [],
+                itemName: 'roles',
+                renderRow: (r) => `<tr class="fade-in-up">
+                    <td class="col-id">${r.id}</td>
+                    <td><strong>${escapeHtml(r.nombre)}</strong></td>
+                    <td>${escapeHtml(r.descripcion || '-')}</td>
+                    <td>
+                        <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData(${r.id})" title="Modificar rol"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-icon btn-sm btn-outline-danger" onclick="toggleEstado(${r.id})" title="Eliminar rol"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>`,
+                onEmpty: () => '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-shield-lock"></i><p>Sin roles</p></div></td></tr>'
+            });
+        } else {
+            paginator.updateData(res.data || []);
+        }
     });
 }
 
