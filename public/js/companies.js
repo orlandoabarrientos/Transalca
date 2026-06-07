@@ -14,30 +14,6 @@ $(document).ready(function () {
         fRif: { required: true, pattern: /^\d{9}$/, maxLength: 9, requiredMsg: 'RIF requerido', patternMsg: 'El RIF debe tener 9 digitos', maxLengthMsg: 'El RIF no puede superar los 9 caracteres.' },
         fRazonSocial: { required: true, minLength: 2, maxLength: 60, requiredMsg: 'Razon social requerida', maxLengthMsg: 'La razón social no puede superar los 60 caracteres.' },
         fNombreComercial: { maxLength: 100, maxLengthMsg: 'El nombre comercial no puede superar los 100 caracteres.' },
-        fRepresentante: { maxLength: 30, maxLengthMsg: 'El nombre del representante no puede superar los 30 caracteres.' },
-        fRepresentanteCedula: {
-            custom: v => {
-                const repName = ($('#fRepresentante').val() || '').trim();
-                if (repName && !v) return false;
-                if (v && !/^\d{7,8}$/.test(v)) return false;
-                return true;
-            },
-            customMsg: 'Cédula requerida para el representante (7 u 8 dígitos)',
-            maxLength: 8,
-            maxLengthMsg: 'La cédula del representante no puede superar los 8 caracteres.'
-        },
-        fRepresentanteTelefono: {
-            custom: v => {
-                const repName = ($('#fRepresentante').val() || '').trim();
-                if (repName && !v) return false;
-                if (v && !/^04\d{9}$/.test(v)) return false;
-                return true;
-            },
-            customMsg: 'Teléfono requerido para el representante (comenzar por 04 con 11 dígitos)',
-            maxLength: 11,
-            maxLengthMsg: 'El teléfono del representante no puede superar los 11 caracteres.'
-        },
-        fRepresentanteEmail: { email: true, maxLength: 50, maxLengthMsg: 'El correo del representante no puede superar los 50 caracteres.' },
         fSector: { maxLength: 50, maxLengthMsg: 'El sector no puede superar los 50 caracteres.' },
         fTelefono: { required: true, pattern: /^04\d{9}$/, maxLength: 11, requiredMsg: 'Telefono requerido', patternMsg: 'Debe tener 11 digitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
         fEmail: { email: true, maxLength: 50, maxLengthMsg: 'El correo no puede superar los 50 caracteres.' },
@@ -80,10 +56,6 @@ $(document).ready(function () {
     Validator.setupRealtime('companyForm');
     Validator.setupRealtime('fleetForm');
     Validator.setupRealtime('representativeForm');
-    $('#fRepresentante').on('input', () => {
-        Validator.validateField('companyForm', 'fRepresentanteCedula');
-        Validator.validateField('companyForm', 'fRepresentanteTelefono');
-    });
     $('#fRif, #fRifPrefijo').on('input change', debounce(validateUniqueCompanyRif, 350));
     $('#fEmail').on('input', debounce(validateUniqueCompanyEmail, 350));
 });
@@ -171,7 +143,6 @@ function showCreateCompanyModal() {
     $('#editRif').val('');
     $('#fRifPrefijo').val('J').prop('disabled', false);
     $('#fRif').prop('disabled', false);
-    $('#fRepresentanteCedulaPrefijo').val('V');
     new bootstrap.Modal('#companyModal').show();
     Validator.initTracking('companyForm');
 }
@@ -183,12 +154,6 @@ function companyPayload(includeRif = true) {
         telefono: $('#fTelefono').val(),
         email: $('#fEmail').val(),
         direccion: $('#fDireccion').val(),
-        representante_nombre: $('#fRepresentante').val(),
-        representante_cedula_prefijo: $('#fRepresentanteCedulaPrefijo').val(),
-        representante_cedula_numero: $('#fRepresentanteCedula').val(),
-        representante_cedula: buildDocumentValue('fRepresentanteCedulaPrefijo', 'fRepresentanteCedula'),
-        representante_telefono: $('#fRepresentanteTelefono').val(),
-        representante_email: $('#fRepresentanteEmail').val(),
         sector: $('#fSector').val(),
         limite_credito: $('#fLimiteCredito').val() || 0,
         dias_credito: $('#fDiasCredito').val() || 0
@@ -244,10 +209,6 @@ function editCompany(rif) {
         $('#fTelefono').val(c.telefono);
         $('#fEmail').val(c.email);
         $('#fDireccion').val(c.direccion);
-        $('#fRepresentante').val(c.representante_nombre);
-        setDocumentFields('fRepresentanteCedulaPrefijo', 'fRepresentanteCedula', c.representante_cedula, 'V');
-        $('#fRepresentanteTelefono').val(c.representante_telefono);
-        $('#fRepresentanteEmail').val(c.representante_email);
         $('#fLimiteCredito').val(c.limite_credito || 0);
         $('#fDiasCredito').val(c.dias_credito || 0);
         new bootstrap.Modal('#companyModal').show();

@@ -53,7 +53,7 @@ def require_text(errors, field, value, label, min_len=1, max_len=100, person=Fal
     return text
 
 
-def optional_text(errors, field, value, label, max_len=300, allow_serial=True):
+def optional_text(errors, field, value, label, max_len=300, allow_serial=True, person=False):
     text = clean_string(value)
     if not text:
         return ""
@@ -62,6 +62,9 @@ def optional_text(errors, field, value, label, max_len=300, allow_serial=True):
         return ""
     if has_unsafe_content(text) or not SAFE_TEXT_RE.match(text):
         errors[field] = f"{label} contiene caracteres no permitidos."
+        return ""
+    if person and not PERSON_RE.match(text):
+        errors[field] = f"{label} solo puede contener letras y espacios."
         return ""
     if not allow_serial and SERIAL_LIKE_RE.match(text):
         errors[field] = f"{label} no puede parecer un serial."

@@ -91,28 +91,6 @@ class CompanyModel(Connection):
                      data.get('sector'), data.get('limite_credito') or 0, data.get('dias_credito') or 0)
                 )
             
-            # Save or link representative if provided
-            rep_cedula = data.get('representante_cedula')
-            if rep_cedula:
-                rep_existing = self.fetch_one("transalca", "SELECT cedula FROM clientes WHERE cedula = %s", (rep_cedula,))
-                if not rep_existing:
-                    self.insert("transalca",
-                        "INSERT INTO clientes (cedula, cedula_prefijo, tipo_cliente, nombre, apellido, telefono, email, estado, origen_registro) "
-                        "VALUES (%s, %s, 'persona', %s, '', %s, %s, 1, 'admin')",
-                        (rep_cedula, data.get('representante_cedula_prefijo') or 'V', data.get('representante_nombre', ''),
-                         data.get('representante_telefono') or '', data.get('representante_email') or ''))
-                
-                existing_rel = self.fetch_one("transalca", 
-                    "SELECT id, estado FROM empresa_representante WHERE empresa_rif = %s AND representante_cedula = %s",
-                    (rif, rep_cedula))
-                if not existing_rel:
-                    self.insert("transalca",
-                        "INSERT INTO empresa_representante (empresa_rif, representante_cedula, cargo, estado) "
-                        "VALUES (%s, %s, 'Representante legal', 1)",
-                        (rif, rep_cedula))
-                elif existing_rel['estado'] == 0:
-                    self.update("transalca", "UPDATE empresa_representante SET estado = 1 WHERE id = %s", (existing_rel['id'],))
-            
             conn.commit()
             return {'rif': rif, 'reactivated': not bool(existing.get('estado')) if existing else False}
         except Exception:
@@ -134,28 +112,6 @@ class CompanyModel(Connection):
                  data.get('limite_credito') or 0, data.get('dias_credito') or 0, rif)
             )
             
-            # Save or link representative if provided
-            rep_cedula = data.get('representante_cedula')
-            if rep_cedula:
-                rep_existing = self.fetch_one("transalca", "SELECT cedula FROM clientes WHERE cedula = %s", (rep_cedula,))
-                if not rep_existing:
-                    self.insert("transalca",
-                        "INSERT INTO clientes (cedula, cedula_prefijo, tipo_cliente, nombre, apellido, telefono, email, estado, origen_registro) "
-                        "VALUES (%s, %s, 'persona', %s, '', %s, %s, 1, 'admin')",
-                        (rep_cedula, data.get('representante_cedula_prefijo') or 'V', data.get('representante_nombre', ''),
-                         data.get('representante_telefono') or '', data.get('representante_email') or ''))
-                
-                existing_rel = self.fetch_one("transalca", 
-                    "SELECT id, estado FROM empresa_representante WHERE empresa_rif = %s AND representante_cedula = %s",
-                    (rif, rep_cedula))
-                if not existing_rel:
-                    self.insert("transalca",
-                        "INSERT INTO empresa_representante (empresa_rif, representante_cedula, cargo, estado) "
-                        "VALUES (%s, %s, 'Representante legal', 1)",
-                        (rif, rep_cedula))
-                elif existing_rel['estado'] == 0:
-                    self.update("transalca", "UPDATE empresa_representante SET estado = 1 WHERE id = %s", (existing_rel['id'],))
-                    
             conn.commit()
             return res
         except Exception:
