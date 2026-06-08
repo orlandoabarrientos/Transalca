@@ -57,6 +57,17 @@ class PromotionModel(Connection):
         return 0
 
     def assign_card_to_client(self, cliente_cedula, promocion_id):
+        # Ensure client exists in transalca.clientes first to satisfy foreign key
+        client = self.fetch_one("transalca", "SELECT cedula FROM clientes WHERE cedula = %s", (cliente_cedula,))
+        if not client:
+            user = self.fetch_one("mantenimiento", "SELECT nombre, apellido, email, telefono, direccion FROM usuarios WHERE cedula = %s", (cliente_cedula,))
+            if user:
+                self.insert("transalca",
+                    "INSERT INTO clientes (cedula, nombre, apellido, email, telefono, direccion) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (cliente_cedula, user['nombre'], user['apellido'], user['email'], user.get('telefono') or '', user.get('direccion') or ''))
+            else:
+                return None
+
         existing = self.fetch_one("transalca",
             "SELECT id FROM tarjeta_fidelidad WHERE cliente_cedula = %s AND promocion_id = %s AND canjeada = 0",
             (cliente_cedula, promocion_id))
@@ -65,6 +76,11 @@ class PromotionModel(Connection):
         return self.insert("transalca",
             "INSERT INTO tarjeta_fidelidad (cliente_cedula, promocion_id) VALUES (%s, %s)",
             (cliente_cedula, promocion_id))
+
+    def auto_assign_active_promotions(self, cliente_cedula):
+        active_promos = self.get_active()
+        for promo in active_promos:
+            self.assign_card_to_client(cliente_cedula, promo['id'])
 
     def _get_client_info(self, cedula):
         # Try fetching from transalca.clientes (customers)
@@ -91,8 +107,8 @@ class PromotionModel(Connection):
     def get_client_cards(self, cliente_cedula):
         cards = self.fetch_all("transalca",
             "SELECT tf.*, p.nombre as promo_nombre, p.descripcion as promo_descripcion, p.puntos_requeridos, p.recompensa, p.imagen_tarjeta, p.tipo, "
-            "DATE_FORMAT(COALESCE((SELECT MAX(hp.fecha) FROM historial_puntos hp WHERE hp.tarjeta_id = tf.id), tf.fecha_creacion), '%Y-%m-%d') as fecha_aplicacion_promocion, "
-            "DATE_FORMAT(DATE_ADD(COALESCE((SELECT MAX(hp.fecha) FROM historial_puntos hp WHERE hp.tarjeta_id = tf.id), tf.fecha_creacion), INTERVAL 1 MONTH), '%Y-%m-%d') as fecha_vencimiento_promocion "
+            "DATE_FORMAT(COALESCE((SELECT MAX(hp.fecha) FROM historial_puntos hp WHERE hp.tarjeta_id = tf.id), tf.fecha_creacion), '%%Y-%%m-%%d') as fecha_aplicacion_promocion, "
+            "DATE_FORMAT(DATE_ADD(COALESCE((SELECT MAX(hp.fecha) FROM historial_puntos hp WHERE hp.tarjeta_id = tf.id), tf.fecha_creacion), INTERVAL 1 MONTH), '%%Y-%%m-%%d') as fecha_vencimiento_promocion "
             "FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id WHERE tf.cliente_cedula = %s ORDER BY tf.fecha_creacion DESC",
             (cliente_cedula,))
         for card in cards:

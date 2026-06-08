@@ -181,6 +181,7 @@ def my_cards():
     try:
         if 'user_cedula' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
+        model.auto_assign_active_promotions(session['user_cedula'])
         return jsonify({"status": "success", "data": model.get_client_cards(session['user_cedula'])})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar las tarjetas."}), 500
@@ -212,6 +213,8 @@ def card_history(card_id):
 @promotion_bp.route('/cards', methods=['GET'])
 def all_cards():
     try:
+        if 'user_cedula' in session:
+            model.auto_assign_active_promotions(session['user_cedula'])
         return jsonify({"status": "success", "data": model.get_all_cards()})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar las tarjetas."}), 500
