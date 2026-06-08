@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, session
+from controller._guards import can_access_client, deny, is_employee, require_login
 from model.promotion_model import PromotionModel
 
 from config.constants import TIPOS_PROMOCION
@@ -13,6 +14,28 @@ model = PromotionModel()
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'public', 'assets', 'images')
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _require_employee():
+    login_error = require_login()
+    if login_error:
+        return login_error
+    if not is_employee():
+        return deny()
+    return None
+
+
+def _get_accessible_card(card_id):
+    login_error = require_login()
+    if login_error:
+        return None, login_error
+
+    card = model.get_card_by_id(card_id)
+    if not card:
+        return None, (jsonify({"status": "error", "message": "Tarjeta no encontrada."}), 404)
+    if not can_access_client(card.get('cliente_cedula')):
+        return None, deny()
+    return card, None
 
 
 def _validate_promo(data):
@@ -77,8 +100,9 @@ def get_one(promo_id):
 @promotion_bp.route('/', methods=['POST'])
 def create():
     try:
-        if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado."}), 401
+        auth_error = _require_employee()
+        if auth_error:
+            return auth_error
         data, errors = _validate_promo(request.get_json() or {})
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
@@ -101,8 +125,9 @@ def create():
 @promotion_bp.route('/<int:promo_id>', methods=['PUT'])
 def update(promo_id):
     try:
-        if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado."}), 401
+        auth_error = _require_employee()
+        if auth_error:
+            return auth_error
         data, errors = _validate_promo(request.get_json() or {})
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
@@ -118,8 +143,9 @@ def update(promo_id):
 @promotion_bp.route('/<int:promo_id>', methods=['DELETE'])
 def delete(promo_id):
     try:
-        if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado."}), 401
+        auth_error = _require_employee()
+        if auth_error:
+            return auth_error
         new_estado = model.soft_delete(promo_id)
         if new_estado is None:
             return jsonify({"status": "error", "message": "Promocion no encontrada."}), 404
@@ -132,8 +158,9 @@ def delete(promo_id):
 @promotion_bp.route('/<int:promo_id>/image', methods=['POST'])
 def upload_image(promo_id):
     try:
-        if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado."}), 401
+        auth_error = _require_employee()
+        if auth_error:
+            return auth_error
         if not model.get_by_id(promo_id):
             return jsonify({"status": "error", "message": "Promocion no encontrada."}), 404
         if 'image' not in request.files:
@@ -156,12 +183,15 @@ def upload_image(promo_id):
 @promotion_bp.route('/assign-card', methods=['POST'])
 def assign_card():
     try:
-        if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado."}), 401
+        auth_error = _require_employee()
+        if auth_error:
+            return auth_error
         data = request.get_json() or {}
         if not data.get('cliente_cedula') or not data.get('promocion_id'):
             return jsonify({"status": "error", "message": "Datos incompletos."}), 400
         card_id = model.assign_card_to_client(data['cliente_cedula'], data['promocion_id'])
+        if not card_id:
+            return jsonify({"status": "error", "message": "No se pudo registrar la tarjeta."}), 400
 
         return jsonify({"status": "success", "message": "Tarjeta registrada correctamente.", "id": card_id})
     except Exception:
@@ -171,7 +201,12 @@ def assign_card():
 @promotion_bp.route('/cards/client/<path:cliente_cedula>', methods=['GET'])
 def client_cards(cliente_cedula):
     try:
-        return jsonify({"status": "success", "data": model.get_client_cards(cliente_cedula)})
+        login_error = require_login()
+        if login_error:
+            return login_error
+        if not can_access_client(cliente_cedula):
+            return deny()
+        return jsonify({"status": "success", "data": model.get_client_cards(cliente_cedula, scanned_only=True)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar las tarjetas."}), 500
 
@@ -179,10 +214,12 @@ def client_cards(cliente_cedula):
 @promotion_bp.route('/cards/my', methods=['GET'])
 def my_cards():
     try:
+        login_error = require_login()
+        if login_error:
+            return login_error
         if 'user_cedula' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        model.auto_assign_active_promotions(session['user_cedula'])
-        return jsonify({"status": "success", "data": model.get_client_cards(session['user_cedula'])})
+        return jsonify({"status": "success", "data": model.get_client_cards(session['user_cedula'], scanned_only=True)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar las tarjetas."}), 500
 
@@ -190,8 +227,9 @@ def my_cards():
 @promotion_bp.route('/cards/<int:card_id>/add-point', methods=['POST'])
 def add_point(card_id):
     try:
-        if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado."}), 401
+        auth_error = _require_employee()
+        if auth_error:
+            return auth_error
         data = request.get_json() or {}
         descripcion = optional_text({}, 'descripcion', data.get('descripcion', 'Punto registrado'), 'La descripcion', max_len=200, allow_serial=True)
         result = model.add_point(card_id, descripcion or 'Punto registrado')
@@ -205,6 +243,9 @@ def add_point(card_id):
 @promotion_bp.route('/cards/<int:card_id>/history', methods=['GET'])
 def card_history(card_id):
     try:
+        _, access_error = _get_accessible_card(card_id)
+        if access_error:
+            return access_error
         return jsonify({"status": "success", "data": model.get_card_history(card_id)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cargar el historial."}), 500
@@ -213,9 +254,10 @@ def card_history(card_id):
 @promotion_bp.route('/cards', methods=['GET'])
 def all_cards():
     try:
-        if 'user_cedula' in session:
-            model.auto_assign_active_promotions(session['user_cedula'])
-        return jsonify({"status": "success", "data": model.get_all_cards()})
+        auth_error = _require_employee()
+        if auth_error:
+            return auth_error
+        return jsonify({"status": "success", "data": model.get_all_cards(scanned_only=True)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar las tarjetas."}), 500
 
@@ -223,9 +265,9 @@ def all_cards():
 @promotion_bp.route('/cards/<int:card_id>', methods=['GET'])
 def get_card(card_id):
     try:
-        card = model.get_card_by_id(card_id)
-        if card:
-            return jsonify({"status": "success", "data": card})
-        return jsonify({"status": "error", "message": "Tarjeta no encontrada."}), 404
+        card, access_error = _get_accessible_card(card_id)
+        if access_error:
+            return access_error
+        return jsonify({"status": "success", "data": card})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cargar la tarjeta."}), 500

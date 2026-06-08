@@ -77,11 +77,6 @@ class PromotionModel(Connection):
             "INSERT INTO tarjeta_fidelidad (cliente_cedula, promocion_id) VALUES (%s, %s)",
             (cliente_cedula, promocion_id))
 
-    def auto_assign_active_promotions(self, cliente_cedula):
-        active_promos = self.get_active()
-        for promo in active_promos:
-            self.assign_card_to_client(cliente_cedula, promo['id'])
-
     def _get_client_info(self, cedula):
         # Try fetching from transalca.clientes (customers)
         client = self.fetch_one("transalca",
@@ -104,12 +99,23 @@ class PromotionModel(Connection):
             "cliente_cedula_display": cedula
         }
 
-    def get_client_cards(self, cliente_cedula):
+    def _loyalty_activity_filter(self, scanned_only):
+        if not scanned_only:
+            return ""
+        return (
+            " AND (tf.puntos_acumulados > 0 OR EXISTS ("
+            "SELECT 1 FROM historial_puntos hp_scan WHERE hp_scan.tarjeta_id = tf.id"
+            "))"
+        )
+
+    def get_client_cards(self, cliente_cedula, scanned_only=False):
+        activity_filter = self._loyalty_activity_filter(scanned_only)
         cards = self.fetch_all("transalca",
             "SELECT tf.*, p.nombre as promo_nombre, p.descripcion as promo_descripcion, p.puntos_requeridos, p.recompensa, p.imagen_tarjeta, p.tipo, "
             "DATE_FORMAT(COALESCE((SELECT MAX(hp.fecha) FROM historial_puntos hp WHERE hp.tarjeta_id = tf.id), tf.fecha_creacion), '%%Y-%%m-%%d') as fecha_aplicacion_promocion, "
             "DATE_FORMAT(DATE_ADD(COALESCE((SELECT MAX(hp.fecha) FROM historial_puntos hp WHERE hp.tarjeta_id = tf.id), tf.fecha_creacion), INTERVAL 1 MONTH), '%%Y-%%m-%%d') as fecha_vencimiento_promocion "
-            "FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id WHERE tf.cliente_cedula = %s ORDER BY tf.fecha_creacion DESC",
+            "FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id WHERE tf.cliente_cedula = %s"
+            f"{activity_filter} ORDER BY tf.fecha_creacion DESC",
             (cliente_cedula,))
         for card in cards:
             info = self._get_client_info(card['cliente_cedula'])
@@ -137,12 +143,14 @@ class PromotionModel(Connection):
             "SELECT * FROM historial_puntos WHERE tarjeta_id = %s ORDER BY fecha DESC",
             (tarjeta_id,))
 
-    def get_all_cards(self):
+    def get_all_cards(self, scanned_only=False):
+        activity_filter = self._loyalty_activity_filter(scanned_only)
         cards = self.fetch_all("transalca",
             "SELECT tf.*, p.nombre as promo_nombre, p.descripcion as promo_descripcion, p.puntos_requeridos, p.recompensa, p.imagen_tarjeta, p.tipo, "
             "DATE_FORMAT(COALESCE((SELECT MAX(hp.fecha) FROM historial_puntos hp WHERE hp.tarjeta_id = tf.id), tf.fecha_creacion), '%%Y-%%m-%%d') as fecha_aplicacion_promocion, "
             "DATE_FORMAT(DATE_ADD(COALESCE((SELECT MAX(hp.fecha) FROM historial_puntos hp WHERE hp.tarjeta_id = tf.id), tf.fecha_creacion), INTERVAL 1 MONTH), '%%Y-%%m-%%d') as fecha_vencimiento_promocion "
-            "FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id ORDER BY tf.fecha_creacion DESC")
+            "FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id WHERE 1 = 1"
+            f"{activity_filter} ORDER BY tf.fecha_creacion DESC")
         for card in cards:
             info = self._get_client_info(card['cliente_cedula'])
             card.update(info)
