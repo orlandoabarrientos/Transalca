@@ -426,7 +426,7 @@ function renderRepresentatives(items) {
         const badgeClass = r.estado ? 'bg-success' : 'bg-secondary';
         const badgeText = r.estado ? 'Activo' : 'Inactivo';
         const toggleIcon = r.estado ? 'bi-toggle-on text-success' : 'bi-toggle-off text-muted';
-        const toggleTitle = r.estado ? 'Desactivar representante' : 'Activar representante';
+        const toggleTitle = r.estado ? 'Eliminar representante' : 'Activar representante';
         const fullname = `${r.nombre} ${r.apellido || ''}`.trim();
         html += `<tr>
             <td><strong>${escapeHtml(r.cedula || '')}</strong></td>
@@ -514,7 +514,7 @@ function saveRepresentative() {
 
 function toggleRepresentative(relationId, targetState) {
     if (!currentCompanyRif) return;
-    const actionText = targetState ? 'activar' : 'desactivar';
+    const actionText = targetState ? 'activar' : 'eliminar';
     confirmAction(`¿Estás seguro de que deseas ${actionText} a este representante?`, () => {
         $.ajax({
             url: `/api/companies/representatives/${relationId}/toggle`,

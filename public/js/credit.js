@@ -32,6 +32,71 @@ $(document).ready(function () {
     Validator.setupRealtime('creditPaymentForm');
     Validator.setupRealtime('registerCreditForm');
 
+    const totalInput = document.getElementById('creditTotalAmount');
+    if (totalInput) {
+        totalInput.addEventListener('input', function () {
+            let val = totalInput.value;
+            val = val.replace(/[^0-9.]/g, '');
+            const parts = val.split('.');
+            if (parts.length > 2) {
+                val = parts[0] + '.' + parts.slice(1).join('');
+            }
+            if (parts.length > 1 && parts[1].length > 2) {
+                val = parts[0] + '.' + parts[1].slice(0, 2);
+            }
+            if (totalInput.value !== val) {
+                totalInput.value = val;
+            }
+
+            const num = parseFloat(val);
+            if (!val) {
+                setFieldError(totalInput, 'El monto es obligatorio');
+            } else if (isNaN(num) || num <= 0) {
+                setFieldError(totalInput, 'El monto debe ser mayor a cero');
+            } else if (num > 1000000) {
+                setFieldError(totalInput, 'El monto supera el límite máximo permitido ($1,000,000)');
+            } else {
+                clearFieldError(totalInput);
+                totalInput.classList.add('is-valid');
+                totalInput.classList.remove('is-invalid');
+            }
+            updateFormSubmitState('registerCreditForm');
+        });
+    }
+
+    const paymentInput = document.getElementById('creditPaymentAmount');
+    if (paymentInput) {
+        paymentInput.addEventListener('input', function () {
+            let val = paymentInput.value;
+            val = val.replace(/[^0-9.]/g, '');
+            const parts = val.split('.');
+            if (parts.length > 2) {
+                val = parts[0] + '.' + parts.slice(1).join('');
+            }
+            if (parts.length > 1 && parts[1].length > 2) {
+                val = parts[0] + '.' + parts[1].slice(0, 2);
+            }
+            if (paymentInput.value !== val) {
+                paymentInput.value = val;
+            }
+
+            const num = parseFloat(val);
+            const debt = parseFloat(document.getElementById('creditPaymentDebt').value || 0);
+            if (!val) {
+                setFieldError(paymentInput, 'El monto del abono es obligatorio');
+            } else if (isNaN(num) || num <= 0) {
+                setFieldError(paymentInput, 'El monto del abono debe ser mayor a cero');
+            } else if (num > debt) {
+                setFieldError(paymentInput, 'El abono no puede ser mayor a la deuda');
+            } else {
+                clearFieldError(paymentInput);
+                paymentInput.classList.add('is-valid');
+                paymentInput.classList.remove('is-invalid');
+            }
+            updateFormSubmitState('creditPaymentForm');
+        });
+    }
+
     $(document).on('change', '#creditCompanySelect, #registerCreditStartDate', function() {
         const selected = $('#creditCompanySelect option:selected');
         const dias = parseInt(selected.data('dias') || 0);

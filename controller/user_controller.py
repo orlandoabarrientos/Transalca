@@ -172,8 +172,20 @@ def update(user_id):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         if model.cedula_exists(data['cedula'], user_id):
             return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
-        model.update_info(user_id, data)
+        # Prevent role change for the last active administrator
         current_roles = model.get_user_roles(user_id)
+        was_admin = any(r['nombre'] == 'Administrador' for r in current_roles)
+        if was_admin:
+            new_rol_id = data.get('rol_id')
+            new_role_info = model.fetch_one("mantenimiento", "SELECT nombre FROM roles WHERE id = %s", (new_rol_id,))
+            is_new_admin = new_role_info and new_role_info['nombre'] == 'Administrador'
+            if not is_new_admin:
+                admin_count = model.fetch_one("mantenimiento",
+                    "SELECT COUNT(*) as total FROM usuario_rol ur INNER JOIN roles r ON ur.rol_id = r.id INNER JOIN usuarios u ON ur.usuario_id = u.id WHERE r.nombre = 'Administrador' AND u.estado = 1")
+                if admin_count and admin_count['total'] <= 1:
+                    return jsonify({"status": "error", "message": "No se puede cambiar el rol del último administrador activo.", "errors": {"rol_id": "No se puede cambiar el rol del último administrador activo."}}), 400
+
+        model.update_info(user_id, data)
         for role in current_roles:
             model.remove_role(user_id, role['id'])
         if data.get('rol_id'):

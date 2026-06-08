@@ -60,8 +60,8 @@ class ServiceModel(Connection):
     def create(self, data):
         duration = data.get('duracion_estimada', 60)
         sid = self.insert("transalca",
-            "INSERT INTO servicios (nombre, descripcion, precio, duracion_estimada) VALUES (%s, %s, %s, %s)",
-            (data['nombre'].strip(), data.get('descripcion', '').strip(), float(data['precio']),
+            "INSERT INTO servicios (nombre, descripcion, tipo, precio, duracion_estimada) VALUES (%s, %s, %s, %s, %s)",
+            (data['nombre'].strip(), data.get('descripcion', '').strip(), data.get('tipo', 'general').strip(), float(data['precio']),
              str(duration).strip()))
         self._sync_sucursales(sid, data.get('sucursal_ids') or [])
         return sid
@@ -69,8 +69,8 @@ class ServiceModel(Connection):
     def update_service(self, sid, data):
         duration = data.get('duracion_estimada', 60)
         result = self.update("transalca",
-            "UPDATE servicios SET nombre = %s, descripcion = %s, precio = %s, duracion_estimada = %s WHERE id = %s",
-            (data['nombre'].strip(), data.get('descripcion', '').strip(), float(data['precio']),
+            "UPDATE servicios SET nombre = %s, descripcion = %s, tipo = %s, precio = %s, duracion_estimada = %s WHERE id = %s",
+            (data['nombre'].strip(), data.get('descripcion', '').strip(), data.get('tipo', 'general').strip(), float(data['precio']),
              str(duration).strip(), sid))
         self._sync_sucursales(sid, data.get('sucursal_ids') or [])
         return result

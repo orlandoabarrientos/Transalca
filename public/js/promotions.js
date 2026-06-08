@@ -233,7 +233,13 @@ function openModal() {
     document.getElementById('modalTitle').textContent = 'Registrar Promoción';
     document.getElementById('nombre').value = '';
     document.getElementById('descripcion').value = '';
-    document.getElementById('tipo').value = '';
+    const tipoSelect = document.getElementById('tipo');
+    if (tipoSelect) {
+        tipoSelect.value = '';
+        if (window.jQuery && window.jQuery(tipoSelect).hasClass('select2-hidden-accessible')) {
+            window.jQuery(tipoSelect).trigger('change.select2');
+        }
+    }
     document.getElementById('puntos_requeridos').value = 5;
     document.getElementById('recompensa').value = '';
     document.getElementById('fecha_inicio').value = '';
@@ -252,7 +258,13 @@ function editData(id) {
         document.getElementById('promoId').value = p.id;
         document.getElementById('nombre').value = p.nombre || '';
         document.getElementById('descripcion').value = p.descripcion || '';
-        document.getElementById('tipo').value = p.tipo || 'puntos';
+        const tipoSelect = document.getElementById('tipo');
+        if (tipoSelect) {
+            tipoSelect.value = p.tipo || 'puntos';
+            if (window.jQuery && window.jQuery(tipoSelect).hasClass('select2-hidden-accessible')) {
+                window.jQuery(tipoSelect).trigger('change.select2');
+            }
+        }
         document.getElementById('puntos_requeridos').value = p.puntos_requeridos || 1;
         document.getElementById('recompensa').value = p.recompensa || '';
         document.getElementById('fecha_inicio').value = normalizeDateInput(p.fecha_inicio);
@@ -388,4 +400,32 @@ function escapeHtml(text) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+function getCardBackground(imagenTarjeta) {
+    if (imagenTarjeta) {
+        const url = `/public/assets/images/${encodeURIComponent(imagenTarjeta)}`;
+        return `url('${url}')`;
+    }
+    return 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)';
+}
+
+function formatCardNumber(id) {
+    const padded = String(id || 0).padStart(8, '0');
+    return `4318 0092 ${padded.slice(0, 4)} ${padded.slice(4)}`;
+}
+
+function buildCompletedPromoAlert(card, accumulated, required) {
+    if (accumulated >= required) {
+        let expiryText = '';
+        if (card.fecha_fin) {
+            const dateObj = new Date(card.fecha_fin);
+            expiryText = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleDateString();
+        }
+        return `<div class="completed-promo-alert mb-2">
+            <span><i class="bi bi-gift-fill me-1"></i> Tarjeta Completada</span>
+            ${expiryText ? `<small>Válida hasta el ${escapeHtml(expiryText)}.</small>` : ''}
+        </div>`;
+    }
+    return '';
 }

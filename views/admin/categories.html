@@ -24,6 +24,7 @@
                     <table class="table mb-0">
                         <thead>
                             <tr>
+                                <th>Imagen</th>
                                 <th>Nombre</th>
                                 <th>Descripción</th>
                                 <th>Productos</th>
@@ -45,7 +46,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="categoryForm">
+                <form id="categoryForm" enctype="multipart/form-data">
                     <input type="hidden" id="categoryOldNombre">
                     <div class="mb-3">
                         <label class="form-label">Nombre <span class="required">*</span></label>
@@ -56,6 +57,14 @@
                         <label class="form-label">Descripción</label>
                         <textarea class="form-control" id="descripcion" name="descripcion" rows="2"></textarea>
                         <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Imagen</label>
+                        <input type="file" class="form-control" id="imagen" name="imagen" accept="image/png, image/jpeg, image/webp, image/jpg">
+                        <div class="invalid-feedback"></div>
+                        <div id="imagePreviewContainer" class="mt-2 text-center" style="display:none;">
+                            <img id="imagePreview" src="" style="max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 8px;" class="border">
+                        </div>
                     </div>
                 </form>
             </div>

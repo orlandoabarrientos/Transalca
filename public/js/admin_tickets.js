@@ -163,7 +163,7 @@ function renderAdminTicketDetail(ticket) {
     $('#adminReplyForm').show();
     $('#adminReplyMessage').prop('disabled', isClosed);
     $('#adminReplyForm button[type="submit"]').prop('disabled', isClosed);
-    $('#adminTicketStatusSelect').prop('disabled', false).val(ticket.estado || 'abierto');
+    $('#adminTicketStatusSelect').prop('disabled', false).val(ticket.estado || 'abierto').trigger('change');
     $('#adminTicketStatusBtn').prop('disabled', false);
 }
 

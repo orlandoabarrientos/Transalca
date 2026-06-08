@@ -1,5 +1,5 @@
 let currentStockPage = 1;
-const stockPerPage = 30;
+let stockPerPage = 30;
 let stockSearchTimer = null;
 
 $(document).ready(function() {
@@ -11,6 +11,11 @@ $(document).ready(function() {
         enhanceSearchableSelects();
     });
     loadStock();
+    
+    $('#stockPerPageSelect').on('change', function () {
+        stockPerPage = parseInt($(this).val()) || 30;
+        loadStock(1);
+    });
 });
 
 function loadStock(page = 1) {

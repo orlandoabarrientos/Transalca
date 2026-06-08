@@ -55,7 +55,20 @@ class OrderModel(Connection):
 
     def get_cart(self, cliente_cedula):
         items = self.fetch_all("transalca",
-            "SELECT c.*, CASE WHEN c.tipo = 'producto' THEN p.nombre ELSE s.nombre END as item_nombre, CASE WHEN c.tipo = 'producto' THEN p.precio ELSE s.precio END as precio, CASE WHEN c.tipo = 'producto' THEN p.imagen ELSE 'default_service.png' END as imagen FROM carrito c LEFT JOIN productos p ON c.producto_codigo = p.codigo LEFT JOIN servicios s ON c.servicio_id = s.id WHERE c.cliente_cedula = %s",
+            "SELECT c.*, "
+            "CASE WHEN c.tipo = 'producto' THEN p.nombre ELSE s.nombre END as item_nombre, "
+            "CASE WHEN c.tipo = 'producto' THEN p.precio ELSE s.precio END as precio, "
+            "CASE WHEN c.tipo = 'producto' THEN "
+            "  CASE WHEN p.imagen IS NOT NULL AND p.imagen != 'default_product.png' AND p.imagen != '' THEN CONCAT('product_imgs/', p.imagen) "
+            "  ELSE CONCAT('images/', COALESCE(cat.imagen, 'product-default-parts.png')) "
+            "  END "
+            "ELSE 'images/default_service.png' "
+            "END as imagen_path "
+            "FROM carrito c "
+            "LEFT JOIN productos p ON c.producto_codigo = p.codigo "
+            "LEFT JOIN categorias cat ON p.categoria = cat.nombre "
+            "LEFT JOIN servicios s ON c.servicio_id = s.id "
+            "WHERE c.cliente_cedula = %s",
             (cliente_cedula,))
         return items
 
@@ -152,7 +165,7 @@ class OrderModel(Connection):
             if not payment_method:
                 raise ValueError("El metodo de pago no es valido.")
             client = self.fetch_one("transalca",
-                "SELECT c.tipo_cliente, e.dias_credito FROM clientes c LEFT JOIN empresas e ON e.cliente_cedula = c.cedula WHERE c.cedula = %s",
+                "SELECT c.tipo_cliente, e.dias_credito FROM clientes c LEFT JOIN empresas e ON e.rif = c.cedula WHERE c.cedula = %s",
                 (cliente_cedula,))
             if int(payment_method.get('permite_credito') or 0) and (not client or client.get('tipo_cliente') != 'empresa'):
                 raise ValueError("Las compras a credito solo estan disponibles para empresas.")

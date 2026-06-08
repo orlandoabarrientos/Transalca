@@ -10,7 +10,7 @@ class ReportModel(Connection):
         client = self.fetch_one(
             "transalca",
             "SELECT c.nombre, c.apellido, c.tipo_cliente, e.razon_social "
-            "FROM clientes c LEFT JOIN empresas e ON e.cliente_cedula = c.cedula "
+            "FROM clientes c LEFT JOIN empresas e ON e.rif = c.cedula "
             "WHERE c.cedula = %s",
             (cedula,))
         if not client:
@@ -52,43 +52,66 @@ class ReportModel(Connection):
         return orders
 
     def get_sales_history(self, start_date=None, end_date=None, status=None):
-        sql = "SELECT id, cliente_cedula, fecha, total, estado FROM ordenes_venta WHERE 1=1"
+        sql = (
+            "SELECT ov.id, ov.cliente_cedula, ov.fecha, ov.total, ov.estado, "
+            "c.nombre, c.apellido, c.tipo_cliente, e.razon_social "
+            "FROM ordenes_venta ov "
+            "LEFT JOIN clientes c ON ov.cliente_cedula = c.cedula "
+            "LEFT JOIN empresas e ON e.rif = c.cedula "
+            "WHERE 1=1"
+        )
         params = []
         if start_date:
-            sql += " AND DATE(fecha) >= %s"
+            sql += " AND DATE(ov.fecha) >= %s"
             params.append(start_date)
         if end_date:
-            sql += " AND DATE(fecha) <= %s"
+            sql += " AND DATE(ov.fecha) <= %s"
             params.append(end_date)
         if status:
-            sql += " AND estado = %s"
+            sql += " AND ov.estado = %s"
             params.append(status)
-        sql += " ORDER BY fecha DESC"
+        sql += " ORDER BY ov.fecha DESC"
 
         orders = self.fetch_all("transalca", sql, tuple(params) if params else None)
 
         for order in orders:
-            order['cliente'] = self._client_name(order['cliente_cedula'])
+            if order.get('tipo_cliente') == 'empresa':
+                order['cliente'] = order.get('razon_social') or order.get('nombre') or 'N/A'
+            else:
+                order['cliente'] = f"{order.get('nombre', '')} {order.get('apellido', '')}".strip() or 'N/A'
             order['fecha'] = order['fecha'].isoformat() if hasattr(order['fecha'], 'isoformat') else order['fecha']
         return orders
 
     def get_payments_history(self, start_date=None, end_date=None, status=None):
-        sql = "SELECT c.id, o.cliente_cedula, c.orden_venta_id as orden_id, CONCAT('IMG-', c.id) as referencia, o.total as monto, 'USD' as moneda, mp.nombre as metodo, c.fecha, c.estado FROM comprobantes_pago c INNER JOIN ordenes_venta o ON c.orden_venta_id = o.id LEFT JOIN metodos_pago mp ON mp.id = o.metodo_pago_id WHERE 1=1"
+        sql = (
+            "SELECT cp.id, ov.cliente_cedula, cp.orden_venta_id as orden_id, CONCAT('IMG-', cp.id) as referencia, "
+            "ov.total as monto, 'USD' as moneda, mp.nombre as metodo, cp.fecha, cp.estado, "
+            "c.nombre, c.apellido, c.tipo_cliente, e.razon_social "
+            "FROM comprobantes_pago cp "
+            "INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id "
+            "LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
+            "LEFT JOIN clientes c ON ov.cliente_cedula = c.cedula "
+            "LEFT JOIN empresas e ON e.rif = c.cedula "
+            "WHERE 1=1"
+        )
         params = []
         if start_date:
-            sql += " AND DATE(c.fecha) >= %s"
+            sql += " AND DATE(cp.fecha) >= %s"
             params.append(start_date)
         if end_date:
-            sql += " AND DATE(c.fecha) <= %s"
+            sql += " AND DATE(cp.fecha) <= %s"
             params.append(end_date)
         if status:
-            sql += " AND c.estado = %s"
+            sql += " AND cp.estado = %s"
             params.append(status)
-        sql += " ORDER BY c.fecha DESC"
+        sql += " ORDER BY cp.fecha DESC"
 
         payments = self.fetch_all("transalca", sql, tuple(params) if params else None)
         for p in payments:
-            p['cliente'] = self._client_name(p['cliente_cedula'])
+            if p.get('tipo_cliente') == 'empresa':
+                p['cliente'] = p.get('razon_social') or p.get('nombre') or 'N/A'
+            else:
+                p['cliente'] = f"{p.get('nombre', '')} {p.get('apellido', '')}".strip() or 'N/A'
             p['fecha'] = p['fecha'].isoformat() if hasattr(p['fecha'], 'isoformat') else p['fecha']
         return payments
 
@@ -110,9 +133,11 @@ class ReportModel(Connection):
 
     def get_mechanics_performance(self, start_date=None, end_date=None):
         sql = (
-            "SELECT sm.mecanico_cedula, sm.estado as asignacion_estado, sm.fecha, s.precio as subtotal "
+            "SELECT sm.mecanico_cedula, sm.estado as asignacion_estado, sm.fecha, s.precio as subtotal, "
+            "CONCAT(m.nombre, ' ', m.apellido) as mecanico_nombre "
             "FROM servicio_mecanico sm "
             "INNER JOIN servicios s ON sm.servicio_id = s.id "
+            "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula "
             "WHERE sm.mecanico_cedula IS NOT NULL"
         )
         params = []
@@ -129,12 +154,7 @@ class ReportModel(Connection):
         for r in records:
             mid = r['mecanico_cedula']
             if mid not in mecanicos_stats:
-                mec = self.fetch_one("transalca", "SELECT nombre, apellido FROM mecanicos WHERE cedula = %s", (mid,))
-                if mec:
-                    mecanico_nombre = f"{mec['nombre']} {mec['apellido']}"
-                else:
-                    mecanico_nombre = 'Desconocido'
-
+                mecanico_nombre = r.get('mecanico_nombre') or 'Desconocido'
                 mecanicos_stats[mid] = {
                     "mecanico_nombre": mecanico_nombre,
                     "total_asignados": 0,
@@ -149,22 +169,27 @@ class ReportModel(Connection):
         return list(mecanicos_stats.values())
 
     def get_bitacora_audit(self, start_date=None, end_date=None, modulo=None):
-        sql = "SELECT id, usuario_id, accion, modulo, descripcion, ip, fecha FROM bitacora WHERE 1=1"
+        sql = (
+            "SELECT b.id, b.usuario_id, b.accion, b.modulo, b.descripcion, b.ip, b.fecha, "
+            "u.email as usuario "
+            "FROM bitacora b "
+            "LEFT JOIN usuarios u ON b.usuario_id = u.id "
+            "WHERE 1=1"
+        )
         params = []
         if start_date:
-            sql += " AND DATE(fecha) >= %s"
+            sql += " AND DATE(b.fecha) >= %s"
             params.append(start_date)
         if end_date:
-            sql += " AND DATE(fecha) <= %s"
+            sql += " AND DATE(b.fecha) <= %s"
             params.append(end_date)
         if modulo:
-            sql += " AND modulo = %s"
+            sql += " AND b.modulo = %s"
             params.append(modulo)
-        sql += " ORDER BY fecha DESC LIMIT 500"
+        sql += " ORDER BY b.fecha DESC LIMIT 500"
 
         logs = self.fetch_all("mantenimiento", sql, tuple(params) if params else None)
         for l in logs:
-            user = self.fetch_one("mantenimiento", "SELECT email FROM usuarios WHERE id = %s", (l['usuario_id'],))
-            l['usuario'] = user['email'] if user else 'Sistema'
+            l['usuario'] = l.get('usuario') or 'Sistema'
             l['fecha'] = l['fecha'].isoformat() if hasattr(l['fecha'], 'isoformat') else l['fecha']
         return logs

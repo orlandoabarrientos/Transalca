@@ -11,11 +11,12 @@ class ProductModel(Connection):
 
     def _product_select(self, where="p.estado = 1"):
         return (
-            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, "
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, c.imagen as categoria_imagen, "
             "COALESCE(GROUP_CONCAT(DISTINCT su.nombre ORDER BY su.nombre SEPARATOR ', '), 'Sin stock') as sucursal_nombre, "
             "GROUP_CONCAT(DISTINCT st.sucursal_id ORDER BY st.sucursal_id SEPARATOR ',') as sucursal_ids, "
             "COALESCE(SUM(st.stock),0) as stock "
             "FROM productos p "
+            "LEFT JOIN categorias c ON p.categoria = c.nombre "
             "LEFT JOIN stock st ON p.codigo = st.producto_codigo "
             "LEFT JOIN sucursales su ON st.sucursal_id = su.id "
             f"WHERE {where} GROUP BY p.codigo ORDER BY p.nombre"
@@ -24,23 +25,32 @@ class ProductModel(Connection):
     def get_all(self):
         return self.fetch_all("transalca", self._product_select())
 
-    def get_all_paginated(self, page, per_page):
+    def get_all_paginated(self, page, per_page, q=None):
         offset = (page - 1) * per_page
-        total_query = "SELECT COUNT(DISTINCT p.codigo) as total FROM productos p WHERE p.estado = 1"
-        total = self.fetch_one("transalca", total_query)['total']
+        where = ["p.estado = 1"]
+        params = []
+        if q:
+            like = f"%{q}%"
+            where.append("(p.nombre LIKE %s OR p.codigo LIKE %s OR p.descripcion LIKE %s)")
+            params.extend([like, like, like])
+        
+        where_sql = " AND ".join(where)
+        total_query = f"SELECT COUNT(DISTINCT p.codigo) as total FROM productos p WHERE {where_sql}"
+        total = self.fetch_one("transalca", total_query, tuple(params))['total']
         
         select_query = (
-            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, "
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, c.imagen as categoria_imagen, "
             "COALESCE(GROUP_CONCAT(DISTINCT su.nombre ORDER BY su.nombre SEPARATOR ', '), 'Sin stock') as sucursal_nombre, "
             "GROUP_CONCAT(DISTINCT st.sucursal_id ORDER BY st.sucursal_id SEPARATOR ',') as sucursal_ids, "
             "COALESCE(SUM(st.stock),0) as stock "
             "FROM productos p "
+            "LEFT JOIN categorias c ON p.categoria = c.nombre "
             "LEFT JOIN stock st ON p.codigo = st.producto_codigo "
             "LEFT JOIN sucursales su ON st.sucursal_id = su.id "
-            "WHERE p.estado = 1 GROUP BY p.codigo ORDER BY p.nombre "
+            f"WHERE {where_sql} GROUP BY p.codigo ORDER BY p.nombre "
             "LIMIT %s OFFSET %s"
         )
-        data = self.fetch_all("transalca", select_query, (per_page, offset))
+        data = self.fetch_all("transalca", select_query, tuple(params + [per_page, offset]))
         return {
             "data": data,
             "total": total,
@@ -83,11 +93,12 @@ class ProductModel(Connection):
         }.get(sort, 'p.nombre ASC')
 
         select_query = (
-            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, "
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, c.imagen as categoria_imagen, "
             "COALESCE(GROUP_CONCAT(DISTINCT su.nombre ORDER BY su.nombre SEPARATOR ', '), 'Sin stock') as sucursal_nombre, "
             "GROUP_CONCAT(DISTINCT st.sucursal_id ORDER BY st.sucursal_id SEPARATOR ',') as sucursal_ids, "
             "COALESCE(SUM(st.stock),0) as stock "
             "FROM productos p "
+            "LEFT JOIN categorias c ON p.categoria = c.nombre "
             "LEFT JOIN stock st ON p.codigo = st.producto_codigo "
             "LEFT JOIN sucursales su ON st.sucursal_id = su.id "
             f"WHERE {where_sql} GROUP BY p.codigo ORDER BY {order_by} "
@@ -110,30 +121,32 @@ class ProductModel(Connection):
 
     def get_by_codigo(self, codigo):
         return self.fetch_one("transalca",
-            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, "
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, c.imagen as categoria_imagen, "
             "COALESCE(GROUP_CONCAT(DISTINCT su.nombre ORDER BY su.nombre SEPARATOR ', '), 'Sin stock') as sucursal_nombre, "
             "GROUP_CONCAT(DISTINCT st.sucursal_id ORDER BY st.sucursal_id SEPARATOR ',') as sucursal_ids, "
             "COALESCE(SUM(st.stock),0) as stock "
             "FROM productos p "
+            "LEFT JOIN categorias c ON p.categoria = c.nombre "
             "LEFT JOIN stock st ON p.codigo = st.producto_codigo "
             "LEFT JOIN sucursales su ON st.sucursal_id = su.id WHERE p.codigo = %s GROUP BY p.codigo", (codigo,))
 
     def get_by_category(self, categoria_nombre):
         return self.fetch_all("transalca",
-            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, COALESCE(SUM(st.stock),0) as stock "
-            "FROM productos p LEFT JOIN stock st ON p.codigo = st.producto_codigo "
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, c.imagen as categoria_imagen, COALESCE(SUM(st.stock),0) as stock "
+            "FROM productos p LEFT JOIN categorias c ON p.categoria = c.nombre LEFT JOIN stock st ON p.codigo = st.producto_codigo "
             "WHERE p.categoria = %s AND p.estado = 1 GROUP BY p.codigo ORDER BY p.nombre", (categoria_nombre,))
 
     def get_by_brand(self, marca_nombre):
         return self.fetch_all("transalca",
-            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, COALESCE(SUM(st.stock),0) as stock "
-            "FROM productos p LEFT JOIN stock st ON p.codigo = st.producto_codigo "
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, c.imagen as categoria_imagen, COALESCE(SUM(st.stock),0) as stock "
+            "FROM productos p LEFT JOIN categorias c ON p.categoria = c.nombre LEFT JOIN stock st ON p.codigo = st.producto_codigo "
             "WHERE p.marca = %s AND p.estado = 1 GROUP BY p.codigo ORDER BY p.nombre", (marca_nombre,))
 
     def get_by_sucursal(self, sid):
         return self.fetch_all("transalca",
-            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, su.nombre as sucursal_nombre, "
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, c.imagen as categoria_imagen, su.nombre as sucursal_nombre, "
             "COALESCE(st.stock,0) as stock FROM productos p "
+            "LEFT JOIN categorias c ON p.categoria = c.nombre "
             "INNER JOIN stock st ON p.codigo = st.producto_codigo "
             "INNER JOIN sucursales su ON st.sucursal_id = su.id "
             "WHERE st.sucursal_id = %s AND p.estado = 1 ORDER BY p.nombre", (sid,))
@@ -141,8 +154,8 @@ class ProductModel(Connection):
     def search(self, q):
         q = f"%{q}%"
         return self.fetch_all("transalca",
-            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, COALESCE(SUM(st.stock),0) as stock "
-            "FROM productos p LEFT JOIN stock st ON p.codigo = st.producto_codigo "
+            "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, c.imagen as categoria_imagen, COALESCE(SUM(st.stock),0) as stock "
+            "FROM productos p LEFT JOIN categorias c ON p.categoria = c.nombre LEFT JOIN stock st ON p.codigo = st.producto_codigo "
             "WHERE (p.nombre LIKE %s OR p.codigo LIKE %s OR p.descripcion LIKE %s) AND p.estado = 1 "
             "GROUP BY p.codigo ORDER BY p.nombre", (q, q, q))
 

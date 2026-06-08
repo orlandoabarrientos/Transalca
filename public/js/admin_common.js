@@ -556,6 +556,7 @@ function updateFormSubmitState(formId) {
 
 function inputNumericMode(input) {
     const key = `${input.id || ''} ${input.name || ''}`.toLowerCase();
+    if (key.includes('search') || input.type === 'search' || input.classList.contains('auto-table-search') || input.classList.contains('table-search-input')) return '';
     if (input.dataset.numeric === 'decimal') return 'decimal';
     if (input.dataset.numeric === 'integer') return 'integer';
     if (input.type === 'number') {
@@ -707,7 +708,7 @@ function enhanceSearchableSelects(root = document) {
                 };
                 if (firstEmptyOption) {
                     config.placeholder = firstEmptyOption.textContent.trim();
-                    config.allowClear = true;
+                    config.allowClear = false;
                 }
                 if (modal) config.dropdownParent = window.jQuery(modal);
                 $select.select2(config);
@@ -791,7 +792,7 @@ class TablePaginator {
             searchInput = document.querySelector(this.searchSelector);
         } else {
             const card = this.element.closest('.card') || this.element.parentElement;
-            searchInput = card.previousElementSibling?.querySelector?.('input[type="search"], .auto-table-search') || 
+            searchInput = card.previousElementSibling?.querySelector?.('input[type="search"], input[id*="search" i], .auto-table-search') || 
                           card.querySelector('input[id*="search" i], input[name*="search" i], .table-search-input');
         }
         

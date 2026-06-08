@@ -93,7 +93,7 @@ class CreditModel(Connection):
             "c.email, e.razon_social, e.rif "
             "FROM ordenes_venta ov "
             "INNER JOIN clientes c ON c.cedula = ov.cliente_cedula "
-            "INNER JOIN empresas e ON e.cliente_cedula = c.cedula "
+            "INNER JOIN empresas e ON e.rif = c.cedula "
             "WHERE ov.tipo_pago = 'credito' "
             "AND COALESCE(ov.credito_estado, '') NOT IN ('pagado', 'anulado', 'sin_credito') "
             "AND COALESCE(ov.monto_deuda, ov.total, 0) > 0")
@@ -147,7 +147,7 @@ class CreditModel(Connection):
             "e.limite_credito, e.dias_credito, mp.nombre AS metodo_pago_nombre "
             "FROM ordenes_venta ov "
             "INNER JOIN clientes c ON c.cedula = ov.cliente_cedula "
-            "INNER JOIN empresas e ON e.cliente_cedula = c.cedula "
+            "INNER JOIN empresas e ON e.rif = c.cedula "
             "LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
             "WHERE c.tipo_cliente = 'empresa' AND ov.tipo_pago = 'credito'"
         )
@@ -218,7 +218,7 @@ class CreditModel(Connection):
 
     def create_credit(self, data):
         client = self.fetch_one("transalca",
-            "SELECT c.cedula, e.dias_credito FROM clientes c INNER JOIN empresas e ON e.cliente_cedula = c.cedula WHERE c.cedula = %s AND c.estado = 1",
+            "SELECT c.cedula, e.dias_credito FROM clientes c INNER JOIN empresas e ON e.rif = c.cedula WHERE c.cedula = %s AND c.estado = 1",
             (data['cliente_cedula'],))
         if not client:
             return {'ok': False, 'message': 'La empresa no existe o esta inactiva.'}

@@ -17,11 +17,14 @@
         <div class="content-area">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4 class="fw-bold mb-0">Gestionar Productos</h4>
-                <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Registrar Producto</button>
+                <div class="d-flex gap-2">
+                    <input type="search" id="productSearch" class="form-control form-control-sm" placeholder="Buscar producto, codigo o descripcion..." style="width: 250px;">
+                    <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Registrar Producto</button>
+                </div>
             </div>
             <div class="card mb-3">
                 <div class="card-body p-0">
-                    <table class="table mb-0">
+                    <table class="table mb-0" data-no-auto-search="1">
                         <thead>
                             <tr>
                                 <th>Producto</th>

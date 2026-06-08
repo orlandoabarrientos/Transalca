@@ -52,7 +52,43 @@ $(document).ready(function() {
             }, 350);
         });
     }
+
+    document.getElementById('imagen')?.addEventListener('change', function(e) {
+        const file = e?.target?.files?.[0];
+        if (!file) {
+            setImagePreview('');
+            return;
+        }
+        if (!['image/png', 'image/jpeg', 'image/webp', 'image/jpg'].includes(file.type)) {
+            e.target.value = '';
+            setImagePreview('');
+            return showToast('El archivo debe ser una imagen png, jpg, jpeg o webp', 'warning');
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            e.target.value = '';
+            setImagePreview('');
+            return showToast('La imagen no debe superar los 2MB', 'warning');
+        }
+        const reader = new FileReader();
+        reader.onload = function (evt) {
+            setImagePreview(evt?.target?.result || '');
+        };
+        reader.readAsDataURL(file);
+    });
 });
+
+function setImagePreview(src) {
+    const container = document.getElementById('imagePreviewContainer');
+    const img = document.getElementById('imagePreview');
+    if (!img || !container) return;
+    if (!src) {
+        container.style.display = 'none';
+        img.src = '';
+        return;
+    }
+    img.src = src;
+    container.style.display = 'block';
+}
 
 let paginator = null;
 
@@ -62,16 +98,20 @@ function loadData() {
             paginator = new TablePaginator('categoryBody', {
                 allData: res.data || [],
                 itemName: 'categorías',
-                renderRow: (c) => `<tr class="fade-in-up">
-                    <td><strong>${escapeHtml(c.nombre)}</strong></td>
-                    <td>${escapeHtml(c.descripcion || '-')}</td>
-                    <td>${c.total_productos || 0}</td>
-                    <td>
-                        <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${escape(c.nombre)}')" title="Modificar Categoría"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${escape(c.nombre)}')" title="Eliminar Categoría"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>`,
-                onEmpty: () => '<tr><td colspan="4" class="text-center py-4"><div class="empty-state"><i class="bi bi-tags"></i><p>No hay categorías registradas</p></div></td></tr>'
+                renderRow: (c) => {
+                    const categoryImgUrl = c.imagen ? `/public/assets/images/${encodeURIComponent(c.imagen)}` : '/public/assets/images/product-default-parts.png';
+                    return `<tr class="fade-in-up">
+                        <td><img src="${categoryImgUrl}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px;" class="border shadow-sm"></td>
+                        <td><strong>${escapeHtml(c.nombre)}</strong></td>
+                        <td>${escapeHtml(c.descripcion || '-')}</td>
+                        <td>${c.total_productos || 0}</td>
+                        <td>
+                            <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${escape(c.nombre)}')" title="Modificar Categoría"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${escape(c.nombre)}')" title="Eliminar Categoría"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>`;
+                },
+                onEmpty: () => '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-tags"></i><p>No hay categorías registradas</p></div></td></tr>'
             });
         } else {
             paginator.updateData(res.data || []);
@@ -83,6 +123,8 @@ function openModal(nombre = null) {
     Validator.clearForm('categoryForm');
     document.getElementById('categoryOldNombre').value = nombre ? unescape(nombre) : '';
     document.getElementById('modalTitle').textContent = nombre ? 'Modificar Categoría' : 'Registrar Categoría';
+    document.getElementById('imagen').value = '';
+    setImagePreview('');
     new bootstrap.Modal(document.getElementById('categoryModal')).show();
     Validator.initTracking('categoryForm');
 }
@@ -95,6 +137,12 @@ function editData(nombre) {
         document.getElementById('nombre').value = c.nombre;
         document.getElementById('descripcion').value = c.descripcion || '';
         document.getElementById('modalTitle').textContent = 'Modificar Categoría';
+        document.getElementById('imagen').value = '';
+        if (c.imagen) {
+            setImagePreview(`/public/assets/images/${encodeURIComponent(c.imagen)}`);
+        } else {
+            setImagePreview('');
+        }
         new bootstrap.Modal(document.getElementById('categoryModal')).show();
         Validator.initTracking('categoryForm');
     });
@@ -103,16 +151,18 @@ function editData(nombre) {
 function saveData() {
     if (!Validator.validate('categoryForm')) return showToast('Corrija los errores', 'warning');
     const oldNombre = document.getElementById('categoryOldNombre').value;
-    const data = { nombre: document.getElementById('nombre').value, descripcion: document.getElementById('descripcion').value };
+    const formEl = document.getElementById('categoryForm');
+    const formData = new FormData(formEl);
+    
     if (oldNombre) {
-        data.old_nombre = oldNombre;
-        apiCall('/api/categories/update', 'PUT', data).then(res => {
+        formData.append('old_nombre', oldNombre);
+        apiCall('/api/categories/update', 'PUT', formData).then(res => {
             if (res.status === 'error') { Validator.showServerErrors('categoryForm', res.errors); return showToast(res.message, 'error'); }
             bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide();
             showToast(res.message); loadData();
         });
     } else {
-        apiCall('/api/categories/', 'POST', data).then(res => {
+        apiCall('/api/categories/', 'POST', formData).then(res => {
             if (res.status === 'error') { Validator.showServerErrors('categoryForm', res.errors); return showToast(res.message, 'error'); }
             bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide();
             showToast(res.message); loadData();

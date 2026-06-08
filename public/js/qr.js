@@ -100,7 +100,7 @@ function saveData() {
     });
 }
 
-function deleteQR(id) { confirmAction('Eliminar este QR?', () => { apiCall(`/api/qr/${id}`, 'DELETE').then(res => { showToast(res.message); loadData(); }); }, { confirmText: 'Eliminar' }); }
+function deleteQR(id) { confirmAction('¿Estás seguro de que deseas eliminar este código QR?', () => { apiCall(`/api/qr/${id}`, 'DELETE').then(res => { showToast(res.message); loadData(); }); }, { confirmText: 'Eliminar' }); }
 
 function viewQRImage(id) {
     const preview = document.getElementById('qrImagePreview');

@@ -88,6 +88,7 @@ function editData(id) {
         document.getElementById('nombre').value = s.nombre;
         document.getElementById('descripcion').value = s.descripcion || '';
         document.getElementById('tipo').value = s.tipo || 'general';
+        if (window.jQuery?.fn?.select2) window.jQuery(document.getElementById('tipo')).trigger('change.select2');
         document.getElementById('precio').value = s.precio;
         document.getElementById('duracion_estimada').value = s.duracion_estimada || 60;
         const sucSel = document.getElementById('sucursal_id');

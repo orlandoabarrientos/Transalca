@@ -92,7 +92,11 @@ function editData(id) {
         document.getElementById('telefono').value = u.telefono || '';
         document.getElementById('direccion').value = u.direccion || '';
         document.getElementById('tipo').value = u.tipo || 'empleado';
-        if (u.roles?.length) document.getElementById('rol_id').value = u.roles[0].id;
+        if (u.roles?.length) {
+            $('#rol_id').val(u.roles[0].id).trigger('change');
+        } else {
+            $('#rol_id').val('').trigger('change');
+        }
         document.getElementById('passwordRow').style.display = 'none';
         document.getElementById('modalTitle').textContent = 'Modificar Usuario';
         new bootstrap.Modal(document.getElementById('userModal')).show();

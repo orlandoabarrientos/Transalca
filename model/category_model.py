@@ -18,13 +18,18 @@ class CategoryModel(Connection):
 
     def create(self, data):
         return self.insert("transalca",
-            "INSERT INTO categorias (nombre, descripcion) VALUES (%s, %s)",
-            (data['nombre'].strip(), data.get('descripcion', '').strip()))
+            "INSERT INTO categorias (nombre, descripcion, imagen) VALUES (%s, %s, %s)",
+            (data['nombre'].strip(), data.get('descripcion', '').strip(), data.get('imagen', 'product-default-parts.png')))
 
     def update_category(self, old_nombre, data):
-        return self.update("transalca",
-            "UPDATE categorias SET nombre = %s, descripcion = %s WHERE nombre = %s",
-            (data['nombre'].strip(), data.get('descripcion', '').strip(), old_nombre))
+        if 'imagen' in data:
+            return self.update("transalca",
+                "UPDATE categorias SET nombre = %s, descripcion = %s, imagen = %s WHERE nombre = %s",
+                (data['nombre'].strip(), data.get('descripcion', '').strip(), data['imagen'], old_nombre))
+        else:
+            return self.update("transalca",
+                "UPDATE categorias SET nombre = %s, descripcion = %s WHERE nombre = %s",
+                (data['nombre'].strip(), data.get('descripcion', '').strip(), old_nombre))
 
     def soft_delete(self, nombre):
         return self.update("transalca", "UPDATE categorias SET estado = 0 WHERE nombre = %s", (nombre,))

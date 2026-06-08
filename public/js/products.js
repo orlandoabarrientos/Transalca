@@ -54,6 +54,14 @@ $(document).ready(function () {
         productsPerPage = parseInt($(this).val()) || 30;
         loadData(1);
     });
+
+    let searchTimer = null;
+    document.getElementById('productSearch')?.addEventListener('input', function () {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            loadData(1);
+        }, 300);
+    });
 });
 
 let currentProductPage = 1;
@@ -61,7 +69,8 @@ let productsPerPage = 30;
 
 function loadData(page = 1) {
     currentProductPage = page;
-    apiCall(`/api/products/?page=${page}&per_page=${productsPerPage}`).then(res => {
+    const searchVal = document.getElementById('productSearch')?.value.trim() || '';
+    apiCall(`/api/products/?page=${page}&per_page=${productsPerPage}&q=${encodeURIComponent(searchVal)}`).then(res => {
         const tbody = document.getElementById('productBody');
         if (!tbody) return;
         tbody.innerHTML = '';

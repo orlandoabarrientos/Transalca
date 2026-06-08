@@ -92,6 +92,7 @@ def get_all():
             return jsonify({"status": "success", "data": products})
 
         page_val = request.args.get('page')
+        q = request.args.get('q', '').strip()
         if page_val is not None:
             try:
                 page = int(page_val)
@@ -99,7 +100,7 @@ def get_all():
             except (ValueError, TypeError):
                 page = 1
                 per_page = 10
-            paginated = model.get_all_paginated(page, per_page)
+            paginated = model.get_all_paginated(page, per_page, q if q else None)
             return jsonify({
                 "status": "success",
                 "data": paginated["data"],

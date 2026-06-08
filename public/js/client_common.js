@@ -155,19 +155,29 @@ function getProductDefaultImageName(product = {}) {
 }
 
 function getProductImageName(product = {}) {
-    return hasExplicitProductImage(product) ? String(product.imagen).trim() : getProductDefaultImageName(product);
+    if (hasExplicitProductImage(product)) {
+        return String(product.imagen).trim();
+    }
+    const catImg = String(product.categoria_imagen || product.imagen_categoria || '').trim();
+    if (catImg && catImg !== 'product-default-parts.png' && catImg !== 'no-image.png' && catImg !== 'default_product.png') {
+        return catImg;
+    }
+    return getProductDefaultImageName(product);
 }
 
 function getProductImageSrc(product = {}) {
-    return `/public/assets/images/${encodeURIComponent(getProductImageName(product))}`;
+    const name = getProductImageName(product);
+    if (hasExplicitProductImage(product)) {
+        return `/public/assets/product_imgs/${encodeURIComponent(name)}`;
+    }
+    return `/public/assets/images/${encodeURIComponent(name)}`;
 }
 
 function buildProductImageHtml(product = {}, altText = '') {
     const imageName = getProductImageName(product);
-    const fallbackName = getProductDefaultImageName(product);
-    const isDefault = !hasExplicitProductImage(product);
-    const src = `/public/assets/images/${encodeURIComponent(imageName)}`;
-    const fallback = `/public/assets/images/${encodeURIComponent(fallbackName)}`;
+    const src = getProductImageSrc(product);
+    const isDefault = !hasExplicitProductImage(product) && !(product.categoria_imagen || product.imagen_categoria);
+    const fallback = '/public/assets/images/product-default-parts.png';
     const classes = isDefault ? ' class="product-default-image"' : '';
     return `<img src="${src}" alt="${escapeHtml(altText || product.nombre || 'Producto')}"${classes} data-product-fallback="${fallback}" onerror="handleProductImageError(this)">`;
 }

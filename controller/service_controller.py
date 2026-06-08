@@ -21,6 +21,8 @@ def _validate_service(data, current_id=None):
         errors['tipo'] = 'El tipo de servicio es obligatorio.'
     elif tipo not in ('alineacion', 'rotacion', 'balanceo', 'cambio_aceite', 'general'):
         errors['tipo'] = SELECT_TAMPER_MESSAGE
+    else:
+        clean['tipo'] = tipo
 
     current = model.get_by_id(current_id) if current_id else None
     current_suc_ids = [int(v) for v in (current.get('sucursal_ids') or '').split(',') if v] if current else []

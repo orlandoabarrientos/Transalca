@@ -29,7 +29,7 @@ function loadData() {
                 itemName: 'mecánicos',
                 renderRow: (m) => {
                     const actionBtn = m.total_servicios > 0 
-                        ? `<button class="btn btn-icon btn-sm btn-outline-danger" onclick="deleteData('${encodeURIComponent(m.cedula)}', true)" title="Desactivar Mecánico"><i class="bi bi-slash-circle"></i></button>`
+                        ? `<button class="btn btn-icon btn-sm btn-outline-danger" onclick="deleteData('${encodeURIComponent(m.cedula)}', true)" title="Eliminar Mecánico"><i class="bi bi-trash"></i></button>`
                         : `<button class="btn btn-icon btn-sm btn-warning" onclick="deleteData('${encodeURIComponent(m.cedula)}', false)" title="Eliminar Mecánico"><i class="bi bi-trash"></i></button>`;
                     return `<tr class="fade-in-up">
                         <td>
@@ -118,9 +118,7 @@ function saveData() {
 
 function deleteData(cedula, deactivateOnly = false) {
     cedula = decodeURIComponent(cedula);
-    const msg = deactivateOnly 
-        ? '¿Estás seguro de que deseas desactivar este mecánico?' 
-        : '¿Estás seguro de que deseas eliminar este mecánico?';
+    const msg = '¿Estás seguro de que deseas eliminar este mecánico?';
     confirmAction(msg, () => {
         apiCall('/api/mechanics/delete', 'DELETE', { cedula }).then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');

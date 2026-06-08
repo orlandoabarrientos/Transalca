@@ -61,21 +61,21 @@ CREATE TABLE `carrito` (
 CREATE TABLE `categorias` (
   `nombre` varchar(150) NOT NULL,
   `descripcion` varchar(500) DEFAULT NULL,
-  `imagen` varchar(200) DEFAULT 'default_cat.png',
+  `imagen` varchar(200) DEFAULT 'product-default-parts.png',
   `estado` tinyint(1) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `categorias` (`nombre`, `descripcion`, `imagen`, `estado`, `created_at`) VALUES
-('Baterias', 'Baterias para vehiculos', 'default_cat.png', 1, '2026-04-30 04:18:56'),
-('Cat afahcceddi', 'Prueba', 'default_cat.png', 0, '2026-05-08 02:43:38'),
-('Cauchos', 'Neumaticos para todo tipo de vehiculos', 'default_cat.png', 1, '2026-04-30 04:18:56'),
-('Combos', 'Combos de aceite, filtro y servicio', 'default_cat.png', 1, '2026-05-28 02:32:34'),
-('Filtros', 'Filtros de aire, aceite y combustible', 'default_cat.png', 1, '2026-04-30 04:18:56'),
-('Frenos', 'Pastillas, discos y sistemas de frenos', 'default_cat.png', 1, '2026-04-30 04:18:56'),
-('Lubricantes', 'Aceites y lubricantes para motor y transmision', 'default_cat.png', 1, '2026-04-30 04:18:56'),
-('Repuestos', 'Repuestos y autopartes en general', 'default_cat.png', 1, '2026-04-30 04:18:56'),
-('TestCat0507224100', 'Prueba', 'default_cat.png', 0, '2026-05-08 02:41:00');
+('Baterias', 'Baterias para vehiculos', 'product-default-battery.png', 1, '2026-04-30 04:18:56'),
+('Cat afahcceddi', 'Prueba', 'product-default-parts.png', 0, '2026-05-08 02:43:38'),
+('Cauchos', 'Neumaticos para todo tipo de vehiculos', 'product-default-tire.png', 1, '2026-04-30 04:18:56'),
+('Combos', 'Combos de aceite, filtro y servicio', 'product-default-parts.png', 1, '2026-05-28 02:32:34'),
+('Filtros', 'Filtros de aire, aceite y combustible', 'product-default-filter.png', 1, '2026-04-30 04:18:56'),
+('Frenos', 'Pastillas, discos y sistemas de frenos', 'product-default-parts.png', 1, '2026-04-30 04:18:56'),
+('Lubricantes', 'Aceites y lubricantes para motor y transmision', 'product-default-lubricant.png', 1, '2026-04-30 04:18:56'),
+('Repuestos', 'Repuestos y autopartes en general', 'product-default-parts.png', 1, '2026-04-30 04:18:56'),
+('TestCat0507224100', 'Prueba', 'product-default-parts.png', 0, '2026-05-08 02:41:00');
 
 CREATE TABLE `clientes` (
   `cedula` varchar(20) NOT NULL,
@@ -951,6 +951,7 @@ CREATE TABLE `servicios` (
   `id` int(11) NOT NULL,
   `nombre` varchar(200) NOT NULL,
   `descripcion` text DEFAULT NULL,
+  `tipo` varchar(50) NOT NULL DEFAULT 'general',
   `precio` decimal(10,2) NOT NULL DEFAULT 0.00,
   `duracion_estimada` varchar(50) DEFAULT NULL,
   `estado` tinyint(1) DEFAULT 1,

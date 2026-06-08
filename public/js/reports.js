@@ -37,9 +37,11 @@ function switchReport(type, el) {
 
     if (type === 'sales') {
         statusContainer.style.display = 'block';
+        $('#statusFilterContainer label').text('Estado');
         ['pendiente', 'aprobada', 'completada', 'cancelada'].forEach(s => statusSelect.innerHTML += `<option value="${s}">${s.charAt(0).toUpperCase() + s.slice(1)}</option>`);
     } else if (type === 'payments') {
         statusContainer.style.display = 'block';
+        $('#statusFilterContainer label').text('Estado');
         ['pendiente', 'aprobado', 'rechazado'].forEach(s => statusSelect.innerHTML += `<option value="${s}">${s.charAt(0).toUpperCase() + s.slice(1)}</option>`);
     } else if (type === 'bitacora') {
         statusContainer.style.display = 'block';
@@ -48,6 +50,16 @@ function switchReport(type, el) {
     } else {
         statusContainer.style.display = 'none';
         $('#statusFilterContainer label').text('Estado');
+    }
+
+    // Reset table structure and paginator state to avoid cross-contamination
+    document.getElementById('reportHead').innerHTML = '';
+    document.getElementById('reportBody').innerHTML = '<tr><td class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
+    
+    if (paginator) {
+        if (paginator.controlsEl) paginator.controlsEl.innerHTML = '';
+        if (paginator.infoEl) paginator.infoEl.textContent = '';
+        paginator = null;
     }
 
     loadReportData();

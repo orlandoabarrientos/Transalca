@@ -44,7 +44,17 @@
                 </div>
             </div>
             <div class="d-flex justify-content-between align-items-center px-2 mb-4">
-                <div class="text-muted small" id="stockPaginationInfo">Mostrando 0 de 0 registros</div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="text-muted small" id="stockPaginationInfo">Mostrando 0 de 0 registros</div>
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="text-muted small" style="white-space: nowrap; font-size: 0.8rem;">Mostrar:</span>
+                        <select class="form-select form-select-sm" id="stockPerPageSelect" style="width: auto; font-size: 0.75rem; padding: 0.2rem 1.6rem 0.2rem 0.4rem; height: 1.8rem; border-color: rgba(233, 93, 15, 0.2); border-radius: 4px;">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30" selected>30</option>
+                        </select>
+                    </div>
+                </div>
                 <nav aria-label="Navegacion de stock">
                     <ul class="pagination pagination-sm mb-0 animate-fade-in" id="stockPaginationControls">
                     </ul>

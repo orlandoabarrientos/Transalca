@@ -23,11 +23,11 @@ function loadPending() {
                     return `<tr class="fade-in-up">
                         <td>#${p.id}</td>
                         <td>#${p.orden_venta_id}</td>
-                        <td>${comprobante ? `<a href="#" class="btn btn-sm btn-outline-orange" onclick="viewComp(${p.id})"><i class="bi bi-image me-1"></i>Ver</a>` : '-'}</td>
+                        <td>${comprobante ? `<a href="#" class="btn btn-sm btn-outline-orange" onclick="viewComp(${p.id}, true)"><i class="bi bi-image me-1"></i>Ver</a>` : '-'}</td>
                         <td>${escapeHtml(p.metodo_pago || '-')}</td>
                         <td>${formatDate(p.fecha)}</td>
                         <td>
-                            <button class="btn btn-sm btn-success" onclick="viewComp(${p.id})"><i class="bi bi-check-lg me-1"></i>Revisar pago</button>
+                            <button class="btn btn-sm btn-success" onclick="viewComp(${p.id}, false)"><i class="bi bi-check-lg me-1"></i>Revisar pago</button>
                         </td>
                     </tr>`;
                 },
@@ -69,18 +69,47 @@ function loadAll() {
     });
 }
 
-function viewComp(id) {
+function viewComp(id, readOnly = false) {
     currentPaymentId = id;
     apiCall(`/api/payments/${id}`).then(res => {
         if (res.status === 'error') return showToast(res.message, 'error');
         const p = res.data || {};
         const img = document.getElementById('compImg');
         const comprobante = p.imagen_url || p.comprobante_url || '';
+        let infoHtml = '';
         if (comprobante) {
-            img.innerHTML = `<img src="/public/assets/comprobantes/${escapeHtml(comprobante)}" style="max-width:100%;border-radius:var(--radius);" alt="Comprobante" onerror="this.parentElement.innerHTML='<div class=&quot;empty-state&quot;><i class=&quot;bi bi-image&quot;></i><p>No se encontro el comprobante</p></div>'"><p class="mt-3 text-muted">Metodo: ${escapeHtml(p.metodo_pago || 'N/A')} | Fecha: ${formatDate(p.fecha)}</p>`;
+            infoHtml = `<img src="/public/assets/comprobantes/${escapeHtml(comprobante)}" style="max-width:100%;border-radius:var(--radius);" alt="Comprobante" onerror="this.parentElement.innerHTML='<div class=&quot;empty-state&quot;><i class=&quot;bi bi-image&quot;></i><p>No se encontro el comprobante</p></div>'"><p class="mt-3 text-muted">Metodo: ${escapeHtml(p.metodo_pago || 'N/A')} | Fecha: ${formatDate(p.fecha)}</p>`;
         } else {
-            img.innerHTML = '<div class="empty-state"><i class="bi bi-image"></i><p>Sin comprobante adjunto</p></div>';
+            infoHtml = '<div class="empty-state"><i class="bi bi-image"></i><p>Sin comprobante adjunto</p></div>';
         }
+        
+        infoHtml += `
+            <div class="mt-3 text-start border-top pt-3">
+                <h6><strong>Detalles del Pago</strong></h6>
+                <div class="row text-dark" style="font-size: 0.9rem;">
+                    <div class="col-6 mb-2"><strong>Monto:</strong> $${p.total || p.monto || '-'}</div>
+                    <div class="col-6 mb-2"><strong>Referencia:</strong> ${escapeHtml(p.referencia || '-')}</div>
+                    <div class="col-6 mb-2"><strong>Cliente:</strong> ${escapeHtml(p.cliente_nombre || p.nombre || '-')}</div>
+                    <div class="col-6 mb-2"><strong>Estado:</strong> ${escapeHtml(p.estado || '-')}</div>
+                </div>
+            </div>
+        `;
+        img.innerHTML = infoHtml;
+
+        const rejectBtn = document.getElementById('btnRejectPayment');
+        const approveBtn = document.getElementById('btnApprovePayment');
+        const titleEl = document.querySelector('#compModal .modal-title');
+        
+        if (readOnly) {
+            if (rejectBtn) rejectBtn.style.display = 'none';
+            if (approveBtn) approveBtn.style.display = 'none';
+            if (titleEl) titleEl.textContent = 'Ver Detalles del Pago';
+        } else {
+            if (rejectBtn) rejectBtn.style.display = '';
+            if (approveBtn) approveBtn.style.display = '';
+            if (titleEl) titleEl.textContent = 'Revisar Pago';
+        }
+        
         new bootstrap.Modal(document.getElementById('compModal')).show();
     });
 }

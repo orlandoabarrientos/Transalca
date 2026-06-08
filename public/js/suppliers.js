@@ -36,7 +36,7 @@ function loadData() {
                 itemName: 'proveedores',
                 renderRow: (s) => {
                     const actionBtn = s.total_ordenes > 0 
-                        ? `<button class="btn btn-icon btn-sm btn-outline-danger" onclick="toggleEstado('${encodeURIComponent(s.rif)}', true)" title="Desactivar Proveedor"><i class="bi bi-slash-circle"></i></button>`
+                        ? `<button class="btn btn-icon btn-sm btn-outline-danger" onclick="toggleEstado('${encodeURIComponent(s.rif)}', true)" title="Eliminar Proveedor"><i class="bi bi-trash"></i></button>`
                         : `<button class="btn btn-icon btn-sm btn-warning" onclick="toggleEstado('${encodeURIComponent(s.rif)}', false)" title="Eliminar Proveedor"><i class="bi bi-trash"></i></button>`;
                     return `<tr class="fade-in-up">
                         <td><strong>${escapeHtml(s.nombre)}</strong></td>
@@ -145,9 +145,7 @@ function saveData() {
 
 function toggleEstado(rif, deactivateOnly = false) {
     rif = decodeURIComponent(rif);
-    const msg = deactivateOnly 
-        ? '¿Estás seguro de que deseas desactivar este proveedor?' 
-        : '¿Estás seguro de que deseas eliminar este proveedor?';
+    const msg = '¿Estás seguro de que deseas eliminar este proveedor?';
     confirmAction(msg, () => {
         apiCall('/api/suppliers/toggle', 'PUT', { rif }).then(res => {
             if (res.status === 'error') return showToast(res.message, 'error');
