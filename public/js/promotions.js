@@ -93,17 +93,18 @@ function loadPromos() {
 }
 
 function loadCards() {
-    apiCall('/api/promotions/cards').then(res => {
-        if (!res.data?.length) {
-            const container = document.getElementById('cardsBody');
-            if (container) loadPromotionCardTemplates(container);
-            return;
-        }
+    Promise.all([
+        apiCall('/api/promotions/cards'),
+        apiCall('/api/promotions/')
+    ]).then(([cardsRes, promosRes]) => {
+        const adminCards = mergeAdminPromotionCards(cardsRes.data || [], promosRes.data || []);
         if (!cardsPaginator) {
             cardsPaginator = new TablePaginator('cardsBody', {
-                allData: res.data || [],
+                allData: adminCards,
                 itemName: 'tarjetas',
-                renderRow: (c) => {
+                searchSelector: '#cardsSearch',
+                renderRow: renderAdminPromotionCard,
+                legacyRenderRow: (c) => {
                     const accumulated = c.puntos_acumulados || 0;
                     const required = c.puntos_requeridos || 0;
 
@@ -168,9 +169,123 @@ function loadCards() {
                 onEmpty: () => '<div class="text-center py-5 w-100"><div class="empty-state"><i class="bi bi-credit-card"></i><p>No hay tarjetas registradas</p></div></div>'
             });
         } else {
-            cardsPaginator.updateData(res.data || []);
+            cardsPaginator.updateData(adminCards);
         }
     });
+}
+
+function mergeAdminPromotionCards(cards, promos) {
+    const realCardsByPromo = new Map();
+    (cards || []).forEach(c => {
+        const promoId = Number(c.promocion_id);
+        if (!promoId || realCardsByPromo.has(promoId)) return;
+        realCardsByPromo.set(promoId, withCardSearchText({ ...c, is_template: false }));
+    });
+
+    return (promos || []).map(p => {
+        const promoId = Number(p.id);
+        return realCardsByPromo.get(promoId) || promotionToTemplateCard(p);
+    }).filter(Boolean);
+}
+
+function promotionToTemplateCard(p) {
+    return withCardSearchText({
+        id: `promo-${p.id}`,
+        card_number_id: p.id,
+        promocion_id: p.id,
+        promo_nombre: p.nombre || 'Promocion',
+        promo_descripcion: p.descripcion || '',
+        puntos_requeridos: p.puntos_requeridos || 0,
+        puntos_acumulados: 0,
+        recompensa: p.recompensa || '',
+        imagen_tarjeta: p.imagen_tarjeta,
+        tipo: p.tipo || '',
+        canjeada: 0,
+        is_template: true,
+        cliente_nombre: 'PLANTILLA',
+        cliente_cedula_display: 'Sin cliente'
+    });
+}
+
+function withCardSearchText(card) {
+    card.search_text = [
+        card.promo_nombre,
+        card.promocion_nombre,
+        card.promo_descripcion,
+        card.recompensa,
+        card.tipo,
+        card.cliente_nombre,
+        card.cliente_cedula_display,
+        card.cliente_cedula,
+        card.is_template ? 'plantilla' : 'tarjeta'
+    ].filter(Boolean).join(' ');
+    return card;
+}
+
+function renderAdminPromotionCard(c) {
+    const accumulated = Number(c.puntos_acumulados || 0);
+    const required = Number(c.puntos_requeridos || 0);
+
+    let slotsHtml = '<div class="punch-card-grid">';
+    for (let i = 1; i <= required; i++) {
+        const isReward = (i === required);
+        const isFilled = (i <= accumulated);
+
+        let slotClass = 'punch-slot';
+        if (isReward) slotClass += ' reward-slot';
+        if (isFilled) slotClass += ' filled';
+
+        let slotContent = '';
+        if (isReward) {
+            slotContent = isFilled ? '<i class="bi bi-gift-fill"></i>' : '<i class="bi bi-gift"></i>';
+        } else {
+            slotContent = i;
+        }
+
+        slotsHtml += `<div class="${slotClass}">${slotContent}</div>`;
+    }
+    slotsHtml += '</div>';
+
+    const bg = getCardBackground(c.imagen_tarjeta);
+    const cardNum = formatCardNumber(c.card_number_id || c.id);
+    const statusClass = c.is_template ? 'template-badge' : (c.canjeada ? 'redeemed-badge' : 'active-badge');
+    const statusText = c.is_template ? 'Plantilla' : (c.canjeada ? 'Canjeada' : 'Activa');
+    const completedAlertHtml = c.is_template ? '' : buildCompletedPromoAlert(c, accumulated, required);
+    const holderCedula = c.is_template
+        ? escapeHtml(c.cliente_cedula_display || 'Sin cliente')
+        : `C.I. ${escapeHtml(c.cliente_cedula_display || c.cliente_cedula || '-')}`;
+
+    return `<div class="loyalty-card-wrapper fade-in-up">
+        <div class="fidelity-card-physical" style="background: ${bg};">
+            <div class="card-meta-row">
+                <span class="card-brand-logo">TRANSALCA</span>
+                <span class="card-status-badge ${statusClass}">${statusText}</span>
+            </div>
+            <div class="card-meta-row mt-2">
+                <div class="card-chip-gold"></div>
+                <i class="bi bi-wifi card-contactless"></i>
+            </div>
+            <div class="card-number-display">${cardNum}</div>
+            <div class="card-holder-row">
+                <div>
+                    <div class="card-holder-name">${escapeHtml(c.cliente_nombre || 'N/A')}</div>
+                    <div class="card-holder-cedula">${holderCedula}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-stamps-panel">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <strong class="text-orange fs-6" style="font-weight:700;">${escapeHtml(c.promo_nombre || 'Promocion')}</strong>
+                <span class="small text-muted" style="font-weight:600;">${accumulated} / ${required} Puntos</span>
+            </div>
+            <p class="small text-muted mb-2">${escapeHtml(c.promo_descripcion || '')}</p>
+            <div class="small mb-2"><strong class="text-orange">Recompensa:</strong> ${escapeHtml(c.recompensa || '-')}</div>
+            ${completedAlertHtml}
+            ${slotsHtml}
+            ${!c.is_template && !c.canjeada ? `<button class="btn btn-sm btn-outline-orange w-100 mt-2" onclick="addPoint(${Number(c.id)})"><i class="bi bi-plus-circle me-1"></i>Registrar punto</button>` : ''}
+        </div>
+    </div>`;
 }
 
 function loadPromotionCardTemplates(container) {
@@ -411,12 +526,12 @@ function getCardBackground(imagenTarjeta) {
 }
 
 function formatCardNumber(id) {
-    const padded = String(id || 0).padStart(8, '0');
+    const padded = String(id || 0).replace(/\D/g, '').padStart(8, '0').slice(-8);
     return `4318 0092 ${padded.slice(0, 4)} ${padded.slice(4)}`;
 }
 
 function buildCompletedPromoAlert(card, accumulated, required) {
-    if (accumulated >= required) {
+    if (required > 0 && accumulated >= required) {
         let expiryText = '';
         if (card.fecha_fin) {
             const dateObj = new Date(card.fecha_fin);

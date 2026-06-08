@@ -269,6 +269,27 @@
             display: none;
             margin-top: 8px;
         }
+
+        .cards-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 16px;
+        }
+
+        .cards-search {
+            max-width: 360px;
+            width: 100%;
+        }
+
+        @media (max-width: 576px) {
+            .cards-toolbar {
+                justify-content: stretch;
+            }
+
+            .cards-search {
+                max-width: none;
+            }
+        }
     </style>
 </head>
 <body>
@@ -306,6 +327,12 @@
                         </div>
                     </div>
                     <div class="tab-pane fade" id="tabCards">
+                        <div class="cards-toolbar">
+                            <div class="input-group cards-search">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="search" class="form-control" id="cardsSearch" placeholder="Buscar tarjetas...">
+                            </div>
+                        </div>
                         <div class="card">
                             <div class="card-body p-0">
                                 <div id="cardsBody" class="promo-card-grid"></div>
