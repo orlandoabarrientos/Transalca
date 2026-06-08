@@ -106,6 +106,8 @@
                     r.data.forEach(function (o) {
                         var state = String(o.estado || '').toLowerCase();
                         var approved = ['aprobada', 'aprobado', 'verificado', 'verificada', 'pagado', 'pagada'].includes(state);
+                        var rejected = ['rechazada', 'rechazado'].includes(state);
+                        var orderStateClass = approved ? 'order-card-approved' : rejected ? 'order-card-rejected' : state === 'pendiente' ? 'order-card-pending' : '';
                         var badge = approved ? 'badge-active' : state === 'pendiente' ? 'badge-pending' : 'badge-inactive';
                         var icon = approved ? 'bi-check-circle-fill text-success' : state === 'pendiente' ? 'bi-clock-fill text-warning' : 'bi-x-circle-fill text-danger';
                         var qrButton = approved ? '<button class="btn btn-sm btn-outline-orange" onclick="viewInvoiceQr(' + o.id + ', this)"><i class="bi bi-upc-scan me-1"></i>QR Factura</button>' : '';
@@ -118,7 +120,7 @@
                         var orderCurrency = (o.moneda || 'usd').toLowerCase();
                         var totalText = (orderCurrency === 'bs' ? 'Bs. ' : '$') + formatMoney(o.total);
 
-                        html += '<div class="card-custom mb-3 order-card"><div class="card-body"><div class="d-flex justify-content-between align-items-center"><div><h6 class="fw-bold mb-1">Pedido #' + o.id + '</h6><small class="text-muted">' + formatDateLocal(o.fecha) + ' | ' + (o.metodo_pago || '') + '</small></div><div class="text-end"><span class="badge-status ' + badge + '"><i class="bi ' + icon + ' me-1"></i>' + o.estado + '</span><h5 class="fw-bold mt-1" style="color:var(--highlight);">' + totalText + '</h5></div></div><div class="d-flex gap-2 mt-2"><button class="btn btn-sm btn-outline-primary" onclick="viewOrder(' + o.id + ', this)"><i class="bi bi-eye me-1"></i>Ver Detalle</button>' + qrButton + validateQrButton + '</div></div></div>';
+                        html += '<div class="card-custom mb-3 order-card ' + orderStateClass + '"><div class="card-body"><div class="d-flex justify-content-between align-items-center"><div><h6 class="fw-bold mb-1">Pedido #' + o.id + '</h6><small class="text-muted">' + formatDateLocal(o.fecha) + ' | ' + (o.metodo_pago || '') + '</small></div><div class="text-end"><span class="badge-status ' + badge + '"><i class="bi ' + icon + ' me-1"></i>' + o.estado + '</span><h5 class="fw-bold mt-1" style="color:var(--highlight);">' + totalText + '</h5></div></div><div class="d-flex gap-2 mt-2"><button class="btn btn-sm btn-outline-primary" onclick="viewOrder(' + o.id + ', this)"><i class="bi bi-eye me-1"></i>Ver Detalle</button>' + qrButton + validateQrButton + '</div></div></div>';
                     });
                 }
                 $('#ordersList').html(html);

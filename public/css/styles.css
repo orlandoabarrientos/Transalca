@@ -2775,6 +2775,21 @@ body.client-store .order-card {
     background: #FFF;
 }
 
+body.client-store .order-card.order-card-pending {
+    border-left-color: var(--warning);
+    background: linear-gradient(90deg, var(--warning-bg) 0%, #FFF 18%);
+}
+
+body.client-store .order-card.order-card-approved {
+    border-left-color: var(--success);
+    background: linear-gradient(90deg, var(--success-bg) 0%, #FFF 18%);
+}
+
+body.client-store .order-card.order-card-rejected {
+    border-left-color: var(--danger);
+    background: linear-gradient(90deg, var(--danger-bg) 0%, #FFF 18%);
+}
+
 body.client-store .order-card .card-body {
     padding: 18px;
 }
