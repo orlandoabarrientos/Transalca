@@ -38,6 +38,8 @@ respaldos/*
 !respaldos/.gitkeep
 
 tmp/
+temp/
+scratch/
 tmp_hash.txt
 *.tmp
 *.log
