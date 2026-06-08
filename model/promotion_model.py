@@ -5,15 +5,26 @@ class PromotionModel(Connection):
     def __init__(self):
         super().__init__()
 
+    def _format_promo_dates(self, p):
+        if not p:
+            return p
+        if isinstance(p, list):
+            for item in p:
+                self._format_promo_dates(item)
+            return p
+        p['fecha_inicio'] = p['fecha_inicio'].isoformat() if hasattr(p.get('fecha_inicio'), 'isoformat') else p.get('fecha_inicio')
+        p['fecha_fin'] = p['fecha_fin'].isoformat() if hasattr(p.get('fecha_fin'), 'isoformat') else p.get('fecha_fin')
+        return p
+
     def get_all(self):
-        return self.fetch_all("transalca", "SELECT * FROM promociones WHERE estado = 1 ORDER BY id DESC")
+        return self._format_promo_dates(self.fetch_all("transalca", "SELECT * FROM promociones WHERE estado = 1 ORDER BY id DESC"))
 
     def get_active(self):
-        return self.fetch_all("transalca",
-            "SELECT * FROM promociones WHERE estado = 1 AND (fecha_fin IS NULL OR fecha_fin >= CURDATE()) ORDER BY nombre")
+        return self._format_promo_dates(self.fetch_all("transalca",
+            "SELECT * FROM promociones WHERE estado = 1 AND (fecha_fin IS NULL OR fecha_fin >= CURDATE()) ORDER BY nombre"))
 
     def get_by_id(self, promo_id):
-        return self.fetch_one("transalca", "SELECT * FROM promociones WHERE id = %s", (promo_id,))
+        return self._format_promo_dates(self.fetch_one("transalca", "SELECT * FROM promociones WHERE id = %s", (promo_id,)))
 
     def create(self, data):
         return self.insert("transalca",
@@ -55,6 +66,28 @@ class PromotionModel(Connection):
             "INSERT INTO tarjeta_fidelidad (cliente_cedula, promocion_id) VALUES (%s, %s)",
             (cliente_cedula, promocion_id))
 
+    def _get_client_info(self, cedula):
+        # Try fetching from transalca.clientes (customers)
+        client = self.fetch_one("transalca",
+            "SELECT nombre, apellido, cedula FROM clientes WHERE cedula = %s", (cedula,))
+        if client:
+            return {
+                "cliente_nombre": f"{client['nombre']} {client['apellido']}".strip(),
+                "cliente_cedula_display": client['cedula']
+            }
+        # Fallback to mantenimiento.usuarios (employees/admins)
+        user = self.fetch_one("mantenimiento",
+            "SELECT nombre, apellido, cedula FROM usuarios WHERE cedula = %s", (cedula,))
+        if user:
+            return {
+                "cliente_nombre": f"{user['nombre']} {user['apellido']}".strip(),
+                "cliente_cedula_display": user['cedula']
+            }
+        return {
+            "cliente_nombre": "Cliente no encontrado",
+            "cliente_cedula_display": cedula
+        }
+
     def get_client_cards(self, cliente_cedula):
         cards = self.fetch_all("transalca",
             "SELECT tf.*, p.nombre as promo_nombre, p.descripcion as promo_descripcion, p.puntos_requeridos, p.recompensa, p.imagen_tarjeta, p.tipo, "
@@ -63,11 +96,8 @@ class PromotionModel(Connection):
             "FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id WHERE tf.cliente_cedula = %s ORDER BY tf.fecha_creacion DESC",
             (cliente_cedula,))
         for card in cards:
-            client = self.fetch_one("mantenimiento",
-                "SELECT nombre, apellido, cedula FROM usuarios WHERE cedula = %s", (card['cliente_cedula'],))
-            if client:
-                card['cliente_nombre'] = f"{client['nombre']} {client['apellido']}"
-                card['cliente_cedula_display'] = client['cedula']
+            info = self._get_client_info(card['cliente_cedula'])
+            card.update(info)
         return cards
 
     def add_point(self, tarjeta_id, descripcion=''):
@@ -98,11 +128,8 @@ class PromotionModel(Connection):
             "DATE_FORMAT(DATE_ADD(COALESCE((SELECT MAX(hp.fecha) FROM historial_puntos hp WHERE hp.tarjeta_id = tf.id), tf.fecha_creacion), INTERVAL 1 MONTH), '%%Y-%%m-%%d') as fecha_vencimiento_promocion "
             "FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id ORDER BY tf.fecha_creacion DESC")
         for card in cards:
-            client = self.fetch_one("mantenimiento",
-                "SELECT nombre, apellido, cedula FROM usuarios WHERE cedula = %s", (card['cliente_cedula'],))
-            if client:
-                card['cliente_nombre'] = f"{client['nombre']} {client['apellido']}"
-                card['cliente_cedula_display'] = client['cedula']
+            info = self._get_client_info(card['cliente_cedula'])
+            card.update(info)
         return cards
 
     def get_card_by_id(self, card_id):
@@ -110,10 +137,8 @@ class PromotionModel(Connection):
             "SELECT tf.*, p.nombre as promo_nombre, p.descripcion as promo_descripcion, p.puntos_requeridos, p.recompensa, p.imagen_tarjeta, p.tipo FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id WHERE tf.id = %s",
             (card_id,))
         if card:
-            client = self.fetch_one("mantenimiento",
-                "SELECT nombre, apellido, cedula, email, telefono FROM usuarios WHERE cedula = %s", (card['cliente_cedula'],))
-            if client:
-                card.update(client)
+            info = self._get_client_info(card['cliente_cedula'])
+            card.update(info)
         return card
 
     def nombre_exists(self, nombre, exclude_id=None):
@@ -124,4 +149,4 @@ class PromotionModel(Connection):
         return result is not None
 
     def get_by_nombre(self, nombre):
-        return self.fetch_one("transalca", "SELECT * FROM promociones WHERE nombre = %s", (nombre,))
+        return self._format_promo_dates(self.fetch_one("transalca", "SELECT * FROM promociones WHERE nombre = %s", (nombre,)))
