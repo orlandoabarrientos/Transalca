@@ -712,32 +712,42 @@ a:hover {
 }
 
 .select2-container .select2-selection--single {
-    height: 43px;
-    min-height: 43px;
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--bg-card);
-    display: flex;
-    align-items: center;
+    height: 43px !important;
+    min-height: 43px !important;
+    border: 1.5px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    background: var(--bg-card) !important;
+    display: flex !important;
+    align-items: center !important;
+    position: relative !important;
 }
 
 .select2-container .select2-selection--single .select2-selection__rendered {
-    color: var(--text-primary);
-    line-height: 41px;
-    padding-left: 14px;
-    padding-right: 30px;
-    font-size: 0.85rem;
-    width: 100%;
+    color: var(--text-primary) !important;
+    line-height: normal !important;
+    padding-left: 14px !important;
+    padding-right: 50px !important;
+    font-size: 0.85rem !important;
+    width: 100% !important;
+    display: block !important;
 }
 
 .select2-container .select2-selection--single .select2-selection__arrow {
-    height: 41px;
-    right: 8px;
+    height: 40px !important;
+    position: absolute !important;
+    top: 1.5px !important;
+    right: 8px !important;
 }
 
 .select2-container--default .select2-selection--single .select2-selection__clear {
-    height: 41px;
-    line-height: 41px;
+    position: absolute !important;
+    right: 28px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    height: auto !important;
+    line-height: normal !important;
+    margin-right: 0 !important;
+    font-size: 1.15rem !important;
 }
 
 .select2-container--default .select2-selection--single .select2-selection__placeholder {
@@ -2038,7 +2048,7 @@ body.client-store .store-benefits {
     z-index: 2;
 }
 
-body.client-store .store-benefits > div {
+body.client-store .store-benefits>div {
     background: #FFF;
     padding: 18px;
     min-height: 104px;
@@ -2080,7 +2090,7 @@ body.client-store .store-section-heading {
 }
 
 body.client-store .store-section-heading h3,
-body.client-store .container.py-4 > h3 {
+body.client-store .container.py-4>h3 {
     color: var(--client-ink);
     font-size: 1.65rem;
     line-height: 1.15;
@@ -2219,7 +2229,7 @@ body.client-store .service-card {
     text-align: center;
 }
 
-body.client-store .service-card > i {
+body.client-store .service-card>i {
     width: 48px;
     height: 48px;
     display: inline-flex;
@@ -2426,7 +2436,7 @@ body.client-store .client-footer-bottom {
     border-top-color: rgba(226, 232, 240, 0.14);
 }
 
-body.client-store #cartItems > .d-flex {
+body.client-store #cartItems>.d-flex {
     gap: 16px;
 }
 
@@ -2482,7 +2492,7 @@ body.client-store #cartItems img {
         flex-basis: auto;
     }
 
-    body.client-store #cartItems > .d-flex {
+    body.client-store #cartItems>.d-flex {
         align-items: flex-start !important;
     }
 }
@@ -2508,7 +2518,7 @@ body.client-store #cartItems img {
         gap: 9px;
     }
 
-    body.client-store .client-brand > div {
+    body.client-store .client-brand>div {
         min-width: 0;
     }
 
@@ -2562,7 +2572,7 @@ body.client-store #cartItems img {
     }
 
     body.client-store .store-section-heading h3,
-    body.client-store .container.py-4 > h3 {
+    body.client-store .container.py-4>h3 {
         font-size: 1.35rem;
     }
 
@@ -2574,8 +2584,8 @@ body.client-store #cartItems img {
         font-size: 2rem;
     }
 
-    body.client-store #cartItems > .d-flex,
-    body.client-store #cartItems > .d-flex > .d-flex {
+    body.client-store #cartItems>.d-flex,
+    body.client-store #cartItems>.d-flex>.d-flex {
         width: 100%;
         flex-wrap: wrap;
     }
@@ -2641,7 +2651,7 @@ body.client-store .client-page-title-row p {
 
 body.client-store .client-empty-state,
 body.client-store #cartItems .text-center.py-5,
-body.client-store #ordersList > .text-center.py-5 {
+body.client-store #ordersList>.text-center.py-5 {
     background: #FFF;
     border: 1px dashed var(--client-line);
     border-radius: 8px;
@@ -2705,7 +2715,7 @@ body.client-store #comprobante {
     padding: 8px;
 }
 
-body.client-store #cartItems > .d-flex {
+body.client-store #cartItems>.d-flex {
     margin-bottom: 12px;
     padding: 16px !important;
     border: 1px solid var(--client-line) !important;
@@ -2713,7 +2723,7 @@ body.client-store #cartItems > .d-flex {
     background: #FFF;
 }
 
-body.client-store #cartItems > .d-flex:last-child {
+body.client-store #cartItems>.d-flex:last-child {
     margin-bottom: 0;
 }
 
@@ -2935,8 +2945,8 @@ body.client-store .support-console-card textarea {
     min-height: 82px;
 }
 
-body.client-store .loyalty-page > h3.fw-bold,
-body.client-store .loyalty-page > p.text-muted.mb-4 {
+body.client-store .loyalty-page>h3.fw-bold,
+body.client-store .loyalty-page>p.text-muted.mb-4 {
     display: none;
 }
 
@@ -2999,7 +3009,7 @@ body.client-store .scanner-page .row.g-4:has(#employeeTools[style*="display:none
     justify-content: center;
 }
 
-body.client-store .scanner-page .row.g-4:has(#employeeTools[style*="display:none"]) > .col-lg-7 {
+body.client-store .scanner-page .row.g-4:has(#employeeTools[style*="display:none"])>.col-lg-7 {
     width: 100%;
     max-width: 900px;
 }
@@ -3056,6 +3066,7 @@ body.client-store .qr-redirect-logo {
 }
 
 @media (max-width: 992px) {
+
     body.client-store .checkout-summary-card,
     body.client-store .profile-identity-card {
         position: static;
@@ -3081,7 +3092,7 @@ body.client-store .qr-redirect-logo {
         max-width: none;
     }
 
-    body.client-store .order-card .card-body > .d-flex:first-child {
+    body.client-store .order-card .card-body>.d-flex:first-child {
         align-items: flex-start !important;
         gap: 12px;
     }
@@ -3121,11 +3132,11 @@ body.client-store .qr-redirect-logo {
         font-size: 1.25rem;
     }
 
-    body.client-store #cartItems > .d-flex {
+    body.client-store #cartItems>.d-flex {
         display: block !important;
     }
 
-    body.client-store #cartItems > .d-flex > .d-flex {
+    body.client-store #cartItems>.d-flex>.d-flex {
         margin-bottom: 12px;
     }
 
@@ -3133,7 +3144,7 @@ body.client-store .qr-redirect-logo {
         display: inline-block;
     }
 
-    body.client-store .order-card .card-body > .d-flex:first-child {
+    body.client-store .order-card .card-body>.d-flex:first-child {
         flex-direction: column;
     }
 
@@ -3141,8 +3152,8 @@ body.client-store .qr-redirect-logo {
         text-align: left !important;
     }
 
-    body.client-store .profile-page .row.mb-3 > .col-6,
-    body.client-store #passwordForm .row.mb-3 > .col-6 {
+    body.client-store .profile-page .row.mb-3>.col-6,
+    body.client-store #passwordForm .row.mb-3>.col-6 {
         width: 100%;
     }
 
@@ -3400,7 +3411,7 @@ body.client-store .catalog-search-control {
     position: relative;
 }
 
-body.client-store .catalog-search-control > i {
+body.client-store .catalog-search-control>i {
     position: absolute;
     left: 14px;
     top: 50%;
@@ -3469,7 +3480,7 @@ body.client-store .catalog-strip-title {
     gap: 12px;
 }
 
-body.client-store .catalog-strip-title > i {
+body.client-store .catalog-strip-title>i {
     width: 42px;
     height: 42px;
     display: inline-flex;
@@ -3750,7 +3761,7 @@ body.client-store .catalog-service-card {
     border-radius: 14px;
 }
 
-body.client-store .catalog-service-card > i {
+body.client-store .catalog-service-card>i {
     display: none;
 }
 
@@ -3818,7 +3829,7 @@ body.client-store #servicesList .service-card {
     text-align: left;
 }
 
-body.client-store #servicesList .service-card > i {
+body.client-store #servicesList .service-card>i {
     grid-row: 1 / span 4;
     width: 46px;
     height: 46px;
@@ -3959,7 +3970,7 @@ body.client-store .punch-slot {
         justify-content: flex-start;
     }
 
-    body.client-store #servicesList > .col-6 {
+    body.client-store #servicesList>.col-6 {
         width: 100%;
     }
 }
@@ -3996,8 +4007,8 @@ body.client-store .punch-slot {
         width: 100%;
     }
 
-    body.client-store #productGrid > .col-6,
-    body.client-store #serviceGrid > .col-6 {
+    body.client-store #productGrid>.col-6,
+    body.client-store #serviceGrid>.col-6 {
         width: 100%;
     }
 

@@ -215,13 +215,13 @@ def get_pdf(order_id):
         pdf.set_xy(17, start_y + 2)
         pdf.set_font("helvetica", "B", 10)
         pdf.set_text_color(26, 54, 93)
-        pdf.cell(81, 5, "PROVEEDOR", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(81, 5, "PROVEEDOR", new_x="LEFT", new_y="NEXT")
         pdf.set_text_color(0, 0, 0)
         pdf.set_font("helvetica", "", 9)
-        pdf.cell(81, 4, f"Nombre: {order['proveedor_nombre']}", new_x="LMARGIN", new_y="NEXT")
-        pdf.cell(81, 4, f"RIF: {order['proveedor_rif']}", new_x="LMARGIN", new_y="NEXT")
-        pdf.cell(81, 4, f"Telefono: {order['proveedor_telefono'] or 'N/A'}", new_x="LMARGIN", new_y="NEXT")
-        pdf.cell(81, 4, f"Email: {order['proveedor_email'] or 'N/A'}", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(81, 4, f"Nombre: {order['proveedor_nombre']}", new_x="LEFT", new_y="NEXT")
+        pdf.cell(81, 4, f"RIF: {order['proveedor_rif']}", new_x="LEFT", new_y="NEXT")
+        pdf.cell(81, 4, f"Telefono: {order['proveedor_telefono'] or 'N/A'}", new_x="LEFT", new_y="NEXT")
+        pdf.cell(81, 4, f"Email: {order['proveedor_email'] or 'N/A'}", new_x="LEFT", new_y="NEXT")
 
 
         pdf.set_fill_color(240, 244, 248)
@@ -229,11 +229,11 @@ def get_pdf(order_id):
         pdf.set_xy(112, start_y + 2)
         pdf.set_font("helvetica", "B", 10)
         pdf.set_text_color(26, 54, 93)
-        pdf.cell(81, 5, "SUCURSAL DESTINO", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(81, 5, "SUCURSAL DESTINO", new_x="LEFT", new_y="NEXT")
         pdf.set_text_color(0, 0, 0)
         pdf.set_font("helvetica", "", 9)
-        pdf.cell(81, 4, f"Nombre: {order['sucursal_nombre']}", new_x="LMARGIN", new_y="NEXT")
-        pdf.cell(81, 4, f"Direccion: {order['sucursal_direccion'] or 'N/A'}", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(81, 4, f"Nombre: {order['sucursal_nombre']}", new_x="LEFT", new_y="NEXT")
+        pdf.cell(81, 4, f"Direccion: {order['sucursal_direccion'] or 'N/A'}", new_x="LEFT", new_y="NEXT")
 
         pdf.set_y(start_y + 48)
 

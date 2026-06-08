@@ -1,6 +1,24 @@
 let productCodigoTimer = null;
 
-$(document).ready(function() {
+const _failedImgs = new Set();
+
+const PRODUCT_IMG_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='6' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='18' fill='%23bbb'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E";
+
+function getProductImgSrc(imagen) {
+    if (!imagen || imagen === 'default_product.png') return PRODUCT_IMG_FALLBACK;
+    const url = `/public/assets/product_imgs/${imagen}`;
+    if (_failedImgs.has(url)) return PRODUCT_IMG_FALLBACK;
+    return url;
+}
+
+function onProductImgError(imgEl) {
+    const original = imgEl.getAttribute('data-src');
+    if (original) _failedImgs.add(original);
+    imgEl.onerror = null;
+    imgEl.src = PRODUCT_IMG_FALLBACK;
+}
+
+$(document).ready(function () {
     $('#sidebarContainer').load('/components/admin_sidebar.html', () => {
         document.querySelector('[data-page="products"]')?.classList.add('active');
     });
@@ -10,15 +28,15 @@ $(document).ready(function() {
     loadSucursales('sucursal_id', false).then(() => enhanceSearchableSelects(document.getElementById('productModal')));
     Validator.setRules('productForm', {
         codigo: { required: true, minLength: 2, maxLength: 20, requiredMsg: 'El código es obligatorio', maxLengthMsg: 'El código no puede superar los 20 caracteres.' },
-        nombre: { 
-            required: true, 
-            minLength: 3, 
-            maxLength: 50, 
-            pattern: /^[A-Za-z0-9ñÑáéíóúÁÉÍÓÚ\s\-\.\#\:\,\_\/]+$/, 
-            requiredMsg: 'El nombre es obligatorio', 
+        nombre: {
+            required: true,
+            minLength: 3,
+            maxLength: 50,
+            pattern: /^[A-Za-z0-9ñÑáéíóúÁÉÍÓÚ\s\-\.\#\:\,\_\/\(\)]+$/,
+            requiredMsg: 'El nombre es obligatorio',
             minLengthMsg: 'Mínimo 3 caracteres',
             maxLengthMsg: 'El nombre no puede superar los 50 caracteres.',
-            patternMsg: 'El nombre contiene caracteres no válidos' 
+            patternMsg: 'El nombre contiene caracteres no válidos'
         },
         descripcion: {
             maxLength: 150,
@@ -32,7 +50,7 @@ $(document).ready(function() {
     Validator.setupRealtime('productForm');
     document.getElementById('codigo')?.addEventListener('input', validateUniqueProductCodigo);
     document.getElementById('product_imagen')?.addEventListener('change', onProductImageSelected);
-    $('#productsPerPageSelect').on('change', function() {
+    $('#productsPerPageSelect').on('change', function () {
         productsPerPage = parseInt($(this).val()) || 30;
         loadData(1);
     });
@@ -48,11 +66,12 @@ function loadData(page = 1) {
         if (!tbody) return;
         tbody.innerHTML = '';
         (res.data || []).forEach(p => {
-            const imgPath = p.imagen && p.imagen !== 'default_product.png' ? `/public/assets/product_imgs/${p.imagen}` : '/public/assets/images/no-image.png';
+            const imgSrc = getProductImgSrc(p.imagen);
+            const imgOriginal = (p.imagen && p.imagen !== 'default_product.png') ? `/public/assets/product_imgs/${p.imagen}` : '';
             tbody.innerHTML += `<tr class="fade-in-up">
                 <td>
                     <div class="d-flex align-items-center gap-3">
-                        <img src="${imgPath}" onerror="this.src='/public/assets/images/no-image.png'" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;" class="border shadow-sm">
+                        <img src="${imgSrc}" data-src="${imgOriginal}" onerror="onProductImgError(this)" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;" class="border shadow-sm">
                         <div>
                             <strong>${escapeHtml(p.nombre)}</strong><br>
                             <small class="text-muted">${escapeHtml(p.codigo)}</small>
@@ -88,27 +107,27 @@ function renderPagination(total, page, pages) {
     if (!controls) return;
     controls.innerHTML = '';
     if (pages <= 1) return;
-    
+
     const prevLi = document.createElement('li');
     prevLi.className = `page-item ${page === 1 ? 'disabled' : ''}`;
     prevLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); if(${page > 1}) loadData(${page - 1})"><i class="bi bi-chevron-left"></i></a>`;
     controls.appendChild(prevLi);
-    
+
     const maxVisible = 5;
     let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
     let endPage = startPage + maxVisible - 1;
-    
+
     if (endPage > pages) {
         endPage = pages;
         startPage = Math.max(1, endPage - maxVisible + 1);
     }
-    
+
     if (startPage > 1) {
         const firstLi = document.createElement('li');
         firstLi.className = 'page-item';
         firstLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); loadData(1)">1</a>`;
         controls.appendChild(firstLi);
-        
+
         if (startPage > 2) {
             const ellipsisLi = document.createElement('li');
             ellipsisLi.className = 'page-item disabled';
@@ -116,14 +135,14 @@ function renderPagination(total, page, pages) {
             controls.appendChild(ellipsisLi);
         }
     }
-    
+
     for (let i = startPage; i <= endPage; i++) {
         const li = document.createElement('li');
         li.className = `page-item ${page === i ? 'active' : ''}`;
         li.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); loadData(${i})">${i}</a>`;
         controls.appendChild(li);
     }
-    
+
     if (endPage < pages) {
         if (endPage < pages - 1) {
             const ellipsisLi = document.createElement('li');
@@ -136,7 +155,7 @@ function renderPagination(total, page, pages) {
         lastLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); loadData(${pages})">${pages}</a>`;
         controls.appendChild(lastLi);
     }
-    
+
     const nextLi = document.createElement('li');
     nextLi.className = `page-item ${page === pages ? 'disabled' : ''}`;
     nextLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); if(${page < pages}) loadData(${page + 1})"><i class="bi bi-chevron-right"></i></a>`;
@@ -159,7 +178,7 @@ async function loadCombos() {
             brandSel.innerHTML = '<option value="">Seleccione marca...</option>';
             (brands.data || []).forEach(b => brandSel.innerHTML += `<option value="${escapeHtml(b.nombre)}">${escapeHtml(b.nombre)}</option>`);
         }
-    } catch(e) {}
+    } catch (e) { }
 }
 
 function openModal(codigo = null) {
@@ -202,9 +221,9 @@ function editData(codigo) {
         }
         const fileInput = document.getElementById('product_imagen');
         if (fileInput) fileInput.value = '';
-        const imgPath = p.imagen && p.imagen !== 'default_product.png' ? `/public/assets/product_imgs/${p.imagen}` : '/public/assets/images/no-image.png';
-        setProductPreview(imgPath);
-        
+        const imgPath = getProductImgSrc(p.imagen);
+        setProductPreview(imgPath === PRODUCT_IMG_FALLBACK ? '' : imgPath);
+
         document.getElementById('modalTitle').textContent = 'Modificar Producto';
         new bootstrap.Modal(document.getElementById('productModal')).show();
         Validator.initTracking('productForm');
@@ -221,7 +240,7 @@ function saveData() {
     formData.append('precio', document.getElementById('precio').value);
     formData.append('categoria', document.getElementById('categoria')?.value || '');
     formData.append('marca', document.getElementById('marca')?.value || '');
-    
+
     const selectedSucs = Array.from(document.getElementById('sucursal_id')?.selectedOptions || []).map(o => o.value);
     selectedSucs.forEach(id => formData.append('sucursal_ids', id));
 
@@ -232,7 +251,7 @@ function saveData() {
     if (oldCodigo) {
         formData.append('old_codigo', oldCodigo);
     }
-    
+
     const saveBtn = document.querySelector('#productModal .btn-success');
     const url = oldCodigo ? '/api/products/update' : '/api/products/';
     const method = oldCodigo ? 'PUT' : 'POST';
