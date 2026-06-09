@@ -3,12 +3,41 @@ let productCodigoTimer = null;
 const _failedImgs = new Set();
 
 const PRODUCT_IMG_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='6' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='18' fill='%23bbb'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E";
+const PRODUCT_CATEGORY_FALLBACK = '/public/assets/images/product-default-parts.png';
 
-function getProductImgSrc(imagen) {
-    if (!imagen || imagen === 'default_product.png') return PRODUCT_IMG_FALLBACK;
-    const url = `/public/assets/product_imgs/${imagen}`;
-    if (_failedImgs.has(url)) return PRODUCT_IMG_FALLBACK;
-    return url;
+function hasOwnProductImage(product) {
+    const image = String(product?.imagen || '').trim();
+    return !!image && image !== 'default_product.png' && image !== 'no-image.png';
+}
+
+function hasCategoryProductImage(product) {
+    const image = String(product?.categoria_imagen || product?.imagen_categoria || '').trim();
+    return !!image && image !== 'default_product.png' && image !== 'no-image.png' && image !== 'product-default-parts.png';
+}
+
+function getProductImgSrc(product) {
+    if (hasOwnProductImage(product)) {
+        const url = `/public/assets/product_imgs/${encodeURIComponent(String(product.imagen).trim())}`;
+        if (_failedImgs.has(url)) return PRODUCT_IMG_FALLBACK;
+        return url;
+    }
+    if (hasCategoryProductImage(product)) {
+        const url = `/public/assets/images/${encodeURIComponent(String(product.categoria_imagen || product.imagen_categoria).trim())}`;
+        if (_failedImgs.has(url)) return PRODUCT_CATEGORY_FALLBACK;
+        return url;
+    }
+    return PRODUCT_CATEGORY_FALLBACK;
+}
+
+function getProductImgOriginal(product) {
+    if (hasOwnProductImage(product)) return `/public/assets/product_imgs/${encodeURIComponent(String(product.imagen).trim())}`;
+    if (hasCategoryProductImage(product)) return `/public/assets/images/${encodeURIComponent(String(product.categoria_imagen || product.imagen_categoria).trim())}`;
+    return '';
+}
+
+function getProductPreviewSrc(product) {
+    if (hasOwnProductImage(product) || hasCategoryProductImage(product)) return getProductImgSrc(product);
+    return '';
 }
 
 function onProductImgError(imgEl) {
@@ -75,8 +104,8 @@ function loadData(page = 1) {
         if (!tbody) return;
         tbody.innerHTML = '';
         (res.data || []).forEach(p => {
-            const imgSrc = getProductImgSrc(p.imagen);
-            const imgOriginal = (p.imagen && p.imagen !== 'default_product.png') ? `/public/assets/product_imgs/${p.imagen}` : '';
+            const imgSrc = getProductImgSrc(p);
+            const imgOriginal = getProductImgOriginal(p);
             tbody.innerHTML += `<tr class="fade-in-up">
                 <td>
                     <div class="d-flex align-items-center gap-3">
@@ -230,8 +259,7 @@ function editData(codigo) {
         }
         const fileInput = document.getElementById('product_imagen');
         if (fileInput) fileInput.value = '';
-        const imgPath = getProductImgSrc(p.imagen);
-        setProductPreview(imgPath === PRODUCT_IMG_FALLBACK ? '' : imgPath);
+        setProductPreview(getProductPreviewSrc(p));
 
         document.getElementById('modalTitle').textContent = 'Modificar Producto';
         new bootstrap.Modal(document.getElementById('productModal')).show();

@@ -63,7 +63,7 @@ class OrderModel(Connection):
             "CASE WHEN c.tipo = 'producto' THEN p.precio ELSE s.precio END as precio, "
             "CASE WHEN c.tipo = 'producto' THEN "
             "  CASE WHEN p.imagen IS NOT NULL AND p.imagen != 'default_product.png' AND p.imagen != '' THEN CONCAT('product_imgs/', p.imagen) "
-            "  ELSE CONCAT('images/', COALESCE(cat.imagen, 'product-default-parts.png')) "
+            "  ELSE CONCAT('images/', COALESCE(NULLIF(cat.imagen, ''), 'product-default-parts.png')) "
             "  END "
             "ELSE 'images/default_service.png' "
             "END as imagen_path "
