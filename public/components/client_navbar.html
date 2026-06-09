@@ -38,7 +38,7 @@
                     <div class="dropdown-menu dropdown-menu-end p-0" style="width:320px;max-height:360px;overflow-y:auto;">
                         <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
                             <strong style="font-size:0.85rem;">Notificaciones</strong>
-                            <button class="btn btn-sm btn-link text-decoration-none p-0" onclick="markAllReadClient()" style="font-size:0.75rem;">Marcar todas</button>
+                            <button class="btn btn-sm btn-link text-decoration-none p-0" data-client-notifications-read-all style="font-size:0.75rem;">Marcar todas</button>
                         </div>
                         <div id="clientNotifList"><div class="text-center text-muted py-3" style="font-size:0.8rem;">Sin notificaciones</div></div>
                     </div>
@@ -95,16 +95,3 @@
         </div>
     </div>
 </nav>
-<script>
-    (async function () {
-        try {
-            const res = await fetch('/api/rates/');
-            const data = await res.json();
-            if (data.status === 'success' && data.data) {
-                const bcv = data.data.bcv?.usd || 0;
-                const bcvEl = document.getElementById('rateBcvClient');
-                if (bcvEl) bcvEl.textContent = bcv > 0 ? bcv.toFixed(2) : 'N/D';
-            }
-        } catch (e) { }
-    })();
-</script>

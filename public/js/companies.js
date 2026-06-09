@@ -380,7 +380,12 @@ async function validateUniqueCompanyRif() {
     try {
         const exclude = $('#editRif').val();
         const value = buildCompanyRif();
-        const res = await fetch(`/api/companies/check-unique?field=rif&value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(exclude)}`, { credentials: 'same-origin' });
+        const res = await fetch('/api/companies/check-unique', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ field: 'rif', value, exclude })
+        });
         const data = await res.json();
         if (data.status === 'success' && data.exists && data.active) {
             input.dataset.externalError = 'Este rif ya esta registrado';
@@ -401,7 +406,12 @@ async function validateUniqueCompanyEmail() {
     if (!Validator.validateField('companyForm', 'fEmail')) return false;
     try {
         const exclude = $('#editRif').val() || buildCompanyRif();
-        const res = await fetch(`/api/companies/check-unique?field=email&value=${encodeURIComponent(input.value.trim())}&exclude=${encodeURIComponent(exclude)}`, { credentials: 'same-origin' });
+        const res = await fetch('/api/companies/check-unique', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ field: 'email', value: input.value.trim(), exclude })
+        });
         const data = await res.json();
         if (data.status === 'success' && data.exists) {
             input.dataset.externalError = 'Este correo ya esta registrado';

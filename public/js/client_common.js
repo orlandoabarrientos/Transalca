@@ -269,7 +269,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const observer = new MutationObserver((mutations) => {
         applyAuthVisibility();
         const hasNewPrices = mutations.some(m => Array.from(m.addedNodes).some(n => n.nodeType === 1 && (n.hasAttribute('data-usd-price') || n.querySelector('[data-usd-price]'))));
-        if (hasNewPrices) {
+        const hasRatesBar = mutations.some(m => Array.from(m.addedNodes).some(n => n.nodeType === 1 && (n.id === 'rateBcvClient' || n.querySelector?.('#rateBcvClient'))));
+        if (hasNewPrices || hasRatesBar) {
             hydrateDualPrices();
         }
         if (mutations.some(m => Array.from(m.addedNodes).some(n => n.nodeType === 1 && (n.matches?.('table') || n.querySelector?.('table'))))) {
@@ -306,7 +307,7 @@ async function loadClientNotifications() {
             const title = escapeHtml(n.titulo || n.mensaje || 'Notificacion');
             const message = escapeHtml(n.mensaje ? String(n.mensaje).substring(0, 80) : '');
             const icon = n.tipo === 'pago' ? 'bi-credit-card' : n.tipo === 'ticket' ? 'bi-life-preserver' : 'bi-bell';
-            return `<div class="px-3 py-2 border-bottom d-flex gap-2" style="font-size:0.8rem;cursor:pointer;${bg}" onclick="markReadClient(${n.id})">
+            return `<div class="px-3 py-2 border-bottom d-flex gap-2" style="font-size:0.8rem;cursor:pointer;${bg}" data-client-notification-id="${Number(n.id) || 0}">
                 <i class="bi ${icon}" style="color:#ea580c;"></i>
                 <div>
                     <div style="font-weight:${n.leida?'400':'600'};">${title}</div>
@@ -347,6 +348,19 @@ document.addEventListener('click', async (e) => {
     if (currencyToggle) {
         e.preventDefault();
         toggleCurrency();
+        return;
+    }
+    const markAllClientNotifications = e.target.closest('[data-client-notifications-read-all]');
+    if (markAllClientNotifications) {
+        e.preventDefault();
+        markAllReadClient();
+        return;
+    }
+    const clientNotification = e.target.closest('[data-client-notification-id]');
+    if (clientNotification) {
+        e.preventDefault();
+        const id = Number(clientNotification.dataset.clientNotificationId || 0);
+        if (id) markReadClient(id);
         return;
     }
     const logoutTarget = e.target.closest('#clientLogout');
@@ -430,7 +444,8 @@ async function loadExchangeRatesCached(force = false) {
     const now = Date.now();
     try {
         const cached = JSON.parse(localStorage.getItem(key) || 'null');
-        if (!force && cached && cached.expires > now) {
+        const expiresAt = Date.parse(cached?.expires_at || '');
+        if (!force && cached && Number.isFinite(expiresAt) && expiresAt > now) {
             window.TransalcaRates = cached.data;
             return cached.data;
         }
@@ -440,7 +455,7 @@ async function loadExchangeRatesCached(force = false) {
         const json = await res.json();
         const data = normalizeRatePayload(json);
         window.TransalcaRates = data;
-        localStorage.setItem(key, JSON.stringify({ data, expires: now + 300000 }));
+        localStorage.setItem(key, JSON.stringify({ data, expires_at: new Date(now + 300000).toISOString() }));
         return data;
     } catch (e) {
         window.TransalcaRates = window.TransalcaRates || { bcv: 0, usdt: 0 };
@@ -455,11 +470,19 @@ function normalizeRatePayload(json) {
     };
 }
 
+function updateClientRatesBar() {
+    const bcvEl = document.getElementById('rateBcvClient');
+    if (!bcvEl) return;
+    const bcv = parseFloat(window.TransalcaRates?.bcv || 0);
+    bcvEl.textContent = bcv > 0 ? bcv.toFixed(2) : 'N/D';
+}
+
 function hydrateDualPrices(root = document) {
     root.querySelectorAll('[data-usd-price]').forEach(el => {
         if (el.hasAttribute('data-no-hydrate') || el.closest('[data-no-hydrate]')) return;
         el.textContent = formatUsdBs(el.dataset.usdPrice);
     });
+    updateClientRatesBar();
     updateCurrencyMenuLabel();
 }
 

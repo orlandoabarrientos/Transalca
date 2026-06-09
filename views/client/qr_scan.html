@@ -20,16 +20,7 @@
             <a id="manualRedirect" href="/scanner" class="btn btn-orange mt-3">Abrir Escaner</a>
         </div>
     </div>
-    <script>
-        (function () {
-            var params = new URLSearchParams(window.location.search);
-            var id = params.get('id') || '';
-            var target = '/scanner' + (id ? ('?qr=' + encodeURIComponent(id)) : '');
-            var link = document.getElementById('manualRedirect');
-            if (link) link.href = target;
-            window.location.replace(target);
-        })();
-    </script>
+    <script src="/public/js/pages/client_qr_scan.js"></script>
 </body>
 
 </html>

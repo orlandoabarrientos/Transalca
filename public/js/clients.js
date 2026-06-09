@@ -395,7 +395,12 @@ async function validateUniqueClientCedula() {
     try {
         const exclude = document.getElementById('editCedula')?.value || '';
         const value = buildDocumentValue('fCedulaPrefijo', 'fCedula');
-        const res = await fetch(`/api/clients/check-unique?field=cedula&value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(exclude)}`, { credentials: 'same-origin' });
+        const res = await fetch('/api/clients/check-unique', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ field: 'cedula', value, exclude })
+        });
         const data = await res.json();
         if (data.status === 'success' && data.exists && data.active) {
             input.dataset.externalError = 'Esta cédula ya está registrada';
@@ -433,7 +438,12 @@ async function validateUniqueClientEmail() {
     }
     try {
         const exclude = document.getElementById('editCedula')?.value || buildDocumentValue('fCedulaPrefijo', 'fCedula');
-        const res = await fetch(`/api/clients/check-unique?field=email&value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(exclude)}`, { credentials: 'same-origin' });
+        const res = await fetch('/api/clients/check-unique', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ field: 'email', value, exclude })
+        });
         const data = await res.json();
         if (data.status === 'success' && data.exists) {
             input.dataset.externalError = 'Este correo ya está registrado';

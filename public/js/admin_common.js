@@ -643,6 +643,7 @@ function bindReliableSidebarNavigation() {
 let select2AssetsPromise = null;
 let domEnhancementTimer = null;
 let domEnhancementRunning = false;
+let adminNotificationsInterval = null;
 
 function ensureSelect2Assets() {
     if (!window.jQuery) return Promise.resolve(false);
@@ -1050,6 +1051,7 @@ function runDomEnhancements(root = document) {
         hydrateDualPrices(root);
         normalizeActionButtons(root);
         applyAdminDocumentTitle();
+        initAdminNavbar();
 
 
         const sidebar = document.getElementById('adminSidebar');
@@ -1124,7 +1126,8 @@ async function loadExchangeRatesCached(force = false) {
     const now = Date.now();
     try {
         const cached = JSON.parse(localStorage.getItem(key) || 'null');
-        if (!force && cached && cached.expires > now) {
+        const expiresAt = Date.parse(cached?.expires_at || '');
+        if (!force && cached && Number.isFinite(expiresAt) && expiresAt > now) {
             window.TransalcaRates = cached.data;
             return cached.data;
         }
@@ -1134,7 +1137,7 @@ async function loadExchangeRatesCached(force = false) {
         const json = await res.json();
         const data = normalizeRatePayload(json);
         window.TransalcaRates = data;
-        localStorage.setItem(key, JSON.stringify({ data, expires: now + 300000 }));
+        localStorage.setItem(key, JSON.stringify({ data, expires_at: new Date(now + 300000).toISOString() }));
         return data;
     } catch (e) {
         window.TransalcaRates = window.TransalcaRates || { bcv: 0, usdt: 0 };
@@ -1301,6 +1304,19 @@ document.addEventListener('click', async (e) => {
         toggleCurrency();
         return;
     }
+    const adminNotificationsReadAll = e.target.closest('[data-admin-notifications-read-all]');
+    if (adminNotificationsReadAll) {
+        e.preventDefault();
+        markAllRead();
+        return;
+    }
+    const adminNotification = e.target.closest('[data-admin-notification-id]');
+    if (adminNotification) {
+        e.preventDefault();
+        const id = Number(adminNotification.dataset.adminNotificationId || 0);
+        if (id) markRead(id);
+        return;
+    }
     const logoutTarget = e.target.closest('#btnLogout, #navLogout');
     if (logoutTarget) {
         e.preventDefault();
@@ -1324,21 +1340,86 @@ async function loadNavSession() {
     } catch (e) { }
 }
 
-function getShownValidationRequestIds() {
-    try {
-        const stored = sessionStorage.getItem('shown_validation_req_ids');
-        return new Set(stored ? JSON.parse(stored) : []);
-    } catch (e) {
-        return new Set();
+function initAdminNavbar() {
+    const notifList = document.getElementById('notifList');
+    if (!notifList) return;
+    const navbar = notifList.closest('nav');
+    if (navbar?.dataset.adminNavbarReady === '1') return;
+    if (navbar) navbar.dataset.adminNavbarReady = '1';
+    loadNavSession();
+    loadAdminRates();
+    loadNotifications();
+    if (!adminNotificationsInterval) {
+        adminNotificationsInterval = setInterval(() => {
+            if (document.getElementById('notifList')) loadNotifications();
+        }, 30000);
     }
 }
 
-function markValidationRequestIdAsShown(id) {
+async function loadAdminRates() {
     try {
-        const current = getShownValidationRequestIds();
-        current.add(id);
-        sessionStorage.setItem('shown_validation_req_ids', JSON.stringify(Array.from(current)));
-    } catch (e) {}
+        const res = await fetch('/api/rates/', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.status === 'success' && data.data) {
+            const bcv = data.data.bcv?.usd || 0;
+            const bcvEl = document.getElementById('rateBcvAdmin');
+            if (bcvEl) bcvEl.textContent = bcv > 0 ? bcv.toFixed(2) : 'N/D';
+        }
+    } catch (e) { }
+}
+
+async function loadNotifications() {
+    try {
+        const res = await fetch('/api/notifications/', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.status !== 'success') return;
+        const list = data.data || [];
+        const unread = list.filter(n => !n.leida).length;
+        const badge = document.getElementById('notifBadge');
+        if (badge) {
+            badge.textContent = unread;
+            badge.style.display = unread > 0 ? '' : 'none';
+        }
+        const container = document.getElementById('notifList');
+        if (!container) return;
+        if (list.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-3" style="font-size:0.8rem;">Sin notificaciones</div>';
+            return;
+        }
+        container.innerHTML = list.slice(0, 8).map(n => {
+            const icons = { mantenimiento:'bi-wrench', aceite:'bi-droplet', ticket:'bi-ticket', promocion:'bi-gift', sistema:'bi-gear', combustible:'bi-fuel-pump', filtro:'bi-filter', refrigerante:'bi-snow', caucho:'bi-circle' };
+            const icon = icons[n.tipo] || 'bi-bell';
+            const bg = n.leida ? '' : 'background:rgba(var(--bs-primary-rgb),0.05);';
+            const title = escapeHtml(n.titulo || n.mensaje || 'Notificacion');
+            const message = escapeHtml(n.mensaje ? String(n.mensaje).substring(0, 60) : '');
+            const created = escapeHtml(n.created_at || '');
+            return `<div class="px-3 py-2 border-bottom" style="font-size:0.8rem;cursor:pointer;${bg}" data-admin-notification-id="${Number(n.id) || 0}"><div class="d-flex gap-2"><i class="bi ${icon}" style="color:var(--primary);font-size:0.95rem;margin-top:2px;"></i><div><div style="font-weight:${n.leida?'400':'600'};">${title}</div><div class="text-muted" style="font-size:0.7rem;">${message}</div><div class="text-muted" style="font-size:0.65rem;">${created}</div></div></div></div>`;
+        }).join('');
+    } catch (e) { }
+}
+
+async function markRead(id) {
+    try {
+        await fetch(`/api/notifications/${id}/read`, { method: 'PUT', credentials: 'same-origin' });
+        loadNotifications();
+    } catch (e) { }
+}
+
+async function markAllRead() {
+    try {
+        await fetch('/api/notifications/read-all', { method: 'PUT', credentials: 'same-origin' });
+        loadNotifications();
+    } catch (e) { }
+}
+
+const shownValidationRequestIds = new Set();
+
+function getShownValidationRequestIds() {
+    return shownValidationRequestIds;
+}
+
+function markValidationRequestIdAsShown(id) {
+    shownValidationRequestIds.add(id);
 }
 
 function startAdminValidationPolling() {

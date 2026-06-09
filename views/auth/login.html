@@ -75,20 +75,6 @@
 <script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
 <script src="/public/js/admin_common.js"></script>
 <script src="/public/js/auth.js"></script>
-<script>
-document.getElementById('togglePassword').addEventListener('click', function() {
-    const input = document.getElementById('loginPassword');
-    const icon = this.querySelector('i');
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.classList.remove('bi-eye');
-        icon.classList.add('bi-eye-slash');
-    } else {
-        input.type = 'password';
-        icon.classList.remove('bi-eye-slash');
-        icon.classList.add('bi-eye');
-    }
-});
-</script>
+<script src="/public/js/pages/auth_login.js"></script>
 </body>
 </html>

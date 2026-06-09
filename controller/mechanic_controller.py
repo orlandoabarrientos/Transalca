@@ -47,12 +47,13 @@ def get_all():
         return jsonify({"status": "error", "message": "No se pudieron cargar los mecanicos."}), 500
 
 
-@mechanic_bp.route('/check-unique', methods=['GET'])
+@mechanic_bp.route('/check-unique', methods=['POST'])
 def check_unique():
     try:
+        payload = request.get_json(silent=True) or {}
         errors = {}
-        cedula, _, _ = normalize_cedula(errors, {'cedula': request.args.get('value', '')})
-        exclude = request.args.get('exclude') or None
+        cedula, _, _ = normalize_cedula(errors, {'cedula': payload.get('value', '')})
+        exclude = payload.get('exclude') or None
         if errors:
             return jsonify({"status": "error", "message": errors.get('cedula')}), 400
         return jsonify({"status": "success", "exists": model.cedula_exists(cedula, exclude)})

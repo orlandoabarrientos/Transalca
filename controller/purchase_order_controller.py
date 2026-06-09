@@ -4,9 +4,12 @@ from model.purchase_order_model import PurchaseOrderModel
 from controller._guards import require_login, is_employee, deny
 from decimal import Decimal
 from datetime import datetime
+import logging
+import uuid
 
 purchase_order_bp = Blueprint('purchase_orders', __name__)
 model = PurchaseOrderModel()
+logger = logging.getLogger(__name__)
 
 
 
@@ -189,7 +192,7 @@ def get_pdf(order_id):
                 self.set_y(-15)
                 self.set_font("helvetica", "I", 8)
                 self.set_text_color(128, 128, 128)
-                self.cell(0, 10, f"Pagina {self.page_no()} de {self.alias_nb_pages()} | Transalca C.A. - Control Interno", align="C")
+                self.cell(0, 10, f"Pagina {self.page_no()} de {{nb}} | Transalca C.A. - Control Interno", align="C")
 
         pdf = CustomPDF()
         pdf.set_margins(15, 15, 15)
@@ -281,5 +284,11 @@ def get_pdf(order_id):
         output = bytearray(pdf.output())
         filename = f"orden_compra_{order_id:05d}.pdf"
         return Response(bytes(output), mimetype="application/pdf", headers={"Content-Disposition": f"attachment;filename={filename}"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": f"No se pudo generar el PDF: {str(e)}"}), 500
+    except Exception:
+        error_id = uuid.uuid4().hex[:12]
+        logger.exception("No se pudo generar el PDF de orden de compra %s. id=%s", order_id, error_id)
+        return jsonify({
+            "status": "error",
+            "message": "No se pudo generar el PDF de la orden de compra.",
+            "error_id": error_id
+        }), 500

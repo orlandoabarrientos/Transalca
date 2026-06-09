@@ -64,18 +64,19 @@ def get_all():
         return jsonify({"status": "error", "message": "No se pudieron cargar los usuarios."}), 500
 
 
-@user_bp.route('/check-unique', methods=['GET'])
+@user_bp.route('/check-unique', methods=['POST'])
 def check_unique():
     try:
-        field = (request.args.get('field') or '').strip()
-        value = request.args.get('value') or ''
-        exclude = request.args.get('exclude') or None
+        payload = request.get_json(silent=True) or {}
+        field = (payload.get('field') or '').strip()
+        value = payload.get('value') or ''
+        exclude = payload.get('exclude') or None
         errors = {}
         if field == 'email':
             email = normalize_email(errors, value)
             if errors:
                 return jsonify({"status": "error", "message": errors['email']}), 400
-            cedula_exclude = (request.args.get('cedula') or '').strip()
+            cedula_exclude = (payload.get('cedula') or '').strip()
             if exclude:
                 return jsonify({"status": "success", "exists": model.email_exists(email, exclude)})
             return jsonify({"status": "success", "exists": model.email_exists_globally(email, {"cliente_cedula": cedula_exclude})})

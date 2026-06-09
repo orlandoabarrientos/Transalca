@@ -147,7 +147,10 @@ function validateUniqueMechanicCedula() {
             return;
         }
         const queryValue = buildDocumentValue('cedula_prefijo', 'cedula');
-        const res = await apiCall(`/api/mechanics/check-unique?value=${encodeURIComponent(queryValue)}&exclude=${encodeURIComponent(oldCedula)}`);
+        const res = await apiCall('/api/mechanics/check-unique', 'POST', {
+            value: queryValue,
+            exclude: oldCedula
+        });
         if (res.status === 'success' && res.exists) {
             input.dataset.externalError = 'Esta cédula ya está registrada';
             setFieldError(input, 'Esta cédula ya está registrada');

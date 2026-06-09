@@ -170,7 +170,12 @@ function validateUniqueUser(field) {
         }
         const cedulaValue = buildDocumentValue('cedula_prefijo', 'cedula');
         const queryValue = field === 'cedula' ? cedulaValue : value;
-        const res = await apiCall(`/api/users/check-unique?field=${field}&value=${encodeURIComponent(queryValue)}&exclude=${encodeURIComponent(id)}&cedula=${encodeURIComponent(cedulaValue)}`);
+        const res = await apiCall('/api/users/check-unique', 'POST', {
+            field,
+            value: queryValue,
+            exclude: id,
+            cedula: cedulaValue
+        });
         if (res.status === 'success' && res.exists) {
             const errorMsg = field === 'email' ? 'Este correo ya está registrado.' : 'Esta cédula ya está registrada.';
             input.dataset.externalError = errorMsg;

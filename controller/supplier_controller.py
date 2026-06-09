@@ -41,19 +41,20 @@ def get_active():
         return jsonify({"status": "error", "message": "No se pudieron cargar los proveedores."}), 500
 
 
-@supplier_bp.route('/check-unique', methods=['GET'])
+@supplier_bp.route('/check-unique', methods=['POST'])
 def check_unique():
     try:
-        field = (request.args.get('field') or 'rif').strip()
-        exclude = request.args.get('exclude') or None
+        payload = request.get_json(silent=True) or {}
+        field = (payload.get('field') or 'rif').strip()
+        exclude = payload.get('exclude') or None
         if field == 'email':
             errors = {}
-            email = normalize_email(errors, request.args.get('value', ''), required=True)
+            email = normalize_email(errors, payload.get('value', ''), required=True)
             if errors:
                 return jsonify({"status": "error", "message": errors['email']}), 400
             return jsonify({"status": "success", "exists": model.email_exists_globally(email, {"proveedor_rif": exclude})})
         errors = {}
-        rif, _, _ = normalize_rif(errors, {'rif': request.args.get('value', '')})
+        rif, _, _ = normalize_rif(errors, {'rif': payload.get('value', '')})
         if errors:
             return jsonify({"status": "error", "message": errors['rif']}), 400
         return jsonify({"status": "success", "exists": model.rif_exists(rif, exclude)})

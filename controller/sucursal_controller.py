@@ -40,12 +40,13 @@ def get_active():
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@sucursal_bp.route('/check-unique', methods=['GET'])
+@sucursal_bp.route('/check-unique', methods=['POST'])
 def check_unique():
     try:
-        field = (request.args.get('field') or '').strip()
-        value = (request.args.get('value') or '').strip()
-        exclude = request.args.get('exclude') or None
+        payload = request.get_json(silent=True) or {}
+        field = (payload.get('field') or '').strip()
+        value = (payload.get('value') or '').strip()
+        exclude = payload.get('exclude') or None
         if field == 'email':
             errors = {}
             email = normalize_email(errors, value, required=True)

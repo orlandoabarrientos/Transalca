@@ -18,8 +18,7 @@ CACHE_TTL = 300
 def _fetch_rates():
     result = {
         "bcv": {"usd": 0, "eur": 0, "error": None},
-        "binance": {"usdt_ves": 0, "error": None},
-        "timestamp": time.time()
+        "binance": {"usdt_ves": 0, "error": None}
     }
 
     

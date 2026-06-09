@@ -9,6 +9,13 @@ def _env_int(name, default):
         return default
 
 
+def _env_bool(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 DB_CONFIG_MANTENIMIENTO = {
     "host": os.getenv("DB_MANTENIMIENTO_HOST", "127.0.0.1"),
     "port": _env_int("DB_MANTENIMIENTO_PORT", 3306),
@@ -36,3 +43,12 @@ MAIL_USERNAME = os.getenv("TRANSALCA_MAIL_USERNAME", "")
 MAIL_PASSWORD = os.getenv("TRANSALCA_MAIL_PASSWORD", "")
 APP_HOST = os.getenv("TRANSALCA_APP_HOST", "127.0.0.1")
 APP_PORT = _env_int("TRANSALCA_APP_PORT", 5000)
+APP_ENV = os.getenv("TRANSALCA_ENV", "local").strip().lower()
+APP_DEBUG = _env_bool("TRANSALCA_DEBUG", APP_ENV == "local")
+SESSION_COOKIE_SECURE = _env_bool("TRANSALCA_SESSION_COOKIE_SECURE", APP_ENV in {"prod", "production"})
+SESSION_COOKIE_SAMESITE = os.getenv("TRANSALCA_SESSION_COOKIE_SAMESITE", "Lax")
+ALLOWED_ORIGINS = {
+    origin.strip().rstrip("/")
+    for origin in os.getenv("TRANSALCA_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+}

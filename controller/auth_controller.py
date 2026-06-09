@@ -120,17 +120,18 @@ def do_register():
         return jsonify({"status": "error", "message": "No se pudo registrar el cliente."}), 500
 
 
-@auth_bp.route('/check-unique', methods=['GET'])
+@auth_bp.route('/check-unique', methods=['POST'])
 def check_unique():
     try:
-        field = (request.args.get('field') or '').strip()
-        value = (request.args.get('value') or '').strip()
+        payload = request.get_json(silent=True) or {}
+        field = (payload.get('field') or '').strip()
+        value = (payload.get('value') or '').strip()
         if field == 'email':
             errors = {}
             email = normalize_email(errors, value)
             if errors:
                 return jsonify({"status": "error", "message": errors['email']}), 400
-            cedula_exclude = (request.args.get('cedula') or '').strip()
+            cedula_exclude = (payload.get('cedula') or '').strip()
             return jsonify({"status": "success", "exists": model.email_exists(email, exclude_client_cedula=cedula_exclude)})
         if field == 'cedula':
             errors = {}

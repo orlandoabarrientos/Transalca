@@ -76,7 +76,11 @@ function validateUniqueSupplierEmail() {
             updateFormSubmitState('supplierForm');
             return;
         }
-        const res = await apiCall(`/api/suppliers/check-unique?field=email&value=${encodeURIComponent(value)}&exclude=${encodeURIComponent(oldRif)}`);
+        const res = await apiCall('/api/suppliers/check-unique', 'POST', {
+            field: 'email',
+            value,
+            exclude: oldRif
+        });
         if (res.status === 'success' && res.exists) {
             input.dataset.externalError = 'Este correo ya está registrado.';
             setFieldError(input, 'Este correo ya está registrado.');
@@ -174,7 +178,11 @@ function validateUniqueSupplierRif() {
             return;
         }
         const queryValue = buildRifValue('rif_prefijo', 'rif');
-        const res = await apiCall(`/api/suppliers/check-unique?value=${encodeURIComponent(queryValue)}&exclude=${encodeURIComponent(oldRif)}`);
+        const res = await apiCall('/api/suppliers/check-unique', 'POST', {
+            field: 'rif',
+            value: queryValue,
+            exclude: oldRif
+        });
         if (res.status === 'success' && res.exists) {
             input.dataset.externalError = 'Este RIF ya está registrado.';
             setFieldError(input, 'Este RIF ya está registrado.');

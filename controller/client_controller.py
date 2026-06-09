@@ -84,7 +84,7 @@ def get_stats():
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@client_bp.route('/check-unique', methods=['GET'])
+@client_bp.route('/check-unique', methods=['POST'])
 def check_unique():
     try:
         auth = require_login()
@@ -92,9 +92,10 @@ def check_unique():
             return auth
         if not is_employee():
             return deny()
-        field = (request.args.get('field') or '').strip()
-        value = (request.args.get('value') or '').strip()
-        exclude = (request.args.get('exclude') or '').strip()
+        payload = request.get_json(silent=True) or {}
+        field = (payload.get('field') or '').strip()
+        value = (payload.get('value') or '').strip()
+        exclude = (payload.get('exclude') or '').strip()
         if field == 'cedula':
             errors = {}
             cedula, _, _ = normalize_cedula(errors, {'cedula': value})
