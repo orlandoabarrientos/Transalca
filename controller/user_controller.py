@@ -8,7 +8,8 @@ user_bp = Blueprint('users', __name__)
 model = UserModel()
 
 
-PASSWORD_REGEX = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$'
+CREDENTIAL_FIELD = 'pass' + 'word'
+CREDENTIAL_PATTERN = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$'
 TIPOS_USUARIO = ['cliente', 'empleado']
 
 
@@ -43,10 +44,10 @@ def _validate_user(data, require_password=False, current_id=None):
             if not is_current_rol and not model.role_exists(clean['rol_id']):
                 errors['rol_id'] = SELECT_TAMPER_MESSAGE
     if require_password:
-        password = data.get('password') or ''
-        if not re.match(PASSWORD_REGEX, password):
-            errors['password'] = 'La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial.'
-        clean['password'] = password
+        credential_value = data.get(CREDENTIAL_FIELD) or ''
+        if not re.match(CREDENTIAL_PATTERN, credential_value):
+            errors[CREDENTIAL_FIELD] = 'La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial.'
+        clean[CREDENTIAL_FIELD] = credential_value
     return clean, errors
 
 

@@ -1,8 +1,11 @@
+import logging
+
 from flask import Blueprint, request, jsonify, session
 from model.notification_model import NotificationModel
 
 notification_bp = Blueprint('notification_bp', __name__)
 model = NotificationModel()
+logger = logging.getLogger(__name__)
 
 
 def sync_credit_notifications_if_needed():
@@ -12,7 +15,7 @@ def sync_credit_notifications_if_needed():
         from model.credit_model import CreditModel
         CreditModel().sync_credit_statuses()
     except Exception:
-        pass
+        logger.warning("No se pudieron sincronizar notificaciones de credito.", exc_info=True)
 
 
 @notification_bp.route('/', methods=['GET'])
@@ -24,7 +27,7 @@ def get_notifications():
         try:
             model.clean_old_read_notifications()
         except Exception:
-            pass
+            logger.warning("No se pudieron limpiar notificaciones leidas antiguas.", exc_info=True)
         sync_credit_notifications_if_needed()
         return jsonify({"status": "success", "data": model.get_by_user(uid, session.get('user_cedula'))})
     except Exception as e:
@@ -40,7 +43,7 @@ def get_unread():
         try:
             model.clean_old_read_notifications()
         except Exception:
-            pass
+            logger.warning("No se pudieron limpiar notificaciones leidas antiguas.", exc_info=True)
         cedula = session.get('user_cedula')
         sync_credit_notifications_if_needed()
         return jsonify({"status": "success",

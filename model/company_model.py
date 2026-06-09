@@ -22,17 +22,17 @@ class CompanyModel(Connection):
         )
 
     def get_all(self, search=None, estado=None):
-        sql = (
-            "SELECT c.*, e.rif, e.rif_prefijo, e.razon_social, e.nombre_comercial, "
-            "e.sector, e.limite_credito, e.dias_credito, "
-            f"{self._credit_status_sql()} AS estado_credito, "
-            "(SELECT MIN(ov.fecha_vencimiento_credito) FROM ordenes_venta ov WHERE ov.cliente_cedula = c.cedula "
-            "AND ov.tipo_pago='credito' AND COALESCE(ov.credito_estado,'') NOT IN ('pagado','anulado','sin_credito') "
-            "AND COALESCE(ov.monto_deuda, ov.total, 0) > 0) AS credito_vencimiento, "
-            "(SELECT COUNT(*) FROM cliente_vehiculo cv INNER JOIN vehiculos v ON cv.vehiculo_placa = v.placa WHERE cv.cliente_cedula = c.cedula AND cv.estado = 1 AND v.estado = 1) as flota_count "
-            "FROM clientes c INNER JOIN empresas e ON e.rif = c.cedula "
-            "WHERE c.tipo_cliente = 'empresa'"
-        )
+        sql = "".join([
+            "SELECT c.*, e.rif, e.rif_prefijo, e.razon_social, e.nombre_comercial, ",
+            "e.sector, e.limite_credito, e.dias_credito, ",
+            self._credit_status_sql(), " AS estado_credito, ",
+            "(SELECT MIN(ov.fecha_vencimiento_credito) FROM ordenes_venta ov WHERE ov.cliente_cedula = c.cedula ",
+            "AND ov.tipo_pago='credito' AND COALESCE(ov.credito_estado,'') NOT IN ('pagado','anulado','sin_credito') ",
+            "AND COALESCE(ov.monto_deuda, ov.total, 0) > 0) AS credito_vencimiento, ",
+            "(SELECT COUNT(*) FROM cliente_vehiculo cv INNER JOIN vehiculos v ON cv.vehiculo_placa = v.placa WHERE cv.cliente_cedula = c.cedula AND cv.estado = 1 AND v.estado = 1) as flota_count ",
+            "FROM clientes c INNER JOIN empresas e ON e.rif = c.cedula ",
+            "WHERE c.tipo_cliente = 'empresa'",
+        ])
         params = []
         if search:
             q = f"%{search}%"
@@ -47,15 +47,17 @@ class CompanyModel(Connection):
         return self.fetch_all("transalca", sql, tuple(params))
 
     def get_by_rif(self, rif):
-        return self.fetch_one("transalca",
-            "SELECT c.*, e.rif, e.rif_prefijo, e.razon_social, e.nombre_comercial, "
-            "e.sector, e.limite_credito, e.dias_credito, "
-            f"{self._credit_status_sql()} AS estado_credito, "
-            "(SELECT MIN(ov.fecha_vencimiento_credito) FROM ordenes_venta ov WHERE ov.cliente_cedula = c.cedula "
-            "AND ov.tipo_pago='credito' AND COALESCE(ov.credito_estado,'') NOT IN ('pagado','anulado','sin_credito') "
-            "AND COALESCE(ov.monto_deuda, ov.total, 0) > 0) AS credito_vencimiento "
-            "FROM clientes c INNER JOIN empresas e ON e.rif = c.cedula "
-            "WHERE e.rif = %s OR c.cedula = %s", (rif, rif))
+        sql = "".join([
+            "SELECT c.*, e.rif, e.rif_prefijo, e.razon_social, e.nombre_comercial, ",
+            "e.sector, e.limite_credito, e.dias_credito, ",
+            self._credit_status_sql(), " AS estado_credito, ",
+            "(SELECT MIN(ov.fecha_vencimiento_credito) FROM ordenes_venta ov WHERE ov.cliente_cedula = c.cedula ",
+            "AND ov.tipo_pago='credito' AND COALESCE(ov.credito_estado,'') NOT IN ('pagado','anulado','sin_credito') ",
+            "AND COALESCE(ov.monto_deuda, ov.total, 0) > 0) AS credito_vencimiento ",
+            "FROM clientes c INNER JOIN empresas e ON e.rif = c.cedula ",
+            "WHERE e.rif = %s OR c.cedula = %s",
+        ])
+        return self.fetch_one("transalca", sql, (rif, rif))
 
     def create(self, data):
         rif = data['rif']

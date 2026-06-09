@@ -34,7 +34,7 @@ class SupplierModel(Connection):
         columns = self._columns()
         keys = [k for k in values if k in columns and values[k] is not None]
         return self.insert("transalca",
-            f"INSERT INTO proveedores ({', '.join(keys)}) VALUES ({', '.join(['%s'] * len(keys))})",
+            self.build_insert_sql("proveedores", keys, {"proveedores"}, columns),
             tuple(values[k] for k in keys))
 
     def update_supplier(self, old_rif, data):
@@ -50,7 +50,7 @@ class SupplierModel(Connection):
         keys = [k for k in values if k in columns and values[k] is not None]
         params = [values[k] for k in keys] + [old_rif]
         return self.update("transalca",
-            f"UPDATE proveedores SET {', '.join([f'{k} = %s' for k in keys])} WHERE rif = %s",
+            self.build_update_by_key_sql("proveedores", keys, "rif", {"proveedores"}, columns),
             tuple(params))
 
     def soft_delete(self, rif):

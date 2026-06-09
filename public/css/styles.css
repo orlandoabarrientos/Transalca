@@ -2849,6 +2849,26 @@ body.client-store .vehicle-card tbody tr:last-child td {
     border-bottom: 0;
 }
 
+body.client-store .vehicle-delete-action,
+body.client-store .vehicle-delete-action.btn-danger {
+    background: linear-gradient(135deg, var(--client-accent), var(--client-accent-dark));
+    border: 0;
+    color: #FFF;
+    border-radius: 8px;
+    font-weight: 800;
+    box-shadow: 0 10px 24px rgba(249, 115, 22, 0.18);
+}
+
+body.client-store .vehicle-delete-action:hover,
+body.client-store .vehicle-delete-action.btn-danger:hover,
+body.client-store .vehicle-delete-action:focus,
+body.client-store .vehicle-delete-action.btn-danger:focus {
+    background: linear-gradient(135deg, var(--client-accent), var(--client-accent-dark));
+    color: #FFF;
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.18), 0 14px 30px rgba(249, 115, 22, 0.28);
+}
+
 body.client-store .help-page .client-page-title-row {
     align-items: flex-start;
 }

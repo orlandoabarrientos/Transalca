@@ -4,7 +4,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config.config import SECRET_KEY
+from config.config import APP_HOST, APP_PORT, SECRET_KEY
 from controller.auth_controller import auth_bp
 from controller.user_controller import user_bp
 from controller.role_controller import role_bp
@@ -195,4 +195,4 @@ if __name__ == '__main__':
     os.makedirs('respaldos', exist_ok=True)
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not debug_mode:
         start_bcv_auto_sync_scheduler()
-    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
+    app.run(debug=debug_mode, host=APP_HOST, port=APP_PORT)

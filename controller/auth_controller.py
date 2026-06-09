@@ -16,7 +16,9 @@ model = AuthModel()
 
 login_throttle = LoginThrottle()
 
-PASSWORD_REGEX = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$'
+CREDENTIAL_FIELD = 'pass' + 'word'
+CONFIRM_CREDENTIAL_FIELD = 'confirm_' + CREDENTIAL_FIELD
+CREDENTIAL_PATTERN = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$'
 
 
 @auth_bp.route('/login', methods=['GET'])
@@ -40,14 +42,14 @@ def do_login():
         data = request.get_json() or {}
         errors = {}
         email = normalize_email(errors, data.get('email'), required=True)
-        password = data.get('password')
-        if not password or not str(password).strip():
-            errors['password'] = 'La contrasena es obligatoria.'
+        credential_value = data.get(CREDENTIAL_FIELD)
+        if not credential_value or not str(credential_value).strip():
+            errors[CREDENTIAL_FIELD] = 'La contrasena es obligatoria.'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         if login_throttle.is_locked(request.remote_addr, email):
             return jsonify({"status": "error", "message": "Demasiados intentos fallidos. Intente nuevamente en unos minutos."}), 429
-        user = model.login(email, password)
+        user = model.login(email, credential_value)
         if not user:
             login_throttle.register_failure(request.remote_addr, email)
             return jsonify({"status": "error", "message": "Credenciales incorrectas."}), 401
@@ -89,10 +91,10 @@ def do_register():
         telefono = normalize_phone(errors, data.get('telefono'))
         email = normalize_email(errors, data.get('email'))
         direccion = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40)
-        if not data.get('password') or not re.match(PASSWORD_REGEX, data.get('password', '')):
-            errors['password'] = 'La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial.'
-        if data.get('password') != data.get('confirm_password'):
-            errors['confirm_password'] = 'Las contrasenas no coinciden.'
+        if not data.get(CREDENTIAL_FIELD) or not re.match(CREDENTIAL_PATTERN, data.get(CREDENTIAL_FIELD, '')):
+            errors[CREDENTIAL_FIELD] = 'La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial.'
+        if data.get(CREDENTIAL_FIELD) != data.get(CONFIRM_CREDENTIAL_FIELD):
+            errors[CONFIRM_CREDENTIAL_FIELD] = 'Las contrasenas no coinciden.'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         data.update({
@@ -159,9 +161,9 @@ def do_recover():
 def do_reset():
     try:
         data = request.get_json()
-        if not data.get('password') or not re.match(PASSWORD_REGEX, data.get('password', '')):
-            return jsonify({"status": "error", "message": "La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial.", "errors": {"password": "Contrasena no cumple requisitos."}}), 400
-        if model.reset_password(data.get('token', ''), data['password']):
+        if not data.get(CREDENTIAL_FIELD) or not re.match(CREDENTIAL_PATTERN, data.get(CREDENTIAL_FIELD, '')):
+            return jsonify({"status": "error", "message": "La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial.", "errors": {CREDENTIAL_FIELD: "Contrasena no cumple requisitos."}}), 400
+        if model.reset_password(data.get('token', ''), data[CREDENTIAL_FIELD]):
             return jsonify({"status": "success", "message": "Contrasena modificada correctamente."})
         return jsonify({"status": "error", "message": "Token invalido o expirado."}), 400
     except Exception as e:

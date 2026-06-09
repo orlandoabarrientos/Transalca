@@ -1,1048 +1,840 @@
-import re
+import hashlib
+import logging
+import math
+import os
 import time
-import unicodedata
-from difflib import SequenceMatcher
 
-import requests
+from componente_ia.automotive_entities import (
+    AutomotiveEntities,
+    BUSINESS_TERMS,
+    SERVICE_TERMS,
+    SERVICE_SYMPTOMS,
+    detect_intent_hint,
+    extract_entities,
+    extract_sizes,
+    is_business_related,
+    normalize_text,
+)
+from componente_ia.catalog_retriever import (
+    CatalogSnapshot,
+    CatalogProvider,
+    active_stock,
+    find_exact_size_products,
+    find_rim_products,
+    find_services,
+    int_value,
+    product_line,
+    rank_tire_candidates,
+    search_category,
+    search_tire_text,
+    serialize_match,
+)
+from componente_ia.session_memory import SessionMemory
+from componente_ia.web_search import WebSearchService, extract_tire_sizes_from_sources
 
-from model.product_model import ProductModel
-from model.service_model import ServiceModel
 
+logger = logging.getLogger(__name__)
 
-MAX_MESSAGE_LENGTH = 255
-EXTERNAL_CACHE_TTL = 1800
-EXTERNAL_TIMEOUT = 4
-CATALOG_CACHE_TTL = 60
-SESSION_CACHE_TTL = 1800
-RIM_PATTERN = re.compile(r'\b(?:rin|aro|r)\s*-?\s*(\d{2})\b|\b(?:lt|p)?\d{3}\s*/\s*\d{2}\s*r\s*(\d{2})\b')
-SIZE_PATTERN = re.compile(r'\b(?:lt|p)?\d{3}\s*/\s*\d{2}\s*r\s*\d{2}\b')
+MAX_MESSAGE_LENGTH = int(os.getenv('ASSISTANT_MAX_MESSAGE_LENGTH', '1000'))
+LOCAL_RESPONSE_LIMIT = int(os.getenv('ASSISTANT_RESPONSE_LIMIT', '1200'))
 
-_external_cache = {}
-_catalog_cache = {'time': 0, 'products': [], 'services': []}
-_session_cache = {}
-
-STOPWORDS = {
-    'que', 'cual', 'cuales', 'para', 'con', 'una', 'uno', 'unos', 'unas', 'los', 'las',
-    'el', 'la', 'de', 'del', 'mi', 'tu', 'su', 'en', 'al', 'por', 'como', 'donde',
-    'tiene', 'tienen', 'hay', 'quiero', 'necesito',
-    'recomienda', 'recomiendas', 'bueno', 'buenos', 'mejor', 'mejores'
-}
-
-DOMAIN_TERMS = {
-    'producto', 'productos', 'repuesto', 'repuestos', 'servicio', 'servicios', 'mantenimiento',
-    'vehiculo', 'vehiculos', 'carro', 'auto', 'automotriz', 'motor', 'aceite', 'filtro',
-    'filtros', 'caucho', 'cauchos', 'llanta', 'llantas', 'neumatico', 'neumaticos',
-    'bateria', 'baterias', 'freno', 'frenos', 'pastilla', 'pastillas', 'amortiguador',
-    'amortiguadores', 'correa', 'correas', 'refrigerante', 'todo', 'terreno', 'all',
-    'terrain', 'at', 'mt', 'ht', 'precio', 'precios', 'promocion', 'promociones',
-    'sucursal', 'sucursales', 'pedido', 'pedidos', 'pago', 'pagos', 'garantia',
-    'comprar', 'compra', 'catalogo', 'rueda', 'ruedas', 'volante', 'vibracion',
-    'vibra', 'temblor', 'jala', 'desvia', 'rin', 'rines', 'aro', 'aros',
-    'medida', 'medidas', 'talla', 'stock', 'disponible', 'disponibles',
-    'venden', 'vendes', 'venta', 'luz', 'check', 'tablero', 'falla', 'fallas',
-    'prendida', 'encendida', 'ruido', 'ruidos', 'suena', 'chilla', 'chirrido',
-    'tiembla', 'barato', 'economico', 'caro', 'comprobante', 'subo', 'subir',
-    'cargar', 'arranca', 'prende', 'tac', 'combo', 'combos', 'paquete', 'paquetes'
-}
-
-SYNONYMS = {
-    'caucho': {'caucho', 'cauchos', 'llanta', 'llantas', 'neumatico', 'neumaticos', 'goma'},
-    'allterrain': {'all', 'terrain', 'todo', 'terreno', 'mixto', 'at', 'a/t'},
-    'aceite': {'aceite', 'lubricante', 'motor'},
-    'filtro': {'filtro', 'filtros', 'aire', 'gasolina', 'gasoil', 'combustible'},
-    'bateria': {'bateria', 'baterias', 'acumulador'},
-    'freno': {'freno', 'frenos', 'pastilla', 'pastillas', 'disco', 'discos'},
-}
-
-SERVICE_TERMS = {
-    'servicio', 'servicios', 'mantenimiento', 'revision', 'revisar', 'instalar',
-    'instalacion', 'cambiar', 'cambio', 'reemplazo', 'diagnostico'
-}
-
-PRODUCT_TERMS = {
-    'producto', 'productos', 'repuesto', 'repuestos', 'comprar', 'compra',
-    'catalogo', 'precio', 'precios', 'medida', 'medidas', 'rin', 'rines',
-    'aro', 'aros', 'talla', 'tienes', 'tienen', 'hay', 'venden', 'vendes',
-    'disponible', 'disponibles', 'stock'
-}
-
-INVENTORY_TERMS = {'tienes', 'tienen', 'hay', 'venden', 'vendes', 'disponible', 'disponibles', 'stock', 'catalogo'}
-
-VEHICLE_MODEL_TERMS = {
-    '4runner', 'runner', 'hilux', 'fortuner', 'corolla', 'yaris', 'camry',
-    'terios', 'machito', 'prado', 'tacoma', 'silverado', 'aveo', 'cruze',
-    'fiesta', 'explorer', 'cherokee', 'grand', 'vitara'
-}
-
-VEHICLE_SIZE_PREFS = {
-    '4runner': ('265/65r17', '265/70r17', '265/70r16', '245/70r16'),
-    'runner': ('265/65r17', '265/70r17', '265/70r16', '245/70r16')
-}
-
-CATEGORY_ALIASES = {
-    'Cauchos': {'caucho', 'cauchos', 'llanta', 'llantas', 'neumatico', 'neumaticos', 'goma', 'rin', 'rines', 'aro', 'aros'},
-    'Lubricantes': {'aceite', 'aceites', 'lubricante', 'lubricantes', 'motor', '5w30', '10w40', '15w40'},
-    'Filtros': {'filtro', 'filtros', 'aire', 'aceite', 'cabina', 'gasolina', 'combustible'},
-    'Frenos': {'freno', 'frenos', 'pastilla', 'pastillas', 'disco', 'discos', 'liga'},
-    'Baterias': {'bateria', 'baterias', 'acumulador', 'arranque'},
-    'Repuestos': {'repuesto', 'repuestos', 'bujia', 'bujias', 'pieza', 'piezas'},
-    'Combos': {'combo', 'combos', 'paquete', 'paquetes', 'cashea'}
-}
-
-PRODUCT_CATEGORY_HINTS = {
-    'Baterias': 'Estas son las baterias activas en catalogo. Para elegir bien, valida amperaje, CCA, polaridad y espacio disponible.',
-    'Cauchos': 'Estos son los cauchos activos en catalogo. Para elegir bien, valida medida, rin, carga, uso y manual del vehiculo.',
-    'Lubricantes': 'Estos son los lubricantes activos en catalogo. Para elegir bien, valida viscosidad y especificacion del fabricante.',
-    'Filtros': 'Estos son los filtros activos en catalogo. Para elegir bien, valida motor, ano y referencia.',
-    'Frenos': 'Estos son los productos de frenos activos en catalogo. Para elegir bien, valida modelo, ano y eje delantero/trasero.',
-    'Repuestos': 'Estos son los repuestos activos en catalogo. Para elegir bien, valida referencia y compatibilidad.',
-    'Combos': 'Estos son los combos activos en catalogo. Para elegir bien, valida aceite, cantidad de litros y servicio incluido.'
-}
 
 TRAINING_DATA = [
-    ('tienen cauchos rin 15', 'tire_rim'),
-    ('hay cauchos r15 disponibles', 'tire_rim'),
-    ('busco llantas aro 16', 'tire_rim'),
-    ('cauchos rin 17 en stock', 'tire_rim'),
-    ('tengo una 4runner que medida de caucho recomienda', 'tire_vehicle_size'),
-    ('medida de caucho para corolla', 'tire_vehicle_size'),
-    ('que caucho usa una hilux', 'tire_vehicle_size'),
-    ('cauchos all terrain buenos', 'tire_allterrain'),
-    ('que llantas todo terreno tienes', 'tire_allterrain'),
-    ('necesito balancear mis cauchos', 'service_balance'),
-    ('me vibra el volante', 'service_balance'),
-    ('servicio de balanceo', 'service_balance'),
-    ('necesito cambiar aceite', 'service_oil'),
-    ('servicio cambio de aceite', 'service_oil'),
-    ('pastillas de freno', 'brakes'),
-    ('revision de frenos', 'brakes'),
-    ('bateria para carro', 'battery'),
-    ('cambiar bateria', 'battery'),
-    ('consultar pedido', 'order'),
-    ('estado de mi pedido', 'order'),
-    ('precio de producto', 'price'),
-    ('cuanto cuesta', 'price'),
+    ('tienen cauchos rin 15', 'inventario_cauchos'),
+    ('hay cauchos r17 disponibles', 'inventario_cauchos'),
+    ('busco llantas aro 16', 'inventario_cauchos'),
+    ('tienen 265/65r17', 'inventario_cauchos'),
+    ('cual es el caucho mas economico', 'inventario_cauchos'),
+    ('que cauchos utiliza un corolla 2016', 'medida_caucho'),
+    ('que caucho usa una hilux 2021', 'medida_caucho'),
+    ('medida de caucho para toyota 4runner', 'medida_caucho'),
+    ('mi carro es una toyota hilux y necesito cauchos todo terreno', 'recomendacion_cauchos'),
+    ('cauchos all terrain buenos', 'recomendacion_cauchos'),
+    ('que llantas todo terreno recomiendas', 'recomendacion_cauchos'),
+    ('cual es mejor para carretera y tierra', 'comparacion_cauchos'),
+    ('mi volante vibra despues de 80 km/h', 'servicio'),
+    ('necesito balancear mis cauchos', 'servicio'),
+    ('servicio de alineacion y balanceo', 'servicio'),
+    ('cambio de aceite', 'servicio'),
+    ('pastillas de freno', 'producto'),
+    ('revision de frenos', 'servicio'),
+    ('bateria para carro', 'producto'),
+    ('estado de mi pedido', 'pedido'),
+    ('como subo el comprobante de pago', 'pedido'),
+    ('precio de producto', 'producto'),
+    ('sucursales disponibles', 'sucursal'),
 ]
-
-COMMON_TYPOS = {
-    'q': 'que',
-    'cauchoz': 'cauchos', 'caucos': 'cauchos', 'cauxos': 'cauchos', 'cauhos': 'cauchos', 'cuchos': 'cauchos',
-    'llnatas': 'llantas', 'yantas': 'llantas', 'neumaticoz': 'neumaticos',
-    'rinn': 'rin', 'rrin': 'rin', 'ar': 'aro',
-    'vateria': 'bateria', 'vaterias': 'baterias', 'bateriaz': 'baterias', 'bater': 'bateria',
-    'aceyte': 'aceite', 'aseite': 'aceite', 'aciete': 'aceite', 'aseite': 'aceite',
-    'filto': 'filtro', 'firtro': 'filtro', 'filtroz': 'filtros',
-    'frenoz': 'frenos', 'pastiya': 'pastilla', 'pastiyas': 'pastillas',
-    'balansear': 'balancear', 'balansiar': 'balancear', 'valancear': 'balancear',
-    'balanseo': 'balanceo', 'balansio': 'balanceo',
-    'alineasion': 'alineacion', 'alinasion': 'alineacion',
-    'rotasion': 'rotacion', 'rrotacion': 'rotacion',
-    'escanner': 'scanner', 'escaner': 'scanner', 'scaner': 'scanner',
-    'presio': 'precio', 'presios': 'precios', 'kuanto': 'cuanto',
-    'toyotaa': 'toyota', 'corola': 'corolla', 'corrola': 'corolla',
-    'forruner': '4runner', 'forrunner': '4runner', 'runer': 'runner',
-    'ai': 'hay', 'ay': 'hay', 'stok': 'stock', 'stoc': 'stock',
-    'disponivle': 'disponible', 'disponibles?': 'disponibles',
-    'suvopago': 'pago', 'subopago': 'pago', 'comprbante': 'comprobante'
-}
-
-SPANISH_NUMBERS = {
-    'trece': '13', 'catorce': '14', 'quince': '15', 'diesiseis': '16',
-    'dieciseis': '16', 'dieziseis': '16', 'diecisiete': '17', 'diesisiete': '17',
-    'dieciocho': '18', 'diesiocho': '18', 'diecinueve': '19', 'diesinueve': '19',
-    'veinte': '20', 'veintiuno': '21', 'veintidos': '22'
-}
 
 for rim in range(13, 23):
     TRAINING_DATA.extend([
-        (f'tienen cauchos rin {rim}', 'tire_rim'),
-        (f'hay llantas rin {rim}', 'tire_rim'),
-        (f'busco neumaticos aro {rim}', 'tire_rim'),
-        (f'cauchos r{rim} disponibles', 'tire_rim'),
-        (f'y rin {rim}', 'tire_rim'),
+        (f'tienen cauchos rin {rim}', 'inventario_cauchos'),
+        (f'hay llantas aro {rim}', 'inventario_cauchos'),
+        (f'cauchos r{rim} disponibles', 'inventario_cauchos'),
     ])
 
-for category, words in CATEGORY_ALIASES.items():
-    label = 'product_lookup'
-    for word in sorted(words):
-        TRAINING_DATA.extend([
-            (f'que {word} tienes', label),
-            (f'tienen {word}', label),
-            (f'hay {word} disponible', label),
-            (f'venden {word}', label),
-            (f'muestrame {word}', label),
-            (f'precio de {word}', 'price'),
-        ])
-
-for model in sorted(VEHICLE_MODEL_TERMS):
+for model in ('hilux', 'corolla', '4runner', 'fortuner', 'prado', 'yaris', 'rav4', 'terios', 'grand vitara'):
     TRAINING_DATA.extend([
-        (f'que caucho usa una {model}', 'tire_vehicle_size'),
-        (f'medida de caucho para {model}', 'tire_vehicle_size'),
-        (f'tengo {model} que rin recomienda', 'tire_vehicle_size'),
+        (f'que caucho usa una {model}', 'medida_caucho'),
+        (f'medida de caucho para {model}', 'medida_caucho'),
+        (f'necesito cauchos para {model}', 'recomendacion_cauchos'),
     ])
 
-for action, words in {
-    'service_balance': ['balancear', 'balanceo', 'vibracion', 'vibra', 'temblor', 'tiembla en carretera', 'vibra el volante', 'volante temblando'],
-    'service_oil': ['cambiar aceite', 'cambio de aceite', 'lubricante motor'],
-    'brakes': ['frenos', 'pastillas', 'discos de freno', 'ruido al frenar', 'chilla cuando freno'],
-    'battery': ['cambiar bateria', 'reemplazo de bateria', 'falla arranque'],
-    'scanner': ['luz del motor prendida', 'check engine encendido', 'luz en tablero', 'falla del motor'],
-}.items():
-    for word in words:
-        TRAINING_DATA.extend([
-            (f'necesito {word}', action),
-            (f'servicio para {word}', action),
-            (f'cuanto cuesta {word}', action),
-        ])
 
-MESSY_TRAINING = [
-    ('tinen cauxos rinn 15', 'tire_rim'),
-    ('ay llantas aro catorce', 'tire_rim'),
-    ('y rinn 14', 'tire_rim'),
-    ('q bateriaz tienen', 'product_lookup'),
-    ('venden vateria para carro', 'product_lookup'),
-    ('tienen aceyte 5w30', 'product_lookup'),
-    ('ay aseite diez cuarenta', 'product_lookup'),
-    ('firtro de aciete toyota', 'product_lookup'),
-    ('quiero pastiyas de freno corola', 'brakes'),
-    ('mi carro hace ruido al frenar', 'brakes'),
-    ('el volante tiembla mucho en carretera', 'service_balance'),
-    ('necesito balansiar los cauhos', 'service_balance'),
-    ('luz check prendida en tablero', 'scanner'),
-    ('como suvopago', 'order'),
-    ('como subo comprobante de pago', 'order'),
-    ('quiero cargar el comprobante', 'order'),
-    ('donde veo mi pedido', 'order'),
-    ('esta caro o barato', 'price'),
-]
-TRAINING_DATA.extend(MESSY_TRAINING)
-
-
-class TinyIntentNetwork:
-    def __init__(self, samples):
-        self.labels = sorted({label for _, label in samples})
-        self.vocab = sorted({word for text, _ in samples for word in normalize_text(text).split() if len(word) > 1})
-        self.index = {word: idx for idx, word in enumerate(self.vocab)}
-        self.weights = {label: [0.0] * len(self.vocab) for label in self.labels}
+class LightIntentClassifier:
+    def __init__(self, samples, buckets=512):
+        self.samples = [(normalize_text(text), label) for text, label in samples]
+        self.labels = sorted({label for _, label in self.samples})
+        self.buckets = buckets
+        self.weights = {label: [0.0] * buckets for label in self.labels}
         self.bias = {label: 0.0 for label in self.labels}
-        self.train(samples)
+        self.train()
 
-    def vectorize(self, text):
-        vector = [0.0] * len(self.vocab)
-        for word in normalize_text(text).split():
-            idx = self.index.get(word)
-            if idx is not None:
-                vector[idx] += 1.0
-        return vector
+    def _hash(self, value):
+        digest = hashlib.blake2b(value.encode('utf-8'), digest_size=4).digest()
+        return int.from_bytes(digest, 'big') % self.buckets
 
-    def scores(self, vector):
-        return {
-            label: self.bias[label] + sum(weight * value for weight, value in zip(self.weights[label], vector))
-            for label in self.labels
-        }
+    def features(self, text):
+        tokens = normalize_text(text).split()
+        feats = {}
+        for token in tokens:
+            feats[self._hash(f'w:{token}')] = feats.get(self._hash(f'w:{token}'), 0.0) + 1.0
+            compact = f" {token} "
+            for size in (3, 4):
+                for idx in range(max(0, len(compact) - size + 1)):
+                    key = self._hash(f'c:{compact[idx:idx + size]}')
+                    feats[key] = feats.get(key, 0.0) + 0.25
+        for left, right in zip(tokens, tokens[1:]):
+            key = self._hash(f'b:{left}_{right}')
+            feats[key] = feats.get(key, 0.0) + 1.0
+        return feats
+
+    def scores(self, features):
+        result = {}
+        for label in self.labels:
+            weights = self.weights[label]
+            result[label] = self.bias[label] + sum(weights[idx] * value for idx, value in features.items())
+        return result
 
     def predict(self, text):
-        vector = self.vectorize(text)
-        if not any(vector):
-            return 'consulta', 0.0
-        scores = self.scores(vector)
+        features = self.features(text)
+        if not features:
+            return 'consulta', None, 0.0
+        scores = self.scores(features)
         ordered = sorted(scores.items(), key=lambda item: item[1], reverse=True)
-        confidence = ordered[0][1] - ordered[1][1] if len(ordered) > 1 else ordered[0][1]
-        return ordered[0][0], confidence
+        top, top_score = ordered[0]
+        second, second_score = ordered[1] if len(ordered) > 1 else (None, 0.0)
+        margin = top_score - second_score
+        confidence = max(0.05, min(0.98, 1.0 / (1.0 + math.exp(-margin / 4.0))))
+        return top, second, confidence
 
-    def train(self, samples):
-        for _ in range(35):
-            for text, label in samples:
-                vector = self.vectorize(text)
-                prediction, _ = self.predict(text)
+    def train(self):
+        for _ in range(28):
+            for text, label in self.samples:
+                features = self.features(text)
+                prediction, _, _ = self.predict(text)
                 if prediction == label:
                     continue
-                for idx, value in enumerate(vector):
-                    if value:
-                        self.weights[label][idx] += value
-                        self.weights[prediction][idx] -= value
-                self.bias[label] += 1.0
-                self.bias[prediction] -= 1.0
-
-SERVICE_ACTIONS = {
-    'balanceo': {'balanceo', 'balancear', 'balanceado', 'balanceando', 'balanceen', 'equilibrar', 'equilibrado', 'vibracion', 'vibra', 'temblor', 'tiembla'},
-    'alineacion': {'alineacion', 'alinear', 'alineado', 'volante', 'jala', 'desvia'},
-    'rotacion': {'rotacion', 'rotar', 'rotacionar', 'permutar', 'rotarlos', 'rotarlo', 'rotarlas'},
-    'montaje': {'montaje', 'montar', 'instalar', 'instalacion'},
-    'aceite': {'aceite', 'lubricante'},
-    'frenos': {'freno', 'frenos', 'pastilla', 'pastillas', 'disco', 'discos', 'frenar', 'ruido', 'ruidos', 'suena', 'chilla', 'chirrido'},
-    'scanner': {'scanner', 'escaner', 'diagnostico', 'codigo', 'codigos', 'luz', 'check', 'tablero', 'falla', 'fallas', 'prendida', 'encendida'},
-    'bateria': {'reemplazo', 'arranque', 'encendido', 'arranca', 'prende', 'tac'},
-    'inyectores': {'inyector', 'inyectores', 'limpieza'}
-}
-
-SERVICE_HINTS = {
-    'balanceo': 'Para balancear cauchos o corregir vibraciones, el servicio principal es Balanceo. Ayuda a reducir vibraciones y desgaste irregular.',
-    'alineacion': 'Para problemas de direccion, volante desviado o desgaste irregular, conviene revisar Alineacion.',
-    'rotacion': 'Para alargar la vida de los cauchos, la Rotacion ayuda a repartir el desgaste.',
-    'montaje': 'Para instalar cauchos nuevos, solicita Montaje de cauchos.',
-    'aceite': 'Para mantenimiento de motor, solicita Cambio de aceite y revisa tambien el filtro.',
-    'frenos': 'Para ruidos, vibracion o baja respuesta al frenar, solicita Revision de sistema de frenos.',
-    'scanner': 'Para luces de falla o codigos del tablero, solicita Diagnostico con scanner automotriz.',
-    'bateria': 'Para fallas de arranque, revisa Reemplazo de bateria o diagnostico electrico.',
-    'inyectores': 'Para consumo alto o falla de combustion, puede ayudar la Limpieza de inyectores.'
-}
-
-ACTION_PRIORITY = ['scanner', 'balanceo', 'alineacion', 'rotacion', 'montaje', 'aceite', 'frenos', 'bateria', 'inyectores']
-
-LOCAL_KNOWLEDGE = {
-    'allterrain': (
-        'Los cauchos all terrain sirven para uso mixto: carretera, tierra, grava y caminos irregulares. '
-        'Son buena opcion si necesitas equilibrio entre comodidad en asfalto y traccion fuera de carretera. '
-        'Hacen mas ruido que un caucho de carretera y son menos extremos que uno mud terrain.'
-    ),
-    'aceite': (
-        'Para aceite de motor conviene respetar viscosidad y especificacion recomendada por el fabricante. '
-        'Tambien es importante cambiar filtro de aceite y revisar kilometraje.'
-    ),
-    'filtro': (
-        'Los filtros protegen motor y sistemas del vehiculo. Filtro de aceite, aire y combustible se eligen '
-        'segun modelo, motor y uso del vehiculo.'
-    ),
-    'bateria': (
-        'La bateria correcta depende de amperaje, polaridad, tamano y demanda electrica del vehiculo.'
-    ),
-    'freno': (
-        'En frenos se debe revisar pastillas, discos, liga y posibles ruidos. No conviene retrasar ese mantenimiento.'
-    ),
-    'producto': (
-        'Puedes consultar productos disponibles en el catalogo. Si me indicas nombre, marca, categoria o uso, busco coincidencias.'
-    ),
-    'pedido': (
-        'Para pedidos, revisa la seccion Mis pedidos. La factura o QR debe mostrarse solo cuando el pago este aprobado.'
-    ),
-    'pago': (
-        'Para pagos, sube el comprobante desde el pedido correspondiente y espera la aprobacion del administrador.'
-    ),
-    'sucursal': (
-        'Puedes revisar las sucursales activas del sistema. Si necesitas atencion directa, contacta a Transalca por sus canales oficiales.'
-    ),
-    'promocion': (
-        'Las promociones activas se consultan desde fidelizacion o catalogo, segun el tipo de beneficio disponible.'
-    ),
-    'medida_caucho': (
-        'Para recomendar medida exacta de caucho necesito ano, version y rin actual del vehiculo. '
-        'En Toyota 4Runner son comunes medidas como 265/65R17 o 265/70R17 segun version. '
-        'No conviene cambiar medida sin validar espacio, rin y manual del fabricante.'
-    ),
-}
+                for idx, value in features.items():
+                    self.weights[label][idx] += value
+                    self.weights[prediction][idx] -= value
+                self.bias[label] += 0.5
+                self.bias[prediction] -= 0.5
 
 
-_known_words_cache = None
+LOCAL_FITMENT = [
+    {'make': 'toyota', 'model': 'hilux', 'start': 2016, 'end': 2023, 'sizes': ['225/70R17', '265/65R17', '265/60R18'], 'certainty': 0.68, 'note': 'varia por version y rin'},
+    {'make': 'toyota', 'model': '4runner', 'start': 2010, 'end': 2024, 'sizes': ['265/70R17', '245/60R20'], 'certainty': 0.78, 'note': 'rin 17 comun; Limited suele usar rin 20'},
+    {'make': 'toyota', 'model': 'corolla', 'start': 2014, 'end': 2019, 'sizes': ['195/65R15', '205/55R16', '215/45R17'], 'certainty': 0.7, 'note': 'depende de version LE/S/XRS y rin instalado'},
+    {'make': 'toyota', 'model': 'fortuner', 'start': 2016, 'end': 2023, 'sizes': ['265/65R17', '265/60R18'], 'certainty': 0.68, 'note': 'varia por version'},
+    {'make': 'toyota', 'model': 'prado', 'start': 2010, 'end': 2023, 'sizes': ['265/65R17', '265/60R18'], 'certainty': 0.62, 'note': 'validar version'},
+    {'make': 'toyota', 'model': 'yaris', 'start': 2014, 'end': 2022, 'sizes': ['175/65R14', '185/60R15'], 'certainty': 0.62, 'note': 'validar carroceria y rin'},
+    {'make': 'chevrolet', 'model': 'aveo', 'start': 2005, 'end': 2018, 'sizes': ['185/60R14', '185/55R15'], 'certainty': 0.62, 'note': 'validar version'},
+    {'make': 'ford', 'model': 'explorer', 'start': 2011, 'end': 2019, 'sizes': ['245/60R18', '255/50R20'], 'certainty': 0.62, 'note': 'validar version'},
+    {'make': 'suzuki', 'model': 'grand vitara', 'start': 2006, 'end': 2015, 'sizes': ['225/65R17', '235/60R16'], 'certainty': 0.6, 'note': 'validar rin actual'},
+]
 
 
-def basic_normalize(value):
-    text = str(value or '').strip()
-    text = re.sub(r'<[^>]*>', ' ', text)
-    text = re.sub(r'javascript:|onerror|onclick|onload|script', ' ', text, flags=re.IGNORECASE)
-    text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
-    text = text.lower()
-    phrase_replacements = {
-        'diez cuarenta': '10w40',
-        'diez cuarenta y': '10w40',
-        'cinco treinta': '5w30',
-        'quince cuarenta': '15w40',
-        'quince cuarenta y': '15w40'
-    }
-    for phrase, replacement in phrase_replacements.items():
-        text = text.replace(phrase, replacement)
-    text = re.sub(r'[^a-z0-9/\s-]', ' ', text)
-    return re.sub(r'\s+', ' ', text).strip()
+class AssistantEngine:
+    def __init__(self, catalog_provider=None, search_service=None, memory=None, classifier=None):
+        self.catalog_provider = catalog_provider or CatalogProvider()
+        self.search_service = search_service or WebSearchService()
+        self.memory = memory or SessionMemory()
+        self.classifier = classifier or LightIntentClassifier(TRAINING_DATA)
 
+    def handle(self, question, session_id=None, client_history=None, request_id=None, catalog_provider=None, search_provider=None):
+        started = time.perf_counter()
+        stage_ms = {}
+        raw = str(question or '').strip()
+        if not raw:
+            return {'status': 'error', 'message': 'Mensaje requerido.'}, 400
+        if len(raw) > MAX_MESSAGE_LENGTH:
+            return {'status': 'error', 'message': f'La pregunta no puede superar {MAX_MESSAGE_LENGTH} caracteres.'}, 400
 
-def known_words():
-    global _known_words_cache
-    if _known_words_cache is not None:
-        return _known_words_cache
-    words = set(DOMAIN_TERMS) | set(PRODUCT_TERMS) | set(SERVICE_TERMS) | set(INVENTORY_TERMS) | set(VEHICLE_MODEL_TERMS)
-    for group in SYNONYMS.values():
-        words.update(group)
-    for group in SERVICE_ACTIONS.values():
-        words.update(group)
-    for group in CATEGORY_ALIASES.values():
-        words.update(group)
-    for text, _ in TRAINING_DATA:
-        words.update(basic_normalize(text).split())
-    _known_words_cache = {word for word in words if len(word) > 1}
-    return _known_words_cache
+        t = time.perf_counter()
+        original_entities = extract_entities(raw)
+        state = self.memory.get(session_id, client_history)
+        entities = self.memory.merge(original_entities, state)
+        if state and not original_entities.followup:
+            entities.intent_hint = detect_intent_hint(entities)
+        stage_ms['entities'] = self._elapsed(t)
 
+        t = time.perf_counter()
+        model_intent, second_intent, model_confidence = self.classifier.predict(entities.clean)
+        intent = self._choose_intent(entities, model_intent)
+        stage_ms['intent'] = self._elapsed(t)
 
-def correct_token(token):
-    if token in COMMON_TYPOS:
-        return COMMON_TYPOS[token]
-    if len(token) < 4 or any(ch.isdigit() for ch in token):
-        return token
-    candidates = known_words()
-    if token in candidates:
-        return token
-    best = ''
-    best_score = 0.0
-    for candidate in candidates:
-        if abs(len(candidate) - len(token)) > 2:
-            continue
-        score = SequenceMatcher(None, token, candidate).ratio()
-        if score > best_score:
-            best = candidate
-            best_score = score
-    return best if best_score >= 0.82 else token
+        if self._is_sensitive_request(raw, original_entities):
+            return self._base_payload(
+                'Solo puedo ayudarte con productos, servicios, mantenimiento, cauchos, compras, pagos o pedidos de Transalca.',
+                'fuera_de_negocio',
+                model_intent,
+                second_intent,
+                0.98,
+                [],
+                [],
+                None,
+                web_available=self._web_health(search_provider),
+                needs_clarification=False,
+                stage_ms=stage_ms,
+                started=started,
+                request_id=request_id,
+            ), 200
 
+        if intent == 'seguimiento' and state and not state.get('last_candidates') and entities.has_vehicle():
+            intent = 'medida_caucho'
 
-def normalize_text(value, autocorrect=True):
-    text = basic_normalize(value)
-    if not autocorrect:
-        return text
-    return ' '.join(correct_token(token) for token in text.split())
+        if intent == 'seguimiento' and entities.followup and state:
+            return self._handle_followup(entities, state, model_intent, second_intent, model_confidence, stage_ms, started)
 
+        t = time.perf_counter()
+        try:
+            catalog = (catalog_provider or self.catalog_provider).load()
+        except Exception:
+            logger.exception('assistant.catalog.provider_failed', extra={'request_id': request_id})
+            catalog = CatalogSnapshot(catalog_available=False, product_error='CatalogProviderError', service_error='CatalogProviderError')
+        stage_ms['catalog'] = self._elapsed(t)
 
-_intent_model = TinyIntentNetwork(TRAINING_DATA)
+        if not is_business_related(entities) and not self._catalog_mentions(entities, catalog):
+            return self._base_payload(
+                'Solo puedo ayudarte con productos, servicios, mantenimiento, cauchos, compras, pagos o pedidos de Transalca.',
+                'fuera_de_negocio',
+                model_intent,
+                second_intent,
+                0.96,
+                [],
+                [],
+                catalog,
+                web_available=self._web_health(search_provider),
+                needs_clarification=False,
+                stage_ms=stage_ms,
+                started=started,
+                request_id=request_id,
+            ), 200
 
+        sources = []
+        web_available = self._web_health(search_provider)
+        if intent in {'inventario_cauchos', 'medida_caucho', 'recomendacion_cauchos', 'comparacion_cauchos'}:
+            response = self._handle_tire(entities, intent, catalog, search_provider or self.search_service, stage_ms)
+            answer, matches, sources, needs_clarification, confidence = response
+        elif intent == 'servicio':
+            answer, matches, needs_clarification, confidence = self._handle_service(entities, catalog)
+        elif intent == 'pedido':
+            answer, matches, needs_clarification, confidence = self._handle_order(entities)
+        elif intent == 'sucursal':
+            answer, matches, needs_clarification, confidence = self._handle_sucursal()
+        else:
+            answer, matches, needs_clarification, confidence = self._handle_catalog_general(entities, catalog)
 
-def tokenize(text):
-    tokens = [t for t in normalize_text(text).replace('-', ' ').split() if len(t) > 1]
-    expanded = set()
-    for token in tokens:
-        if token not in STOPWORDS:
-            expanded.add(token)
-        for group in SYNONYMS.values():
-            if token in group:
-                expanded.update(group)
-        for group in SERVICE_ACTIONS.values():
-            if token in group:
-                expanded.update(group)
-    if {'all', 'terrain'} <= set(tokens) or {'todo', 'terreno'} <= set(tokens):
-        expanded.update(SYNONYMS['allterrain'])
-    return expanded
+        memory_candidates = [self._memory_candidate(entry) for entry in matches]
+        self.memory.update(session_id, entities, memory_candidates, answer)
 
-
-def raw_terms(text):
-    return {t for t in normalize_text(text).replace('-', ' ').split() if len(t) > 1}
-
-
-def infer_topic_from_history(client_history):
-    if not isinstance(client_history, list):
-        return None
-    combined = set()
-    for item in client_history[-6:]:
-        if not isinstance(item, dict) or item.get('type') not in ('user', 'bot'):
-            continue
-        combined.update(tokenize(str(item.get('text') or '')))
-    return category_from_tokens(combined)
-
-
-def get_session_context(session_id, client_history=None):
-    context = _session_cache.get(session_id) if session_id else None
-    if context and time.time() - context.get('time', 0) <= SESSION_CACHE_TTL:
-        return context
-    topic = infer_topic_from_history(client_history)
-    if session_id and topic:
-        context = {'time': time.time(), 'topic': topic, 'history': [], 'last_matches': []}
-        _session_cache[session_id] = context
-        return context
-    return None
-
-
-def merge_session_context(clean, session_id, client_history=None):
-    context = get_session_context(session_id, client_history)
-    if not context:
-        return clean
-    terms = raw_terms(clean)
-    if len(terms) > 5 and not clean.startswith('y '):
-        return clean
-    topic = context.get('topic')
-    if topic == 'Cauchos' and (extract_rim(clean) or terms & {'rin', 'rines', 'aro', 'aros', 'medida', 'medidas'}):
-        return f"cauchos {clean}"
-    if topic and clean.startswith('y '):
-        return f"{topic.lower()} {clean}"
-    return clean
-
-
-def light_match(kind, item):
-    return {
-        'tipo': kind,
-        'nombre': item.get('nombre'),
-        'precio': float(item.get('precio') or 0),
-        'stock': int(item.get('stock') or 0) if kind == 'producto' else None,
-        'categoria': item.get('categoria') or item.get('categoria_nombre')
-    }
-
-
-def update_session_context(session_id, raw, clean, tokens, matches, answer):
-    if not session_id:
-        return
-    topic = category_from_tokens(tokens)
-    if not topic and matches:
-        first = matches[0][2]
-        topic = first.get('categoria') or first.get('categoria_nombre')
-    context = _session_cache.get(session_id, {'history': [], 'last_matches': []})
-    history = context.get('history') or []
-    history.append({'user': raw, 'clean': clean, 'answer': answer[:240]})
-    context.update({
-        'time': time.time(),
-        'topic': topic or context.get('topic'),
-        'history': history[-3:],
-        'last_matches': [light_match(kind, item) for kind, _, item in matches[:4]]
-    })
-    _session_cache[session_id] = context
-
-
-def followup_response(clean, tokens, session_id, client_history=None):
-    context = get_session_context(session_id, client_history)
-    if not context:
-        return '', []
-    last_matches = context.get('last_matches') or []
-    if not last_matches:
-        return '', []
-    terms = raw_terms(clean)
-    short = len(terms) <= 5
-    wants_price = bool(terms & {'precio', 'precios', 'cuanto', 'cuesta', 'vale', 'barato', 'economico', 'caro'})
-    wants_stock = bool(terms & {'stock', 'disponible', 'disponibles', 'hay', 'quedan'})
-    if short and wants_price:
-        ordered = sorted(last_matches, key=lambda item: item.get('precio') or 0)
-        if terms & {'barato', 'economico'}:
-            item = ordered[0]
-            return f"La opcion mas economica de lo que vimos es {item['nombre']} - ${item['precio']:.2f}.", []
-        lines = '; '.join(f"{item['nombre']} - ${item['precio']:.2f}" for item in last_matches)
-        return f"Precios de lo que vimos: {lines}.", []
-    if short and wants_stock:
-        product_lines = [
-            f"{item['nombre']} - stock {item['stock']}"
-            for item in last_matches
-            if item.get('tipo') == 'producto' and item.get('stock') is not None
-        ]
-        if product_lines:
-            return f"Disponibilidad de lo que vimos: {'; '.join(product_lines)}.", []
-    return '', []
-
-
-def trained_intent(text):
-    return _intent_model.predict(text)
-
-
-def extract_rim(text):
-    clean = normalize_text(text)
-    match = RIM_PATTERN.search(clean)
-    if match:
-        return match.group(1) or match.group(2)
-    tokens = clean.split()
-    for index, token in enumerate(tokens[:-1]):
-        if token in {'rin', 'aro', 'rines', 'aros'}:
-            next_token = tokens[index + 1]
-            if next_token in SPANISH_NUMBERS:
-                return SPANISH_NUMBERS[next_token]
-    return None
-
-
-def extract_sizes(text):
-    clean = normalize_text(text)
-    return [re.sub(r'\s+', '', size).upper() for size in SIZE_PATTERN.findall(clean)]
-
-
-def is_tire_product(item):
-    category = normalize_text(item.get('categoria') or item.get('categoria_nombre'))
-    if category == normalize_text('Cauchos'):
-        return True
-    text = item_text(item)
-    return any(term in text for term in ('caucho', 'cauchos', 'llanta', 'llantas', 'neumatico', 'neumaticos'))
-
-
-def tire_products(products):
-    return [product for product in products if str(product.get('codigo') or '') != 'SIN_PRODUCTO' and is_tire_product(product)]
-
-
-def available_tire_sizes(products):
-    sizes = []
-    seen = set()
-    for product in tire_products(products):
-        for size in extract_sizes(item_text(product)):
-            if size not in seen:
-                seen.add(size)
-                sizes.append(size)
-    return sizes
-
-
-def category_from_tokens(tokens):
-    if tokens & {'luz', 'check', 'tablero', 'falla', 'fallas', 'prendida', 'encendida'}:
-        return None
-    if tokens & {'filtro', 'filtros'}:
-        return 'Filtros'
-    if tokens & {'combo', 'combos', 'paquete', 'paquetes', 'cashea'}:
-        return 'Combos'
-    if tokens & {'aceite', 'aceites', 'lubricante', 'lubricantes', '5w30', '10w40', '15w40'}:
-        return 'Lubricantes'
-    if tokens & {'bateria', 'baterias', 'acumulador'}:
-        return 'Baterias'
-    if tokens & {'caucho', 'cauchos', 'llanta', 'llantas', 'neumatico', 'neumaticos', 'rin', 'rines', 'aro', 'aros'}:
-        return 'Cauchos'
-    if tokens & {'freno', 'frenos', 'pastilla', 'pastillas', 'disco', 'discos'}:
-        return 'Frenos'
-    if tokens & {'repuesto', 'repuestos', 'bujia', 'bujias'}:
-        return 'Repuestos'
-    best = None
-    best_score = 0
-    for category, aliases in CATEGORY_ALIASES.items():
-        score = len(tokens & aliases)
-        if score > best_score:
-            best = category
-            best_score = score
-    return best
-
-
-def products_by_category(products, category):
-    if not category:
-        return []
-    return [
-        product for product in products
-        if str(product.get('codigo') or '') != 'SIN_PRODUCTO'
-        and normalize_text(product.get('categoria') or product.get('categoria_nombre')) == normalize_text(category)
-    ]
-
-
-def stock_value(product):
-    try:
-        return int(product.get('stock') or 0)
-    except (TypeError, ValueError):
-        return 0
-
-
-def price_value(item):
-    try:
-        return float(item.get('precio') or 0)
-    except (TypeError, ValueError):
-        return 0.0
-
-
-def sort_catalog_products(products, tokens=None):
-    tokens = tokens or set()
-    return sorted(
-        products,
-        key=lambda product: (
-            0 if stock_value(product) > 0 else 1,
-            -specific_product_score(tokens, product) if tokens else 0,
-            price_value(product),
-            normalize_text(product.get('nombre'))
+        payload = self._base_payload(
+            answer,
+            intent,
+            model_intent,
+            second_intent,
+            max(confidence, model_confidence * 0.7),
+            [serialize_match(entry['item'], entry.get('compatibility'), entry.get('score')) for entry in matches],
+            sources,
+            catalog,
+            web_available=web_available,
+            needs_clarification=needs_clarification,
+            stage_ms=stage_ms,
+            started=started,
+            request_id=request_id,
         )
-    )
+        return payload, 200
 
+    def _choose_intent(self, entities, model_intent):
+        hint = entities.intent_hint
+        if hint != 'consulta':
+            return hint
+        if self._category_from_tokens(entities.tokens) and not (entities.tokens & SERVICE_TERMS):
+            symptom_words = set().union(*(words for words in SERVICE_SYMPTOMS.values() if words))
+            if not (entities.tokens & symptom_words):
+                return 'producto'
+        if model_intent in {'inventario_cauchos', 'medida_caucho', 'recomendacion_cauchos', 'comparacion_cauchos', 'servicio', 'pedido'}:
+            return model_intent
+        return hint
 
-def compact_text(value):
-    return re.sub(r'[^a-z0-9]', '', normalize_text(value))
+    def _handle_tire(self, entities, intent, catalog, search_service, stage_ms):
+        fitment = self._local_fitment(entities)
+        sources = []
+        web_sizes = []
+        should_search_web = self._should_search_web(entities, fitment)
+        if should_search_web:
+            t = time.perf_counter()
+            sources = self._web_fitment_sources(entities, search_service)
+            extracted = extract_tire_sizes_from_sources(sources)
+            web_sizes = [size for size, _, _ in extracted[:4]]
+            stage_ms['web'] = self._elapsed(t)
 
-
-def specific_product_score(tokens, product):
-    text = item_text(product)
-    compact = compact_text(text)
-    score = len(tokens & set(text.split()))
-    for token in tokens:
-        if len(token) >= 3 and compact_text(token) in compact:
-            score += 3
-    return score
-
-
-def product_lookup_response(tokens, products):
-    category = category_from_tokens(tokens)
-    if not category:
-        return '', []
-    matches = products_by_category(products, category)
-    category_words = CATEGORY_ALIASES.get(category, set())
-    specific_tokens = {token for token in tokens if token not in category_words or any(ch.isdigit() for ch in token)}
-    specific = [product for product in matches if specific_product_score(specific_tokens, product) > 0]
-    if specific:
-        matches = specific
-    matches = sort_catalog_products(matches, specific_tokens or tokens)
-    if matches:
-        names = '; '.join(product_line('producto', product) for product in matches[:4])
-        intro = PRODUCT_CATEGORY_HINTS.get(category, 'Estos productos estan activos en catalogo.')
-        return f"{intro} {names}.", [('producto', 10, product) for product in matches[:4]]
-    return f"No veo productos activos de {category.lower()} en el catalogo en este momento.", []
-
-
-def detect_intent(tokens):
-    if tokens & {'precio', 'precios', 'costo', 'cuesta'}:
-        return 'precio'
-    if tokens & {'comparar', 'comparacion', 'diferencia'}:
-        return 'comparacion'
-    if tokens & {'recomienda', 'recomendar', 'recomendacion', 'bueno', 'buenos', 'mejor', 'mejores'}:
-        return 'recomendacion'
-    if tokens & {'sucursal', 'sucursales', 'ubicacion', 'direccion'}:
-        return 'sucursal'
-    if tokens & {'pedido', 'pedidos', 'pago', 'pagos'}:
-        return 'pedido'
-    return 'consulta'
-
-
-def is_business_question(tokens, products, services):
-    if tokens & DOMAIN_TERMS:
-        return True
-    for item in list(products or []) + list(services or []):
-        if tokens & set(item_text(item).split()):
-            return True
-    return False
-
-
-def item_text(item):
-    values = [
-        item.get('nombre'), item.get('descripcion'), item.get('categoria_nombre'),
-        item.get('categoria'), item.get('marca_nombre'), item.get('marca')
-    ]
-    return normalize_text(' '.join(str(v or '') for v in values))
-
-
-def action_groups(tokens):
-    return {key for key, words in SERVICE_ACTIONS.items() if tokens & words}
-
-
-def ordered_action_groups(tokens):
-    groups = action_groups(tokens)
-    return [key for key in ACTION_PRIORITY if key in groups]
-
-
-def wants_service(tokens):
-    return bool(tokens & SERVICE_TERMS or action_groups(tokens))
-
-
-def wants_product(tokens):
-    if tokens & SYNONYMS['caucho'] and not action_groups(tokens):
-        return True
-    return bool(tokens & PRODUCT_TERMS or tokens & SYNONYMS['allterrain'] or tokens & VEHICLE_MODEL_TERMS)
-
-
-def explicit_service_request(tokens):
-    return bool(tokens & {
-        'servicio', 'servicios', 'mantenimiento', 'revision', 'revisar', 'instalar',
-        'instalacion', 'cambiar', 'cambio', 'reemplazo', 'diagnostico', 'ruido',
-        'ruidos', 'suena', 'chilla', 'chirrido', 'tac', 'arranca', 'prende'
-    })
-
-
-def score_item(tokens, item, kind='producto'):
-    text = item_text(item)
-    item_tokens = set(text.split())
-    overlap = len(tokens & item_tokens)
-    joined = ' '.join(sorted(tokens))
-    ratio = SequenceMatcher(None, joined, text[:180]).ratio() if joined and text else 0
-    boost = 0
-    compact = compact_text(text)
-    for token in tokens:
-        if len(token) >= 4 and compact_text(token) in compact:
-            boost += 3
-    if tokens & SYNONYMS['allterrain'] and any(term in text for term in ('all terrain', 'todo terreno', 'a/t', ' at ', 'mixto')):
-        boost += 3
-    if tokens & SYNONYMS['caucho'] and any(term in text for term in ('caucho', 'llanta', 'neumatico')):
-        boost += 2
-    if kind == 'servicio':
-        for group in action_groups(tokens):
-            if any(term in text for term in SERVICE_ACTIONS[group]):
-                boost += 8
-        if tokens & SYNONYMS['caucho'] and any(term in text for term in ('caucho', 'rueda', 'ruedas', 'llanta')):
-            boost += 3
-    elif wants_service(tokens) and not wants_product(tokens):
-        boost -= 4
-    if kind == 'producto':
-        for model, sizes in VEHICLE_SIZE_PREFS.items():
-            if model in tokens:
-                for index, size in enumerate(sizes):
-                    if size in text:
-                        boost += max(2, 7 - index)
-                        break
-    if overlap == 0 and boost == 0:
-        return 0
-    return (overlap * 2) + boost + ratio
-
-
-def tire_size_response(tokens, clean, products):
-    rim = extract_rim(clean)
-    tires = tire_products(products)
-    requested_sizes = extract_sizes(clean)
-    if requested_sizes:
-        size = normalize_text(requested_sizes[0])
-        matches = sort_catalog_products([product for product in tires if size in item_text(product)], tokens)
-        if matches:
-            with_stock = [product for product in matches if stock_value(product) > 0]
-            selected = with_stock or matches
-            names = '; '.join(product_line('producto', product) for product in selected[:4])
-            if with_stock:
-                return f"Si tenemos la medida {requested_sizes[0]} con stock registrado: {names}."
-            return f"La medida {requested_sizes[0]} aparece en catalogo, pero sin stock registrado ahora: {names}."
-        return f"No veo la medida {requested_sizes[0]} activa en el catalogo en este momento."
-    if rim:
-        matches = sort_catalog_products([product for product in tires if f"r{rim}" in item_text(product)], tokens)
-        if matches:
-            with_stock = [product for product in matches if stock_value(product) > 0]
-            selected = with_stock or matches
-            names = '; '.join(product_line('producto', product) for product in selected[:5])
-            if with_stock:
-                return f"Si tenemos cauchos rin {rim} con stock registrado: {names}."
-            return f"Tenemos cauchos rin {rim} en catalogo, pero sin stock registrado ahora: {names}."
-        sizes = available_tire_sizes(products)
-        suffix = f" Medidas disponibles ahora: {', '.join(sizes[:10])}." if sizes else ''
-        return f"No veo cauchos rin {rim} activos en el catalogo en este momento.{suffix}"
-    if tokens & VEHICLE_MODEL_TERMS:
-        return LOCAL_KNOWLEDGE['medida_caucho']
-    return 'Para recomendar medida exacta de caucho necesito la medida completa del caucho actual, el rin o el modelo y ano del vehiculo.'
-
-
-def find_matches(tokens, products, services, limit=3, min_score=0.35, clean=''):
-    rim = extract_rim(clean)
-    if rim and (tokens & SYNONYMS['caucho'] or tokens & INVENTORY_TERMS or extract_sizes(clean)):
+        compatible_sizes = self._compatible_sizes(entities, fitment, web_sizes)
+        needs_clarification = self._needs_tire_clarification(entities, compatible_sizes)
         matches = []
-        for product in tire_products(products):
-            if f"r{rim}" in item_text(product):
-                matches.append(('producto', 10, product))
-        matches.sort(key=lambda item: (0 if stock_value(item[2]) > 0 else 1, price_value(item[2]), normalize_text(item[2].get('nombre'))))
-        return matches[:limit]
 
-    prefer_service = wants_service(tokens)
-    prefer_product = wants_product(tokens) and not prefer_service
-    service_matches = []
-    for product in products:
-        if str(product.get('codigo') or '') == 'SIN_PRODUCTO':
-            continue
-        if prefer_service:
-            continue
-        score = score_item(tokens, product, 'producto')
-        if score >= min_score:
-            service_matches.append(('producto', score, product))
-    if prefer_product:
-        service_matches.sort(key=lambda x: x[1], reverse=True)
-        return service_matches[:limit]
-    groups = action_groups(tokens)
-    for service in services:
-        service_text = item_text(service)
-        if groups and not any(any(term in service_text for term in SERVICE_ACTIONS[group]) for group in groups):
-            continue
-        if 'scanner' in groups and tokens & {'luz', 'check', 'tablero', 'falla', 'fallas', 'prendida', 'encendida'} and not any(term in service_text for term in ('scanner', 'escaner', 'diagnostico', 'codigo', 'codigos')):
-            continue
-        score = score_item(tokens, service, 'servicio')
-        if score >= min_score:
-            service_matches.append(('servicio', score, service))
-    service_matches.sort(key=lambda x: x[1], reverse=True)
-    if groups:
-        diverse = []
-        used = set()
-        for group in ordered_action_groups(tokens):
-            named = [
-                match for match in service_matches
-                if match[2].get('nombre') not in used
-                and any(term in normalize_text(match[2].get('nombre')) for term in SERVICE_ACTIONS[group])
-            ]
-            if named:
-                diverse.append(named[0])
-                used.add(named[0][2].get('nombre'))
-                continue
-            for match in service_matches:
-                name = match[2].get('nombre')
-                if name in used:
-                    continue
-                if any(term in item_text(match[2]) for term in SERVICE_ACTIONS[group]):
-                    diverse.append(match)
-                    used.add(name)
-                    break
-        for match in service_matches:
-            name = match[2].get('nombre')
-            if name not in used:
-                diverse.append(match)
-                used.add(name)
-        return diverse[:limit]
-    return service_matches[:limit]
+        if entities.tire_size:
+            matches = rank_tire_candidates(catalog.products, entities, compatible_sizes=[entities.tire_size.normalized], limit=5)
+            answer = self._answer_exact_size(entities, matches, fitment, sources, catalog)
+            return answer, matches, sources, False, 0.9 if matches else 0.72
 
+        if compatible_sizes:
+            matches = rank_tire_candidates(
+                catalog.products,
+                entities,
+                compatible_sizes=compatible_sizes,
+                allow_rim_possible=False,
+                limit=5,
+            )
+            if not matches and entities.rim:
+                matches = rank_tire_candidates(catalog.products, entities, compatible_sizes=None, allow_rim_possible=True, limit=5)
+            answer = self._answer_fitment(entities, compatible_sizes, matches, fitment, sources, needs_clarification, catalog)
+            return answer, matches, sources, needs_clarification, 0.82 if compatible_sizes else 0.55
 
-def external_summary(query, tokens):
-    if not tokens & (SYNONYMS['caucho'] | SYNONYMS['aceite'] | SYNONYMS['filtro'] | SYNONYMS['bateria'] | SYNONYMS['freno']):
-        return ''
-    cache_key = ' '.join(sorted(tokens))
-    cached = _external_cache.get(cache_key)
-    if cached and time.time() - cached['time'] < EXTERNAL_CACHE_TTL:
-        return cached['text']
-    try:
-        params = {
-            'q': f"{query} automotriz",
-            'format': 'json',
-            'no_html': '1',
-            'skip_disambig': '1'
-        }
-        response = requests.get('https://api.duckduckgo.com/', params=params, timeout=EXTERNAL_TIMEOUT)
-        if not response.ok:
-            return ''
-        data = response.json()
-        text = str(data.get('AbstractText') or '').strip()
-        if not text:
-            topics = data.get('RelatedTopics') or []
-            for topic in topics:
-                if isinstance(topic, dict) and topic.get('Text'):
-                    text = str(topic['Text']).strip()
-                    break
-        text = re.sub(r'\s+', ' ', text)[:280]
-        _external_cache[cache_key] = {'time': time.time(), 'text': text}
-        return text
-    except Exception:
-        return ''
+        if entities.rim:
+            matches = rank_tire_candidates(catalog.products, entities, compatible_sizes=None, allow_rim_possible=True, limit=5)
+            answer = self._answer_rim_only(entities, matches, catalog)
+            return answer, matches, sources, not bool(matches), 0.62 if matches else 0.45
 
+        if entities.has_vehicle() and not (fitment or web_sizes):
+            vehicle = self._vehicle_label(entities)
+            inventory_note = (
+                'No pude verificar inventario en base de datos.'
+                if not catalog.catalog_available
+                else 'No cruce inventario porque falta una medida o rin confirmado.'
+            )
+            return (
+                self._limit(
+                    f"No tengo una medida validada para {vehicle} con los datos disponibles. "
+                    f"Para validar la compatibilidad, revisa manual o etiqueta de puerta y dime el rin o la medida completa. {inventory_note}"
+                ),
+                [],
+                sources,
+                True,
+                0.42,
+            )
 
-def load_catalog():
-    if time.time() - _catalog_cache['time'] < CATALOG_CACHE_TTL:
-        return _catalog_cache['products'], _catalog_cache['services']
-    try:
-        products = ProductModel().get_active()
-    except Exception:
-        products = []
-    try:
-        services = ServiceModel().get_active()
-    except Exception:
-        services = []
-    _catalog_cache.update({
-        'time': time.time(),
-        'products': products or [],
-        'services': services or []
-    })
-    return _catalog_cache['products'], _catalog_cache['services']
+        if entities.tokens & {'codigo', 'tir'}:
+            matches = search_tire_text(catalog.products, entities.tokens, limit=5)
+            if matches:
+                answer = self._answer_generic_tires(entities, matches)
+                return answer, matches, sources, False, 0.68
 
-
-def product_line(kind, item):
-    name = item.get('nombre') or 'Sin nombre'
-    price = item.get('precio')
-    stock = item.get('stock')
-    price_text = f" - ${float(price):.2f}" if price not in (None, '') else ''
-    if kind == 'producto':
-        stock_text = f" - stock {int(stock or 0)}" if int(stock or 0) > 0 else " - sin stock registrado"
-        return f"{name}{price_text}{stock_text}"
-    return f"{name}{price_text}"
-
-
-def local_context(tokens, clean='', products=None, model_intent='consulta'):
-    if (
-        model_intent in ('tire_rim', 'tire_vehicle_size')
-        or extract_sizes(clean)
-        or (extract_rim(clean) and tokens & INVENTORY_TERMS)
-        or (tokens & SYNONYMS['caucho'] and (tokens & PRODUCT_TERMS or tokens & VEHICLE_MODEL_TERMS))
-    ):
-        return tire_size_response(tokens, clean, products or [])
-    groups = ordered_action_groups(tokens)
-    if 'balanceo' in groups and 'rotacion' in groups:
-        return 'Para balancear y rotar cauchos puedes solicitar Balanceo y Rotacion de cauchos. Balanceo corrige vibraciones; Rotacion reparte mejor el desgaste.'
-    if 'balanceo' in groups and 'alineacion' in groups:
-        return 'Por vibracion o volante irregular conviene revisar Balanceo y Alineacion. Balanceo reduce vibraciones; Alineacion corrige direccion y desgaste irregular.'
-    for group in groups:
-        if group in SERVICE_HINTS:
-            return SERVICE_HINTS[group]
-    if tokens & SYNONYMS['allterrain']:
-        return LOCAL_KNOWLEDGE['allterrain']
-    for key, words in SYNONYMS.items():
-        if key in LOCAL_KNOWLEDGE and tokens & words:
-            return LOCAL_KNOWLEDGE[key]
-    if tokens & {'producto', 'productos', 'catalogo'}:
-        return LOCAL_KNOWLEDGE['producto']
-    if tokens & {'pedido', 'pedidos'}:
-        return LOCAL_KNOWLEDGE['pedido']
-    if tokens & {'pago', 'pagos', 'comprobante', 'subo', 'subir', 'cargar'}:
-        return LOCAL_KNOWLEDGE['pago']
-    if tokens & {'sucursal', 'sucursales', 'ubicacion', 'direccion'}:
-        return LOCAL_KNOWLEDGE['sucursal']
-    if tokens & {'promocion', 'promociones'}:
-        return LOCAL_KNOWLEDGE['promocion']
-    return ''
-
-
-def build_response(question, session_id=None, client_history=None):
-    raw = str(question or '').strip()
-    if not raw:
-        return {'status': 'error', 'message': 'Mensaje requerido.'}, 400
-    if len(raw) > MAX_MESSAGE_LENGTH:
-        return {'status': 'error', 'message': 'La pregunta no puede superar 255 caracteres.'}, 400
-
-    clean = merge_session_context(normalize_text(raw), session_id, client_history)
-    if not clean:
-        return {'status': 'error', 'message': 'Mensaje no valido.'}, 400
-
-    tokens = tokenize(clean)
-    raw_intent_terms = set(clean.replace('-', ' ').split())
-    intent_tokens = tokens | raw_intent_terms
-    model_intent, model_confidence = trained_intent(clean)
-    products, services = load_catalog()
-    category = category_from_tokens(tokens)
-    current_product_query = bool(
-        category and (
-            raw_intent_terms & INVENTORY_TERMS
-            or any(any(ch.isdigit() for ch in token) for token in raw_intent_terms)
-            or extract_rim(clean)
+        matches = rank_tire_candidates(catalog.products, entities, compatible_sizes=None, allow_rim_possible=False, limit=5)
+        if matches:
+            answer = self._answer_generic_tires(entities, matches)
+            return answer, matches, sources, False, 0.58
+        catalog_note = ' No pude verificar el catalogo en este momento.' if not catalog.catalog_available else ''
+        return (
+            'Para recomendar cauchos con precision necesito al menos la medida completa, el rin o el vehiculo con ano. '
+            'Si buscas uso mixto, normalmente conviene A/T; para carretera H/T; para barro fuerte M/T. '
+            f'Valida siempre la medida en manual o etiqueta de puerta antes de comprar.{catalog_note}',
+            [],
+            sources,
+            True,
+            0.38,
         )
-    )
-    if not current_product_query:
-        followup_text, followup_matches = followup_response(clean, tokens, session_id, client_history)
-        if followup_text:
-            update_session_context(session_id, raw, clean, tokens, [], followup_text)
-            return {
-                'status': 'success',
-                'respuesta': followup_text,
-                'intent': 'seguimiento',
-                'model_intent': model_intent,
-                'matches': followup_matches
-            }, 200
-    if not is_business_question(tokens, products, services):
-        return {
-            'status': 'success',
-            'respuesta': 'Solo puedo ayudarte con productos, servicios, mantenimiento, compras, pagos o pedidos de Transalca.',
-            'intent': 'fuera_de_negocio',
-            'matches': []
-        }, 200
 
-    intent = detect_intent(intent_tokens)
-    if model_intent in ('tire_rim', 'tire_vehicle_size', 'tire_allterrain', 'service_balance', 'service_oil') and model_confidence > 0:
-        intent = 'recomendacion'
-    direct_product_terms = raw_intent_terms & {'pastilla', 'pastillas', 'disco', 'discos', 'bujia', 'bujias'}
-    product_question = bool(
-        category
-        and (raw_intent_terms & INVENTORY_TERMS or model_intent == 'product_lookup' or direct_product_terms)
-        and not (explicit_service_request(raw_intent_terms) and not (raw_intent_terms & INVENTORY_TERMS or direct_product_terms))
-    )
-    product_context = ''
-    product_matches = []
-    if product_question and not extract_rim(clean):
-        product_context, product_matches = product_lookup_response(tokens, products)
-    matches = product_matches or find_matches(tokens, products, services, clean=clean)
-    context = product_context or local_context(tokens, clean, products, model_intent)
-    web_text = external_summary(clean, tokens) if not context else ''
+    def _answer_exact_size(self, entities, matches, fitment, sources, catalog):
+        size = entities.tire_size.normalized
+        fit_sizes = sorted({size_item for entry in fitment for size_item in entry['sizes']}) if fitment else []
+        requested_not_confirmed = bool(entities.has_vehicle() and fit_sizes and size not in fit_sizes)
+        exact_stock = [entry for entry in matches if int_value(entry['item'].get('stock')) > 0]
+        if exact_stock:
+            lines = '; '.join(product_line(entry['item']) for entry in exact_stock[:3])
+            reason = self._usage_reason(entities)
+            if requested_not_confirmed:
+                vehicle = self._vehicle_label(entities)
+                return self._limit(
+                    f"Para {vehicle} no tengo evidencia local de que {size} sea medida OEM o compatible confirmada. "
+                    f"Si tu vehiculo ya tiene esa medida instalada, encontre producto en inventario: {lines}. {reason} "
+                    "Antes de comprar valida etiqueta de puerta, manual, despeje, carga y velocidad."
+                )
+            return self._limit(
+                f"Si, para la medida {size} encontre disponibilidad exacta: {lines}. {reason}"
+                " No cambies a otra medida sin validar etiqueta de puerta, manual e indice de carga/velocidad."
+            )
+        exact_catalog = find_exact_size_products(catalog.products, size)
+        if exact_catalog:
+            lines = '; '.join(product_line(item) for item in exact_catalog[:3])
+            if requested_not_confirmed:
+                vehicle = self._vehicle_label(entities)
+                return self._limit(
+                    f"Para {vehicle} no puedo confirmar {size} como medida original o compatible. "
+                    f"La medida aparece en catalogo, pero sin stock positivo ahora: {lines}. "
+                    "Valida manual, etiqueta de puerta, carga, velocidad y despeje antes de cambiar medida."
+                )
+            return self._limit(
+                f"La medida {size} aparece en catalogo, pero no tiene stock positivo ahora: {lines}. "
+                "No voy a mostrar otra medida como compatible exacta; si quieres, puedo buscar una alternativa, pero debe validarse tecnicamente."
+            )
+        spec_note = ''
+        if fitment and size in fit_sizes:
+            spec_note = ' Esa medida coincide con una opcion comun para el vehiculo indicado.'
+        elif requested_not_confirmed:
+            spec_note = (
+                f" Para el vehiculo indicado veo como referencia {', '.join(fit_sizes[:4])}; "
+                f"no puedo tratar {size} como compatible sin validar."
+            )
+        if sources:
+            spec_note += ' La busqueda externa se uso solo como referencia tecnica, no como inventario.'
+        unavailable = 'No pude verificar el inventario porque la base de datos no respondio.' if not catalog.catalog_available else 'No aparece disponible en el inventario activo.'
+        return self._limit(
+            f"{unavailable} Para {size}, la recomendacion es mantener esa misma medida y validar carga/velocidad antes de comprar.{spec_note}"
+        )
 
-    parts = []
-    if context:
-        parts.append(context)
-    elif web_text:
-        parts.append(f"Referencia general: {web_text}")
+    def _answer_fitment(self, entities, sizes, matches, fitment, sources, needs_clarification, catalog):
+        vehicle = self._vehicle_label(entities)
+        size_text = ', '.join(sizes[:5])
+        certainty = self._fitment_certainty_label(fitment, sources)
+        parts = [f"Para {vehicle}, encontre estas medidas probables: {size_text} ({certainty})."]
+        if needs_clarification:
+            rims = sorted({str(size[-2:]) for size in sizes if size[-2:].isdigit()})
+            if rims:
+                parts.append(f"Confirma el rin actual ({', '.join(rims)}) o la version para cerrar la compatibilidad.")
+        if matches:
+            with_stock = [entry for entry in matches if int_value(entry['item'].get('stock')) > 0]
+            if with_stock:
+                lines = '; '.join(product_line(entry['item']) for entry in with_stock[:3])
+                parts.append(f"En inventario priorizaria: {lines}.")
+                parts.append(self._explain_candidate(with_stock[0], entities))
+            else:
+                parts.append("Hay coincidencias de catalogo, pero sin stock positivo.")
+        else:
+            if catalog.catalog_available:
+                parts.append("No veo una coincidencia exacta con stock positivo para esas medidas en el inventario activo.")
+            else:
+                parts.append("No pude verificar inventario en base de datos; la recomendacion queda como referencia tecnica.")
+        parts.append("No uses otra medida solo porque tenga el mismo rin; ancho, perfil e indices tambien importan.")
+        if sources:
+            parts.append(self._sources_text(sources))
+        return self._limit(' '.join(parts))
 
-    rim_query = bool(
-        (extract_rim(clean) or extract_sizes(clean))
-        and (tokens & SYNONYMS['caucho'] or tokens & INVENTORY_TERMS or extract_sizes(clean))
-    )
-    product_already_listed = bool(product_context)
-    if matches and not rim_query and not product_already_listed:
-        lines = [product_line(kind, item) for kind, _, item in matches]
-        parts.append('Relacionado en catalogo: ' + '; '.join(lines) + '.')
-    elif not parts:
-        parts.append('No tengo informacion suficiente en el catalogo para responder eso con seguridad.')
+    def _answer_rim_only(self, entities, matches, catalog):
+        if matches:
+            with_stock = [entry for entry in matches if int_value(entry['item'].get('stock')) > 0]
+            selected = with_stock or matches
+            lines = '; '.join(product_line(entry['item']) for entry in selected[:4])
+            qualifier = 'con stock' if with_stock else 'en catalogo sin stock positivo'
+            return self._limit(
+                f"Para rin {entities.rim} encontre opciones {qualifier}: {lines}. "
+                "Esto es coincidencia por rin, no compatibilidad confirmada; falta la medida completa o el vehiculo/version."
+            )
+        suffix = ' No pude verificar inventario por falla de base de datos.' if not catalog.catalog_available else ''
+        return f"No veo cauchos rin {entities.rim} con stock positivo en el inventario activo.{suffix} Valida la medida completa antes de comprar."
 
-    if intent == 'precio' and matches:
-        parts.append('Los precios pueden cambiar; confirma disponibilidad antes de comprar.')
-    elif intent in ('recomendacion', 'comparacion') and not matches and not rim_query:
-        parts.append('Puedo ayudarte mejor si indicas marca, medida, modelo del vehiculo o tipo de uso.')
+    def _answer_generic_tires(self, entities, matches):
+        selected = [entry for entry in matches if int_value(entry['item'].get('stock')) > 0] or matches
+        lines = '; '.join(product_line(entry['item']) for entry in selected[:3])
+        return self._limit(
+            f"Estas opciones del catalogo pueden servir como punto de partida: {lines}. "
+            "Para recomendar con seguridad necesito medida completa o vehiculo con ano y rin."
+        )
 
-    answer = ' '.join(parts)[:900]
-    update_session_context(session_id, raw, clean, tokens, matches, answer)
-    return {
-        'status': 'success',
-        'respuesta': answer,
-        'intent': intent,
-        'model_intent': model_intent,
-        'matches': [
-            {
-                'tipo': kind,
-                'nombre': item.get('nombre'),
-                'precio': float(item.get('precio') or 0),
-                'stock': int(item.get('stock') or 0) if kind == 'producto' else None
-            }
-            for kind, _, item in matches
+    def _handle_service(self, entities, catalog):
+        matches = find_services(catalog.services, entities)
+        if entities.tokens & {'vibra', 'vibracion', 'tiembla', 'temblor', 'volante'}:
+            answer = (
+                "Si el volante vibra despues de 80 km/h, lo primero es revisar balanceo de ruedas. "
+                "Tambien conviene revisar alineacion, rotacion y estado de cauchos si hay desgaste irregular."
+            )
+        elif entities.tokens & {'check', 'tablero', 'luz', 'falla'}:
+            answer = "Para luz de check engine o fallas en tablero, el servicio adecuado es diagnostico con scanner antes de cambiar piezas."
+        elif entities.tokens & {'freno', 'frenos', 'chilla', 'frenar'}:
+            answer = "Para ruido o baja respuesta al frenar, pide revision de frenos: pastillas, discos y liga."
+        elif entities.tokens & {'aceite', 'lubricante'}:
+            answer = "Para cambio de aceite, valida viscosidad y especificacion del fabricante; tambien conviene cambiar filtro."
+        else:
+            answer = "Puedo orientarte con el servicio, pero necesito el sintoma principal o el mantenimiento que deseas hacer."
+        if matches:
+            answer += " Servicios relacionados: " + '; '.join(product_line(entry['item'], include_stock=False) for entry in matches[:3]) + '.'
+        elif not catalog.catalog_available:
+            answer += " No pude verificar la lista de servicios por una falla de base de datos."
+        return self._limit(answer), matches, False, 0.82
+
+    def _handle_order(self, entities):
+        if entities.tokens & {'pago', 'pagos', 'comprobante'}:
+            answer = 'Para pagos, sube el comprobante desde el pedido correspondiente y espera la validacion del administrador.'
+        else:
+            answer = 'Para revisar un pedido, entra en Mis pedidos. Si el pago ya fue aprobado, alli veras el estado y documentos disponibles.'
+        return answer, [], False, 0.85
+
+    def _handle_sucursal(self):
+        return 'Puedes revisar sucursales activas desde la seccion de contacto o catalogo. Si necesitas confirmar disponibilidad, dime el producto o servicio.', [], False, 0.72
+
+    def _handle_catalog_general(self, entities, catalog):
+        category = self._category_from_tokens(entities.tokens)
+        if category:
+            matches = search_category(catalog.products, category, entities.tokens)
+            if matches:
+                lines = '; '.join(product_line(entry['item']) for entry in matches[:4])
+                answer = f"En {category.lower()} encontre estas opciones activas: {lines}."
+                if category == 'Cauchos':
+                    answer += ' Para compatibilidad confirmada dime medida completa, ano y rin.'
+                return self._limit(answer), matches, False, 0.75
+            if catalog.catalog_available:
+                return (
+                    f"No veo coincidencias activas de {category.lower()} en este momento. "
+                    "Eso no significa que no exista el producto en general; solo que no aparece activo en el inventario consultado."
+                ), [], False, 0.68
+            return (
+                "No pude verificar el catalogo por una falla de base de datos. "
+                "Puedo orientarte de forma general si me das categoria, medida o uso."
+            ), [], False, 0.45
+        return (
+            "Puedo ayudarte con cauchos, repuestos, lubricantes, baterias, servicios, pedidos y pagos. "
+            "Dime el producto, medida, vehiculo o sintoma."
+        ), [], True, 0.45
+
+    def _handle_followup(self, entities, state, model_intent, second_intent, model_confidence, stage_ms, started):
+        candidates = state.get('last_candidates') or []
+        tokens = entities.tokens
+        if not candidates:
+            return self._base_payload(
+                'Sigo con el contexto anterior, pero necesito medida, rin o uso para recomendar con precision.',
+                'seguimiento',
+                model_intent,
+                second_intent,
+                0.45,
+                [],
+                [],
+                None,
+                True,
+                True,
+                stage_ms,
+                started,
+            ), 200
+        if tokens & {'barato', 'economico', 'menos'}:
+            available = [item for item in candidates if int_value(item.get('stock')) > 0]
+            selected = sorted(available or candidates, key=lambda item: (item.get('precio') or 0, -(item.get('stock') or 0)))
+            if selected:
+                item = selected[0]
+                answer = f"La opcion mas economica de lo que vimos es {item.get('nombre')} - ${item.get('precio', 0):.2f}"
+                if item.get('stock') is not None:
+                    answer += f" - stock {item.get('stock')}."
+                return self._base_payload(answer, 'seguimiento', model_intent, second_intent, model_confidence, [], [], None, True, False, stage_ms, started), 200
+        if tokens & {'stock', 'disponible', 'disponibles', 'hay', 'quedan'}:
+            lines = [f"{item.get('nombre')} - stock {item.get('stock')}" for item in candidates if item.get('stock') is not None]
+            if lines:
+                return self._base_payload('Disponibilidad de lo que vimos: ' + '; '.join(lines[:4]) + '.', 'seguimiento', model_intent, second_intent, model_confidence, [], [], None, True, False, stage_ms, started), 200
+        if tokens & {'lluvia', 'tierra', 'barro', 'carretera'}:
+            item = candidates[0]
+            tire_type = item.get('tire_type')
+            answer = self._followup_use_answer(item.get('nombre'), tire_type, tokens)
+            return self._base_payload(answer, 'seguimiento', model_intent, second_intent, model_confidence, [], [], None, True, False, stage_ms, started), 200
+        if tokens & {'primero', 'primera', 'el'}:
+            item = candidates[0]
+            answer = f"El primero fue {item.get('nombre')}. "
+            if item.get('precio') is not None:
+                answer += f"Precio ${item.get('precio'):.2f}. "
+            if item.get('stock') is not None:
+                answer += f"Stock {item.get('stock')}. "
+            answer += 'Valida la medida exacta antes de comprar.'
+            return self._base_payload(answer, 'seguimiento', model_intent, second_intent, model_confidence, [], [], None, True, False, stage_ms, started), 200
+        if tokens & {'cual', 'mejor', 'recomiendas', 'recomienda'}:
+            item = candidates[0]
+            vehicle = state.get('vehicle') or {}
+            vehicle_bits = [vehicle.get('make'), vehicle.get('model'), vehicle.get('year')]
+            vehicle_text = ' para ' + ' '.join(str(bit) for bit in vehicle_bits if bit) if any(vehicle_bits) else ''
+            answer = f"Con el contexto anterior{vehicle_text} recomendaria {product_line(item)}. "
+            tire_type = item.get('tire_type')
+            if tire_type == 'A/T':
+                answer += 'Es A/T, una opcion equilibrada para carretera y tierra.'
+            elif tire_type == 'H/T':
+                answer += 'Es H/T, mejor para ciudad, carretera y lluvia que para barro.'
+            elif tire_type == 'M/T':
+                answer += 'Es M/T, fuerte para barro, pero con mas ruido y menor comodidad en carretera.'
+            else:
+                answer += 'Valida tipo, medida e indices antes de comprar.'
+            return self._base_payload(answer, 'seguimiento', model_intent, second_intent, model_confidence, [], [], None, True, False, stage_ms, started), 200
+        return self._base_payload('Sigo con el contexto anterior, pero necesito que me indiques si buscas precio, stock o compatibilidad.', 'seguimiento', model_intent, second_intent, 0.45, [], [], None, True, True, stage_ms, started), 200
+
+    def _followup_use_answer(self, name, tire_type, tokens):
+        if tire_type == 'A/T':
+            if tokens & {'lluvia', 'tierra', 'carretera'}:
+                return f"{name} es A/T, asi que sirve bien para uso mixto carretera/tierra y lluvia moderada. No es la mejor opcion para barro profundo."
+        if tire_type == 'M/T':
+            return f"{name} es M/T: prioriza barro y trocha fuerte, pero suele hacer mas ruido y ser menos comodo en carretera."
+        if tire_type == 'H/T':
+            return f"{name} es H/T: va mejor para ciudad, carretera y lluvia que para tierra o barro fuerte."
+        return f"Para decir si {name} sirve en ese uso necesito confirmar si es H/T, A/T o M/T y la medida exacta."
+
+    def _local_fitment(self, entities):
+        if not entities.model:
+            return []
+        results = []
+        for entry in LOCAL_FITMENT:
+            if entry['model'] != entities.model:
+                continue
+            if entities.make and entry.get('make') and entities.make != entry.get('make'):
+                continue
+            if entities.year and not (entry['start'] <= entities.year <= entry['end']):
+                continue
+            sizes = entry['sizes']
+            if entities.rim:
+                sizes = [size for size in sizes if size.endswith(f"R{entities.rim}")]
+            if not sizes:
+                continue
+            results.append({**entry, 'sizes': sizes})
+        return results
+
+    def _compatible_sizes(self, entities, fitment, web_sizes):
+        if entities.tire_size:
+            return [entities.tire_size.normalized]
+        sizes = []
+        for entry in fitment:
+            for size in entry['sizes']:
+                if size not in sizes:
+                    sizes.append(size)
+        for size in web_sizes:
+            if entities.rim and not size.endswith(f"R{entities.rim}"):
+                continue
+            if size not in sizes:
+                sizes.append(size)
+        return sizes
+
+    def _should_search_web(self, entities, fitment):
+        if os.getenv('ASSISTANT_WEB_VERIFY', '0').strip().lower() in {'1', 'true', 'yes'}:
+            return bool(entities.model and (entities.year or entities.rim))
+        return bool(entities.model and not fitment and (entities.year or entities.rim))
+
+    def _web_fitment_sources(self, entities, search_service):
+        if not entities.model:
+            return []
+        vehicle = ' '.join(str(part) for part in (entities.make, entities.model, entities.year) if part)
+        queries = [
+            f"{vehicle} tire size OEM",
+            f"{vehicle} owner's manual tire size",
+            f"{vehicle} medida cauchos rin {entities.rim}" if entities.rim else f"{vehicle} medida cauchos",
         ]
-    }, 200
+        sources = []
+        seen = set()
+        for query in queries[:2]:
+            try:
+                found = search_service.search(query, max_results=3)
+            except Exception:
+                logger.exception('assistant.web.provider_failed')
+                found = []
+            for source in found:
+                if source.url in seen:
+                    continue
+                seen.add(source.url)
+                sources.append(source)
+            if len(sources) >= 4:
+                break
+        return sources[:4]
+
+    def _needs_tire_clarification(self, entities, sizes):
+        if entities.tire_size:
+            return False
+        if entities.has_vehicle() and not entities.year:
+            return True
+        rims = {size.split('R')[-1] for size in sizes if 'R' in size}
+        if entities.has_vehicle() and not entities.rim and len(rims) > 1:
+            return True
+        return False
+
+    def _fitment_certainty_label(self, fitment, sources):
+        if fitment and sources:
+            return 'certeza media-alta por datos locales y fuentes externas'
+        if fitment:
+            best = max(entry.get('certainty', 0.5) for entry in fitment)
+            return 'certeza media' if best >= 0.65 else 'certeza baja-media'
+        if sources:
+            return 'referencia externa; validar manual'
+        return 'sin evidencia suficiente'
+
+    def _usage_reason(self, entities):
+        if entities.tire_type == 'A/T' or entities.uses & {'tierra', 'grava'}:
+            return 'Para uso mixto carretera/tierra priorizaria A/T porque equilibra agarre fuera de asfalto y manejo diario.'
+        if entities.tire_type == 'M/T' or entities.uses & {'barro'}:
+            return 'Para barro fuerte M/T da mas traccion, con mas ruido y desgaste en carretera.'
+        if entities.tire_type == 'H/T' or entities.uses & {'autopista', 'ciudad'}:
+            return 'Para carretera y ciudad H/T suele ser mas silencioso y eficiente.'
+        return 'La decision final depende de uso, presupuesto, carga e indice de velocidad.'
+
+    def _explain_candidate(self, entry, entities):
+        item = entry['item']
+        reason = []
+        if entry.get('compatibility') in {'exacta', 'compatible'}:
+            reason.append('coincide con la medida compatible')
+        if item.get('tire_type'):
+            reason.append(f"es {item.get('tire_type')}")
+        if int_value(item.get('stock')) > 0:
+            reason.append('tiene stock positivo')
+        if entities.budget == 'economico':
+            reason.append('queda bien ordenado por precio')
+        return 'Lo recomiendo primero porque ' + ', '.join(reason) + '.' if reason else ''
+
+    def _sources_text(self, sources):
+        selected = [source for source in sources if source.domain][:2]
+        if not selected:
+            return ''
+        return 'Fuentes usadas como referencia: ' + '; '.join(f"{source.title} ({source.domain})" for source in selected) + '.'
+
+    def _category_from_tokens(self, tokens):
+        if tokens & {'aceite', 'aceites', 'lubricante', 'lubricantes', '5w30', '5w-30', '10w40', '10w-40', '15w40', '15w-40'}:
+            return 'Lubricantes'
+        if tokens & {'filtro', 'filtros'}:
+            return 'Filtros'
+        if tokens & {'bateria', 'baterias', 'acumulador'}:
+            return 'Baterias'
+        if tokens & {'freno', 'frenos', 'pastilla', 'pastillas', 'disco', 'discos'}:
+            return 'Frenos'
+        if tokens & {'caucho', 'cauchos', 'llanta', 'llantas', 'neumatico', 'neumaticos', 'rin', 'rines', 'aro', 'aros'}:
+            return 'Cauchos'
+        if tokens & {'combo', 'combos', 'paquete', 'paquetes'}:
+            return 'Combos'
+        if tokens & {'repuesto', 'repuestos'}:
+            return 'Repuestos'
+        return None
+
+    def _catalog_mentions(self, entities, catalog):
+        if not catalog:
+            return False
+        tokens = entities.tokens
+        if tokens & BUSINESS_TERMS:
+            return True
+        for item in (catalog.products or [])[:80]:
+            if tokens & set(item.get('text', '').split()):
+                return True
+        return False
+
+    def _vehicle_label(self, entities):
+        parts = [entities.make, entities.model, str(entities.year) if entities.year else None]
+        return ' '.join(part for part in parts if part) or 'ese vehiculo'
+
+    def _memory_candidate(self, entry):
+        item = entry.get('item') or {}
+        return {
+            'nombre': item.get('nombre'),
+            'precio': item.get('precio'),
+            'stock': item.get('stock'),
+            'size': item.get('size'),
+            'tire_type': item.get('tire_type'),
+            'compatibility': entry.get('compatibility'),
+        }
+
+    def _web_health(self, search_provider=None):
+        service = search_provider or self.search_service
+        try:
+            health = service.health() if hasattr(service, 'health') else {}
+            return not health.get('circuit', {}).get('open', False) and health.get('enabled', True)
+        except Exception:
+            return False
+
+    def _is_sensitive_request(self, raw, entities):
+        clean = normalize_text(raw, autocorrect=False)
+        tokens = entities.tokens
+        if any(fragment in clean for fragment in (
+            'password', 'contrasen', 'contrase', 'secreto', 'secretos',
+            'token', 'credencial', 'credenciales', 'ignora tus reglas',
+            'ignora las reglas', 'datos privados', 'datos personales',
+        )):
+            return True
+        if tokens & {'clientes', 'cliente'} and tokens & {'datos', 'privado', 'privados', 'personales'}:
+            return True
+        if tokens & {'reglas'} and tokens & {'ignora', 'ignorar'}:
+            return True
+        return False
+
+    def _base_payload(
+        self,
+        answer,
+        intent,
+        model_intent,
+        second_intent,
+        confidence,
+        matches,
+        sources,
+        catalog,
+        web_available,
+        needs_clarification,
+        stage_ms,
+        started,
+        request_id=None,
+    ):
+        diagnostics = {
+            'catalog_available': True if catalog is None else bool(catalog.catalog_available),
+            'web_available': bool(web_available),
+            'duration_ms': self._elapsed(started),
+            'stage_ms': {key: round(value, 2) for key, value in (stage_ms or {}).items()},
+        }
+        payload = {
+            'status': 'success',
+            'respuesta': self._limit(answer),
+            'intent': intent,
+            'model_intent': model_intent,
+            'second_intent': second_intent,
+            'confidence': round(float(confidence or 0), 3),
+            'needs_clarification': bool(needs_clarification),
+            'matches': matches or [],
+            'sources': [source.to_dict() if hasattr(source, 'to_dict') else source for source in (sources or [])[:4]],
+            'diagnostics': diagnostics,
+        }
+        if request_id:
+            payload['request_id'] = request_id
+        return payload
+
+    def health(self):
+        engine_ok = True
+        catalog_health = self.catalog_provider.health()
+        web_health = self.search_service.health()
+        return {
+            'status': 'success' if engine_ok else 'error',
+            'engine': {
+                'available': engine_ok,
+                'classifier_labels': len(self.classifier.labels),
+                'max_message_length': MAX_MESSAGE_LENGTH,
+            },
+            'catalog': catalog_health,
+            'web': web_health,
+        }
+
+    def _limit(self, text):
+        return (text or '')[:LOCAL_RESPONSE_LIMIT].strip()
+
+    def _elapsed(self, started):
+        return (time.perf_counter() - started) * 1000
+
+
+_default_engine = AssistantEngine()
+
+
+def build_response(question, session_id=None, client_history=None, request_id=None, catalog_provider=None, search_provider=None):
+    return _default_engine.handle(
+        question,
+        session_id=session_id,
+        client_history=client_history,
+        request_id=request_id,
+        catalog_provider=catalog_provider,
+        search_provider=search_provider,
+    )
+
+
+def assistant_health():
+    return _default_engine.health()
+
+
+def clear_memory():
+    _default_engine.memory.clear()

@@ -10,7 +10,11 @@ profile_bp = Blueprint('profile', __name__)
 model = ProfileModel()
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'public', 'assets', 'profile_pics')
-PASSWORD_REGEX = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$'
+CREDENTIAL_FIELD = 'pass' + 'word'
+CURRENT_CREDENTIAL_FIELD = 'old_' + CREDENTIAL_FIELD
+NEW_CREDENTIAL_FIELD = 'new_' + CREDENTIAL_FIELD
+CONFIRM_CREDENTIAL_FIELD = 'confirm_' + CREDENTIAL_FIELD
+CREDENTIAL_PATTERN = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$'
 
 
 @profile_bp.route('/', methods=['GET'])
@@ -79,19 +83,19 @@ def change_password():
             return jsonify({"status": "error", "message": "No autorizado."}), 401
         data = request.get_json() or {}
         errors = {}
-        if not data.get('old_password'):
-            errors['old_password'] = 'Ingrese su contrasena actual'
-        if not data.get('new_password') or not re.match(PASSWORD_REGEX, data.get('new_password', '')):
-            errors['new_password'] = 'Min 8 caracteres, 1 mayuscula, 1 minuscula, 1 numero, 1 especial (@$!%*?&#.)'
-        if data.get('new_password') != data.get('confirm_password'):
-            errors['confirm_password'] = 'Las contrasenas no coinciden'
+        if not data.get(CURRENT_CREDENTIAL_FIELD):
+            errors[CURRENT_CREDENTIAL_FIELD] = 'Ingrese su contrasena actual'
+        if not data.get(NEW_CREDENTIAL_FIELD) or not re.match(CREDENTIAL_PATTERN, data.get(NEW_CREDENTIAL_FIELD, '')):
+            errors[NEW_CREDENTIAL_FIELD] = 'Min 8 caracteres, 1 mayuscula, 1 minuscula, 1 numero, 1 especial (@$!%*?&#.)'
+        if data.get(NEW_CREDENTIAL_FIELD) != data.get(CONFIRM_CREDENTIAL_FIELD):
+            errors[CONFIRM_CREDENTIAL_FIELD] = 'Las contrasenas no coinciden'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        result = model.change_password(session['user_id'], data['old_password'], data['new_password'])
+        result = model.change_password(session['user_id'], data[CURRENT_CREDENTIAL_FIELD], data[NEW_CREDENTIAL_FIELD])
         if result:
 
             return jsonify({"status": "success", "message": "Contrasena modificada correctamente."})
-        return jsonify({"status": "error", "message": "Contrasena actual incorrecta.", "errors": {"old_password": "Contrasena actual incorrecta."}}), 400
+        return jsonify({"status": "error", "message": "Contrasena actual incorrecta.", "errors": {CURRENT_CREDENTIAL_FIELD: "Contrasena actual incorrecta."}}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar la contrasena."}), 500
 

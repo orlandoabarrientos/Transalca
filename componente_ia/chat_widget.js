@@ -3,7 +3,8 @@
 
     const ASSISTANT_API_URL = window.TRANSALCA_ASSISTANT_API_URL || '/api/asistente/mensaje';
     const BOT_NAME = 'Asistente Transalca';
-    const MAX_MESSAGE_LENGTH = 255;
+    const MAX_MESSAGE_LENGTH = Number(window.TRANSALCA_ASSISTANT_MAX_MESSAGE_LENGTH || 1000);
+    const REQUEST_TIMEOUT_MS = Number(window.TRANSALCA_ASSISTANT_TIMEOUT_MS || 12000);
     const STORAGE_SESSION_KEY = 'transalca_chat_session_id';
     const STORAGE_MESSAGES_KEY = 'transalca_chat_messages';
     const WELCOME_MSG = 'Hola. Soy el asistente de Transalca C.A. Puedo ayudarte con productos, servicios, mantenimiento, compras y pedidos.';
@@ -19,6 +20,7 @@
     let isOpen = false;
     let isSending = false;
     let messages = [];
+    let requestSeq = 0;
 
     function loadStoredState() {
         try {
@@ -28,6 +30,7 @@
                 ? storedMessages.slice(-30).map((msg) => ({
                     type: msg.type === 'user' ? 'user' : 'bot',
                     text: String(msg.text || '').slice(0, 1000),
+                    sources: Array.isArray(msg.sources) ? msg.sources.slice(0, 4) : [],
                     time: msg.time ? new Date(msg.time) : new Date()
                 }))
                 : [];
@@ -218,8 +221,8 @@
         scrollToBottom();
     }
 
-    function addBotMessage(text) {
-        const msg = { type: 'bot', text, time: new Date() };
+    function addBotMessage(text, sources) {
+        const msg = { type: 'bot', text, sources: Array.isArray(sources) ? sources.slice(0, 4) : [], time: new Date() };
         messages.push(msg);
         renderMessage(msg);
         saveStoredState();
@@ -240,8 +243,40 @@
         time.textContent = msg.time.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
 
         div.appendChild(text);
+        if (msg.type === 'bot' && Array.isArray(msg.sources) && msg.sources.length) {
+            div.appendChild(renderSources(msg.sources));
+        }
         div.appendChild(time);
         container.appendChild(div);
+    }
+
+    function renderSources(sources) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'chat-sources';
+        const title = document.createElement('div');
+        title.className = 'chat-sources-title';
+        title.textContent = 'Fuentes';
+        wrapper.appendChild(title);
+        sources.slice(0, 4).forEach((source) => {
+            const url = String(source.url || '');
+            const label = String(source.title || source.domain || 'Referencia').slice(0, 90);
+            const domain = String(source.domain || '').slice(0, 80);
+            const item = document.createElement('a');
+            item.className = 'chat-source-link';
+            item.textContent = domain ? `${label} (${domain})` : label;
+            try {
+                const parsed = new URL(url);
+                if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+                    item.href = parsed.href;
+                    item.target = '_blank';
+                    item.rel = 'noopener noreferrer';
+                }
+            } catch (error) {
+                item.removeAttribute('href');
+            }
+            wrapper.appendChild(item);
+        });
+        return wrapper;
     }
 
     function scrollToBottom() {
@@ -268,8 +303,10 @@
     }
 
     async function sendToAssistant(message) {
+        const currentRequest = requestSeq + 1;
+        requestSeq = currentRequest;
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
+        const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
         try {
             const response = await fetch(ASSISTANT_API_URL, {
@@ -285,14 +322,53 @@
                 })
             });
 
-            const data = await response.json().catch(() => ({}));
+            if (currentRequest !== requestSeq) return;
+
+            const contentType = response.headers.get('content-type') || '';
+            const rawBody = await response.text();
+            let data = null;
+            if (contentType.includes('application/json')) {
+                try {
+                    data = rawBody ? JSON.parse(rawBody) : {};
+                } catch (error) {
+                    data = null;
+                }
+            }
+
             if (response.ok) {
-                addBotMessage(data.respuesta || data.message || 'Recibido.');
+                if (!data) {
+                    addBotMessage('El asistente respondio, pero el servidor no devolvio JSON valido.');
+                    return;
+                }
+                if (data.session_id) {
+                    sessionId = String(data.session_id);
+                    saveStoredState();
+                }
+                addBotMessage(data.respuesta || data.message || 'Recibido.', data.sources || []);
             } else {
-                addBotMessage(data.message || 'No se pudo procesar la pregunta.');
+                if (!data) {
+                    addBotMessage(`El servidor respondio HTTP ${response.status}, pero no devolvio JSON valido.`);
+                    return;
+                }
+                const requestId = data.request_id ? ` Codigo: ${data.request_id}.` : '';
+                if (response.status === 400) {
+                    addBotMessage((data.message || 'La solicitud no es valida.') + requestId);
+                } else if (response.status === 404) {
+                    addBotMessage('El endpoint del asistente no esta disponible.' + requestId);
+                } else if (response.status >= 500) {
+                    addBotMessage('El asistente tuvo un error interno.' + requestId);
+                } else {
+                    addBotMessage((data.message || `No se pudo procesar la pregunta. HTTP ${response.status}.`) + requestId);
+                }
             }
         } catch (error) {
-            addBotMessage('No pude consultar la informacion ahora. Intenta de nuevo en unos segundos.');
+            if (error && error.name === 'AbortError') {
+                addBotMessage('La consulta tardo demasiado y fue cancelada. Intenta con una pregunta mas puntual o prueba de nuevo.');
+            } else if (!navigator.onLine) {
+                addBotMessage('No hay conexion de red en este momento.');
+            } else {
+                addBotMessage('No pude conectar con el endpoint del asistente. Verifica la red o intenta de nuevo.');
+            }
         } finally {
             clearTimeout(timeout);
             hideTyping();

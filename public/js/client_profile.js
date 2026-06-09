@@ -313,7 +313,7 @@ function renderVehiclesTable() {
                 <td>${carnetCell}</td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary me-1" onclick="editVehicleFromProfile('${encodeURIComponent(v.placa || v.id || '')}')" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteVehicleFromProfile('${encodeURIComponent(v.placa || v.id || '')}')" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-sm btn-orange vehicle-delete-action" onclick="deleteVehicleFromProfile('${encodeURIComponent(v.placa || v.id || '')}')" title="Eliminar" aria-label="Eliminar vehiculo"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>
         `);
@@ -381,7 +381,7 @@ async function deleteVehicleFromProfile(vehicleId) {
         } catch (e) {
             showToast('Error al eliminar vehiculo', 'error');
         }
-    }, { confirmText: 'Eliminar', confirmColor: '#dc3545' });
+    }, { confirmText: 'Eliminar', confirmColor: '#F97316' });
 }
 
 function onCarnetFileSelected() {

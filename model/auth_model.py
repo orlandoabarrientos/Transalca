@@ -9,7 +9,13 @@ class AuthModel(Connection):
         super().__init__()
 
     def _columns(self, db, table):
-        rows = self.fetch_all(db, f"SHOW COLUMNS FROM {table}")
+        queries = {
+            'usuarios': "SHOW COLUMNS FROM usuarios",
+            'clientes': "SHOW COLUMNS FROM clientes",
+        }
+        if table not in queries:
+            raise ValueError("Tabla no permitida.")
+        rows = self.fetch_all(db, queries[table])
         return {r['Field'] for r in rows}
 
     def login(self, email, password):
@@ -43,9 +49,11 @@ class AuthModel(Connection):
             }
             columns = self._columns("mantenimiento", "usuarios")
             keys = [k for k in user_values if k in columns and user_values[k] is not None]
-            user_id = self.insert("mantenimiento",
-                f"INSERT INTO usuarios ({', '.join(keys)}) VALUES ({', '.join(['%s'] * len(keys))})",
-                tuple(user_values[k] for k in keys))
+            user_id = self.insert(
+                "mantenimiento",
+                self.build_insert_sql("usuarios", keys, {"usuarios"}, columns),
+                tuple(user_values[k] for k in keys)
+            )
             self.insert("mantenimiento",
                 "INSERT INTO usuario_rol (usuario_id, rol_id) VALUES (%s, %s)",
                 (user_id, self._role_id('Cliente')))
@@ -130,10 +138,5 @@ class AuthModel(Connection):
         if "origen_registro" in columns:
             values["origen_registro"] = (existing or {}).get('origen_registro') or data.get('origen_registro', 'cliente')
         keys = [k for k in values if k in columns]
-        placeholders = ", ".join(["%s"] * len(keys))
-        update_sql = ", ".join([f"{k}=VALUES({k})" for k in keys if k != "cedula"])
-        sql = (
-            f"INSERT INTO clientes ({', '.join(keys)}) VALUES ({placeholders}) "
-            f"ON DUPLICATE KEY UPDATE {update_sql}"
-        )
+        sql = self.build_upsert_sql("clientes", keys, "cedula", {"clientes"}, columns)
         return self.insert("transalca", sql, tuple(values[k] for k in keys))

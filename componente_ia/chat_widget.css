@@ -233,6 +233,33 @@
     margin-top: 4px;
 }
 
+.chat-sources {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.chat-sources-title {
+    font-size: 0.64rem;
+    color: #94A3B8;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.chat-source-link {
+    color: #FDBA74;
+    font-size: 0.7rem;
+    line-height: 1.35;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.chat-source-link:hover {
+    color: #FED7AA;
+    text-decoration: underline;
+}
+
 .chat-typing {
     display: flex;
     align-items: center;

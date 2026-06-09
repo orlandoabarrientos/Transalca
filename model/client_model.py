@@ -6,7 +6,9 @@ class ClientModel(Connection):
         super().__init__()
 
     def _columns(self, table):
-        rows = self.fetch_all("transalca", f"SHOW COLUMNS FROM {table}")
+        if table != "clientes":
+            raise ValueError("Tabla no permitida.")
+        rows = self.fetch_all("transalca", "SHOW COLUMNS FROM clientes")
         return {r['Field'] for r in rows}
 
     def _user_by_cedula(self, cedula):
@@ -60,16 +62,20 @@ class ClientModel(Connection):
             values['usuario_id'] = user['id']
         keys = [k for k in values if k in columns]
         if existing_client:
-            set_parts = [f"{k}=%s" for k in keys if k != 'cedula']
-            params = [values[k] for k in keys if k != 'cedula']
+            update_keys = [k for k in keys if k != 'cedula']
+            params = [values[k] for k in update_keys]
             params.append(cedula)
-            self.update("transalca", f"UPDATE clientes SET {', '.join(set_parts)} WHERE cedula=%s", tuple(params))
+            self.update(
+                "transalca",
+                self.build_update_by_key_sql("clientes", update_keys, "cedula", {"clientes"}, columns),
+                tuple(params)
+            )
             if user:
                 self.update("mantenimiento",
                     "UPDATE usuarios SET nombre=%s, apellido=%s, telefono=%s, email=%s, direccion=%s WHERE id=%s AND tipo='cliente'",
                     (values['nombre'], values['apellido'], values['telefono'], values['email'], values['direccion'], user['id']))
             return {'cedula': cedula, 'reactivated': not bool(existing_client.get('estado'))}
-        sql = f"INSERT INTO clientes ({', '.join(keys)}) VALUES ({', '.join(['%s'] * len(keys))})"
+        sql = self.build_insert_sql("clientes", keys, {"clientes"}, columns)
         self.insert("transalca", sql, tuple(values[k] for k in keys))
         if user:
             self.update("mantenimiento",
@@ -90,9 +96,11 @@ class ClientModel(Connection):
         keys = [k for k in values if k in columns]
         params = [values[k] for k in keys]
         params.append(cedula)
-        result = self.update("transalca",
-            f"UPDATE clientes SET {', '.join([f'{k}=%s' for k in keys])} WHERE cedula=%s",
-            tuple(params))
+        result = self.update(
+            "transalca",
+            self.build_update_by_key_sql("clientes", keys, "cedula", {"clientes"}, columns),
+            tuple(params)
+        )
         client = self.get_by_cedula(cedula)
         if client and client.get('usuario_id'):
             self.update("mantenimiento",
@@ -109,11 +117,13 @@ class ClientModel(Connection):
         return int(client.get('estado') or 0) if client else 0
 
     def get_stats(self, tipo_cliente='persona'):
-        params = [tipo_cliente] if tipo_cliente else []
-        where = "WHERE COALESCE(tipo_cliente, 'persona') = %s" if tipo_cliente else "WHERE 1=1"
-        where += " AND cedula != 'V-00000000'"
-        total = self.fetch_one("transalca", f"SELECT COUNT(*) as total FROM clientes {where}", tuple(params) if params else None)
-        activos = self.fetch_one("transalca", f"SELECT COUNT(*) as total FROM clientes {where} AND estado=1", tuple(params) if params else None)
+        if tipo_cliente:
+            params = (tipo_cliente,)
+            total = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM clientes WHERE COALESCE(tipo_cliente, 'persona') = %s AND cedula != 'V-00000000'", params)
+            activos = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM clientes WHERE COALESCE(tipo_cliente, 'persona') = %s AND cedula != 'V-00000000' AND estado=1", params)
+        else:
+            total = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM clientes WHERE cedula != 'V-00000000'")
+            activos = self.fetch_one("transalca", "SELECT COUNT(*) as total FROM clientes WHERE cedula != 'V-00000000' AND estado=1")
         return {
             'total': total['total'] if total else 0,
             'activos': activos['total'] if activos else 0

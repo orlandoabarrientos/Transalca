@@ -10,7 +10,10 @@ class ProductModel(Connection):
         return {r['Field'] for r in rows}
 
     def _product_select(self, where="p.estado = 1"):
-        return (
+        allowed_where = {"p.estado = 1", "p.estado = %s"}
+        if where not in allowed_where:
+            raise ValueError("Filtro de producto no permitido.")
+        base_sql = (
             "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, c.imagen as categoria_imagen, "
             "COALESCE(GROUP_CONCAT(DISTINCT su.nombre ORDER BY su.nombre SEPARATOR ', '), 'Sin stock') as sucursal_nombre, "
             "GROUP_CONCAT(DISTINCT st.sucursal_id ORDER BY st.sucursal_id SEPARATOR ',') as sucursal_ids, "
@@ -19,24 +22,24 @@ class ProductModel(Connection):
             "LEFT JOIN categorias c ON p.categoria = c.nombre "
             "LEFT JOIN stock st ON p.codigo = st.producto_codigo "
             "LEFT JOIN sucursales su ON st.sucursal_id = su.id "
-            f"WHERE {where} GROUP BY p.codigo ORDER BY p.nombre"
         )
+        if where == "p.estado = 1":
+            return base_sql + "WHERE p.estado = 1 GROUP BY p.codigo ORDER BY p.nombre"
+        return base_sql + "WHERE p.estado = %s GROUP BY p.codigo ORDER BY p.nombre"
 
     def get_all(self):
         return self.fetch_all("transalca", self._product_select())
 
     def get_all_paginated(self, page, per_page, q=None):
         offset = (page - 1) * per_page
-        where = ["p.estado = 1"]
-        params = []
-        if q:
-            like = f"%{q}%"
-            where.append("(p.nombre LIKE %s OR p.codigo LIKE %s OR p.descripcion LIKE %s)")
-            params.extend([like, like, like])
-        
-        where_sql = " AND ".join(where)
-        total_query = f"SELECT COUNT(DISTINCT p.codigo) as total FROM productos p WHERE {where_sql}"
-        total = self.fetch_one("transalca", total_query, tuple(params))['total']
+        q_value = (q or '').strip()
+        like = f"%{q_value}%"
+        filter_params = [q_value, like, like, like]
+        total_query = (
+            "SELECT COUNT(DISTINCT p.codigo) as total FROM productos p "
+            "WHERE p.estado = 1 AND (%s = '' OR p.nombre LIKE %s OR p.codigo LIKE %s OR p.descripcion LIKE %s)"
+        )
+        total = self.fetch_one("transalca", total_query, tuple(filter_params))['total']
         
         select_query = (
             "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, c.imagen as categoria_imagen, "
@@ -47,10 +50,11 @@ class ProductModel(Connection):
             "LEFT JOIN categorias c ON p.categoria = c.nombre "
             "LEFT JOIN stock st ON p.codigo = st.producto_codigo "
             "LEFT JOIN sucursales su ON st.sucursal_id = su.id "
-            f"WHERE {where_sql} GROUP BY p.codigo ORDER BY p.nombre "
+            "WHERE p.estado = 1 AND (%s = '' OR p.nombre LIKE %s OR p.codigo LIKE %s OR p.descripcion LIKE %s) "
+            "GROUP BY p.codigo ORDER BY p.nombre "
             "LIMIT %s OFFSET %s"
         )
-        data = self.fetch_all("transalca", select_query, tuple(params + [per_page, offset]))
+        data = self.fetch_all("transalca", select_query, tuple(filter_params + [per_page, offset]))
         return {
             "data": data,
             "total": total,
@@ -60,39 +64,26 @@ class ProductModel(Connection):
         }
 
     def get_active_paginated(self, page, per_page, category=None, branch=None, q=None, sort=None):
-        where = ["p.estado = 1"]
-        params = []
+        category_value = category or None
+        branch_value = branch or None
+        q_value = (q or '').strip()
+        like = f"%{q_value}%"
+        filter_params = [category_value, category_value, branch_value, branch_value, q_value, like, like, like]
 
-        if category:
-            where.append("p.categoria = %s")
-            params.append(category)
-        if branch:
-            where.append(
-                "EXISTS (SELECT 1 FROM stock st_filter "
-                "WHERE st_filter.producto_codigo = p.codigo AND st_filter.sucursal_id = %s)"
-            )
-            params.append(branch)
-        if q:
-            like = f"%{q}%"
-            where.append("(p.nombre LIKE %s OR p.codigo LIKE %s OR p.descripcion LIKE %s)")
-            params.extend([like, like, like])
-
-        where_sql = " AND ".join(where)
-        count_query = f"SELECT COUNT(DISTINCT p.codigo) as total FROM productos p WHERE {where_sql}"
-        total_row = self.fetch_one("transalca", count_query, tuple(params))
+        count_query = (
+            "SELECT COUNT(DISTINCT p.codigo) as total FROM productos p WHERE p.estado = 1 "
+            "AND (%s IS NULL OR p.categoria = %s) "
+            "AND (%s IS NULL OR EXISTS (SELECT 1 FROM stock st_filter WHERE st_filter.producto_codigo = p.codigo AND st_filter.sucursal_id = %s)) "
+            "AND (%s = '' OR p.nombre LIKE %s OR p.codigo LIKE %s OR p.descripcion LIKE %s)"
+        )
+        total_row = self.fetch_one("transalca", count_query, tuple(filter_params))
         total = total_row['total'] if total_row else 0
         pages = (total + per_page - 1) // per_page if total else 0
         if pages and page > pages:
             page = pages
         offset = (page - 1) * per_page
 
-        order_by = {
-            'price_asc': 'p.precio ASC, p.nombre ASC',
-            'price_desc': 'p.precio DESC, p.nombre ASC',
-            'name': 'p.nombre ASC'
-        }.get(sort, 'p.nombre ASC')
-
-        select_query = (
+        select_base = (
             "SELECT p.*, p.categoria as categoria_nombre, p.marca as marca_nombre, c.imagen as categoria_imagen, "
             "COALESCE(GROUP_CONCAT(DISTINCT su.nombre ORDER BY su.nombre SEPARATOR ', '), 'Sin stock') as sucursal_nombre, "
             "GROUP_CONCAT(DISTINCT st.sucursal_id ORDER BY st.sucursal_id SEPARATOR ',') as sucursal_ids, "
@@ -101,10 +92,19 @@ class ProductModel(Connection):
             "LEFT JOIN categorias c ON p.categoria = c.nombre "
             "LEFT JOIN stock st ON p.codigo = st.producto_codigo "
             "LEFT JOIN sucursales su ON st.sucursal_id = su.id "
-            f"WHERE {where_sql} GROUP BY p.codigo ORDER BY {order_by} "
-            "LIMIT %s OFFSET %s"
+            "WHERE p.estado = 1 "
+            "AND (%s IS NULL OR p.categoria = %s) "
+            "AND (%s IS NULL OR EXISTS (SELECT 1 FROM stock st_filter WHERE st_filter.producto_codigo = p.codigo AND st_filter.sucursal_id = %s)) "
+            "AND (%s = '' OR p.nombre LIKE %s OR p.codigo LIKE %s OR p.descripcion LIKE %s) "
+            "GROUP BY p.codigo ORDER BY "
         )
-        data = self.fetch_all("transalca", select_query, tuple(params + [per_page, offset]))
+        select_queries = {
+            'price_asc': select_base + "p.precio ASC, p.nombre ASC LIMIT %s OFFSET %s",
+            'price_desc': select_base + "p.precio DESC, p.nombre ASC LIMIT %s OFFSET %s",
+            'name': select_base + "p.nombre ASC LIMIT %s OFFSET %s"
+        }
+        select_query = select_queries.get(sort, select_queries['name'])
+        data = self.fetch_all("transalca", select_query, tuple(filter_params + [per_page, offset]))
         return {
             "data": data,
             "total": total,
@@ -169,8 +169,11 @@ class ProductModel(Connection):
             if parsed not in ids:
                 ids.append(parsed)
         if ids:
-            placeholders = ", ".join(["%s"] * len(ids))
-            self.update("transalca", f"DELETE FROM stock WHERE producto_codigo = %s AND sucursal_id NOT IN ({placeholders})", (codigo, *ids))
+            existing_rows = self.fetch_all("transalca", "SELECT sucursal_id FROM stock WHERE producto_codigo = %s", (codigo,))
+            for row in existing_rows:
+                sucursal_id = row.get('sucursal_id')
+                if sucursal_id not in ids:
+                    self.update("transalca", "DELETE FROM stock WHERE producto_codigo = %s AND sucursal_id = %s", (codigo, sucursal_id))
         else:
             self.update("transalca", "DELETE FROM stock WHERE producto_codigo = %s", (codigo,))
         for sucursal_id in ids:
@@ -191,7 +194,7 @@ class ProductModel(Connection):
         }
         keys = [k for k in values if k in columns]
         pid = self.insert("transalca",
-            f"INSERT INTO productos ({', '.join(keys)}) VALUES ({', '.join(['%s'] * len(keys))})",
+            self.build_insert_sql("productos", keys, {"productos"}, columns),
             tuple(values[k] for k in keys))
         self._sync_sucursales(values['codigo'], data.get('sucursal_ids') or [])
         return pid
@@ -211,7 +214,7 @@ class ProductModel(Connection):
         keys = [k for k in values if k in columns]
         params = [values[k] for k in keys] + [old_codigo]
         res = self.update("transalca",
-            f"UPDATE productos SET {', '.join([f'{k} = %s' for k in keys])} WHERE codigo = %s",
+            self.build_update_by_key_sql("productos", keys, "codigo", {"productos"}, columns),
             tuple(params))
         self._sync_sucursales(values['codigo'], data.get('sucursal_ids') or [])
         return res

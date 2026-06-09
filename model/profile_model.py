@@ -7,7 +7,12 @@ class ProfileModel(Connection):
         super().__init__()
 
     def _columns(self, db, table):
-        rows = self.fetch_all(db, f"SHOW COLUMNS FROM {table}")
+        queries = {
+            'clientes': "SHOW COLUMNS FROM clientes",
+        }
+        if table not in queries:
+            raise ValueError("Tabla no permitida.")
+        rows = self.fetch_all(db, queries[table])
         return {r['Field'] for r in rows}
 
     def get_profile(self, user_id):
@@ -29,12 +34,12 @@ class ProfileModel(Connection):
                 "direccion": data.get('direccion', ''),
                 "email": user.get('email', '')
             }
-            set_parts = [f"{k}=%s" for k in fields if k in columns]
-            params = [fields[k] for k in fields if k in columns]
-            if set_parts:
+            keys = [k for k in fields if k in columns]
+            params = [fields[k] for k in keys]
+            if keys:
                 params.append(user['cedula'])
                 self.update("transalca",
-                    f"UPDATE clientes SET {', '.join(set_parts)} WHERE cedula=%s",
+                    self.build_update_by_key_sql("clientes", keys, "cedula", {"clientes"}, columns),
                     tuple(params))
         return updated
 

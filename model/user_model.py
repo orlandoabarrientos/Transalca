@@ -40,7 +40,7 @@ class UserModel(Connection):
         columns = self._columns()
         keys = [k for k in values if k in columns and values[k] is not None]
         user_id = self.insert("mantenimiento",
-            f"INSERT INTO usuarios ({', '.join(keys)}) VALUES ({', '.join(['%s'] * len(keys))})",
+            self.build_insert_sql("usuarios", keys, {"usuarios"}, columns),
             tuple(values[k] for k in keys))
         return user_id
 
@@ -60,7 +60,7 @@ class UserModel(Connection):
         keys = [k for k in values if k in columns and values[k] is not None]
         params = [values[k] for k in keys] + [user_id]
         return self.update("mantenimiento",
-            f"UPDATE usuarios SET {', '.join([f'{k} = %s' for k in keys])} WHERE id = %s",
+            self.build_update_by_key_sql("usuarios", keys, "id", {"usuarios"}, columns),
             tuple(params))
 
     def update_status(self, user_id, estado):

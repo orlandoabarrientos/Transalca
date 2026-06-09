@@ -1,6 +1,12 @@
+import logging
 import pymysql
+import re
 import threading
 from config.config import DB_CONFIG_MANTENIMIENTO, DB_CONFIG_TRANSALCA
+
+
+logger = logging.getLogger(__name__)
+SQL_IDENTIFIER_RE = re.compile(r'^[A-Za-z0-9_]+$')
 
 
 class Connection:
@@ -106,6 +112,46 @@ class Connection:
     def delete(self, db, sql, params=None):
         return self.update(db, sql, params)
 
+    def sql_identifier(self, value, allowed):
+        if value not in allowed or not SQL_IDENTIFIER_RE.fullmatch(str(value or '')):
+            raise ValueError("Identificador SQL no permitido.")
+        return "`" + value + "`"
+
+    def sql_identifier_list(self, values, allowed):
+        return ", ".join(self.sql_identifier(value, allowed) for value in values)
+
+    def sql_placeholders(self, count):
+        return ", ".join(["%s"] * count)
+
+    def sql_assignments(self, values, allowed):
+        return ", ".join(self.sql_identifier(value, allowed) + " = %s" for value in values)
+
+    def build_insert_sql(self, table, columns, allowed_tables, allowed_columns):
+        table_sql = self.sql_identifier(table, allowed_tables)
+        columns_sql = self.sql_identifier_list(columns, allowed_columns)
+        values_sql = self.sql_placeholders(len(columns))
+        return " ".join(["INSERT INTO", table_sql, "(" + columns_sql + ")", "VALUES", "(" + values_sql + ")"])
+
+    def build_update_by_key_sql(self, table, columns, key_column, allowed_tables, allowed_columns):
+        table_sql = self.sql_identifier(table, allowed_tables)
+        assignments_sql = self.sql_assignments(columns, allowed_columns)
+        key_sql = self.sql_identifier(key_column, allowed_columns)
+        return " ".join(["UPDATE", table_sql, "SET", assignments_sql, "WHERE", key_sql, "= %s"])
+
+    def build_upsert_sql(self, table, columns, key_column, allowed_tables, allowed_columns):
+        table_sql = self.sql_identifier(table, allowed_tables)
+        columns_sql = self.sql_identifier_list(columns, allowed_columns)
+        values_sql = self.sql_placeholders(len(columns))
+        update_columns = [column for column in columns if column != key_column]
+        update_sql = ", ".join(
+            self.sql_identifier(column, allowed_columns) + "=VALUES(" + self.sql_identifier(column, allowed_columns) + ")"
+            for column in update_columns
+        )
+        return " ".join([
+            "INSERT INTO", table_sql, "(" + columns_sql + ")", "VALUES", "(" + values_sql + ")",
+            "ON DUPLICATE KEY UPDATE", update_sql
+        ])
+
     def begin_transaction(self, db):
         conn = self.con_mantenimiento() if db == "mantenimiento" else self.con_transalca()
         conn.begin()
@@ -138,30 +184,34 @@ class Connection:
             tables_to_check = ["usuarios", "clientes", "proveedores", "sucursales"]
 
         checks = [
-            ("mantenimiento", "usuarios", "email", "id", exclude.get("usuario_id"), "cedula", exclude.get("usuario_cedula")),
-            ("transalca", "clientes", "email", "cedula", exclude.get("cliente_cedula"), None, None),
-            ("transalca", "proveedores", "email", "rif", exclude.get("proveedor_rif"), None, None),
-            ("transalca", "sucursales", "email", "id", exclude.get("sucursal_id"), None, None),
+            ("usuarios", "mantenimiento", "SELECT id FROM usuarios WHERE LOWER(email) = %s AND estado = 1", [
+                (" AND id != %s", exclude.get("usuario_id")),
+                (" AND cedula != %s", exclude.get("usuario_cedula")),
+            ]),
+            ("clientes", "transalca", "SELECT cedula FROM clientes WHERE LOWER(email) = %s AND estado = 1", [
+                (" AND cedula != %s", exclude.get("cliente_cedula")),
+            ]),
+            ("proveedores", "transalca", "SELECT rif FROM proveedores WHERE LOWER(email) = %s AND estado = 1", [
+                (" AND rif != %s", exclude.get("proveedor_rif")),
+            ]),
+            ("sucursales", "transalca", "SELECT id FROM sucursales WHERE LOWER(email) = %s AND estado = 1", [
+                (" AND id != %s", exclude.get("sucursal_id")),
+            ]),
         ]
-        for db, table, column, key, excluded_value, second_key, second_excluded_value in checks:
+        for table, db, base_sql, optional_filters in checks:
             if table not in tables_to_check:
                 continue
+            row = None
             try:
-                where = [f"LOWER({column}) = %s", "estado = 1"]
+                sql = base_sql
                 params = [normalized]
-                if excluded_value not in (None, ''):
-                    where.append(f"{key} != %s")
-                    params.append(excluded_value)
-                if second_key and second_excluded_value not in (None, ''):
-                    where.append(f"{second_key} != %s")
-                    params.append(second_excluded_value)
-                row = self.fetch_one(
-                    db,
-                    f"SELECT {key} FROM {table} WHERE {' AND '.join(where)} LIMIT 1",
-                    tuple(params)
-                )
-                if row:
-                    return True
+                for clause, value in optional_filters:
+                    if value not in (None, ''):
+                        sql += clause
+                        params.append(value)
+                row = self.fetch_one(db, sql + " LIMIT 1", tuple(params))
             except Exception:
-                continue
+                logger.warning("No se pudo validar email duplicado en %s.", table, exc_info=True)
+            if row:
+                return True
         return False

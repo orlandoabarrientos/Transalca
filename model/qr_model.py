@@ -89,9 +89,8 @@ class QRModel(Connection):
         extra = [k for k in ('referencia_id', 'promocion_id', 'servicio_id', 'orden_venta_id') if k in columns]
         names = ['usuario_cedula', 'tipo', 'contenido', 'utilidad'] + extra
         values = [data['usuario_cedula'], data.get('tipo', 'info'), contenido, utilidad] + [fields[k] for k in extra]
-        placeholders = ", ".join(["%s"] * len(names))
         return self.insert("transalca",
-            f"INSERT INTO qr_codes ({', '.join(names)}) VALUES ({placeholders})",
+            self.build_insert_sql("qr_codes", names, {"qr_codes"}, columns),
             tuple(values))
 
     def get_user_qrs(self, usuario_cedula):
@@ -121,10 +120,10 @@ class QRModel(Connection):
         fields = self._reference_fields(data)
         columns = self._columns()
         extra = [k for k in ('referencia_id', 'promocion_id', 'servicio_id', 'orden_venta_id') if k in columns]
-        set_sql = ["tipo = %s", "contenido = %s", "utilidad = %s"] + [f"{k} = %s" for k in extra]
+        update_columns = ['tipo', 'contenido', 'utilidad'] + extra
         values = [data.get('tipo', 'info'), contenido, utilidad] + [fields[k] for k in extra] + [qr_id]
         return self.update("transalca",
-            f"UPDATE qr_codes SET {', '.join(set_sql)} WHERE id = %s",
+            self.build_update_by_key_sql("qr_codes", update_columns, "id", {"qr_codes"}, columns),
             tuple(values))
 
     def delete_qr(self, qr_id):

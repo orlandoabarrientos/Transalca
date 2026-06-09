@@ -16,23 +16,19 @@ class VehicleLogModel(Connection):
         smid = data.get('servicio_mecanico_id')
         if smid:
             return smid
-        clauses = []
-        params = []
-        if data.get('orden_venta_id'):
-            clauses.append("orden_venta_id=%s")
-            params.append(data.get('orden_venta_id'))
-        if data.get('servicio_id'):
-            clauses.append("servicio_id=%s")
-            params.append(data.get('servicio_id'))
-        if data.get('mecanico_cedula'):
-            clauses.append("mecanico_cedula=%s")
-            params.append(data.get('mecanico_cedula'))
-        if not clauses:
+        orden_venta_id = data.get('orden_venta_id') or None
+        servicio_id = data.get('servicio_id') or None
+        mecanico_cedula = data.get('mecanico_cedula') or None
+        if not any((orden_venta_id, servicio_id, mecanico_cedula)):
             return None
         row = self.fetch_one(
             "transalca",
-            f"SELECT id FROM servicio_mecanico WHERE {' AND '.join(clauses)} ORDER BY fecha DESC LIMIT 1",
-            tuple(params)
+            "SELECT id FROM servicio_mecanico WHERE "
+            "(%s IS NULL OR orden_venta_id=%s) AND "
+            "(%s IS NULL OR servicio_id=%s) AND "
+            "(%s IS NULL OR mecanico_cedula=%s) "
+            "ORDER BY fecha DESC LIMIT 1",
+            (orden_venta_id, orden_venta_id, servicio_id, servicio_id, mecanico_cedula, mecanico_cedula)
         )
         return row['id'] if row else None
 

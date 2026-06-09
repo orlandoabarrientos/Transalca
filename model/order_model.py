@@ -1,6 +1,9 @@
 import json
+import logging
 from model.connection import Connection
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 
 def caracas_now():
@@ -237,7 +240,7 @@ class OrderModel(Connection):
                         "INSERT INTO qr_codes (usuario_cedula, tipo, contenido, utilidad, referencia_id) VALUES (%s, 'pago', %s, 'factura', %s)",
                         (cliente_cedula, qr_payload, order_id))
             except Exception:
-                pass
+                logger.warning("No se pudo crear el QR de factura para la orden %s.", order_id, exc_info=True)
 
             cursor.execute("DELETE FROM carrito WHERE cliente_cedula = %s", (cliente_cedula,))
             conn.commit()

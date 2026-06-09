@@ -1,5 +1,11 @@
 let charts = {};
 let chartDataCache = {};
+const chartCanvasIds = {
+    revenue: 'revenueChart',
+    status: 'statusChart',
+    products: 'productsChart',
+    payments: 'paymentsChart'
+};
 const chartTypes = ['line', 'bar', 'doughnut', 'pie', 'polarArea'];
 const chartTypeLabels = {
     line: 'Línea',
@@ -32,7 +38,18 @@ function setupChartTypeControls() {
         select.innerHTML = chartTypes.map(type => `<option value="${type}">${chartTypeLabels[type]}</option>`).join('');
         const key = select.dataset.chart;
         select.value = currentChartTypes[key] || 'bar';
-        select.addEventListener('change', () => changeChartType(key, select.value));
+        if (window.jQuery) {
+            window.jQuery(select)
+                .off('change.statsChart')
+                .on('change.statsChart', function() {
+                    changeChartType(key, this.value);
+                })
+                .trigger('change.select2');
+        } else {
+            select.onchange = function() {
+                changeChartType(key, this.value);
+            };
+        }
     });
 }
 
@@ -44,13 +61,8 @@ function initCharts() {
 }
 
 function createChart(key, type) {
-    const canvasIds = {
-        revenue: 'revenueChart',
-        status: 'statusChart',
-        products: 'productsChart',
-        payments: 'paymentsChart'
-    };
-    const ctx = document.getElementById(canvasIds[key]).getContext('2d');
+    destroyChart(key);
+    const ctx = document.getElementById(chartCanvasIds[key]).getContext('2d');
     const cached = chartDataCache[key] || { labels: [], data: [] };
     const dataset = buildDataset(key, type, cached.data);
     return new Chart(ctx, {
@@ -102,14 +114,27 @@ function buildOptions(key, type) {
     };
 }
 
+function destroyChart(key) {
+    const canvas = document.getElementById(chartCanvasIds[key]);
+    const existingChart = canvas && typeof Chart.getChart === 'function' ? Chart.getChart(canvas) : charts[key];
+    if (existingChart) existingChart.destroy();
+    charts[key] = null;
+}
+
 function changeChartType(key, type) {
     currentChartTypes[key] = chartTypes.includes(type) ? type : 'bar';
-    if (charts[key]) charts[key].destroy();
+    const select = document.querySelector(`.chart-type-select[data-chart="${key}"]`);
+    if (select && select.value !== currentChartTypes[key]) {
+        select.value = currentChartTypes[key];
+        if (window.jQuery) window.jQuery(select).trigger('change.select2');
+    }
+    if (charts[key]?.config?.type === currentChartTypes[key]) return;
     charts[key] = createChart(key, currentChartTypes[key]);
 }
 
 function updateChart(key, labels, data) {
     chartDataCache[key] = { labels, data };
+    if (!charts[key]) charts[key] = createChart(key, currentChartTypes[key]);
     charts[key].data.labels = labels;
     charts[key].data.datasets[0] = buildDataset(key, currentChartTypes[key], data);
     charts[key].options = buildOptions(key, currentChartTypes[key]);

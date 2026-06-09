@@ -35,7 +35,7 @@ class MechanicModel(Connection):
         columns = self._columns()
         keys = [k for k in values if k in columns and values[k] is not None]
         return self.insert("transalca",
-            f"INSERT INTO mecanicos ({', '.join(keys)}) VALUES ({', '.join(['%s'] * len(keys))})",
+            self.build_insert_sql("mecanicos", keys, {"mecanicos"}, columns),
             tuple(values[k] for k in keys))
 
     def update_mechanic(self, old_cedula, data):
@@ -54,7 +54,7 @@ class MechanicModel(Connection):
         params = [values[k] for k in keys]
         params.append(old_cedula)
         return self.update("transalca",
-            f"UPDATE mecanicos SET {', '.join([f'{k}=%s' for k in keys])} WHERE cedula=%s",
+            self.build_update_by_key_sql("mecanicos", keys, "cedula", {"mecanicos"}, columns),
             tuple(params))
 
     def soft_delete(self, cedula):
