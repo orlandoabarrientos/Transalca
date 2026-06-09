@@ -23,6 +23,7 @@ $(document).ready(function() {
     document.getElementById('cedula')?.addEventListener('input', () => validateUniqueUser('cedula'));
     document.getElementById('cedula_prefijo')?.addEventListener('change', () => validateUniqueUser('cedula'));
     document.getElementById('email')?.addEventListener('input', () => validateUniqueUser('email'));
+    $('#tipo').on('change', filterRolesByTipo);
 });
 
 let paginator = null;
@@ -58,15 +59,42 @@ function loadData() {
     });
 }
 
+let allRoles = [];
+
 async function loadRoles() {
     try {
         const res = await apiCall('/api/roles/');
-        const sel = document.getElementById('rol_id');
-        if (sel) {
-            sel.innerHTML = '<option value="">Seleccione un rol...</option>';
-            (res.data || []).filter(r => Number(r.estado) === 1).forEach(r => sel.innerHTML += `<option value="${r.id}">${escapeHtml(r.nombre)}</option>`);
-        }
+        allRoles = (res.data || []).filter(r => Number(r.estado) === 1);
+        filterRolesByTipo();
     } catch(e) {}
+}
+
+function filterRolesByTipo() {
+    const sel = document.getElementById('rol_id');
+    const tipo = document.getElementById('tipo')?.value;
+    if (!sel || !allRoles.length) return;
+    
+    const currentVal = $(sel).val();
+    sel.innerHTML = '<option value="">Seleccione un rol...</option>';
+    
+    let filtered = [];
+    if (tipo === 'cliente') {
+        filtered = allRoles.filter(r => r.nombre.toLowerCase() === 'cliente');
+    } else {
+        filtered = allRoles.filter(r => r.nombre.toLowerCase() !== 'cliente');
+    }
+    
+    filtered.forEach(r => {
+        sel.innerHTML += `<option value="${r.id}">${escapeHtml(r.nombre)}</option>`;
+    });
+    
+    if (currentVal && filtered.some(r => r.id.toString() === currentVal.toString())) {
+        $(sel).val(currentVal).trigger('change.select2');
+    } else if (filtered.length > 0) {
+        $(sel).val(filtered[0].id).trigger('change.select2');
+    } else {
+        $(sel).val('').trigger('change.select2');
+    }
 }
 
 function openModal(id = null) {
@@ -88,10 +116,11 @@ function editData(id) {
         document.getElementById('nombre').value = u.nombre || '';
         document.getElementById('apellido').value = u.apellido || '';
         setDocumentFields('cedula_prefijo', 'cedula', u.cedula || '', 'V');
+        $('#cedula_prefijo').trigger('change');
         document.getElementById('email').value = u.email || '';
         document.getElementById('telefono').value = u.telefono || '';
         document.getElementById('direccion').value = u.direccion || '';
-        document.getElementById('tipo').value = u.tipo || 'empleado';
+        $('#tipo').val(u.tipo || 'empleado').trigger('change');
         if (u.roles?.length) {
             $('#rol_id').val(u.roles[0].id).trigger('change');
         } else {
