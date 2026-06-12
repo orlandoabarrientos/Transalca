@@ -1,8 +1,6 @@
 from model.connection import Connection
 
 
-# Estado operativo (Ocupado/Disponible) calculado por codigo segun servicios activos,
-# no se almacena en la tabla.
 OCUPADO_SQL = (
     "CASE WHEN EXISTS (SELECT 1 FROM servicio_mecanico sm WHERE sm.mecanico_cedula = m.cedula_mecanico "
     "AND sm.estado_servicio IN ('asignado', 'en_proceso')) THEN 'Ocupado' ELSE 'Disponible' END"

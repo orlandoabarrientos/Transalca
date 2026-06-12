@@ -8,7 +8,6 @@ from config.config import MAIL_PASSWORD, MAIL_PORT, MAIL_SERVER, MAIL_USERNAME
 from model.connection import Connection
 from model.notification_model import NotificationModel
 
-# monto_deuda ya no se almacena: se calcula como total de la orden menos abonos.
 DEUDA_SQL = (
     "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc "
     "WHERE pc.id_credito = cr.id_credito), 0))"

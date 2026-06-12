@@ -10,7 +10,6 @@ model = ServiceMechanicModel()
 
 commission_model = CommissionModel()
 
-# Estados que exigen tener todos los datos obligatorios completos.
 ESTADOS_REQUIEREN_DATOS = {'en_proceso', 'completado'}
 
 

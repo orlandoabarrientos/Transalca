@@ -52,7 +52,6 @@ function switchReport(type, el) {
         $('#statusFilterContainer label').text('Estado');
     }
 
-    // Reset table structure and paginator state to avoid cross-contamination
     document.getElementById('reportHead').innerHTML = '';
     document.getElementById('reportBody').innerHTML = '<tr><td class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
     

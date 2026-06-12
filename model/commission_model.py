@@ -1,8 +1,6 @@
 from config.constants import PORCENTAJE_COMISION_DEFAULT
 from model.connection import Connection
 
-# El monto de la comision se calcula por codigo (precio x porcentaje / 100),
-# no se almacena en la tabla.
 MONTO_SQL = "ROUND(cm.precio_servicio_comision * (cm.porcentaje_comision / 100), 2) AS monto_comision"
 
 

@@ -177,7 +177,6 @@ def update(user_id):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
         if model.ejecutar("cedula_exists", data['cedula'], user_id):
             return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
-        # Prevent role change for the last active administrator
         current_roles = model.ejecutar("get_user_roles", user_id)
         was_admin = any(r['nombre'] == 'Administrador' for r in current_roles)
         if was_admin:

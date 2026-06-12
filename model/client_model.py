@@ -1,7 +1,6 @@
 from model.connection import Connection
 
 
-# Fragmento que expone cliente+natural con el contrato historico (cedula, nombre, email...)
 CLIENTE_BASE = (
     "SELECT c.identificador_cliente AS cedula, c.nombre_cliente AS nombre, '' AS apellido, "
     "c.correo_cliente AS email, c.telefono_cliente AS telefono, c.direccion_cliente AS direccion, "

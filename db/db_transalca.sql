@@ -1,8 +1,3 @@
--- MariaDB dump 10.19  Distrib 10.4.32-MariaDB, for Win64 (AMD64)
---
--- Host: localhost    Database: db_transalca
--- ------------------------------------------------------
--- Server version	10.4.32-MariaDB
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -15,9 +10,6 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
---
--- Table structure for table `bitacora_prediccion`
---
 
 DROP TABLE IF EXISTS `bitacora_prediccion`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -42,9 +34,6 @@ CREATE TABLE `bitacora_prediccion` (
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `bitacora_prediccion`
---
 
 LOCK TABLES `bitacora_prediccion` WRITE;
 /*!40000 ALTER TABLE `bitacora_prediccion` DISABLE KEYS */;
@@ -52,9 +41,6 @@ INSERT INTO `bitacora_prediccion` VALUES (1,'AB123CD','servicio_general','Servic
 /*!40000 ALTER TABLE `bitacora_prediccion` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `bitacora_vehiculo`
---
 
 DROP TABLE IF EXISTS `bitacora_vehiculo`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -81,9 +67,6 @@ CREATE TABLE `bitacora_vehiculo` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `bitacora_vehiculo`
---
 
 LOCK TABLES `bitacora_vehiculo` WRITE;
 /*!40000 ALTER TABLE `bitacora_vehiculo` DISABLE KEYS */;
@@ -109,9 +92,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `carrito_compra`
---
 
 DROP TABLE IF EXISTS `carrito_compra`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -134,18 +114,12 @@ CREATE TABLE `carrito_compra` (
 ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `carrito_compra`
---
 
 LOCK TABLES `carrito_compra` WRITE;
 /*!40000 ALTER TABLE `carrito_compra` DISABLE KEYS */;
 /*!40000 ALTER TABLE `carrito_compra` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `categorias`
---
 
 DROP TABLE IF EXISTS `categorias`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -160,9 +134,6 @@ CREATE TABLE `categorias` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `categorias`
---
 
 LOCK TABLES `categorias` WRITE;
 /*!40000 ALTER TABLE `categorias` DISABLE KEYS */;
@@ -211,9 +182,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `cliente`
---
 
 DROP TABLE IF EXISTS `cliente`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -234,9 +202,6 @@ CREATE TABLE `cliente` (
 ) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `cliente`
---
 
 LOCK TABLES `cliente` WRITE;
 /*!40000 ALTER TABLE `cliente` DISABLE KEYS */;
@@ -274,9 +239,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `cliente_juridico`
---
 
 DROP TABLE IF EXISTS `cliente_juridico`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -295,9 +257,6 @@ CREATE TABLE `cliente_juridico` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `cliente_juridico`
---
 
 LOCK TABLES `cliente_juridico` WRITE;
 /*!40000 ALTER TABLE `cliente_juridico` DISABLE KEYS */;
@@ -335,9 +294,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `cliente_natural`
---
 
 DROP TABLE IF EXISTS `cliente_natural`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -357,9 +313,6 @@ CREATE TABLE `cliente_natural` (
 ) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `cliente_natural`
---
 
 LOCK TABLES `cliente_natural` WRITE;
 /*!40000 ALTER TABLE `cliente_natural` DISABLE KEYS */;
@@ -367,9 +320,6 @@ INSERT INTO `cliente_natural` VALUES (1,1,4,'cliente','2026-05-01 01:36:53','202
 /*!40000 ALTER TABLE `cliente_natural` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `cliente_vehiculo`
---
 
 DROP TABLE IF EXISTS `cliente_vehiculo`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -389,9 +339,6 @@ CREATE TABLE `cliente_vehiculo` (
 ) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `cliente_vehiculo`
---
 
 LOCK TABLES `cliente_vehiculo` WRITE;
 /*!40000 ALTER TABLE `cliente_vehiculo` DISABLE KEYS */;
@@ -399,9 +346,6 @@ INSERT INTO `cliente_vehiculo` VALUES (1,'dede','AB123CD',1,'2026-05-01 01:04:53
 /*!40000 ALTER TABLE `cliente_vehiculo` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `comisiones_mecanico`
---
 
 DROP TABLE IF EXISTS `comisiones_mecanico`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -415,9 +359,6 @@ CREATE TABLE `comisiones_mecanico` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `comisiones_mecanico`
---
 
 LOCK TABLES `comisiones_mecanico` WRITE;
 /*!40000 ALTER TABLE `comisiones_mecanico` DISABLE KEYS */;
@@ -455,9 +396,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `comprobantes_pago`
---
 
 DROP TABLE IF EXISTS `comprobantes_pago`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -476,9 +414,6 @@ CREATE TABLE `comprobantes_pago` (
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `comprobantes_pago`
---
 
 LOCK TABLES `comprobantes_pago` WRITE;
 /*!40000 ALTER TABLE `comprobantes_pago` DISABLE KEYS */;
@@ -516,9 +451,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `configuracion`
---
 
 DROP TABLE IF EXISTS `configuracion`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -530,9 +462,6 @@ CREATE TABLE `configuracion` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `configuracion`
---
 
 LOCK TABLES `configuracion` WRITE;
 /*!40000 ALTER TABLE `configuracion` DISABLE KEYS */;
@@ -540,9 +469,6 @@ INSERT INTO `configuracion` VALUES ('direccion_empresa','Direccion Principal'),(
 /*!40000 ALTER TABLE `configuracion` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `creditos_orden_venta`
---
 
 DROP TABLE IF EXISTS `creditos_orden_venta`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -564,9 +490,6 @@ CREATE TABLE `creditos_orden_venta` (
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `creditos_orden_venta`
---
 
 LOCK TABLES `creditos_orden_venta` WRITE;
 /*!40000 ALTER TABLE `creditos_orden_venta` DISABLE KEYS */;
@@ -604,9 +527,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `detalle_orden_compra`
---
 
 DROP TABLE IF EXISTS `detalle_orden_compra`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -626,9 +546,6 @@ CREATE TABLE `detalle_orden_compra` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `detalle_orden_compra`
---
 
 LOCK TABLES `detalle_orden_compra` WRITE;
 /*!40000 ALTER TABLE `detalle_orden_compra` DISABLE KEYS */;
@@ -636,9 +553,6 @@ INSERT INTO `detalle_orden_compra` VALUES (1,1,'BAT-000042',10,89.00,890.00);
 /*!40000 ALTER TABLE `detalle_orden_compra` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `detalle_orden_venta_productos`
---
 
 DROP TABLE IF EXISTS `detalle_orden_venta_productos`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -657,9 +571,6 @@ CREATE TABLE `detalle_orden_venta_productos` (
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `detalle_orden_venta_productos`
---
 
 LOCK TABLES `detalle_orden_venta_productos` WRITE;
 /*!40000 ALTER TABLE `detalle_orden_venta_productos` DISABLE KEYS */;
@@ -667,9 +578,6 @@ INSERT INTO `detalle_orden_venta_productos` VALUES (1,1,'PC0507224338',2,21.00),
 /*!40000 ALTER TABLE `detalle_orden_venta_productos` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `detalle_orden_venta_servicios`
---
 
 DROP TABLE IF EXISTS `detalle_orden_venta_servicios`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -688,9 +596,6 @@ CREATE TABLE `detalle_orden_venta_servicios` (
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `detalle_orden_venta_servicios`
---
 
 LOCK TABLES `detalle_orden_venta_servicios` WRITE;
 /*!40000 ALTER TABLE `detalle_orden_venta_servicios` DISABLE KEYS */;
@@ -698,9 +603,6 @@ INSERT INTO `detalle_orden_venta_servicios` VALUES (2,2,1,1,15.00),(3,12,22,1,20
 /*!40000 ALTER TABLE `detalle_orden_venta_servicios` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `empresa_representante`
---
 
 DROP TABLE IF EXISTS `empresa_representante`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -721,9 +623,6 @@ CREATE TABLE `empresa_representante` (
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `empresa_representante`
---
 
 LOCK TABLES `empresa_representante` WRITE;
 /*!40000 ALTER TABLE `empresa_representante` DISABLE KEYS */;
@@ -731,9 +630,6 @@ INSERT INTO `empresa_representante` VALUES (2,'J-55656666-5','V-00000000','Encar
 /*!40000 ALTER TABLE `empresa_representante` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `empresa_vehiculo_representante`
---
 
 DROP TABLE IF EXISTS `empresa_vehiculo_representante`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -754,18 +650,12 @@ CREATE TABLE `empresa_vehiculo_representante` (
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `empresa_vehiculo_representante`
---
 
 LOCK TABLES `empresa_vehiculo_representante` WRITE;
 /*!40000 ALTER TABLE `empresa_vehiculo_representante` DISABLE KEYS */;
 /*!40000 ALTER TABLE `empresa_vehiculo_representante` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `historial_puntos`
---
 
 DROP TABLE IF EXISTS `historial_puntos`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -784,9 +674,6 @@ CREATE TABLE `historial_puntos` (
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `historial_puntos`
---
 
 LOCK TABLES `historial_puntos` WRITE;
 /*!40000 ALTER TABLE `historial_puntos` DISABLE KEYS */;
@@ -794,9 +681,6 @@ INSERT INTO `historial_puntos` VALUES (1,2,1,'suma','Registro de tarjeta y prime
 /*!40000 ALTER TABLE `historial_puntos` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `marcas`
---
 
 DROP TABLE IF EXISTS `marcas`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -810,9 +694,6 @@ CREATE TABLE `marcas` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `marcas`
---
 
 LOCK TABLES `marcas` WRITE;
 /*!40000 ALTER TABLE `marcas` DISABLE KEYS */;
@@ -861,9 +742,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `mecanicos`
---
 
 DROP TABLE IF EXISTS `mecanicos`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -885,9 +763,6 @@ CREATE TABLE `mecanicos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `mecanicos`
---
 
 LOCK TABLES `mecanicos` WRITE;
 /*!40000 ALTER TABLE `mecanicos` DISABLE KEYS */;
@@ -936,9 +811,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `metodos_pago`
---
 
 DROP TABLE IF EXISTS `metodos_pago`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -956,9 +828,6 @@ CREATE TABLE `metodos_pago` (
 ) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `metodos_pago`
---
 
 LOCK TABLES `metodos_pago` WRITE;
 /*!40000 ALTER TABLE `metodos_pago` DISABLE KEYS */;
@@ -1007,9 +876,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `notificaciones`
---
 
 DROP TABLE IF EXISTS `notificaciones`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1033,9 +899,6 @@ CREATE TABLE `notificaciones` (
 ) ENGINE=InnoDB AUTO_INCREMENT=482 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `notificaciones`
---
 
 LOCK TABLES `notificaciones` WRITE;
 /*!40000 ALTER TABLE `notificaciones` DISABLE KEYS */;
@@ -1043,9 +906,6 @@ INSERT INTO `notificaciones` VALUES (9,NULL,'V-00000000','pago','Pago aprobado: 
 /*!40000 ALTER TABLE `notificaciones` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `ordenes_compra`
---
 
 DROP TABLE IF EXISTS `ordenes_compra`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1066,9 +926,6 @@ CREATE TABLE `ordenes_compra` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `ordenes_compra`
---
 
 LOCK TABLES `ordenes_compra` WRITE;
 /*!40000 ALTER TABLE `ordenes_compra` DISABLE KEYS */;
@@ -1112,9 +969,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `ordenes_venta`
---
 
 DROP TABLE IF EXISTS `ordenes_venta`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1142,9 +996,6 @@ CREATE TABLE `ordenes_venta` (
 ) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `ordenes_venta`
---
 
 LOCK TABLES `ordenes_venta` WRITE;
 /*!40000 ALTER TABLE `ordenes_venta` DISABLE KEYS */;
@@ -1212,9 +1063,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `pagos_credito`
---
 
 DROP TABLE IF EXISTS `pagos_credito`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1231,9 +1079,6 @@ CREATE TABLE `pagos_credito` (
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `pagos_credito`
---
 
 LOCK TABLES `pagos_credito` WRITE;
 /*!40000 ALTER TABLE `pagos_credito` DISABLE KEYS */;
@@ -1256,9 +1101,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `productos`
---
 
 DROP TABLE IF EXISTS `productos`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1282,9 +1124,6 @@ CREATE TABLE `productos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `productos`
---
 
 LOCK TABLES `productos` WRITE;
 /*!40000 ALTER TABLE `productos` DISABLE KEYS */;
@@ -1333,9 +1172,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `promociones`
---
 
 DROP TABLE IF EXISTS `promociones`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1357,9 +1193,6 @@ CREATE TABLE `promociones` (
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `promociones`
---
 
 LOCK TABLES `promociones` WRITE;
 /*!40000 ALTER TABLE `promociones` DISABLE KEYS */;
@@ -1408,9 +1241,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `proveedores`
---
 
 DROP TABLE IF EXISTS `proveedores`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1428,9 +1258,6 @@ CREATE TABLE `proveedores` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `proveedores`
---
 
 LOCK TABLES `proveedores` WRITE;
 /*!40000 ALTER TABLE `proveedores` DISABLE KEYS */;
@@ -1479,9 +1306,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `qr_codes`
---
 
 DROP TABLE IF EXISTS `qr_codes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1510,9 +1334,6 @@ CREATE TABLE `qr_codes` (
 ) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `qr_codes`
---
 
 LOCK TABLES `qr_codes` WRITE;
 /*!40000 ALTER TABLE `qr_codes` DISABLE KEYS */;
@@ -1561,9 +1382,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `representantes`
---
 
 DROP TABLE IF EXISTS `representantes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1580,9 +1398,6 @@ CREATE TABLE `representantes` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `representantes`
---
 
 LOCK TABLES `representantes` WRITE;
 /*!40000 ALTER TABLE `representantes` DISABLE KEYS */;
@@ -1590,9 +1405,6 @@ INSERT INTO `representantes` VALUES ('V-00000000','Admin Sistema','0424-0000000'
 /*!40000 ALTER TABLE `representantes` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `servicio_mecanico`
---
 
 DROP TABLE IF EXISTS `servicio_mecanico`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1622,9 +1434,6 @@ CREATE TABLE `servicio_mecanico` (
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `servicio_mecanico`
---
 
 LOCK TABLES `servicio_mecanico` WRITE;
 /*!40000 ALTER TABLE `servicio_mecanico` DISABLE KEYS */;
@@ -1632,9 +1441,6 @@ INSERT INTO `servicio_mecanico` VALUES (1,8,'V-07224236',NULL,'2026-05-08 02:42:
 /*!40000 ALTER TABLE `servicio_mecanico` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `servicio_sucursal`
---
 
 DROP TABLE IF EXISTS `servicio_sucursal`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1651,9 +1457,6 @@ CREATE TABLE `servicio_sucursal` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `servicio_sucursal`
---
 
 LOCK TABLES `servicio_sucursal` WRITE;
 /*!40000 ALTER TABLE `servicio_sucursal` DISABLE KEYS */;
@@ -1661,9 +1464,6 @@ INSERT INTO `servicio_sucursal` VALUES (1,1,1,'2026-05-28 22:46:02'),(2,1,1,'202
 /*!40000 ALTER TABLE `servicio_sucursal` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Table structure for table `servicios`
---
 
 DROP TABLE IF EXISTS `servicios`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1682,9 +1482,6 @@ CREATE TABLE `servicios` (
 ) ENGINE=InnoDB AUTO_INCREMENT=63 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `servicios`
---
 
 LOCK TABLES `servicios` WRITE;
 /*!40000 ALTER TABLE `servicios` DISABLE KEYS */;
@@ -1733,9 +1530,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `solicitudes_validacion`
---
 
 DROP TABLE IF EXISTS `solicitudes_validacion`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1753,9 +1547,6 @@ CREATE TABLE `solicitudes_validacion` (
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `solicitudes_validacion`
---
 
 LOCK TABLES `solicitudes_validacion` WRITE;
 /*!40000 ALTER TABLE `solicitudes_validacion` DISABLE KEYS */;
@@ -1778,9 +1569,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `stock`
---
 
 DROP TABLE IF EXISTS `stock`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1799,9 +1587,6 @@ CREATE TABLE `stock` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `stock`
---
 
 LOCK TABLES `stock` WRITE;
 /*!40000 ALTER TABLE `stock` DISABLE KEYS */;
@@ -1827,9 +1612,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `sucursales`
---
 
 DROP TABLE IF EXISTS `sucursales`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1846,9 +1628,6 @@ CREATE TABLE `sucursales` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `sucursales`
---
 
 LOCK TABLES `sucursales` WRITE;
 /*!40000 ALTER TABLE `sucursales` DISABLE KEYS */;
@@ -1897,9 +1676,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `tarjeta_fidelidad`
---
 
 DROP TABLE IF EXISTS `tarjeta_fidelidad`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1919,9 +1695,6 @@ CREATE TABLE `tarjeta_fidelidad` (
 ) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `tarjeta_fidelidad`
---
 
 LOCK TABLES `tarjeta_fidelidad` WRITE;
 /*!40000 ALTER TABLE `tarjeta_fidelidad` DISABLE KEYS */;
@@ -1970,9 +1743,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `tasas_cambio`
---
 
 DROP TABLE IF EXISTS `tasas_cambio`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1989,9 +1759,6 @@ CREATE TABLE `tasas_cambio` (
 ) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `tasas_cambio`
---
 
 LOCK TABLES `tasas_cambio` WRITE;
 /*!40000 ALTER TABLE `tasas_cambio` DISABLE KEYS */;
@@ -2035,9 +1802,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `ticket_respuestas`
---
 
 DROP TABLE IF EXISTS `ticket_respuestas`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -2056,9 +1820,6 @@ CREATE TABLE `ticket_respuestas` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `ticket_respuestas`
---
 
 LOCK TABLES `ticket_respuestas` WRITE;
 /*!40000 ALTER TABLE `ticket_respuestas` DISABLE KEYS */;
@@ -2084,9 +1845,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `tickets_soporte`
---
 
 DROP TABLE IF EXISTS `tickets_soporte`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -2108,9 +1866,6 @@ CREATE TABLE `tickets_soporte` (
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `tickets_soporte`
---
 
 LOCK TABLES `tickets_soporte` WRITE;
 /*!40000 ALTER TABLE `tickets_soporte` DISABLE KEYS */;
@@ -2154,9 +1909,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Table structure for table `vehiculos`
---
 
 DROP TABLE IF EXISTS `vehiculos`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -2183,9 +1935,6 @@ CREATE TABLE `vehiculos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `vehiculos`
---
 
 LOCK TABLES `vehiculos` WRITE;
 /*!40000 ALTER TABLE `vehiculos` DISABLE KEYS */;
@@ -2234,9 +1983,6 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
---
--- Dumping routines for database 'db_transalca'
---
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_ENGINE_SUBSTITUTION' */ ;
 /*!50003 DROP FUNCTION IF EXISTS `fn_calcular_total_orden` */;
@@ -2296,5 +2042,3 @@ DELIMITER ;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-
--- Dump completed on 2026-06-11  3:05:19

@@ -10,7 +10,6 @@ def caracas_now():
     return datetime.utcnow() - timedelta(hours=4)
 
 
-# Detalles con subtotal calculado por codigo (cantidad x precio unitario).
 DETAIL_UNION = (
     "((SELECT id_detalle_orden_venta_producto AS id, orden_id, producto_codigo, 0 AS servicio_id, 'producto' AS tipo, "
     "cantidad_detalle_orden_venta_producto AS cantidad, precio_unitario_producto AS precio_unitario, "
@@ -182,10 +181,8 @@ class OrderModel(Connection):
             if tipo_pago == 'credito':
                 fecha_inicio_credito = caracas_now().date()
                 fecha_vencimiento = fecha_inicio_credito + timedelta(days=int(client.get('dias_credito') or 0))
-            # La moneda se maneja unicamente en metodos_pago.
             moneda = (payment_method.get('moneda') or 'usd').lower()
 
-            # La tasa vigente queda asociada historicamente a la orden.
             current_rate = self._get_current_rate('bcv')
             tasa_cambio_id = current_rate['id'] if current_rate else None
             tasa_factor = 1.0
@@ -228,7 +225,6 @@ class OrderModel(Connection):
                         "INSERT INTO detalle_orden_venta_productos (orden_id, producto_codigo, cantidad_detalle_orden_venta_producto, precio_unitario_producto) VALUES (%s, %s, %s, %s)",
                         (order_id, item['producto_codigo'], item['cantidad'], item_price))
                 else:
-                    # El servicio se registra en servicio_mecanico solo cuando el pago es validado.
                     cursor.execute(
                         "INSERT INTO detalle_orden_venta_servicios (orden_id, servicio_id, cantidad_detalle_orden_venta_servicio, precio_unitario_servicio) VALUES (%s, %s, 1, %s)",
                         (order_id, item['servicio_id'], item_price))

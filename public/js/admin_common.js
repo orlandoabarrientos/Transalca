@@ -321,7 +321,6 @@ const Validator = {
         if (form.dataset.validatorRealtimeBound === '1') return;
         form.dataset.validatorRealtimeBound = '1';
         
-        // Dynamically apply HTML maxlength attribute based on validation rules
         const rules = this.rules[formId];
         if (rules) {
             for (const [field, fieldRules] of Object.entries(rules)) {

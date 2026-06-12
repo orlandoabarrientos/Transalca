@@ -122,7 +122,6 @@ class PromotionModel(Connection):
         return 0
 
     def _assign_card_to_client(self, cliente_cedula, promocion_id):
-        # Ensure client exists in transalca.clientes first to satisfy foreign key
         client = self.fetch_one("transalca", "SELECT id_cliente FROM cliente WHERE identificador_cliente = %s", (cliente_cedula,))
         if not client:
             user = self.fetch_one("mantenimiento", "SELECT id, nombre, apellido, email, telefono, direccion FROM usuarios WHERE cedula = %s", (cliente_cedula,))
@@ -147,7 +146,6 @@ class PromotionModel(Connection):
             (cliente_cedula, promocion_id))
 
     def _get_client_info(self, cedula):
-        # Try fetching from transalca.clientes (customers)
         client = self.fetch_one("transalca",
             "SELECT nombre_cliente, identificador_cliente FROM cliente WHERE identificador_cliente = %s", (cedula,))
         if client:
@@ -155,7 +153,6 @@ class PromotionModel(Connection):
                 "cliente_nombre": client['nombre_cliente'].strip(),
                 "cliente_cedula_display": client['identificador_cliente']
             }
-        # Fallback to mantenimiento.usuarios (employees/admins)
         user = self.fetch_one("mantenimiento",
             "SELECT nombre, apellido, cedula FROM usuarios WHERE cedula = %s", (cedula,))
         if user:

@@ -301,7 +301,6 @@ function showFleetModal(vehicle) {
         $('#vRepresentanteWrapper').show();
         $('#vRepresentante').prop('required', true);
         
-        // Populate representatives dropdown
         const activeReps = currentCompanyRepresentatives.filter(r => r.estado === 1);
         let repHtml = '<option value="">Seleccione un representante...</option>';
         if (activeReps.length === 0) {

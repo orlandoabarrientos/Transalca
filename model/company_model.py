@@ -1,7 +1,6 @@
 from model.connection import Connection
 
 
-# Deuda calculada por codigo: total de la orden menos abonos registrados en pagos_credito.
 DEUDA_SQL = (
     "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc "
     "WHERE pc.id_credito = cr.id_credito), 0))"

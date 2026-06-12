@@ -13,7 +13,6 @@ BITACORA_SELECT = (
     "bv.observaciones_bitacora AS observaciones, bv.cauchos_usados AS cauchos_info"
 )
 
-# Mapa categoria de producto -> tipo de prediccion y clave de vida util en configuracion.
 CATEGORIA_PREDICCION = {
     'cauchos': ('cauchos', 'vida_util_cauchos_meses', 24),
     'lubricantes': ('aceite', 'vida_util_aceite_meses', 6),
@@ -38,7 +37,6 @@ class VehicleLogModel(Connection):
         super().__init__()
         self.notifications = NotificationModel()
 
-    # ------------------------- utilidades -------------------------
 
     def _vehicle_plate(self, vid):
         placa = (str(vid or '').strip().upper())
@@ -86,7 +84,6 @@ class VehicleLogModel(Connection):
         )
         return row['id'] if row else None
 
-    # ------------------------- consultas -------------------------
 
     def _get_by_vehicle(self, vid, limit=50):
         return self.fetch_all("transalca",
@@ -195,7 +192,6 @@ class VehicleLogModel(Connection):
         result = self.fetch_one("transalca", sql, tuple(params))
         return result['total'] if result else 0
 
-    # --------------- sincronizacion automatica desde servicios ---------------
 
     def _sync_from_services(self):
         """Registra automaticamente en la bitacora los servicios completados,
@@ -235,7 +231,6 @@ class VehicleLogModel(Connection):
             created += 1
         return created
 
-    # ------------------------- predicciones -------------------------
 
     def _upsert_prediction(self, placa, tipo, fecha_base, fecha_estimada, referencia, base_calculo):
         today = date.today()
@@ -275,7 +270,6 @@ class VehicleLogModel(Connection):
         generated = 0
         for v in vehicles:
             placa = v['placa_vehiculo']
-            # 1) por categoria de producto usado en bitacora
             for categoria, (tipo, clave, default_meses) in CATEGORIA_PREDICCION.items():
                 row = self.fetch_one("transalca",
                     "SELECT MAX(DATE(bv.fecha_bitacora)) AS ultima, "
@@ -302,7 +296,6 @@ class VehicleLogModel(Connection):
                 self._upsert_prediction(placa, tipo, ultima, fecha_estimada,
                                         (row or {}).get('detalle') or TIPO_LABEL[tipo], base)
                 generated += 1
-            # 2) refrigerante
             row = self.fetch_one("transalca",
                 "SELECT MAX(DATE(fecha_bitacora)) AS ultima FROM bitacora_vehiculo "
                 "WHERE vehiculo_placa=%s AND refrigerante_usado IS NOT NULL AND refrigerante_usado != ''", (placa,))
@@ -313,7 +306,6 @@ class VehicleLogModel(Connection):
                                         TIPO_LABEL['refrigerante'],
                                         f"Ultimo registro {ultima.isoformat()} + {meses} meses de vida util estimada")
                 generated += 1
-            # 3) servicio general por frecuencia de servicios
             row = self.fetch_one("transalca",
                 "SELECT MAX(DATE(fecha_bitacora)) AS ultima, COUNT(*) AS total FROM bitacora_vehiculo WHERE vehiculo_placa=%s", (placa,))
             ultima = self._as_date((row or {}).get('ultima'))
@@ -485,7 +477,6 @@ class BitacoraScheduler:
         self._stop_event.set()
 
     def _run_loop(self):
-        # primera pasada poco despues de arrancar
         self._stop_event.wait(30)
         while not self._stop_event.is_set():
             try:

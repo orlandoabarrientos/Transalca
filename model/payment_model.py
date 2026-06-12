@@ -58,7 +58,6 @@ class PaymentModel(Connection):
             "SET sv.estado_validacion = 'aprobada' "
             "WHERE sv.estado_validacion = 'pendiente' AND cp.orden_venta_id = %s",
             (comp['orden_venta_id'],))
-        # El servicio queda registrado/activado solo despues de validar el pago.
         OrderModel().ejecutar("activate_services_for_order", comp['orden_venta_id'])
         return True
 

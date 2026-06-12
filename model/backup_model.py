@@ -58,8 +58,7 @@ class BackupModel(Connection):
                 dump.write("DROP TABLE IF EXISTS " + quoted_table + ";\n")
                 dump.write(create_sql + ";\n\n")
 
-                # B608 falso positivo: tabla obtenida de SHOW TABLES y validada con SQL_IDENTIFIER_RE antes de citarse.
-                select_query = "SELECT * FROM " + quoted_table  # nosec B608
+                select_query = "SELECT * FROM " + quoted_table
                 cursor.execute(select_query)
                 rows = cursor.fetchall()
                 if not rows:
@@ -68,8 +67,7 @@ class BackupModel(Connection):
                 column_sql = ", ".join(columns)
                 for row in rows:
                     values = ", ".join(conn.escape(value) for value in row.values())
-                    # B608 falso positivo: solo escribe SQL de respaldo con identificadores citados y valores escapados.
-                    dump.write("INSERT INTO " + quoted_table + " (" + column_sql + ") VALUES (" + values + ");\n")  # nosec B608
+                    dump.write("INSERT INTO " + quoted_table + " (" + column_sql + ") VALUES (" + values + ");\n")
                 dump.write("\n")
             dump.write("SET FOREIGN_KEY_CHECKS=1;\n")
 
