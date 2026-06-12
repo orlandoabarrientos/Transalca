@@ -42,7 +42,7 @@ def _save_photo(file, cedula):
 @mechanic_bp.route('/', methods=['GET'])
 def get_all():
     try:
-        return jsonify({"status": "success", "data": model.get_all()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_all")})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los mecanicos."}), 500
 
@@ -56,7 +56,7 @@ def check_unique():
         exclude = payload.get('exclude') or None
         if errors:
             return jsonify({"status": "error", "message": errors.get('cedula')}), 400
-        return jsonify({"status": "success", "exists": model.cedula_exists(cedula, exclude)})
+        return jsonify({"status": "success", "exists": model.ejecutar("cedula_exists", cedula, exclude)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo validar la cedula."}), 500
 
@@ -64,7 +64,7 @@ def check_unique():
 @mechanic_bp.route('/<path:cedula>', methods=['GET'])
 def get_one(cedula):
     try:
-        item = model.get_by_cedula(cedula)
+        item = model.ejecutar("get_by_cedula", cedula)
         if item:
             return jsonify({"status": "success", "data": item})
         return jsonify({"status": "error", "message": "Mecanico no encontrado."}), 404
@@ -75,7 +75,7 @@ def get_one(cedula):
 @mechanic_bp.route('/history/<path:cedula>', methods=['GET'])
 def get_history(cedula):
     try:
-        return jsonify({"status": "success", "data": model.get_service_history(cedula)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_service_history", cedula)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cargar el historial."}), 500
 
@@ -88,7 +88,7 @@ def create():
         data, errors = _validate_mechanic(request.form.to_dict())
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        existing = model.get_by_cedula(data['cedula'])
+        existing = model.ejecutar("get_by_cedula", data['cedula'])
         if existing:
             if existing['estado'] == 1:
                 return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
@@ -98,8 +98,8 @@ def create():
                     return jsonify({"status": "error", "message": file_error, "errors": {"foto_perfil": file_error}}), 400
                 if filename:
                     data['foto_perfil'] = filename
-                model.update_mechanic(existing['cedula'], data)
-                model.update("transalca", "UPDATE mecanicos SET estado = 1 WHERE cedula = %s", (existing['cedula'],))
+                model.ejecutar("update_mechanic", existing['cedula'], data)
+                model.ejecutar("reactivar", existing['cedula'])
 
                 return jsonify({"status": "success", "message": "Mecanico registrado correctamente.", "cedula": existing['cedula']})
         filename, file_error = _save_photo(request.files.get('foto_perfil'), data['cedula'])
@@ -107,7 +107,7 @@ def create():
             return jsonify({"status": "error", "message": file_error, "errors": {"foto_perfil": file_error}}), 400
         if filename:
             data['foto_perfil'] = filename
-        model.create(data)
+        model.ejecutar("create", data)
 
         return jsonify({"status": "success", "message": "Mecanico registrado correctamente.", "cedula": data['cedula']})
     except Exception:
@@ -126,14 +126,14 @@ def update():
             errors['old_cedula'] = 'Identificador requerido.'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if data['cedula'] != old_cedula and model.cedula_exists(data['cedula']):
+        if data['cedula'] != old_cedula and model.ejecutar("cedula_exists", data['cedula']):
             return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
         filename, file_error = _save_photo(request.files.get('foto_perfil'), data['cedula'])
         if file_error:
             return jsonify({"status": "error", "message": file_error, "errors": {"foto_perfil": file_error}}), 400
         if filename:
             data['foto_perfil'] = filename
-        model.update_mechanic(old_cedula, data)
+        model.ejecutar("update_mechanic", old_cedula, data)
 
         return jsonify({"status": "success", "message": "Mecanico modificado correctamente."})
     except Exception:
@@ -147,7 +147,7 @@ def delete():
             return jsonify({"status": "error", "message": "No autorizado."}), 401
         data = request.get_json() or {}
         cedula = (data.get('cedula') or '').strip()
-        result = model.soft_delete(cedula)
+        result = model.ejecutar("soft_delete", cedula)
         if result is None:
             return jsonify({"status": "error", "message": "Mecanico no encontrado."}), 404
 

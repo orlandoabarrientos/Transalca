@@ -111,7 +111,7 @@ function bindProfileEvents() {
             },
             customMsg: `El año del vehículo debe estar entre 1940 y ${new Date().getFullYear() + 1}`
         },
-        vPlaca: { maxLength: 10, maxLengthMsg: 'La placa no puede superar los 10 caracteres.' },
+        vPlaca: { required: true, minLength: 5, maxLength: 10, pattern: /^[A-Za-z0-9-]+$/, requiredMsg: 'La placa es obligatoria', minLengthMsg: 'La placa debe tener al menos 5 caracteres.', maxLengthMsg: 'La placa no puede superar los 10 caracteres.', patternMsg: 'La placa solo puede contener letras, numeros y guiones.' },
         vColor: { maxLength: 20, maxLengthMsg: 'El color no puede superar los 20 caracteres.' },
         vTipo: { maxLength: 30, maxLengthMsg: 'El tipo de vehículo no puede superar los 30 caracteres.' },
         vKm: { min: 0, minMsg: 'El kilometraje no puede ser negativo' }
@@ -460,7 +460,12 @@ async function saveVehicleFromProfile() {
         });
         const data = await res.json();
         if (!res.ok || data.status !== 'success') {
-            if (data.errors) Validator.showServerErrors('vehicleForm', data.errors);
+            if (data.errors) {
+                const fieldMap = { marca: 'vMarca', modelo: 'vModelo', anio: 'vAnio', placa: 'vPlaca', color: 'vColor', tipo_vehiculo: 'vTipo', tipo_combustible: 'vCombustible', kilometraje_actual: 'vKm' };
+                const mapped = {};
+                Object.keys(data.errors).forEach(k => { mapped[fieldMap[k] || k] = data.errors[k]; });
+                Validator.showServerErrors('vehicleForm', mapped);
+            }
             showToast(data.message || 'No se pudo guardar el vehiculo', 'error');
             return;
         }

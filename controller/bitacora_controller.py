@@ -13,8 +13,8 @@ def get_all():
         page = int(request.args.get('page', 1))
         limit = int(request.args.get('limit', 50))
         offset = (page - 1) * limit
-        logs = model.get_all(limit, offset)
-        total = model.count_all()
+        logs = model.ejecutar("get_all", limit, offset)
+        total = model.ejecutar("count_all")
         return jsonify({"status": "success", "data": logs, "total": total, "page": page})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -25,7 +25,7 @@ def get_by_user(user_id):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        return jsonify({"status": "success", "data": model.get_by_user(user_id)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_by_user", user_id)})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -35,7 +35,7 @@ def get_by_module(modulo):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        return jsonify({"status": "success", "data": model.get_by_module(modulo)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_by_module", modulo)})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -46,7 +46,7 @@ def search():
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         query = request.args.get('q', '')
-        return jsonify({"status": "success", "data": model.search(query)})
+        return jsonify({"status": "success", "data": model.ejecutar("search", query)})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -59,7 +59,7 @@ def filter_by_date():
         start = request.args.get('start', '')
         end = request.args.get('end', '')
         if start and end:
-            return jsonify({"status": "success", "data": model.get_by_date_range(start, end)})
+            return jsonify({"status": "success", "data": model.ejecutar("get_by_date_range", start, end)})
         return jsonify({"status": "error", "message": "Fechas requeridas"}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

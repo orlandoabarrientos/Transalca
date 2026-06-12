@@ -1,6 +1,9 @@
 from model.connection import Connection
+from model.order_model import DETAIL_UNION
 import json
 from datetime import datetime, timedelta
+
+QR_ALIAS = "q.*, q.id_qr_code AS id, q.tipo_qr_code AS tipo, q.referencia_qr_code AS referencia_id"
 
 
 class QRModel(Connection):
@@ -80,26 +83,28 @@ class QRModel(Connection):
         })
         return json.dumps(payload, ensure_ascii=False)
 
-    def create_qr(self, data):
+    def _create_qr(self, data):
         utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
         utilidad = utilidad_tipo or (data.get('utilidad') or '').strip()
         contenido = self._build_content(data)
         fields = self._reference_fields(data)
         columns = self._columns()
-        extra = [k for k in ('referencia_id', 'promocion_id', 'servicio_id', 'orden_venta_id') if k in columns]
-        names = ['usuario_cedula', 'tipo', 'contenido', 'utilidad'] + extra
+        column_map = {'referencia_id': 'referencia_qr_code', 'promocion_id': 'promocion_id',
+                      'servicio_id': 'servicio_id', 'orden_venta_id': 'orden_venta_id'}
+        extra = [k for k in column_map if column_map[k] in columns]
+        names = ['usuario_cedula', 'tipo_qr_code', 'contenido', 'utilidad'] + [column_map[k] for k in extra]
         values = [data['usuario_cedula'], data.get('tipo', 'info'), contenido, utilidad] + [fields[k] for k in extra]
         return self.insert("transalca",
             self.build_insert_sql("qr_codes", names, {"qr_codes"}, columns),
             tuple(values))
 
-    def get_user_qrs(self, usuario_cedula):
+    def _get_user_qrs(self, usuario_cedula):
         return self.fetch_all("transalca",
-            "SELECT * FROM qr_codes WHERE usuario_cedula = %s AND estado = 1 ORDER BY created_at DESC",
+            "SELECT " + QR_ALIAS + " FROM qr_codes q WHERE q.usuario_cedula = %s AND q.estado = 1 ORDER BY q.created_at DESC",
             (usuario_cedula,))
 
-    def get_by_id(self, qr_id):
-        qr = self.fetch_one("transalca", "SELECT * FROM qr_codes WHERE id = %s", (qr_id,))
+    def _get_by_id(self, qr_id):
+        qr = self.fetch_one("transalca", "SELECT " + QR_ALIAS + " FROM qr_codes q WHERE q.id_qr_code = %s", (qr_id,))
         if qr:
             content = self._parse_content(qr.get('contenido'))
             qr['utilidad_estado'] = content.get('estado') or ('activa' if qr.get('utilidad') else 'sin_utilidad')
@@ -112,29 +117,31 @@ class QRModel(Connection):
                 qr['contenido_resumen'] = qr.get('contenido') or ''
         return qr
 
-    def update_qr(self, qr_id, data):
-        existing = self.get_by_id(qr_id)
+    def _update_qr(self, qr_id, data):
+        existing = self._get_by_id(qr_id)
         contenido = self._build_content(data, existing.get('contenido') if existing else None)
         utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
         utilidad = utilidad_tipo or (data.get('utilidad') or '').strip()
         fields = self._reference_fields(data)
         columns = self._columns()
-        extra = [k for k in ('referencia_id', 'promocion_id', 'servicio_id', 'orden_venta_id') if k in columns]
-        update_columns = ['tipo', 'contenido', 'utilidad'] + extra
+        column_map = {'referencia_id': 'referencia_qr_code', 'promocion_id': 'promocion_id',
+                      'servicio_id': 'servicio_id', 'orden_venta_id': 'orden_venta_id'}
+        extra = [k for k in column_map if column_map[k] in columns]
+        update_columns = ['tipo_qr_code', 'contenido', 'utilidad'] + [column_map[k] for k in extra]
         values = [data.get('tipo', 'info'), contenido, utilidad] + [fields[k] for k in extra] + [qr_id]
         return self.update("transalca",
-            self.build_update_by_key_sql("qr_codes", update_columns, "id", {"qr_codes"}, columns),
+            self.build_update_by_key_sql("qr_codes", update_columns, "id_qr_code", {"qr_codes"}, columns),
             tuple(values))
 
-    def delete_qr(self, qr_id):
+    def _delete_qr(self, qr_id):
         return self.update("transalca",
-            "UPDATE qr_codes SET estado = 0 WHERE id = %s", (qr_id,))
+            "UPDATE qr_codes SET estado = 0 WHERE id_qr_code = %s", (qr_id,))
 
-    def soft_delete(self, qr_id):
-        return self.delete_qr(qr_id)
+    def _soft_delete(self, qr_id):
+        return self._delete_qr(qr_id)
 
-    def get_qr_data(self, qr_id):
-        qr = self.get_by_id(qr_id)
+    def _get_qr_data(self, qr_id):
+        qr = self._get_by_id(qr_id)
         if not qr:
             return None
         user = self.fetch_one("mantenimiento",
@@ -144,7 +151,8 @@ class QRModel(Connection):
             try:
                 content = json.loads(qr['contenido'])
                 card = self.fetch_one("transalca",
-                    "SELECT tf.*, p.nombre as promo_nombre, p.puntos_requeridos, p.recompensa FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id WHERE tf.id = %s",
+                    "SELECT tf.*, tf.id_tarjeta_fidelidad AS id, p.nombre_promocion as promo_nombre, p.puntos_requeridos, p.recompensa_promocion as recompensa "
+                    "FROM tarjeta_fidelidad tf INNER JOIN promociones p ON tf.promocion_id = p.id_promocion WHERE tf.id_tarjeta_fidelidad = %s",
                     (content.get('tarjeta_id'),))
                 result['tarjeta'] = card
             except (json.JSONDecodeError, TypeError):
@@ -153,25 +161,23 @@ class QRModel(Connection):
             try:
                 content = json.loads(qr['contenido'])
                 order = self.fetch_one("transalca",
-                    "SELECT ov.*, mp.nombre AS metodo_pago, mp.nombre AS metodo_pago_nombre "
-                    "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
-                    "WHERE ov.id = %s", (content.get('orden_id'),))
+                    "SELECT ov.*, ov.id_orden_venta AS id, ov.fecha_orden_venta AS fecha, ov.total_orden_venta AS total, mp.nombre_metodo_pago AS metodo_pago, mp.nombre_metodo_pago AS metodo_pago_nombre, mp.moneda "
+                    "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
+                    "WHERE ov.id_orden_venta = %s", (content.get('orden_id'),))
                 if order:
                     order['detalles'] = self.fetch_all("transalca",
-                        "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre ELSE s.nombre END as item_nombre "
-                        "FROM ((SELECT id, orden_id, producto_codigo, 0 AS servicio_id, 'producto' AS tipo, cantidad, precio_unitario, subtotal FROM detalle_orden_venta_productos) "
-                        "UNION ALL "
-                        "(SELECT id, orden_id, 'SIN_PRODUCTO' AS producto_codigo, servicio_id, 'servicio' AS tipo, cantidad, precio_unitario, subtotal FROM detalle_orden_venta_servicios)) d "
+                        "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre_producto ELSE s.nombre_servicio END as item_nombre "
+                        "FROM " + DETAIL_UNION + " "
                         "LEFT JOIN productos p ON d.producto_codigo = p.codigo "
-                        "LEFT JOIN servicios s ON d.servicio_id = s.id WHERE d.orden_id = %s",
+                        "LEFT JOIN servicios s ON d.servicio_id = s.id_servicio WHERE d.orden_id = %s",
                         (order['id'],))
                 result['orden'] = order
             except (json.JSONDecodeError, TypeError):
                 pass
         return result
 
-    def get_all_qrs(self):
-        qrs = self.fetch_all("transalca", "SELECT * FROM qr_codes WHERE estado = 1 ORDER BY created_at DESC")
+    def _get_all_qrs(self):
+        qrs = self.fetch_all("transalca", "SELECT " + QR_ALIAS + " FROM qr_codes q WHERE q.estado = 1 ORDER BY q.created_at DESC")
         for qr in qrs:
             content = self._parse_content(qr.get('contenido'))
             user = self.fetch_one("mantenimiento",
@@ -186,3 +192,18 @@ class QRModel(Connection):
             else:
                 qr['contenido_resumen'] = qr.get('contenido') or ''
         return qrs
+
+    def ejecutar(self, accion, *args, **kwargs):
+        acciones = {
+            "create_qr": self._create_qr,
+            "get_user_qrs": self._get_user_qrs,
+            "get_by_id": self._get_by_id,
+            "update_qr": self._update_qr,
+            "delete_qr": self._delete_qr,
+            "soft_delete": self._soft_delete,
+            "get_qr_data": self._get_qr_data,
+            "get_all_qrs": self._get_all_qrs,
+        }
+        if accion not in acciones:
+            raise ValueError("Accion no permitida")
+        return acciones[accion](*args, **kwargs)

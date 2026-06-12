@@ -58,7 +58,7 @@ def load_owned_vehicle(vid):
     auth = require_login()
     if auth:
         return None, auth
-    vehicle = model.get_by_id(vid)
+    vehicle = model.ejecutar("get_by_id", vid)
     if not vehicle:
         return None, (jsonify({"status": "error", "message": "Vehiculo no encontrado"}), 404)
     if is_employee():
@@ -92,14 +92,14 @@ def get_all():
         if auth:
             return auth
         if not is_employee():
-            return jsonify({"status": "success", "data": model.get_by_cliente(session.get('user_cedula'))})
+            return jsonify({"status": "success", "data": model.ejecutar("get_by_cliente", session.get('user_cedula'))})
         q = request.args.get('q')
         if q:
-            return jsonify({"status": "success", "data": model.search(q)})
+            return jsonify({"status": "success", "data": model.ejecutar("search", q)})
         cliente = request.args.get('cliente')
         if cliente:
-            return jsonify({"status": "success", "data": model.get_by_cliente(cliente)})
-        return jsonify({"status": "success", "data": model.get_all()})
+            return jsonify({"status": "success", "data": model.ejecutar("get_by_cliente", cliente)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_all")})
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
@@ -112,8 +112,8 @@ def get_one(vid):
         v, error = load_owned_vehicle(vid)
         if error:
             return error
-        v['cauchos'] = model.get_cauchos(vid)
-        v['km_history'] = model.get_km_history(vid)
+        v['cauchos'] = model.ejecutar("get_cauchos", vid)
+        v['km_history'] = model.ejecutar("get_km_history", vid)
         return jsonify({"status": "success", "data": v})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -134,15 +134,15 @@ def create():
         if not can_access_client(clean.get('cliente_cedula')):
             return deny()
         placa = clean.get('placa')
-        existing = model.get_by_placa(placa)
+        existing = model.ejecutar("get_by_placa", placa)
         if existing:
             if existing['estado'] == 1:
                 return jsonify({"status": "error", "message": "Esta placa ya esta registrada.", "errors": {"placa": "Esta placa ya esta registrada."}}), 400
             else:
-                model.update_vehicle(existing['placa'], clean)
-                model.update("transalca", "UPDATE vehiculos SET estado = 1 WHERE placa = %s", (existing['placa'],))
+                model.ejecutar("update_vehicle", existing['placa'], clean)
+                model.ejecutar("reactivar", existing['placa'])
                 return jsonify({"status": "success", "message": "Vehiculo registrado correctamente.", "id": existing['placa']}), 201
-        vid = model.create(clean)
+        vid = model.ejecutar("create", clean)
         return jsonify({"status": "success", "message": "Vehiculo registrado correctamente.", "id": vid}), 201
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
@@ -161,9 +161,9 @@ def update(vid):
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         placa = clean.get('placa')
-        if placa and model.placa_exists(placa, exclude_id=vid):
+        if placa and model.ejecutar("placa_exists", placa, exclude_id=vid):
             return jsonify({"status": "error", "message": "Esta placa ya esta registrada.", "errors": {"placa": "Esta placa ya esta registrada."}}), 400
-        model.update_vehicle(vid, clean)
+        model.ejecutar("update_vehicle", vid, clean)
         return jsonify({"status": "success", "message": "Vehiculo modificado correctamente."})
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
@@ -181,7 +181,7 @@ def update_km(vid):
         km = data.get('kilometraje')
         if km is None:
             return jsonify({"status": "error", "message": "Kilometraje requerido"}), 400
-        if not model.update_kilometraje(vid, km):
+        if not model.ejecutar("update_kilometraje", vid, km):
             return jsonify({"status": "error", "message": "Kilometraje no puede ser menor al actual"}), 400
         return jsonify({"status": "success", "message": "Kilometraje actualizado"})
     except Exception as e:
@@ -194,7 +194,7 @@ def delete(vid):
         _, error = load_owned_vehicle(vid)
         if error:
             return error
-        model.soft_delete(vid)
+        model.ejecutar("soft_delete", vid)
         return jsonify({"status": "success", "message": "Vehiculo eliminado correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -221,7 +221,7 @@ def upload_carnet(vid):
             filename = f"carnet_{vid}_{int(time.time() * 1000)}.jpg"
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         file.save(os.path.join(UPLOAD_FOLDER, filename))
-        model.update_carnet_image(vid, filename)
+        model.ejecutar("update_carnet_image", vid, filename)
         return jsonify({"status": "success", "message": "Titulo del vehiculo subido correctamente.", "filename": filename})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -233,7 +233,7 @@ def get_cauchos(vid):
         _, error = load_owned_vehicle(vid)
         if error:
             return error
-        return jsonify({"status": "success", "data": model.get_cauchos(vid)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_cauchos", vid)})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -245,7 +245,7 @@ def add_caucho(vid):
         if error:
             return error
         data = request.get_json() or {}
-        cid = model.add_caucho(vid, data)
+        cid = model.ejecutar("add_caucho", vid, data)
         return jsonify({"status": "success", "message": "Caucho registrado correctamente.", "id": cid}), 201
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -284,7 +284,7 @@ def update_caucho(cid):
         if not is_employee():
             return deny()
         data = request.get_json() or {}
-        model.update_caucho(cid, data)
+        model.ejecutar("update_caucho", cid, data)
         return jsonify({"status": "success", "message": "Caucho modificado correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -298,7 +298,7 @@ def delete_caucho(cid):
             return auth
         if not is_employee():
             return deny()
-        model.delete_caucho(cid)
+        model.ejecutar("delete_caucho", cid)
         return jsonify({"status": "success", "message": "Caucho eliminado correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

@@ -1,7 +1,7 @@
 ESTADOS_COMPROBANTE = ['pendiente', 'verificado', 'rechazado']
 ESTADOS_ORDEN_COMPRA = ['pendiente', 'recibida', 'cancelada']
 ESTADOS_ORDEN_VENTA = ['pendiente', 'procesando', 'aprobada', 'enviada', 'entregada', 'cancelada']
-ESTADOS_SERVICIO_MECANICO = ['asignado', 'pendiente', 'en_proceso', 'completado', 'cancelado']
+ESTADOS_SERVICIO_MECANICO = ['sin_asignar', 'asignado', 'pendiente', 'en_proceso', 'completado', 'cancelado']
 ESTADOS_TICKET = ['abierto', 'en_revision', 'espera_cliente', 'resuelto', 'cerrado']
 TIPOS_COMBUSTIBLE = ['gasolina', 'gasoil', 'otro']
 TIPOS_FILTRO = ['aceite', 'aire', 'gasolina', 'gasoil', 'otro']
@@ -18,8 +18,6 @@ TIPOS_NOTIFICACION = [
     'caucho', 'combustible', 'ticket', 'promocion', 'sistema'
 ]
 TIPOS_REGISTRO_VEHICULO = ['servicio', 'producto', 'mantenimiento', 'observacion', 'combustible']
-ESTADOS_MANTENIMIENTO = ['pendiente', 'proximo', 'vencido', 'completado']
-MODOS_MANTENIMIENTO = ['manual', 'automatico']
 PHONE_REGEX = r'^04\d{9}$'
 DOCUMENT_PREFIXES = ['V', 'E', 'J', 'G', 'P']
 RIF_PREFIXES = ['J', 'G', 'V', 'E', 'P']

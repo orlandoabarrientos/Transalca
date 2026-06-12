@@ -28,7 +28,7 @@ def _validate_supplier(data):
 @supplier_bp.route('/', methods=['GET'])
 def get_all():
     try:
-        return jsonify({"status": "success", "data": model.get_all()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_all")})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los proveedores."}), 500
 
@@ -36,7 +36,7 @@ def get_all():
 @supplier_bp.route('/active', methods=['GET'])
 def get_active():
     try:
-        return jsonify({"status": "success", "data": model.get_active()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_active")})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los proveedores."}), 500
 
@@ -52,12 +52,12 @@ def check_unique():
             email = normalize_email(errors, payload.get('value', ''), required=True)
             if errors:
                 return jsonify({"status": "error", "message": errors['email']}), 400
-            return jsonify({"status": "success", "exists": model.email_exists_globally(email, {"proveedor_rif": exclude})})
+            return jsonify({"status": "success", "exists": model.ejecutar("email_exists_globally", email, {"proveedor_rif": exclude})})
         errors = {}
         rif, _, _ = normalize_rif(errors, {'rif': payload.get('value', '')})
         if errors:
             return jsonify({"status": "error", "message": errors['rif']}), 400
-        return jsonify({"status": "success", "exists": model.rif_exists(rif, exclude)})
+        return jsonify({"status": "success", "exists": model.ejecutar("rif_exists", rif, exclude)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo validar el rif."}), 500
 
@@ -65,7 +65,7 @@ def check_unique():
 @supplier_bp.route('/<path:rif>', methods=['GET'])
 def get_one(rif):
     try:
-        supplier = model.get_by_rif(rif)
+        supplier = model.ejecutar("get_by_rif", rif)
         if supplier:
             return jsonify({"status": "success", "data": supplier})
         return jsonify({"status": "error", "message": "Proveedor no encontrado."}), 404
@@ -81,18 +81,18 @@ def create():
         data, errors = _validate_supplier(request.get_json() or {})
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        existing = model.get_by_rif(data['rif'])
+        existing = model.ejecutar("get_by_rif", data['rif'])
         if existing:
             if existing['estado'] == 1:
                 return jsonify({"status": "error", "message": "Este rif ya esta registrado.", "errors": {"rif": "Este rif ya esta registrado."}}), 400
             else:
-                model.update_supplier(existing['rif'], data)
-                model.update("transalca", "UPDATE proveedores SET estado = 1 WHERE rif = %s", (existing['rif'],))
+                model.ejecutar("update_supplier", existing['rif'], data)
+                model.ejecutar("reactivar", existing['rif'])
 
                 return jsonify({"status": "success", "message": "Proveedor registrado correctamente.", "rif": existing['rif']})
-        if data.get('email') and model.email_exists_globally(data['email'], {"proveedor_rif": data['rif']}):
+        if data.get('email') and model.ejecutar("email_exists_globally", data['email'], {"proveedor_rif": data['rif']}):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        model.create(data)
+        model.ejecutar("create", data)
 
         return jsonify({"status": "success", "message": "Proveedor registrado correctamente.", "rif": data['rif']})
     except Exception:
@@ -111,11 +111,11 @@ def update():
             errors['old_rif'] = 'Identificador de proveedor requerido.'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if data['rif'] != old_rif and model.rif_exists(data['rif']):
+        if data['rif'] != old_rif and model.ejecutar("rif_exists", data['rif']):
             return jsonify({"status": "error", "message": "Este rif ya esta registrado.", "errors": {"rif": "Este rif ya esta registrado."}}), 400
-        if data.get('email') and model.email_exists_globally(data['email'], {"proveedor_rif": old_rif}):
+        if data.get('email') and model.ejecutar("email_exists_globally", data['email'], {"proveedor_rif": old_rif}):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        model.update_supplier(old_rif, data)
+        model.ejecutar("update_supplier", old_rif, data)
 
         return jsonify({"status": "success", "message": "Proveedor modificado correctamente."})
     except Exception:
@@ -129,10 +129,10 @@ def toggle():
             return jsonify({"status": "error", "message": "No autorizado."}), 401
         data = request.get_json() or {}
         rif = (data.get('rif') or '').strip()
-        supplier = model.get_by_rif(rif)
+        supplier = model.ejecutar("get_by_rif", rif)
         if not supplier:
             return jsonify({"status": "error", "message": "Proveedor no encontrado."}), 404
-        model.soft_delete(rif)
+        model.ejecutar("soft_delete", rif)
 
         return jsonify({"status": "success", "message": "Proveedor eliminado correctamente."})
     except Exception:

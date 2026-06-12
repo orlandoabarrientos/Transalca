@@ -5,52 +5,89 @@ from datetime import date
 class TasaCambioModel(Connection):
     def __init__(self):
         super().__init__()
+        self._fecha = None
+        self._monto = None
+        self._fuente = None
 
-    def get_all(self, limit=30):
+    @property
+    def fecha(self):
+        return self._fecha
+
+    @fecha.setter
+    def fecha(self, valor):
+        if valor:
+            valor = str(valor).strip()
+        self._fecha = valor
+
+    @property
+    def monto(self):
+        return self._monto
+
+    @monto.setter
+    def monto(self, valor):
+        self._monto = float(valor)
+
+    @property
+    def fuente(self):
+        return self._fuente
+
+    @fuente.setter
+    def fuente(self, valor):
+        if valor:
+            valor = str(valor).strip()
+        self._fuente = valor
+
+    def _get_all(self, limit=30):
         return self.fetch_all("transalca",
-            "SELECT * FROM tasas_cambio ORDER BY fecha DESC, id DESC LIMIT %s", (limit,))
+            "SELECT t.*, t.id_tasa_cambio AS id, t.fecha_tasa_cambio AS fecha, t.tipo_tasa_cambio AS tipo FROM tasas_cambio t ORDER BY t.fecha_tasa_cambio DESC, t.id_tasa_cambio DESC LIMIT %s", (limit,))
 
-    def get_by_date(self, fecha):
+    def _get_by_date(self, fecha):
         return self.fetch_one("transalca",
-            "SELECT * FROM tasas_cambio WHERE fecha = %s ORDER BY id DESC LIMIT 1", (fecha,))
+            "SELECT t.*, t.id_tasa_cambio AS id, t.fecha_tasa_cambio AS fecha, t.tipo_tasa_cambio AS tipo FROM tasas_cambio t WHERE t.fecha_tasa_cambio = %s ORDER BY t.id_tasa_cambio DESC LIMIT 1", (fecha,))
 
-    def get_today(self):
-        return self.get_by_date(date.today().isoformat())
+    def _get_today(self):
+        return self._get_by_date(date.today().isoformat())
 
-    def get_latest(self):
+    def _get_latest(self):
         return self.fetch_one("transalca",
-            "SELECT * FROM tasas_cambio ORDER BY fecha DESC, id DESC LIMIT 1")
+            "SELECT t.*, t.id_tasa_cambio AS id, t.fecha_tasa_cambio AS fecha, t.tipo_tasa_cambio AS tipo FROM tasas_cambio t ORDER BY t.fecha_tasa_cambio DESC, t.id_tasa_cambio DESC LIMIT 1")
 
-    def exists_today(self):
-        return self.get_today() is not None
+    def _exists_today(self):
+        return self._get_today() is not None
 
-    def create(self, data):
+    def _create(self, data):
+        self.fecha = data['fecha']
+        self.monto = data['monto']
+        self.fuente = data['fuente']
         return self.insert("transalca",
-            "INSERT INTO tasas_cambio (fecha, tipo, monto, fuente) VALUES (%s, %s, %s, %s)",
-            (data['fecha'], 'bcv', float(data['monto']), data['fuente'].strip()))
+            "INSERT INTO tasas_cambio (fecha_tasa_cambio, tipo_tasa_cambio, monto, fuente) VALUES (%s, %s, %s, %s)",
+            (self._fecha, 'bcv', self._monto, self._fuente))
 
-    def update_tasa(self, tasa_id, data):
+    def _update_tasa(self, tasa_id, data):
+        self.monto = data['monto']
+        self.fuente = data['fuente']
         if 'fecha' in data:
+            self.fecha = data['fecha']
             return self.update("transalca",
-                "UPDATE tasas_cambio SET monto = %s, fuente = %s, fecha = %s WHERE id = %s AND tipo='bcv'",
-                (float(data['monto']), data['fuente'].strip(), data['fecha'], tasa_id))
+                "UPDATE tasas_cambio SET monto = %s, fuente = %s, fecha_tasa_cambio = %s WHERE id_tasa_cambio = %s AND tipo_tasa_cambio='bcv'",
+                (self._monto, self._fuente, self._fecha, tasa_id))
         return self.update("transalca",
-            "UPDATE tasas_cambio SET monto = %s, fuente = %s WHERE id = %s AND tipo='bcv'",
-            (float(data['monto']), data['fuente'].strip(), tasa_id))
+            "UPDATE tasas_cambio SET monto = %s, fuente = %s WHERE id_tasa_cambio = %s AND tipo_tasa_cambio='bcv'",
+            (self._monto, self._fuente, tasa_id))
 
-    def delete_tasa(self, tasa_id):
-        return self.delete("transalca", "DELETE FROM tasas_cambio WHERE id = %s AND tipo='bcv'", (tasa_id,))
+    def _delete_tasa(self, tasa_id):
+        return self.delete("transalca", "DELETE FROM tasas_cambio WHERE id_tasa_cambio = %s AND tipo_tasa_cambio='bcv'", (tasa_id,))
 
-    def register_from_scraping(self, monto):
-        if self.exists_today():
+    def _register_from_scraping(self, monto):
+        if self._exists_today():
             return None
-        return self.create({
+        return self._create({
             'fecha': date.today().isoformat(),
             'monto': float(monto),
             'fuente': 'BCV automatico'
         })
 
-    def upsert_from_scraping(self, monto, fecha=None, fuente='BCV automatico'):
+    def _upsert_from_scraping(self, monto, fecha=None, fuente='BCV automatico'):
         target_date = fecha or date.today().isoformat()
         lock_name = f"bcv_sync_{target_date}"
         lock = self.fetch_one(
@@ -61,15 +98,15 @@ class TasaCambioModel(Connection):
         if not lock or int(lock.get('acquired') or 0) != 1:
             return {'action': 'lock_busy', 'id': None, 'fecha': target_date}
         try:
-            existing = self.get_by_date(target_date)
+            existing = self._get_by_date(target_date)
             payload = {
                 'monto': float(monto),
                 'fuente': fuente.strip()
             }
             if existing:
-                self.update_tasa(existing['id'], payload)
+                self._update_tasa(existing['id'], payload)
                 return {'action': 'updated', 'id': existing['id'], 'fecha': target_date}
-            created_id = self.create({
+            created_id = self._create({
                 'fecha': target_date,
                 'monto': payload['monto'],
                 'fuente': payload['fuente']
@@ -81,3 +118,20 @@ class TasaCambioModel(Connection):
                 "SELECT RELEASE_LOCK(%s) AS released",
                 (lock_name,)
             )
+
+    def ejecutar(self, accion, *args, **kwargs):
+        acciones = {
+            "get_all": self._get_all,
+            "get_by_date": self._get_by_date,
+            "get_today": self._get_today,
+            "get_latest": self._get_latest,
+            "exists_today": self._exists_today,
+            "create": self._create,
+            "update_tasa": self._update_tasa,
+            "delete_tasa": self._delete_tasa,
+            "register_from_scraping": self._register_from_scraping,
+            "upsert_from_scraping": self._upsert_from_scraping,
+        }
+        if accion not in acciones:
+            raise ValueError("Accion no permitida")
+        return acciones[accion](*args, **kwargs)

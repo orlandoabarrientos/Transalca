@@ -170,9 +170,30 @@
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Vehiculo (opcional)</label>
+                                <label class="form-label">Tipo de reporte</label>
+                                <select id="newTicketType" class="form-select">
+                                    <option value="general" selected>General</option>
+                                    <option value="vehiculo">Vehiculo</option>
+                                    <option value="producto">Producto</option>
+                                    <option value="servicio">Servicio</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="ticketVehicleGroup" style="display:none;">
+                                <label class="form-label">Vehiculo</label>
                                 <select id="newTicketVehicle" class="form-select">
-                                    <option value="">Sin vehiculo especifico</option>
+                                    <option value="">Seleccione su vehiculo</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="ticketProductGroup" style="display:none;">
+                                <label class="form-label">Producto</label>
+                                <select id="newTicketProduct" class="form-select">
+                                    <option value="">Seleccione el producto</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="ticketServiceGroup" style="display:none;">
+                                <label class="form-label">Servicio</label>
+                                <select id="newTicketService" class="form-select">
+                                    <option value="">Seleccione el servicio</option>
                                 </select>
                             </div>
                             <div class="col-12">

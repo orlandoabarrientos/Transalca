@@ -50,7 +50,7 @@ def get_all():
             return auth
         if not is_employee():
             return deny()
-        return jsonify({"status": "success", "data": model.get_all(request.args.get('q'), request.args.get('estado'))})
+        return jsonify({"status": "success", "data": model.ejecutar("get_all", request.args.get('q'), request.args.get('estado'))})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -63,7 +63,7 @@ def stats():
             return auth
         if not is_employee():
             return deny()
-        return jsonify({"status": "success", "data": model.get_stats()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_stats")})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -80,7 +80,7 @@ def update_status(order_id):
         estado = (data.get('estado') or '').strip().lower()
         if estado not in ALLOWED_STATUS:
             return jsonify({"status": "error", "message": "El estado seleccionado no es válido."}), 400
-        updated = model.update_status(order_id, estado)
+        updated = model.ejecutar("update_status", order_id, estado)
         if not updated:
             return jsonify({"status": "error", "message": "Crédito no encontrado."}), 404
         if session.get('user_id'):
@@ -107,7 +107,7 @@ def update_dates(order_id):
             errors['fecha_fin'] = "La fecha fin no puede ser menor a la fecha inicio."
         if errors:
             return jsonify({"status": "error", "message": "Errores de validación.", "errors": errors}), 400
-        updated = model.update_dates(order_id, start, end)
+        updated = model.ejecutar("update_dates", order_id, start, end)
         if not updated:
             return jsonify({"status": "error", "message": "Crédito no encontrado."}), 404
         if session.get('user_id'):
@@ -126,7 +126,7 @@ def mark_paid(order_id):
             return auth
         if not is_employee():
             return deny()
-        updated = model.mark_paid(order_id)
+        updated = model.ejecutar("mark_paid", order_id)
         if not updated:
             return jsonify({"status": "error", "message": "Crédito no encontrado."}), 404
         if session.get('user_id'):
@@ -150,7 +150,7 @@ def register_payment(order_id):
         amount = _parse_amount(data.get('monto'), errors)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validación.", "errors": errors}), 400
-        result = model.register_payment(order_id, amount)
+        result = model.ejecutar("register_payment", order_id, amount)
         if not result.get('ok'):
             return jsonify({"status": "error", "message": result.get('message', 'No se pudo registrar el abono.')}), result.get('status_code', 400)
         if session.get('user_id'):
@@ -198,7 +198,7 @@ def create_credit():
             errors['fecha_fin'] = "La fecha fin no puede ser menor a la fecha inicio."
         if errors:
             return jsonify({"status": "error", "message": "Errores de validación.", "errors": errors}), 400
-        result = model.create_credit({
+        result = model.ejecutar("create_credit", {
             'cliente_cedula': cliente_cedula,
             'total': total,
             'fecha_inicio': fecha_inicio,

@@ -1,125 +1,185 @@
 from model.connection import Connection
 
+TICKET_ALIAS = "t.*, t.id_ticket_soporte AS id, t.prioridad_ticket AS prioridad, t.descripcion_ticket_soporte as descripcion"
+
 
 class TicketModel(Connection):
     def __init__(self):
         super().__init__()
+        self._cliente_cedula = None
+        self._asunto = None
+        self._descripcion = None
+        self._prioridad = None
 
-    def get_all(self, estado=None, prioridad=None):
-        sql = ("SELECT t.*, c.nombre as cliente_nombre, c.apellido as cliente_apellido, "
-               "v.placa as vehiculo_placa, v.marca as vehiculo_marca, v.modelo as vehiculo_modelo, "
-               "p.nombre as producto_nombre, s.nombre as servicio_nombre, "
-               "m.nombre as asignado_nombre, m.apellido as asignado_apellido "
+    @property
+    def cliente_cedula(self):
+        return self._cliente_cedula
+
+    @cliente_cedula.setter
+    def cliente_cedula(self, valor):
+        if valor:
+            valor = str(valor).strip()
+        self._cliente_cedula = valor
+
+    @property
+    def asunto(self):
+        return self._asunto
+
+    @asunto.setter
+    def asunto(self, valor):
+        if valor:
+            valor = str(valor).strip()
+        self._asunto = valor
+
+    @property
+    def descripcion(self):
+        return self._descripcion
+
+    @descripcion.setter
+    def descripcion(self, valor):
+        if valor:
+            valor = str(valor).strip()
+        self._descripcion = valor
+
+    @property
+    def prioridad(self):
+        return self._prioridad
+
+    @prioridad.setter
+    def prioridad(self, valor):
+        if valor:
+            valor = str(valor).strip()
+        self._prioridad = valor
+
+    def _get_all(self, estado=None, prioridad=None):
+        sql = ("SELECT " + TICKET_ALIAS + ", c.nombre_cliente as cliente_nombre, '' as cliente_apellido, "
+               "v.placa_vehiculo as vehiculo_placa, v.marca_vehiculo as vehiculo_marca, v.modelo_vehiculo as vehiculo_modelo, "
+               "p.nombre_producto as producto_nombre, s.nombre_servicio as servicio_nombre "
                "FROM tickets_soporte t "
-               "INNER JOIN clientes c ON t.cliente_cedula = c.cedula "
-               "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa "
+               "INNER JOIN cliente c ON t.cliente_cedula = c.identificador_cliente "
+               "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa_vehiculo "
                "LEFT JOIN productos p ON t.referencia_tipo = 'producto' AND t.referencia_id = p.codigo "
-               "LEFT JOIN servicios s ON t.referencia_tipo = 'servicio' AND t.referencia_id = CAST(s.id AS CHAR) "
-               "LEFT JOIN mecanicos m ON t.asignado_a = m.cedula "
+               "LEFT JOIN servicios s ON t.referencia_tipo = 'servicio' AND t.referencia_id = CAST(s.id_servicio AS CHAR) "
                "WHERE 1=1")
         params = []
         if estado:
             sql += " AND t.estado = %s"
             params.append(estado)
         if prioridad:
-            sql += " AND t.prioridad = %s"
+            sql += " AND t.prioridad_ticket = %s"
             params.append(prioridad)
         sql += " ORDER BY t.created_at DESC"
         return self.fetch_all("transalca", sql, tuple(params) if params else None)
 
-    def get_by_id(self, ticket_id):
+    def _get_by_id(self, ticket_id):
         ticket = self.fetch_one("transalca",
-            "SELECT t.*, c.nombre as cliente_nombre, c.apellido as cliente_apellido, "
-            "c.telefono as cliente_telefono, c.email as cliente_email, "
-            "v.placa as vehiculo_placa, v.marca as vehiculo_marca, v.modelo as vehiculo_modelo, "
-            "p.nombre as producto_nombre, s.nombre as servicio_nombre, "
-            "m.nombre as asignado_nombre, m.apellido as asignado_apellido "
+            "SELECT " + TICKET_ALIAS + ", c.nombre_cliente as cliente_nombre, '' as cliente_apellido, "
+            "c.telefono_cliente as cliente_telefono, c.correo_cliente as cliente_email, "
+            "v.placa_vehiculo as vehiculo_placa, v.marca_vehiculo as vehiculo_marca, v.modelo_vehiculo as vehiculo_modelo, "
+            "p.nombre_producto as producto_nombre, s.nombre_servicio as servicio_nombre "
             "FROM tickets_soporte t "
-            "INNER JOIN clientes c ON t.cliente_cedula = c.cedula "
-            "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa "
+            "INNER JOIN cliente c ON t.cliente_cedula = c.identificador_cliente "
+            "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa_vehiculo "
             "LEFT JOIN productos p ON t.referencia_tipo = 'producto' AND t.referencia_id = p.codigo "
-            "LEFT JOIN servicios s ON t.referencia_tipo = 'servicio' AND t.referencia_id = CAST(s.id AS CHAR) "
-            "LEFT JOIN mecanicos m ON t.asignado_a = m.cedula "
-            "WHERE t.id = %s", (ticket_id,))
+            "LEFT JOIN servicios s ON t.referencia_tipo = 'servicio' AND t.referencia_id = CAST(s.id_servicio AS CHAR) "
+            "WHERE t.id_ticket_soporte = %s", (ticket_id,))
         if ticket:
-            ticket['respuestas'] = self.get_responses(ticket_id)
+            ticket['respuestas'] = self._get_responses(ticket_id)
         return ticket
 
-    def get_by_cliente(self, cliente_cedula):
+    def _get_by_cliente(self, cliente_cedula):
         return self.fetch_all("transalca",
-            "SELECT t.*, v.placa as vehiculo_placa, v.marca as vehiculo_marca "
+            "SELECT " + TICKET_ALIAS + ", v.placa_vehiculo as vehiculo_placa, v.marca_vehiculo as vehiculo_marca, "
+            "p.nombre_producto as producto_nombre, s.nombre_servicio as servicio_nombre "
             "FROM tickets_soporte t "
-            "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa "
+            "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa_vehiculo "
+            "LEFT JOIN productos p ON t.referencia_tipo = 'producto' AND t.referencia_id = p.codigo "
+            "LEFT JOIN servicios s ON t.referencia_tipo = 'servicio' AND t.referencia_id = CAST(s.id_servicio AS CHAR) "
             "WHERE t.cliente_cedula = %s ORDER BY t.created_at DESC",
             (cliente_cedula,))
 
-    def create(self, data):
+    def _create(self, data):
+        self.cliente_cedula = data['cliente_cedula']
+        self.asunto = data['asunto']
+        self.descripcion = data.get('descripcion') or ''
+        self.prioridad = data.get('prioridad', 'media')
         referencia_tipo = (data.get('referencia_tipo') or 'general').strip().lower()
         referencia_id = None
         if data.get('vehiculo_placa') or data.get('vehiculo_id'):
             referencia_tipo = 'vehiculo'
             vehicle_key = data.get('vehiculo_placa') or data.get('vehiculo_id')
-            vehicle = self.fetch_one("transalca", "SELECT placa FROM vehiculos WHERE placa=%s", (str(vehicle_key).strip().upper(),))
-            referencia_id = vehicle['placa'] if vehicle else None
+            vehicle = self.fetch_one("transalca", "SELECT placa_vehiculo FROM vehiculos WHERE placa_vehiculo=%s", (str(vehicle_key).strip().upper(),))
+            referencia_id = vehicle['placa_vehiculo'] if vehicle else None
         elif referencia_tipo == 'producto' and data.get('referencia_id'):
             product = self.fetch_one("transalca", "SELECT codigo FROM productos WHERE codigo=%s AND estado=1", (data.get('referencia_id'),))
             referencia_id = product['codigo'] if product else None
         elif referencia_tipo == 'servicio' and data.get('referencia_id'):
-            service = self.fetch_one("transalca", "SELECT id FROM servicios WHERE id=%s AND estado=1", (data.get('referencia_id'),))
+            service = self.fetch_one("transalca", "SELECT id_servicio AS id FROM servicios WHERE id_servicio=%s AND estado=1", (data.get('referencia_id'),))
             referencia_id = str(service['id']) if service else None
         else:
             referencia_tipo = 'general'
         return self.insert("transalca",
             "INSERT INTO tickets_soporte (cliente_cedula, referencia_tipo, referencia_id, asunto, "
-            "descripcion, prioridad) VALUES (%s, %s, %s, %s, %s, %s)",
-            (data['cliente_cedula'].strip(),
+            "descripcion_ticket_soporte, prioridad_ticket) VALUES (%s, %s, %s, %s, %s, %s)",
+            (self._cliente_cedula,
              referencia_tipo,
              referencia_id,
-             data['asunto'].strip(),
-             (data.get('descripcion') or '').strip(),
-             data.get('prioridad', 'media')))
+             self._asunto,
+             self._descripcion,
+             self._prioridad))
 
-    def update_status(self, ticket_id, estado):
+    def _update_status(self, ticket_id, estado):
         return self.update("transalca",
-            "UPDATE tickets_soporte SET estado = %s WHERE id = %s",
+            "UPDATE tickets_soporte SET estado = %s WHERE id_ticket_soporte = %s",
             (estado, ticket_id))
 
-    def assign_to(self, ticket_id, mecanico_cedula):
-        return self.update("transalca",
-            "UPDATE tickets_soporte SET asignado_a = %s, estado = 'en_revision' "
-            "WHERE id = %s", (mecanico_cedula, ticket_id))
-
-    def add_response(self, data):
+    def _add_response(self, data):
         return self.insert("transalca",
             "INSERT INTO ticket_respuestas (ticket_id, autor_id, autor_tipo, "
-            "mensaje, adjunto_url) VALUES (%s, %s, %s, %s, %s)",
+            "mensaje_ticket_respuesta, adjunto_url) VALUES (%s, %s, %s, %s, %s)",
             (data['ticket_id'], data['autor_id'], data['autor_tipo'],
              data['mensaje'].strip(), data.get('adjunto_url')))
 
-    def get_responses(self, ticket_id):
+    def _get_responses(self, ticket_id):
         responses = self.fetch_all("transalca",
-            "SELECT * FROM ticket_respuestas WHERE ticket_id = %s "
-            "ORDER BY created_at ASC", (ticket_id,))
+            "SELECT tr.*, tr.id_ticket_respuesta AS id, tr.mensaje_ticket_respuesta as mensaje FROM ticket_respuestas tr WHERE tr.ticket_id = %s "
+            "ORDER BY tr.created_at ASC", (ticket_id,))
         for r in responses:
-            if r['autor_tipo'] in ('admin', 'soporte'):
-                user = self.fetch_one("mantenimiento",
-                    "SELECT nombre, apellido FROM usuarios WHERE id = %s",
-                    (r['autor_id'],))
-            else:
-                user = self.fetch_one("mantenimiento",
-                    "SELECT nombre, apellido FROM usuarios WHERE id = %s",
-                    (r['autor_id'],))
+            user = self.fetch_one("mantenimiento",
+                "SELECT nombre, apellido FROM usuarios WHERE id = %s",
+                (r['autor_id'],))
             r['autor_nombre'] = f"{user['nombre']} {user['apellido']}" if user else 'Sistema'
         return responses
 
-    def count_by_estado(self):
+    def _count_by_estado(self):
         return self.fetch_all("transalca",
             "SELECT estado, COUNT(*) as total FROM tickets_soporte "
             "GROUP BY estado")
 
-    def count_open_by_cliente(self, cliente_cedula):
+    def _count_open_by_cliente(self, cliente_cedula):
         result = self.fetch_one("transalca",
             "SELECT COUNT(*) as total FROM tickets_soporte "
             "WHERE cliente_cedula = %s AND estado NOT IN ('resuelto','cerrado')",
             (cliente_cedula,))
         return result['total'] if result else 0
+
+    def _user_id_by_cedula(self, cedula):
+        return self.fetch_one("mantenimiento",
+            "SELECT id FROM usuarios WHERE cedula=%s", (cedula,))
+
+    def ejecutar(self, accion, *args, **kwargs):
+        acciones = {
+            "get_all": self._get_all,
+            "get_by_id": self._get_by_id,
+            "get_by_cliente": self._get_by_cliente,
+            "create": self._create,
+            "update_status": self._update_status,
+            "add_response": self._add_response,
+            "get_responses": self._get_responses,
+            "count_by_estado": self._count_by_estado,
+            "count_open_by_cliente": self._count_open_by_cliente,
+            "user_id_by_cedula": self._user_id_by_cedula,
+        }
+        if accion not in acciones:
+            raise ValueError("Accion no permitida")
+        return acciones[accion](*args, **kwargs)

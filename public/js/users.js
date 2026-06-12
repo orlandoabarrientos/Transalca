@@ -19,12 +19,24 @@ $(document).ready(function() {
         tipo: { required: true, custom: v => ['cliente', 'empleado'].includes(v), customMsg: 'El valor seleccionado no es válido. Recargue la página e inténtelo nuevamente' },
         rol_id: { required: true, requiredMsg: 'El rol es obligatorio' }
     });
+    setPasswordRules(true);
     Validator.setupRealtime('userForm');
     document.getElementById('cedula')?.addEventListener('input', () => validateUniqueUser('cedula'));
     document.getElementById('cedula_prefijo')?.addEventListener('change', () => validateUniqueUser('cedula'));
     document.getElementById('email')?.addEventListener('input', () => validateUniqueUser('email'));
     $('#tipo').on('change', filterRolesByTipo);
 });
+
+
+function setPasswordRules(creating) {
+    if (creating) {
+        Validator.rules.userForm.password = { required: true, pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$/, requiredMsg: 'La contraseña es obligatoria', patternMsg: 'Mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial (@$!%*?&#.)' };
+        Validator.rules.userForm.confirm_password = { required: true, match: 'password', requiredMsg: 'Confirme la contraseña', matchMsg: 'Las contraseñas no coinciden' };
+    } else {
+        delete Validator.rules.userForm.password;
+        delete Validator.rules.userForm.confirm_password;
+    }
+}
 
 let paginator = null;
 
@@ -103,6 +115,7 @@ function openModal(id = null) {
     document.getElementById('modalTitle').textContent = id ? 'Modificar Usuario' : 'Registrar Usuario';
     setDocumentFields('cedula_prefijo', 'cedula', '', 'V');
     document.getElementById('passwordRow').style.display = id ? 'none' : '';
+    setPasswordRules(!id);
     new bootstrap.Modal(document.getElementById('userModal')).show();
     Validator.initTracking('userForm');
 }
@@ -127,6 +140,7 @@ function editData(id) {
             $('#rol_id').val('').trigger('change');
         }
         document.getElementById('passwordRow').style.display = 'none';
+        setPasswordRules(false);
         document.getElementById('modalTitle').textContent = 'Modificar Usuario';
         new bootstrap.Modal(document.getElementById('userModal')).show();
         Validator.initTracking('userForm');
@@ -135,11 +149,7 @@ function editData(id) {
 
 function saveData() {
     const id = document.getElementById('userId').value;
-    if (!id) {
-        Validator.rules.userForm.password = { required: true, pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$/, requiredMsg: 'La contraseña es obligatoria', patternMsg: 'Mínimo 8 caracteres, una mayúscula, una minúscula, un número y un especial' };
-    } else {
-        delete Validator.rules.userForm.password;
-    }
+    setPasswordRules(!id);
     if (!Validator.validate('userForm')) return showToast('Corrija los errores', 'warning');
     const data = {
         nombre: document.getElementById('nombre').value,
@@ -152,7 +162,10 @@ function saveData() {
         tipo: document.getElementById('tipo').value,
         rol_id: document.getElementById('rol_id').value || null
     };
-    if (!id) data.password = document.getElementById('password').value;
+    if (!id) {
+        data.password = document.getElementById('password').value;
+        data.confirm_password = document.getElementById('confirm_password').value;
+    }
     const url = id ? `/api/users/${id}` : '/api/users/';
     const method = id ? 'PUT' : 'POST';
     const saveBtn = document.querySelector('#userModal .btn-success');

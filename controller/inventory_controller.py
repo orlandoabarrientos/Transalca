@@ -29,7 +29,7 @@ def get_all():
             except (ValueError, TypeError):
                 per_page = 30
 
-            paginated = model.get_paginated(page, per_page, sucursal_id=sucursal_id, q=q)
+            paginated = model.ejecutar("get_paginated", page, per_page, sucursal_id=sucursal_id, q=q)
             return jsonify({
                 "status": "success",
                 "data": paginated["data"],
@@ -40,9 +40,9 @@ def get_all():
             })
 
         if sucursal_id:
-            inventory = model.get_by_sucursal(sucursal_id)
+            inventory = model.ejecutar("get_by_sucursal", sucursal_id)
         else:
-            inventory = model.get_all()
+            inventory = model.ejecutar("get_all")
         return jsonify({"status": "success", "data": inventory})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -51,7 +51,7 @@ def get_all():
 @inventory_bp.route('/low-stock', methods=['GET'])
 def low_stock():
     try:
-        items = model.get_low_stock()
+        items = model.ejecutar("get_low_stock")
         return jsonify({"status": "success", "data": items})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -74,7 +74,7 @@ def update_stock():
             errors['stock'] = 'Stock invalido'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        model.update_stock(data['producto_codigo'], stock, data.get('sucursal_id'))
+        model.ejecutar("update_stock", data['producto_codigo'], stock, data.get('sucursal_id'))
 
 
         return jsonify({"status": "success", "message": "Stock actualizado"})
@@ -85,7 +85,7 @@ def update_stock():
 @inventory_bp.route('/sales-orders', methods=['GET'])
 def get_sales_orders():
     try:
-        orders = model.get_sales_orders()
+        orders = model.ejecutar("get_sales_orders")
         return jsonify({"status": "success", "data": orders})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -94,7 +94,7 @@ def get_sales_orders():
 @inventory_bp.route('/sales-orders/<int:order_id>', methods=['GET'])
 def get_sales_order(order_id):
     try:
-        order = model.get_sales_order_detail(order_id)
+        order = model.ejecutar("get_sales_order_detail", order_id)
         if order:
             return jsonify({"status": "success", "data": order})
         return jsonify({"status": "error", "message": "Orden no encontrada"}), 404

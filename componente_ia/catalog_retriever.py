@@ -113,14 +113,14 @@ class CatalogProvider:
         product_error = None
         service_error = None
         try:
-            raw_products = ProductModel().get_active() or []
+            raw_products = ProductModel().ejecutar("get_active") or []
             products = [normalize_catalog_item(item, 'producto') for item in raw_products if str(item.get('codigo') or '') != 'SIN_PRODUCTO']
         except Exception as exc:
             logger.exception('assistant.catalog.products_failed')
             product_error = exc.__class__.__name__
             products = []
         try:
-            raw_services = ServiceModel().get_active() or []
+            raw_services = ServiceModel().ejecutar("get_active") or []
             services = [normalize_catalog_item(item, 'servicio') for item in raw_services]
         except Exception as exc:
             logger.exception('assistant.catalog.services_failed')

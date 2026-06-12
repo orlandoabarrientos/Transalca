@@ -12,7 +12,7 @@ def list_backups():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        return jsonify({"status": "success", "data": model.list_backups()})
+        return jsonify({"status": "success", "data": model.ejecutar("list_backups")})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -22,13 +22,11 @@ def create_backup():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        files = model.create_backup()
+        files = model.ejecutar("create_backup")
         if files:
 
 
-            model.insert("mantenimiento",
-                "INSERT INTO eventos_sistema (usuario_id, accion, modulo, descripcion, ip) VALUES (%s, %s, %s, %s, %s)",
-                (session['user_id'], 'CREAR', 'RESPALDOS', f"Respaldo creado: {', '.join([f['filename'] for f in files])}", request.remote_addr))
+            model.ejecutar("log_event", session['user_id'], 'CREAR', 'RESPALDOS', f"Respaldo creado: {', '.join([f['filename'] for f in files])}", request.remote_addr)
             return jsonify({"status": "success", "message": "Respaldo creado", "data": files})
         return jsonify({"status": "error", "message": "Error al crear respaldo"}), 500
     except Exception as e:
@@ -40,7 +38,7 @@ def download(filename):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        filepath = model.get_backup_path(filename)
+        filepath = model.ejecutar("get_backup_path", filename)
         if filepath:
             return send_file(filepath, as_attachment=True)
         return jsonify({"status": "error", "message": "Archivo no encontrado"}), 404
@@ -53,12 +51,10 @@ def delete(filename):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        if model.delete_backup(filename):
+        if model.ejecutar("delete_backup", filename):
 
 
-            model.insert("mantenimiento",
-                "INSERT INTO eventos_sistema (usuario_id, accion, modulo, descripcion, ip) VALUES (%s, %s, %s, %s, %s)",
-                (session['user_id'], 'ELIMINAR', 'RESPALDOS', f"Respaldo eliminado: {filename}", request.remote_addr))
+            model.ejecutar("log_event", session['user_id'], 'ELIMINAR', 'RESPALDOS', f"Respaldo eliminado: {filename}", request.remote_addr)
             return jsonify({"status": "success", "message": "Respaldo eliminado"})
         return jsonify({"status": "error", "message": "Archivo no encontrado"}), 404
     except Exception as e:

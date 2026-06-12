@@ -24,7 +24,7 @@ def get_all():
 
         search = request.args.get('q')
         estado = request.args.get('estado')
-        orders = model.get_all(search, estado)
+        orders = model.ejecutar("get_all", search, estado)
         return jsonify({"status": "success", "data": orders})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar las ordenes de compra."}), 500
@@ -39,7 +39,7 @@ def stats():
         if not is_employee():
             return deny()
 
-        stats_data = model.get_stats()
+        stats_data = model.ejecutar("get_stats")
         return jsonify({"status": "success", "data": stats_data})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar las estadisticas."}), 500
@@ -94,7 +94,7 @@ def create():
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
 
-        result = model.create(data)
+        result = model.ejecutar("create", data)
         if not result.get('ok'):
             return jsonify({"status": "error", "message": result.get('message')}), 400
 
@@ -118,7 +118,7 @@ def get_one_order(order_id):
         if not is_employee():
             return deny()
 
-        order = model.get_by_id(order_id)
+        order = model.ejecutar("get_by_id", order_id)
         if not order:
             return jsonify({"status": "error", "message": "Orden de compra no encontrada."}), 404
 
@@ -136,7 +136,7 @@ def mark_as_bought(order_id):
         if not is_employee():
             return deny()
 
-        result = model.mark_as_bought(order_id)
+        result = model.ejecutar("mark_as_bought", order_id)
         if not result.get('ok'):
             return jsonify({"status": "error", "message": result.get('message')}), 400
 
@@ -160,7 +160,7 @@ def get_pdf(order_id):
         if not is_employee():
             return deny()
 
-        order = model.get_by_id(order_id)
+        order = model.ejecutar("get_by_id", order_id)
         if not order:
             return jsonify({"status": "error", "message": "Orden de compra no encontrada."}), 404
 

@@ -20,7 +20,7 @@ $(document).ready(function () {
         fCedulaPrefijo: { required: true, custom: v => ['V', 'E', 'J', 'G', 'P'].includes(v), customMsg: 'El valor seleccionado no es válido. Recargue la página e inténtelo nuevamente.' },
         fCedula: { required: true, pattern: /^\d{7,8}$/, maxLength: 8, requiredMsg: 'Cédula requerida', patternMsg: 'La cédula debe tener 7 u 8 dígitos', maxLengthMsg: 'La cédula no puede superar los 8 caracteres.' },
         fNombre: { required: true, pattern: /^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$/u, maxLength: 30, requiredMsg: 'Nombre requerido', patternMsg: 'Solo letras y espacios', maxLengthMsg: 'El nombre no puede superar los 30 caracteres.' },
-        fApellido: { required: true, pattern: /^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$/u, maxLength: 30, requiredMsg: 'Apellido requerido', patternMsg: 'Solo letras y espacios', maxLengthMsg: 'El apellido no puede superar los 30 caracteres.' },
+        fApellido: { pattern: /^$|^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$/u, maxLength: 30, patternMsg: 'Solo letras y espacios', maxLengthMsg: 'El apellido no puede superar los 30 caracteres.' },
         fTelefono: { required: true, pattern: /^04\d{9}$/, maxLength: 11, requiredMsg: 'Teléfono requerido', patternMsg: 'Debe tener 11 dígitos y comenzar por 04', maxLengthMsg: 'El teléfono no puede superar los 11 caracteres.' },
         fEmail: { email: true, maxLength: 50, maxLengthMsg: 'El correo no puede superar los 50 caracteres.' },
         fDireccion: { maxLength: 40, maxLengthMsg: 'La dirección no puede superar los 40 caracteres.' }

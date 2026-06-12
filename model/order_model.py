@@ -10,99 +10,104 @@ def caracas_now():
     return datetime.utcnow() - timedelta(hours=4)
 
 
+# Detalles con subtotal calculado por codigo (cantidad x precio unitario).
+DETAIL_UNION = (
+    "((SELECT id_detalle_orden_venta_producto AS id, orden_id, producto_codigo, 0 AS servicio_id, 'producto' AS tipo, "
+    "cantidad_detalle_orden_venta_producto AS cantidad, precio_unitario_producto AS precio_unitario, "
+    "cantidad_detalle_orden_venta_producto * precio_unitario_producto AS subtotal FROM detalle_orden_venta_productos) "
+    "UNION ALL "
+    "(SELECT id_detalle_orden_venta_servicio AS id, orden_id, 'SIN_PRODUCTO' AS producto_codigo, servicio_id, 'servicio' AS tipo, "
+    "cantidad_detalle_orden_venta_servicio AS cantidad, precio_unitario_servicio AS precio_unitario, "
+    "cantidad_detalle_orden_venta_servicio * precio_unitario_servicio AS subtotal FROM detalle_orden_venta_servicios)) d"
+)
+
+ORDEN_ALIAS = "ov.*, ov.id_orden_venta AS id, ov.fecha_orden_venta AS fecha, ov.total_orden_venta AS total"
+
+
 class OrderModel(Connection):
     def __init__(self):
         super().__init__()
 
-    def ensure_client_exists(self, cliente_cedula):
+    def _ensure_client_exists(self, cliente_cedula):
         existing = self.fetch_one("transalca",
-            "SELECT cedula FROM clientes WHERE cedula = %s", (cliente_cedula,))
+            "SELECT id_cliente FROM cliente WHERE identificador_cliente = %s", (cliente_cedula,))
         if existing:
             return True
 
         user = self.fetch_one("mantenimiento",
-            "SELECT cedula, nombre, apellido, telefono, email, direccion FROM usuarios WHERE cedula = %s",
+            "SELECT id, cedula, nombre, apellido, telefono, email, direccion FROM usuarios WHERE cedula = %s",
             (cliente_cedula,))
 
         if not user:
             return False
 
+        nombre = (str(user.get('nombre') or 'Cliente').strip() + ' ' + str(user.get('apellido') or '').strip()).strip()
+        cliente_id = self.insert("transalca",
+            "INSERT INTO cliente (nombre_cliente, correo_cliente, identificador_cliente, telefono_cliente, direccion_cliente, tipo_cliente, estado) "
+            "VALUES (%s, %s, %s, %s, %s, 'natural', 1)",
+            (nombre, user.get('email', ''), user['cedula'], user.get('telefono', ''), user.get('direccion', '')))
         self.insert("transalca",
-            "INSERT INTO clientes (cedula, nombre, apellido, telefono, email, direccion) VALUES (%s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), apellido = VALUES(apellido), telefono = VALUES(telefono), email = VALUES(email), direccion = VALUES(direccion)",
-            (
-                user['cedula'],
-                user.get('nombre', 'Cliente'),
-                user.get('apellido', 'Transalca'),
-                user.get('telefono', ''),
-                user.get('email', ''),
-                user.get('direccion', '')
-            ))
+            "INSERT INTO cliente_natural (id_cliente, usuario_id, origen_registro) VALUES (%s, %s, 'cliente')",
+            (cliente_id, user['id']))
         return True
 
-    def supports_unassigned_service_records(self):
-        column = self.fetch_one("transalca", "SHOW COLUMNS FROM servicio_mecanico LIKE 'mecanico_cedula'")
-        if not column:
-            return False
-        if column.get('Null') == 'YES':
-            return True
-        try:
-            self.update("transalca", "ALTER TABLE servicio_mecanico MODIFY mecanico_cedula VARCHAR(20) NULL")
-        except Exception:
-            return False
-        column = self.fetch_one("transalca", "SHOW COLUMNS FROM servicio_mecanico LIKE 'mecanico_cedula'")
-        return bool(column and column.get('Null') == 'YES')
-
-    def supports_qr_order_relation(self):
+    def _supports_qr_order_relation(self):
         column = self.fetch_one("transalca", "SHOW COLUMNS FROM qr_codes LIKE 'orden_venta_id'")
         return bool(column)
 
-    def get_cart(self, cliente_cedula):
+    def _get_current_rate(self, tipo='bcv'):
+        return self.fetch_one("transalca",
+            "SELECT id_tasa_cambio AS id, monto, tipo_tasa_cambio, fecha_tasa_cambio FROM tasas_cambio "
+            "WHERE tipo_tasa_cambio = %s ORDER BY fecha_tasa_cambio DESC, id_tasa_cambio DESC LIMIT 1", (tipo,))
+
+    def _get_cart(self, cliente_cedula):
         items = self.fetch_all("transalca",
-            "SELECT c.*, "
-            "CASE WHEN c.tipo = 'producto' THEN p.nombre ELSE s.nombre END as item_nombre, "
-            "CASE WHEN c.tipo = 'producto' THEN p.precio ELSE s.precio END as precio, "
-            "CASE WHEN c.tipo = 'producto' THEN "
-            "  CASE WHEN p.imagen IS NOT NULL AND p.imagen != 'default_product.png' AND p.imagen != '' THEN CONCAT('product_imgs/', p.imagen) "
-            "  ELSE CONCAT('images/', COALESCE(NULLIF(cat.imagen, ''), 'product-default-parts.png')) "
+            "SELECT c.*, c.id_carrito_compra AS id, c.tipo_carrito as tipo, c.cantidad_carrito as cantidad, "
+            "CASE WHEN c.tipo_carrito = 'producto' THEN p.nombre_producto ELSE s.nombre_servicio END as item_nombre, "
+            "CASE WHEN c.tipo_carrito = 'producto' THEN p.precio_producto ELSE s.precio_servicio END as precio, "
+            "CASE WHEN c.tipo_carrito = 'producto' THEN "
+            "  CASE WHEN p.imagen_producto IS NOT NULL AND p.imagen_producto != 'default_product.png' AND p.imagen_producto != '' THEN CONCAT('product_imgs/', p.imagen_producto) "
+            "  ELSE CONCAT('images/', COALESCE(NULLIF(cat.imagen_categoria, ''), 'product-default-parts.png')) "
             "  END "
             "ELSE 'images/default_service.png' "
             "END as imagen_path "
-            "FROM carrito c "
+            "FROM carrito_compra c "
             "LEFT JOIN productos p ON c.producto_codigo = p.codigo "
-            "LEFT JOIN categorias cat ON p.categoria = cat.nombre "
-            "LEFT JOIN servicios s ON c.servicio_id = s.id "
+            "LEFT JOIN categorias cat ON p.categoria = cat.nombre_categoria "
+            "LEFT JOIN servicios s ON c.servicio_id = s.id_servicio "
             "WHERE c.cliente_cedula = %s",
             (cliente_cedula,))
         return items
 
-    def get_active_payment_methods(self):
+    def _get_active_payment_methods(self):
         try:
             return self.fetch_all("transalca",
-                "SELECT id, nombre, permite_credito, moneda, datos_pago FROM metodos_pago WHERE estado = 1 ORDER BY nombre")
+                "SELECT id_metodo_pago AS id, nombre_metodo_pago AS nombre, permite_credito, moneda, datos_metodo_pago AS datos_pago "
+                "FROM metodos_pago WHERE estado = 1 ORDER BY nombre_metodo_pago")
         except Exception:
             return [{'id': 0, 'nombre': n, 'permite_credito': 0, 'moneda': 'usd', 'datos_pago': ''} for n in ('transferencia', 'pago_movil', 'efectivo', 'zelle', 'binance', 'tarjeta')]
 
-    def get_payment_method(self, value):
+    def _get_payment_method(self, value):
         value = (value or '').strip()
         if not value:
             return None
         try:
             if value.isdigit():
                 return self.fetch_one("transalca",
-                    "SELECT id, nombre, permite_credito FROM metodos_pago WHERE id = %s AND estado = 1 LIMIT 1",
+                    "SELECT id_metodo_pago AS id, nombre_metodo_pago AS nombre, permite_credito, moneda FROM metodos_pago WHERE id_metodo_pago = %s AND estado = 1 LIMIT 1",
                     (int(value),))
             return self.fetch_one("transalca",
-                "SELECT id, nombre, permite_credito FROM metodos_pago WHERE nombre = %s AND estado = 1 LIMIT 1", (value,))
+                "SELECT id_metodo_pago AS id, nombre_metodo_pago AS nombre, permite_credito, moneda FROM metodos_pago WHERE nombre_metodo_pago = %s AND estado = 1 LIMIT 1", (value,))
         except Exception:
             if value in {'transferencia', 'pago_movil', 'efectivo', 'zelle', 'binance', 'tarjeta'}:
                 return {'id': None, 'nombre': value, 'permite_credito': 0}
             return None
 
-    def is_valid_payment_method(self, value):
-        return self.get_payment_method(value) is not None
+    def _is_valid_payment_method(self, value):
+        return self._get_payment_method(value) is not None
 
-    def add_to_cart(self, cliente_cedula, item_id, tipo='producto', cantidad=1):
-        if not self.ensure_client_exists(cliente_cedula):
+    def _add_to_cart(self, cliente_cedula, item_id, tipo='producto', cantidad=1):
+        if not self._ensure_client_exists(cliente_cedula):
             raise Exception("Cliente no encontrado")
 
         if tipo == 'producto':
@@ -110,78 +115,80 @@ class OrderModel(Connection):
             if not product:
                 raise ValueError("Producto no disponible")
             existing = self.fetch_one("transalca",
-                "SELECT id, cantidad FROM carrito WHERE cliente_cedula = %s AND producto_codigo = %s AND tipo = 'producto'",
+                "SELECT id_carrito_compra AS id, cantidad_carrito AS cantidad FROM carrito_compra WHERE cliente_cedula = %s AND producto_codigo = %s AND tipo_carrito = 'producto'",
                 (cliente_cedula, item_id))
             if existing:
                 return self.update("transalca",
-                    "UPDATE carrito SET cantidad = cantidad + %s WHERE id = %s", (cantidad, existing['id']))
+                    "UPDATE carrito_compra SET cantidad_carrito = cantidad_carrito + %s WHERE id_carrito_compra = %s", (cantidad, existing['id']))
             return self.insert("transalca",
-                "INSERT INTO carrito (cliente_cedula, producto_codigo, servicio_id, tipo, cantidad) VALUES (%s, %s, %s, 'producto', %s)",
+                "INSERT INTO carrito_compra (cliente_cedula, producto_codigo, servicio_id, tipo_carrito, cantidad_carrito) VALUES (%s, %s, %s, 'producto', %s)",
                 (cliente_cedula, item_id, None, cantidad))
         else:
-            service = self.fetch_one("transalca", "SELECT id FROM servicios WHERE id = %s AND estado = 1", (item_id,))
+            service = self.fetch_one("transalca", "SELECT id_servicio FROM servicios WHERE id_servicio = %s AND estado = 1", (item_id,))
             if not service:
                 raise ValueError("Servicio no disponible")
             existing = self.fetch_one("transalca",
-                "SELECT id FROM carrito WHERE cliente_cedula = %s AND servicio_id = %s AND tipo = 'servicio'",
+                "SELECT id_carrito_compra AS id FROM carrito_compra WHERE cliente_cedula = %s AND servicio_id = %s AND tipo_carrito = 'servicio'",
                 (cliente_cedula, item_id))
             if existing:
                 return existing['id']
             return self.insert("transalca",
-                "INSERT INTO carrito (cliente_cedula, producto_codigo, servicio_id, tipo, cantidad) VALUES (%s, %s, %s, 'servicio', 1)",
+                "INSERT INTO carrito_compra (cliente_cedula, producto_codigo, servicio_id, tipo_carrito, cantidad_carrito) VALUES (%s, %s, %s, 'servicio', 1)",
                 (cliente_cedula, None, item_id))
 
-    def update_cart_quantity(self, cart_id, cantidad):
+    def _update_cart_quantity(self, cart_id, cantidad):
         if cantidad <= 0:
-            return self.delete("transalca", "DELETE FROM carrito WHERE id = %s", (cart_id,))
+            return self.delete("transalca", "DELETE FROM carrito_compra WHERE id_carrito_compra = %s", (cart_id,))
         return self.update("transalca",
-            "UPDATE carrito SET cantidad = %s WHERE id = %s", (cantidad, cart_id))
+            "UPDATE carrito_compra SET cantidad_carrito = %s WHERE id_carrito_compra = %s", (cantidad, cart_id))
 
-    def cart_item_owner(self, cart_id):
-        row = self.fetch_one("transalca", "SELECT cliente_cedula FROM carrito WHERE id = %s", (cart_id,))
+    def _cart_item_owner(self, cart_id):
+        row = self.fetch_one("transalca", "SELECT cliente_cedula FROM carrito_compra WHERE id_carrito_compra = %s", (cart_id,))
         return row['cliente_cedula'] if row else None
 
-    def remove_from_cart(self, cart_id):
-        return self.delete("transalca", "DELETE FROM carrito WHERE id = %s", (cart_id,))
+    def _remove_from_cart(self, cart_id):
+        return self.delete("transalca", "DELETE FROM carrito_compra WHERE id_carrito_compra = %s", (cart_id,))
 
-    def clear_cart(self, cliente_cedula):
-        return self.delete("transalca", "DELETE FROM carrito WHERE cliente_cedula = %s", (cliente_cedula,))
+    def _clear_cart(self, cliente_cedula):
+        return self.delete("transalca", "DELETE FROM carrito_compra WHERE cliente_cedula = %s", (cliente_cedula,))
 
-    def create_sale_order(self, cliente_cedula, metodo_pago, comprobante_url='', sucursal_id=None):
-        if not self.ensure_client_exists(cliente_cedula):
+    def _create_sale_order(self, cliente_cedula, metodo_pago, comprobante_url='', sucursal_id=None):
+        if not self._ensure_client_exists(cliente_cedula):
             return None
 
-        cart_items = self.get_cart(cliente_cedula)
+        cart_items = self._get_cart(cliente_cedula)
         if not cart_items:
             return None
 
-        allow_unassigned_services = True
-        if any(item['tipo'] == 'servicio' for item in cart_items):
-            allow_unassigned_services = self.supports_unassigned_service_records()
-        qr_has_order_relation = self.supports_qr_order_relation()
+        qr_has_order_relation = self._supports_qr_order_relation()
 
         conn = self.con_transalca()
         try:
             conn.begin()
             cursor = conn.cursor()
-            payment_method = self.get_payment_method(metodo_pago)
+            payment_method = self._get_payment_method(metodo_pago)
             if not payment_method:
                 raise ValueError("El metodo de pago no es valido.")
             client = self.fetch_one("transalca",
-                "SELECT c.tipo_cliente, e.dias_credito FROM clientes c LEFT JOIN empresas e ON e.rif = c.cedula WHERE c.cedula = %s",
+                "SELECT c.tipo_cliente, j.dias_credito FROM cliente c "
+                "LEFT JOIN cliente_juridico j ON j.id_cliente = c.id_cliente WHERE c.identificador_cliente = %s",
                 (cliente_cedula,))
-            if int(payment_method.get('permite_credito') or 0) and (not client or client.get('tipo_cliente') != 'empresa'):
+            if int(payment_method.get('permite_credito') or 0) and (not client or client.get('tipo_cliente') != 'juridica'):
                 raise ValueError("Las compras a credito solo estan disponibles para empresas.")
             metodo_id = payment_method.get('id')
             tipo_pago = 'credito' if int(payment_method.get('permite_credito') or 0) else 'contado'
-            credito_estado = 'activo' if tipo_pago == 'credito' else 'sin_credito'
             fecha_inicio_credito = None
             fecha_vencimiento = None
             if tipo_pago == 'credito':
                 fecha_inicio_credito = caracas_now().date()
                 fecha_vencimiento = fecha_inicio_credito + timedelta(days=int(client.get('dias_credito') or 0))
-            moneda = payment_method.get('moneda', 'usd').lower() if payment_method else 'usd'
-            tasa = 1.0
+            # La moneda se maneja unicamente en metodos_pago.
+            moneda = (payment_method.get('moneda') or 'usd').lower()
+
+            # La tasa vigente queda asociada historicamente a la orden.
+            current_rate = self._get_current_rate('bcv')
+            tasa_cambio_id = current_rate['id'] if current_rate else None
+            tasa_factor = 1.0
             if moneda == 'bs':
                 try:
                     from model.bcv_rate_model import get_bcv_rates
@@ -189,41 +196,42 @@ class OrderModel(Connection):
                     bcv_rate = float(get_bcv_rates(verify=False).get('usd', 0))
                     usdt_rate = float(get_usdt_rate_ves())
                     if bcv_rate > 0 and usdt_rate > 0:
-                        tasa = usdt_rate / bcv_rate
+                        tasa_factor = usdt_rate / bcv_rate
                     else:
-                        tasa = 1.3200
+                        tasa_factor = 1.3200
                 except Exception:
-                    tasa = 1.3200
+                    tasa_factor = 1.3200
 
             total = 0
             for item in cart_items:
                 item_price = float(item['precio'])
                 if moneda == 'bs':
-                    item_price = round(item_price * tasa, 2)
+                    item_price = round(item_price * tasa_factor, 2)
                 total += item_price * item['cantidad']
 
-            monto_deuda = total if tipo_pago == 'credito' else 0
             cursor.execute(
-                "INSERT INTO ordenes_venta (cliente_cedula, sucursal_id, fecha, total, monto_deuda, metodo_pago_id, tipo_pago, credito_estado, fecha_inicio_credito, fecha_vencimiento_credito, comprobante_url, moneda, tasa) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                (cliente_cedula, sucursal_id, caracas_now(), total, monto_deuda, metodo_id, tipo_pago, credito_estado, fecha_inicio_credito, fecha_vencimiento, comprobante_url, moneda, tasa))
+                "INSERT INTO ordenes_venta (cliente_cedula, sucursal_id, fecha_orden_venta, total_orden_venta, metodo_pago_id, tasa_cambio_id, tipo_pago) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (cliente_cedula, sucursal_id, caracas_now(), total, metodo_id, tasa_cambio_id, tipo_pago))
             order_id = cursor.lastrowid
+            if tipo_pago == 'credito':
+                cursor.execute(
+                    "INSERT INTO creditos_orden_venta (orden_venta_id, fecha_inicio_credito, fecha_vencimiento_credito, estado_credito) "
+                    "VALUES (%s, %s, %s, 'activo')",
+                    (order_id, fecha_inicio_credito, fecha_vencimiento))
             for item in cart_items:
                 item_price = float(item['precio'])
                 if moneda == 'bs':
-                    item_price = round(item_price * tasa, 2)
+                    item_price = round(item_price * tasa_factor, 2)
                 if item['tipo'] == 'producto':
-                    subtotal = item_price * item['cantidad']
                     cursor.execute(
-                        "INSERT INTO detalle_orden_venta_productos (orden_id, producto_codigo, cantidad, precio_unitario, subtotal) VALUES (%s, %s, %s, %s, %s)",
-                        (order_id, item['producto_codigo'], item['cantidad'], item_price, subtotal))
+                        "INSERT INTO detalle_orden_venta_productos (orden_id, producto_codigo, cantidad_detalle_orden_venta_producto, precio_unitario_producto) VALUES (%s, %s, %s, %s)",
+                        (order_id, item['producto_codigo'], item['cantidad'], item_price))
                 else:
+                    # El servicio se registra en servicio_mecanico solo cuando el pago es validado.
                     cursor.execute(
-                        "INSERT INTO detalle_orden_venta_servicios (orden_id, servicio_id, cantidad, precio_unitario, subtotal) VALUES (%s, %s, 1, %s, %s)",
-                        (order_id, item['servicio_id'], item_price, item_price))
-                    if allow_unassigned_services:
-                        cursor.execute(
-                            "INSERT INTO servicio_mecanico (servicio_id, mecanico_cedula, orden_venta_id, observaciones) VALUES (%s, %s, %s, %s)",
-                            (item['servicio_id'], None, order_id, 'Pendiente de asignacion de mecanico'))
+                        "INSERT INTO detalle_orden_venta_servicios (orden_id, servicio_id, cantidad_detalle_orden_venta_servicio, precio_unitario_servicio) VALUES (%s, %s, 1, %s)",
+                        (order_id, item['servicio_id'], item_price))
             if comprobante_url:
                 cursor.execute(
                     "INSERT INTO comprobantes_pago (orden_venta_id, imagen_url) VALUES (%s, %s)",
@@ -233,16 +241,16 @@ class OrderModel(Connection):
                 qr_payload = json.dumps({"kind": "factura", "orden_id": order_id})
                 if qr_has_order_relation:
                     cursor.execute(
-                        "INSERT INTO qr_codes (usuario_cedula, tipo, contenido, utilidad, referencia_id, orden_venta_id) VALUES (%s, 'pago', %s, 'factura', %s, %s)",
+                        "INSERT INTO qr_codes (usuario_cedula, tipo_qr_code, contenido, utilidad, referencia_qr_code, orden_venta_id) VALUES (%s, 'pago', %s, 'factura', %s, %s)",
                         (cliente_cedula, qr_payload, order_id, order_id))
                 else:
                     cursor.execute(
-                        "INSERT INTO qr_codes (usuario_cedula, tipo, contenido, utilidad, referencia_id) VALUES (%s, 'pago', %s, 'factura', %s)",
+                        "INSERT INTO qr_codes (usuario_cedula, tipo_qr_code, contenido, utilidad, referencia_qr_code) VALUES (%s, 'pago', %s, 'factura', %s)",
                         (cliente_cedula, qr_payload, order_id))
             except Exception:
                 logger.warning("No se pudo crear el QR de factura para la orden %s.", order_id, exc_info=True)
 
-            cursor.execute("DELETE FROM carrito WHERE cliente_cedula = %s", (cliente_cedula,))
+            cursor.execute("DELETE FROM carrito_compra WHERE cliente_cedula = %s", (cliente_cedula,))
             conn.commit()
             return order_id
         except ValueError:
@@ -250,38 +258,95 @@ class OrderModel(Connection):
             raise
         except Exception:
             conn.rollback()
+            logger.exception("Error al crear la orden de venta")
             return None
 
-    def get_client_orders(self, cliente_cedula):
-        return self.fetch_all("transalca",
-            "SELECT ov.*, mp.nombre AS metodo_pago, mp.nombre AS metodo_pago_nombre "
-            "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
-            "WHERE ov.cliente_cedula = %s ORDER BY ov.fecha DESC", (cliente_cedula,))
+    def _activate_services_for_order(self, order_id):
+        """Crea los registros en servicio_mecanico cuando el pago de la orden fue validado."""
+        try:
+            order = self.fetch_one("transalca",
+                "SELECT id_orden_venta, cliente_cedula FROM ordenes_venta WHERE id_orden_venta = %s", (order_id,))
+            if not order:
+                return 0
+            services = self.fetch_all("transalca",
+                "SELECT d.servicio_id FROM detalle_orden_venta_servicios d WHERE d.orden_id = %s", (order_id,))
+            created = 0
+            for svc in services:
+                existing = self.fetch_one("transalca",
+                    "SELECT id_servicio_mecanico FROM servicio_mecanico WHERE orden_venta_id = %s AND servicio_id = %s",
+                    (order_id, svc['servicio_id']))
+                if existing:
+                    continue
+                self.insert("transalca",
+                    "INSERT INTO servicio_mecanico (servicio_id, mecanico_cedula, orden_venta_id, observaciones_servicio, cliente_cedula, estado_servicio) "
+                    "VALUES (%s, NULL, %s, %s, %s, 'sin_asignar')",
+                    (svc['servicio_id'], order_id, 'Pago validado - pendiente de asignacion de mecanico', order['cliente_cedula']))
+                created += 1
+            return created
+        except Exception:
+            logger.exception("No se pudieron activar los servicios de la orden %s", order_id)
+            return 0
 
-    def get_order_detail(self, order_id):
+    def _get_client_orders(self, cliente_cedula):
+        return self.fetch_all("transalca",
+            "SELECT " + ORDEN_ALIAS + ", mp.nombre_metodo_pago AS metodo_pago, mp.nombre_metodo_pago AS metodo_pago_nombre, mp.moneda "
+            "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
+            "WHERE ov.cliente_cedula = %s ORDER BY ov.fecha_orden_venta DESC", (cliente_cedula,))
+
+    def _get_order_detail(self, order_id):
         order = self.fetch_one("transalca",
-            "SELECT ov.*, mp.nombre AS metodo_pago, mp.nombre AS metodo_pago_nombre "
-            "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
-            "WHERE ov.id = %s", (order_id,))
+            "SELECT " + ORDEN_ALIAS + ", mp.nombre_metodo_pago AS metodo_pago, mp.nombre_metodo_pago AS metodo_pago_nombre, mp.moneda, "
+            "t.monto AS tasa_monto, t.fecha_tasa_cambio AS tasa_fecha, t.tipo_tasa_cambio AS tasa_tipo "
+            "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
+            "LEFT JOIN tasas_cambio t ON t.id_tasa_cambio = ov.tasa_cambio_id "
+            "WHERE ov.id_orden_venta = %s", (order_id,))
         if order:
             order['detalles'] = self.fetch_all("transalca",
-                "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre ELSE s.nombre END as item_nombre "
-                "FROM ((SELECT id, orden_id, producto_codigo, 0 AS servicio_id, 'producto' AS tipo, cantidad, precio_unitario, subtotal FROM detalle_orden_venta_productos) "
-                "UNION ALL "
-                "(SELECT id, orden_id, 'SIN_PRODUCTO' AS producto_codigo, servicio_id, 'servicio' AS tipo, cantidad, precio_unitario, subtotal FROM detalle_orden_venta_servicios)) d "
+                "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre_producto ELSE s.nombre_servicio END as item_nombre "
+                "FROM " + DETAIL_UNION + " "
                 "LEFT JOIN productos p ON d.producto_codigo = p.codigo "
-                "LEFT JOIN servicios s ON d.servicio_id = s.id WHERE d.orden_id = %s",
+                "LEFT JOIN servicios s ON d.servicio_id = s.id_servicio WHERE d.orden_id = %s",
                 (order_id,))
             client = self.fetch_one("mantenimiento",
                 "SELECT nombre, apellido, email, telefono, cedula FROM usuarios WHERE cedula = %s", (order['cliente_cedula'],))
+            if not client:
+                client = self.fetch_one("transalca",
+                    "SELECT nombre_cliente AS nombre, '' AS apellido, correo_cliente AS email, "
+                    "telefono_cliente AS telefono, identificador_cliente AS cedula "
+                    "FROM cliente WHERE identificador_cliente = %s", (order['cliente_cedula'],))
             if client:
                 order.update(client)
             comprobante = self.fetch_one("transalca",
-                "SELECT * FROM comprobantes_pago WHERE orden_venta_id = %s ORDER BY id DESC LIMIT 1", (order_id,))
+                "SELECT cp.*, cp.id_comprobante_pago AS id, cp.fecha_comprobante AS fecha FROM comprobantes_pago cp "
+                "WHERE cp.orden_venta_id = %s ORDER BY cp.id_comprobante_pago DESC LIMIT 1", (order_id,))
             order['comprobante'] = comprobante
         return order
 
-    def get_cart_count(self, cliente_cedula):
+    def _get_cart_count(self, cliente_cedula):
         result = self.fetch_one("transalca",
-            "SELECT COALESCE(SUM(cantidad), 0) as total FROM carrito WHERE cliente_cedula = %s", (cliente_cedula,))
+            "SELECT COALESCE(SUM(cantidad_carrito), 0) as total FROM carrito_compra WHERE cliente_cedula = %s", (cliente_cedula,))
         return result['total'] if result else 0
+
+    def ejecutar(self, accion, *args, **kwargs):
+        acciones = {
+            "ensure_client_exists": self._ensure_client_exists,
+            "supports_qr_order_relation": self._supports_qr_order_relation,
+            "get_current_rate": self._get_current_rate,
+            "get_cart": self._get_cart,
+            "get_active_payment_methods": self._get_active_payment_methods,
+            "get_payment_method": self._get_payment_method,
+            "is_valid_payment_method": self._is_valid_payment_method,
+            "add_to_cart": self._add_to_cart,
+            "update_cart_quantity": self._update_cart_quantity,
+            "cart_item_owner": self._cart_item_owner,
+            "remove_from_cart": self._remove_from_cart,
+            "clear_cart": self._clear_cart,
+            "create_sale_order": self._create_sale_order,
+            "activate_services_for_order": self._activate_services_for_order,
+            "get_client_orders": self._get_client_orders,
+            "get_order_detail": self._get_order_detail,
+            "get_cart_count": self._get_cart_count,
+        }
+        if accion not in acciones:
+            raise ValueError("Accion no permitida")
+        return acciones[accion](*args, **kwargs)

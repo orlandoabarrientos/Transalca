@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transalca Admin | R. Bitacora Vehiculo</title>
+    <link rel="icon" type="image/png" href="/public/img/logo.png">
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+    <style>
+        .vlog-page .table thead th, .vlog-page .table tbody td { font-size: 0.85rem; vertical-align: middle; }
+        .vlog-page .badge-prioridad-critica { background:#FEE2E2; color:#B91C1C; }
+        .vlog-page .badge-prioridad-alta { background:#FEF3C7; color:#B45309; }
+        .vlog-page .badge-prioridad-media { background:#DBEAFE; color:#1D4ED8; }
+        .vlog-page .badge-prioridad-baja { background:#DCFCE7; color:#15803D; }
+        .vlog-page .nav-tabs .nav-link.active { color: var(--primary); font-weight: 600; }
+        .vlog-page .filters-row .form-control, .vlog-page .filters-row .form-select { font-size: 0.85rem; }
+    </style>
+</head>
+<body class="vlog-page">
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <div>
+                    <h4 class="fw-bold mb-1">R. Bitacora Vehiculo</h4>
+                    <p class="text-muted mb-0" style="font-size:0.82rem;">Historial automatico de servicios, productos usados, cauchos y predicciones de mantenimiento</p>
+                </div>
+                <button class="btn btn-orange" onclick="runCycle()"><i class="bi bi-arrow-repeat me-1"></i>Actualizar bitacora y predicciones</button>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card"><div class="stat-icon" style="background:var(--primary-soft);color:var(--primary);"><i class="bi bi-journal-text"></i></div><div><span class="stat-value" id="statRegistros">--</span><span class="stat-label">Registros</span></div></div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card"><div class="stat-icon" style="background:#DBEAFE;color:#1D4ED8;"><i class="bi bi-graph-up-arrow"></i></div><div><span class="stat-value" id="statPredicciones">--</span><span class="stat-label">Predicciones activas</span></div></div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card"><div class="stat-icon" style="background:#FEF3C7;color:#B45309;"><i class="bi bi-exclamation-triangle"></i></div><div><span class="stat-value" id="statProximas">--</span><span class="stat-label">Alertas proximas (≤14 dias)</span></div></div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card"><div class="stat-icon" style="background:#FEE2E2;color:#B91C1C;"><i class="bi bi-x-octagon"></i></div><div><span class="stat-value" id="statVencidas">--</span><span class="stat-label">Vencidas</span></div></div>
+                </div>
+            </div>
+
+            <ul class="nav nav-tabs mb-3">
+                <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabRegistros"><i class="bi bi-journal-text me-1"></i>Registros de bitacora</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabPredicciones"><i class="bi bi-magic me-1"></i>Predicciones y alertas</a></li>
+            </ul>
+
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="tabRegistros">
+                    <div class="card mb-3">
+                        <div class="card-body py-2">
+                            <div class="row g-2 filters-row align-items-end">
+                                <div class="col-md-3"><label class="form-label mb-1">Cliente</label><input type="text" id="filtroCliente" class="form-control" placeholder="Nombre o cedula"></div>
+                                <div class="col-md-2"><label class="form-label mb-1">Vehiculo (placa)</label><input type="text" id="filtroVehiculo" class="form-control" placeholder="Placa"></div>
+                                <div class="col-md-2"><label class="form-label mb-1">Desde</label><input type="date" id="filtroDesde" class="form-control"></div>
+                                <div class="col-md-2"><label class="form-label mb-1">Hasta</label><input type="date" id="filtroHasta" class="form-control"></div>
+                                <div class="col-md-3 d-flex gap-2">
+                                    <button class="btn btn-outline-orange w-100" onclick="loadRegistros()"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+                                    <button class="btn btn-outline-secondary" onclick="clearFiltros()"><i class="bi bi-eraser"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-body p-0 table-responsive">
+                            <table class="table mb-0">
+                                <thead>
+                                    <tr><th>Fecha</th><th>Vehiculo</th><th>Cliente</th><th>Servicio realizado</th><th>Productos usados</th><th>Cauchos usados</th><th>Km</th><th></th></tr>
+                                </thead>
+                                <tbody id="registrosBody"><tr><td colspan="8" class="text-center text-muted py-4">Cargando...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="tabPredicciones">
+                    <div class="card mb-3">
+                        <div class="card-body py-2">
+                            <div class="row g-2 filters-row align-items-end">
+                                <div class="col-md-3"><label class="form-label mb-1">Cliente</label><input type="text" id="predCliente" class="form-control" placeholder="Nombre o cedula"></div>
+                                <div class="col-md-2"><label class="form-label mb-1">Vehiculo</label><input type="text" id="predVehiculo" class="form-control" placeholder="Placa"></div>
+                                <div class="col-md-2"><label class="form-label mb-1">Estado</label>
+                                    <select id="predEstado" class="form-select">
+                                        <option value="">Todos</option>
+                                        <option value="activa">Activa</option>
+                                        <option value="vencida">Vencida</option>
+                                        <option value="atendida">Atendida</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2"><label class="form-label mb-1">Prioridad</label>
+                                    <select id="predPrioridad" class="form-select">
+                                        <option value="">Todas</option>
+                                        <option value="critica">Critica</option>
+                                        <option value="alta">Alta</option>
+                                        <option value="media">Media</option>
+                                        <option value="baja">Baja</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 d-flex gap-2">
+                                    <button class="btn btn-outline-orange w-100" onclick="loadPredicciones()"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-body p-0 table-responsive">
+                            <table class="table mb-0">
+                                <thead>
+                                    <tr><th>Vehiculo</th><th>Cliente</th><th>Prediccion</th><th>Detalle</th><th>Fecha estimada</th><th>Dias</th><th>Prioridad</th><th>Estado</th><th>Base de calculo</th><th>Accion</th></tr>
+                                </thead>
+                                <tbody id="prediccionesBody"><tr><td colspan="10" class="text-center text-muted py-4">Cargando...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="registroModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalle de registro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="registroDetalle"></div>
+        </div>
+    </div>
+</div>
+
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/vehicle_log.js"></script>
+</body>
+</html>

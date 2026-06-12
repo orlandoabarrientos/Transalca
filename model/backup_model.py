@@ -19,7 +19,7 @@ class BackupModel(Connection):
         configured_folder = BACKUP_FOLDER if os.path.isabs(BACKUP_FOLDER) else os.path.join(base_dir, BACKUP_FOLDER)
         self.backup_folder = os.path.abspath(configured_folder)
 
-    def create_backup(self):
+    def _create_backup(self):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         files = []
         os.makedirs(self.backup_folder, exist_ok=True)
@@ -89,7 +89,7 @@ class BackupModel(Connection):
             raise ValueError("Ruta de respaldo invalida.")
         return filepath
 
-    def list_backups(self):
+    def _list_backups(self):
         files = []
         if os.path.exists(self.backup_folder):
             for filename in os.listdir(self.backup_folder):
@@ -103,15 +103,32 @@ class BackupModel(Connection):
         files.sort(key=lambda x: x['date'], reverse=True)
         return files
 
-    def delete_backup(self, filename):
+    def _delete_backup(self, filename):
         filepath = self._safe_backup_path(filename)
         if os.path.exists(filepath):
             os.remove(filepath)
             return True
         return False
 
-    def get_backup_path(self, filename):
+    def _get_backup_path(self, filename):
         filepath = self._safe_backup_path(filename)
         if os.path.exists(filepath):
             return filepath
         return None
+
+    def _log_event(self, usuario_id, accion, modulo, descripcion, ip):
+        return self.insert("mantenimiento",
+            "INSERT INTO eventos_sistema (usuario_id, accion, modulo, descripcion, ip) VALUES (%s, %s, %s, %s, %s)",
+            (usuario_id, accion, modulo, descripcion, ip))
+
+    def ejecutar(self, accion, *args, **kwargs):
+        acciones = {
+            "create_backup": self._create_backup,
+            "list_backups": self._list_backups,
+            "delete_backup": self._delete_backup,
+            "get_backup_path": self._get_backup_path,
+            "log_event": self._log_event,
+        }
+        if accion not in acciones:
+            raise ValueError("Accion no permitida")
+        return acciones[accion](*args, **kwargs)

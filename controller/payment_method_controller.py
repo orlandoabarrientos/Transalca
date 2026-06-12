@@ -29,7 +29,7 @@ def get_all():
             return auth
         if not is_employee():
             return deny()
-        return jsonify({"status": "success", "data": model.get_all()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_all")})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -40,7 +40,7 @@ def get_active():
         auth = require_login()
         if auth:
             return auth
-        return jsonify({"status": "success", "data": model.get_active()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_active")})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los métodos de pago."}), 500
 
@@ -55,7 +55,7 @@ def check_unique():
             return deny()
         value = (request.args.get('value') or '').strip()
         exclude = request.args.get('exclude') or None
-        return jsonify({"status": "success", "unique": not model.name_exists(value, exclude)})
+        return jsonify({"status": "success", "unique": not model.ejecutar("name_exists", value, exclude)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -68,7 +68,7 @@ def get_one(method_id):
             return auth
         if not is_employee():
             return deny()
-        item = model.get_by_id(method_id)
+        item = model.ejecutar("get_by_id", method_id)
         if not item:
             return jsonify({"status": "error", "message": "Método de pago no encontrado."}), 404
         return jsonify({"status": "success", "data": item})
@@ -87,16 +87,16 @@ def create():
         clean, errors = _validate(request.get_json() or {})
         if errors:
             return jsonify({"status": "error", "message": "Errores de validación.", "errors": errors}), 400
-        existing = model.get_by_name(clean['nombre'])
+        existing = model.ejecutar("get_by_name", clean['nombre'])
         if existing:
             if existing['estado'] == 1:
                 return jsonify({"status": "error", "message": "Este método de pago ya está registrado.", "errors": {"nombre": "Este método de pago ya está registrado."}}), 400
             else:
-                model.update_method(existing['id'], clean)
-                model.update("transalca", "UPDATE metodos_pago SET estado = 1 WHERE id = %s", (existing['id'],))
+                model.ejecutar("update_method", existing['id'], clean)
+                model.ejecutar("reactivar", existing['id'])
 
                 return jsonify({"status": "success", "message": "Método de pago registrado correctamente.", "id": existing['id']}), 201
-        method_id = model.create(clean)
+        method_id = model.ejecutar("create", clean)
 
         return jsonify({"status": "success", "message": "Método de pago registrado correctamente.", "id": method_id}), 201
     except Exception:
@@ -111,14 +111,14 @@ def update(method_id):
             return auth
         if not is_employee():
             return deny()
-        if not model.get_by_id(method_id):
+        if not model.ejecutar("get_by_id", method_id):
             return jsonify({"status": "error", "message": "Método de pago no encontrado."}), 404
         clean, errors = _validate(request.get_json() or {})
         if errors:
             return jsonify({"status": "error", "message": "Errores de validación.", "errors": errors}), 400
-        if model.name_exists(clean['nombre'], method_id):
+        if model.ejecutar("name_exists", clean['nombre'], method_id):
             return jsonify({"status": "error", "message": "Este método de pago ya está registrado.", "errors": {"nombre": "Este método de pago ya está registrado."}}), 400
-        model.update_method(method_id, clean)
+        model.ejecutar("update_method", method_id, clean)
 
         return jsonify({"status": "success", "message": "Método de pago modificado correctamente."})
     except Exception:
@@ -133,10 +133,10 @@ def delete(method_id):
             return auth
         if not is_employee():
             return deny()
-        item = model.get_by_id(method_id)
+        item = model.ejecutar("get_by_id", method_id)
         if not item:
             return jsonify({"status": "error", "message": "Método de pago no encontrado."}), 404
-        model.soft_delete(method_id)
+        model.ejecutar("soft_delete", method_id)
 
         return jsonify({"status": "success", "message": "Método de pago eliminado correctamente."})
     except Exception:

@@ -48,16 +48,16 @@ def _validate_product(data, old_codigo=None):
         'marca': require_text(errors, 'marca', data.get('marca'), 'La marca', min_len=1, max_len=150, allow_serial=True)
     }
 
-    existing = model.get_by_codigo(old_codigo) if old_codigo else None
+    existing = model.ejecutar("get_by_codigo", old_codigo) if old_codigo else None
 
     if clean['categoria'] and not errors.get('categoria'):
         is_current_cat = existing and existing.get('categoria') == clean['categoria']
-        if not is_current_cat and not model.category_exists(clean['categoria']):
+        if not is_current_cat and not model.ejecutar("category_exists", clean['categoria']):
             errors['categoria'] = SELECT_TAMPER_MESSAGE
 
     if clean['marca'] and not errors.get('marca'):
         is_current_brand = existing and existing.get('marca') == clean['marca']
-        if not is_current_brand and not model.brand_exists(clean['marca']):
+        if not is_current_brand and not model.ejecutar("brand_exists", clean['marca']):
             errors['marca'] = SELECT_TAMPER_MESSAGE
 
     sucursal_ids = data.get('sucursal_ids')
@@ -88,7 +88,7 @@ def get_all():
         if estado is not None:
             if estado not in ('0', '1', 0, 1):
                 return jsonify({"status": "error", "message": SELECT_TAMPER_MESSAGE}), 400
-            products = model.get_by_estado(int(estado))
+            products = model.ejecutar("get_by_estado", int(estado))
             return jsonify({"status": "success", "data": products})
 
         page_val = request.args.get('page')
@@ -100,7 +100,7 @@ def get_all():
             except (ValueError, TypeError):
                 page = 1
                 per_page = 10
-            paginated = model.get_all_paginated(page, per_page, q if q else None)
+            paginated = model.ejecutar("get_all_paginated", page, per_page, q if q else None)
             return jsonify({
                 "status": "success",
                 "data": paginated["data"],
@@ -110,7 +110,7 @@ def get_all():
                 "pages": paginated["pages"]
             })
 
-        products = model.get_all()
+        products = model.ejecutar("get_all")
         return jsonify({"status": "success", "data": products})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los productos"}), 500
@@ -138,7 +138,7 @@ def get_active():
                     branch = None
 
             sort = request.args.get('sort') if request.args.get('sort') in ('price_asc', 'price_desc', 'name') else None
-            paginated = model.get_active_paginated(
+            paginated = model.ejecutar("get_active_paginated", 
                 page,
                 per_page,
                 category=(request.args.get('category') or '').strip()[:150] or None,
@@ -154,7 +154,7 @@ def get_active():
                 "per_page": paginated["per_page"],
                 "pages": paginated["pages"]
             })
-        return jsonify({"status": "success", "data": model.get_active()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_active")})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los productos"}), 500
 
@@ -166,7 +166,7 @@ def check_unique():
         exclude = request.args.get('exclude') or None
         if not codigo:
             return jsonify({"status": "error", "message": "El codigo es obligatorio"}), 400
-        return jsonify({"status": "success", "exists": model.codigo_exists(codigo, exclude)})
+        return jsonify({"status": "success", "exists": model.ejecutar("codigo_exists", codigo, exclude)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo validar el codigo"}), 500
 
@@ -174,7 +174,7 @@ def check_unique():
 @product_bp.route('/detail/<path:codigo>', methods=['GET'])
 def get_one(codigo):
     try:
-        product = model.get_by_codigo(codigo)
+        product = model.ejecutar("get_by_codigo", codigo)
         if product:
             return jsonify({"status": "success", "data": product})
         return jsonify({"status": "error", "message": "Producto no encontrado"}), 404
@@ -185,7 +185,7 @@ def get_one(codigo):
 @product_bp.route('/category/<path:categoria>', methods=['GET'])
 def get_by_category(categoria):
     try:
-        return jsonify({"status": "success", "data": model.get_by_category(categoria)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_by_category", categoria)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los productos"}), 500
 
@@ -193,7 +193,7 @@ def get_by_category(categoria):
 @product_bp.route('/brand/<path:marca>', methods=['GET'])
 def get_by_brand(marca):
     try:
-        return jsonify({"status": "success", "data": model.get_by_brand(marca)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_by_brand", marca)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los productos"}), 500
 
@@ -202,7 +202,7 @@ def get_by_brand(marca):
 def search():
     try:
         q = request.args.get('q', '')[:80]
-        return jsonify({"status": "success", "data": model.search(q)})
+        return jsonify({"status": "success", "data": model.ejecutar("search", q)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo buscar productos"}), 500
 
@@ -210,7 +210,7 @@ def search():
 @product_bp.route('/sucursal/<int:sid>', methods=['GET'])
 def get_by_sucursal(sid):
     try:
-        return jsonify({"status": "success", "data": model.get_by_sucursal(sid)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_by_sucursal", sid)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los productos"}), 500
 
@@ -228,7 +228,7 @@ def create():
         data, errors = _validate_product(raw)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        existing = model.get_by_codigo(data['codigo'])
+        existing = model.ejecutar("get_by_codigo", data['codigo'])
         if existing:
             if existing['estado'] == 1:
                 return jsonify({"status": "error", "message": "Este codigo ya esta registrado", "errors": {"codigo": "Este codigo ya esta registrado."}}), 400
@@ -239,8 +239,8 @@ def create():
                     if img_err:
                         return jsonify({"status": "error", "message": "Error al subir la imagen", "errors": {"imagen": img_err}}), 400
                     data['imagen'] = filename
-                model.update_product(existing['codigo'], data)
-                model.update("transalca", "UPDATE productos SET estado = 1 WHERE codigo = %s", (existing['codigo'],))
+                model.ejecutar("update_product", existing['codigo'], data)
+                model.ejecutar("reactivar", existing['codigo'])
                 return jsonify({"status": "success", "message": "Producto registrado correctamente", "codigo": existing['codigo']})
         imagen_file = request.files.get('imagen')
         if imagen_file and imagen_file.filename != '':
@@ -248,7 +248,7 @@ def create():
             if img_err:
                 return jsonify({"status": "error", "message": "Error al subir la imagen", "errors": {"imagen": img_err}}), 400
             data['imagen'] = filename
-        model.create(data)
+        model.ejecutar("create", data)
         return jsonify({"status": "success", "message": "Producto registrado correctamente", "codigo": data['codigo']})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar el producto"}), 500
@@ -270,7 +270,7 @@ def update():
             errors['old_codigo'] = 'Identificador de producto requerido.'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        if data['codigo'] != old_codigo and model.codigo_exists(data['codigo']):
+        if data['codigo'] != old_codigo and model.ejecutar("codigo_exists", data['codigo']):
             return jsonify({"status": "error", "message": "Este codigo ya esta registrado", "errors": {"codigo": "Este codigo ya esta registrado."}}), 400
         imagen_file = request.files.get('imagen')
         if imagen_file and imagen_file.filename != '':
@@ -278,7 +278,7 @@ def update():
             if img_err:
                 return jsonify({"status": "error", "message": "Error al subir la imagen", "errors": {"imagen": img_err}}), 400
             data['imagen'] = filename
-            existing = model.get_by_codigo(old_codigo)
+            existing = model.ejecutar("get_by_codigo", old_codigo)
             if existing:
                 old_img = existing.get('imagen')
                 if old_img and old_img != 'default_product.png':
@@ -288,7 +288,7 @@ def update():
                             os.remove(old_path)
                         except OSError:
                             pass
-        model.update_product(old_codigo, data)
+        model.ejecutar("update_product", old_codigo, data)
         return jsonify({"status": "success", "message": "Producto modificado correctamente"})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el producto"}), 500
@@ -301,10 +301,10 @@ def toggle():
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         data = request.get_json() or {}
         codigo = (data.get('codigo') or '').strip()
-        product = model.get_by_codigo(codigo)
+        product = model.ejecutar("get_by_codigo", codigo)
         if not product:
             return jsonify({"status": "error", "message": "Producto no encontrado"}), 404
-        model.soft_delete(codigo)
+        model.ejecutar("soft_delete", codigo)
 
         return jsonify({"status": "success", "message": "Producto eliminado correctamente"})
     except Exception:

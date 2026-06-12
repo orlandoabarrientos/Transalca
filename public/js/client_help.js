@@ -36,6 +36,40 @@ function bindHelpEvents() {
     $('#ticketRefreshBtn').on('click', () => loadHelpTickets());
     $('#newTicketForm').on('submit', createNewHelpTicket);
     $('#replyForm').on('submit', sendHelpReply);
+    $('#newTicketType').on('change', onTicketTypeChange);
+}
+
+function onTicketTypeChange() {
+    const tipo = $('#newTicketType').val();
+    $('#ticketVehicleGroup').toggle(tipo === 'vehiculo');
+    $('#ticketProductGroup').toggle(tipo === 'producto');
+    $('#ticketServiceGroup').toggle(tipo === 'servicio');
+    if (tipo === 'producto' && !helpState.productsLoaded) loadHelpProducts();
+    if (tipo === 'servicio' && !helpState.servicesLoaded) loadHelpServices();
+}
+
+async function loadHelpProducts() {
+    try {
+        const res = await fetch('/api/products/active', { credentials: 'same-origin' });
+        const data = await res.json();
+        const items = Array.isArray(data.data) ? data.data : (data.data?.data || []);
+        const select = $('#newTicketProduct');
+        select.find('option:not(:first)').remove();
+        items.forEach(p => select.append(`<option value="${p.codigo}">${p.nombre} (${p.codigo})</option>`));
+        helpState.productsLoaded = true;
+    } catch (e) { }
+}
+
+async function loadHelpServices() {
+    try {
+        const res = await fetch('/api/services/active', { credentials: 'same-origin' });
+        const data = await res.json();
+        const items = Array.isArray(data.data) ? data.data : [];
+        const select = $('#newTicketService');
+        select.find('option:not(:first)').remove();
+        items.forEach(s => select.append(`<option value="${s.id}">${s.nombre}</option>`));
+        helpState.servicesLoaded = true;
+    } catch (e) { }
 }
 
 async function loadHelpVehicles() {
@@ -203,8 +237,22 @@ async function createNewHelpTicket(event) {
         prioridad: ($('#newTicketPriority').val() || 'media').trim(),
         descripcion: ($('#newTicketDescription').val() || '').trim()
     };
-    const vehiculoId = $('#newTicketVehicle').val();
-    if (vehiculoId) payload.vehiculo_id = vehiculoId;
+    const tipo = $('#newTicketType').val() || 'general';
+    if (tipo === 'vehiculo') {
+        const vehiculoId = $('#newTicketVehicle').val();
+        if (!vehiculoId) { showToast('Seleccione el vehiculo del reporte', 'error'); return; }
+        payload.vehiculo_id = vehiculoId;
+    } else if (tipo === 'producto') {
+        const productoId = $('#newTicketProduct').val();
+        if (!productoId) { showToast('Seleccione el producto del reporte', 'error'); return; }
+        payload.referencia_tipo = 'producto';
+        payload.referencia_id = productoId;
+    } else if (tipo === 'servicio') {
+        const servicioId = $('#newTicketService').val();
+        if (!servicioId) { showToast('Seleccione el servicio del reporte', 'error'); return; }
+        payload.referencia_tipo = 'servicio';
+        payload.referencia_id = servicioId;
+    }
 
     if (!payload.asunto || !payload.descripcion) {
         showToast('Asunto y descripcion son requeridos', 'error');
@@ -227,6 +275,7 @@ async function createNewHelpTicket(event) {
         showToast('Ticket enviado a soporte', 'success');
         $('#newTicketForm')[0].reset();
         $('#newTicketPriority').val('media');
+        $('#newTicketType').val('general').trigger('change');
         await loadHelpTickets(true);
         if (data.id) await openHelpTicket(data.id, true);
     } catch (e) {

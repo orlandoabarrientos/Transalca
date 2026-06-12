@@ -4339,3 +4339,115 @@ body.client-store .client-profile-fallback {
     color: var(--primary);
     border-bottom-color: var(--primary);
 }
+
+
+/* Tarjetas de servicios del catalogo (rediseno) */
+body.client-store .service-pro-card {
+    background: #fff;
+    border: 1px solid #eef0f3;
+    border-radius: 18px;
+    padding: 1.15rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    box-shadow: 0 6px 18px -12px rgba(15, 23, 42, 0.25);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+body.client-store .service-pro-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(233, 93, 15, 0.45);
+    box-shadow: 0 16px 30px -16px rgba(233, 93, 15, 0.35);
+}
+body.client-store .service-pro-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+body.client-store .service-pro-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 13px;
+    background: linear-gradient(135deg, rgba(233, 93, 15, 0.14), rgba(233, 93, 15, 0.05));
+    color: var(--primary, #e95d0f);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+body.client-store .service-pro-type {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+    font-weight: 700;
+}
+body.client-store .service-pro-title {
+    margin: 0;
+    font-weight: 700;
+    color: #1f2937;
+    font-size: 0.98rem;
+    line-height: 1.25;
+}
+body.client-store .service-pro-status {
+    margin-left: auto;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #15803d;
+    background: #dcfce7;
+    border-radius: 999px;
+    padding: 0.22rem 0.55rem;
+    white-space: nowrap;
+}
+body.client-store .service-pro-desc {
+    color: #64748b;
+    font-size: 0.83rem;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+body.client-store .service-pro-meta {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    color: #6b7280;
+}
+body.client-store .service-pro-meta i {
+    color: var(--primary, #e95d0f);
+    margin-right: 0.35rem;
+}
+body.client-store .service-pro-footer {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-top: 1px dashed #e5e7eb;
+    padding-top: 0.75rem;
+}
+body.client-store .service-pro-price small {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    color: #94a3b8;
+    font-weight: 600;
+}
+body.client-store .service-pro-price strong {
+    color: var(--primary, #e95d0f);
+    font-size: 1.05rem;
+}
+body.client-store .service-pro-cta {
+    border-radius: 10px;
+    font-size: 0.82rem;
+    padding: 0.45rem 0.9rem;
+}
+@media (max-width: 575.98px) {
+    body.client-store .service-pro-footer { flex-direction: column; align-items: stretch; text-align: center; }
+    body.client-store .service-pro-status { display: none; }
+}

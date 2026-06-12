@@ -25,8 +25,7 @@ $(document).ready(function () {
             minMsg: 'El monto debe ser mayor a cero'
         },
         registerCreditStartDate: { required: true, requiredMsg: 'Fecha de inicio requerida' },
-        registerCreditEndDate: { required: true, requiredMsg: 'Fecha de fin requerida' },
-        creditObservaciones: { maxLength: 300, maxLengthMsg: 'Las observaciones no pueden superar los 300 caracteres.' }
+        registerCreditEndDate: { required: true, requiredMsg: 'Fecha de fin requerida' }
     });
     Validator.setupRealtime('creditDatesForm');
     Validator.setupRealtime('creditPaymentForm');
@@ -336,7 +335,6 @@ function showRegisterCreditModal() {
     $('#registerCreditStartDate').val(todayStr);
     $('#registerCreditEndDate').val('');
     $('#creditTotalAmount').val('');
-    $('#creditObservaciones').val('');
     new bootstrap.Modal('#registerCreditModal').show();
     Validator.initTracking('registerCreditForm');
 }
@@ -359,7 +357,6 @@ function saveNewCredit() {
         total: $('#creditTotalAmount').val(),
         fecha_inicio: start,
         fecha_fin: end,
-        observaciones: $('#creditObservaciones').val()
     };
     apiCall('/api/credit/', 'POST', payload).then(r => {
         if (r.status === 'success') {

@@ -48,7 +48,7 @@ def get_all():
             return auth
         if not is_employee():
             return deny()
-        return jsonify({"status": "success", "data": model.get_all(request.args.get('q'), request.args.get('estado'))})
+        return jsonify({"status": "success", "data": model.ejecutar("get_all", request.args.get('q'), request.args.get('estado'))})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -61,7 +61,7 @@ def stats():
             return auth
         if not is_employee():
             return deny()
-        return jsonify({"status": "success", "data": model.get_stats()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_stats")})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -83,14 +83,14 @@ def check_unique():
             rif, _, _ = normalize_rif(errors, {'rif': value})
             if errors:
                 return jsonify({"status": "error", "message": errors['rif']}), 400
-            company = model.get_by_rif(rif)
+            company = model.ejecutar("get_by_rif", rif)
             return jsonify({"status": "success", "exists": bool(company and rif != exclude), "active": bool(company.get('estado')) if company else False})
         if field == 'email':
             errors = {}
             email = normalize_email(errors, value, required=True)
             if errors:
                 return jsonify({"status": "error", "message": errors['email']}), 400
-            return jsonify({"status": "success", "exists": model.email_exists_globally(email, {"cliente_cedula": exclude})})
+            return jsonify({"status": "success", "exists": model.ejecutar("email_exists_globally", email, {"cliente_cedula": exclude})})
         return jsonify({"status": "error", "message": "Campo no valido."}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo validar el dato."}), 500
@@ -102,14 +102,14 @@ def get_one(rif):
         auth = require_login()
         if auth:
             return auth
-        company = model.get_by_rif(rif)
+        company = model.ejecutar("get_by_rif", rif)
         if not company:
             return jsonify({"status": "error", "message": "Empresa no encontrada."}), 404
         if not can_access_client(company['cedula']):
             return deny()
-        company['flota'] = model.get_fleet(company['cedula'])
-        company['ordenes'] = model.get_orders(company['cedula'])
-        company['representantes'] = model.get_representatives(company['cedula'])
+        company['flota'] = model.ejecutar("get_fleet", company['cedula'])
+        company['ordenes'] = model.ejecutar("get_orders", company['cedula'])
+        company['representantes'] = model.ejecutar("get_representatives", company['cedula'])
         return jsonify({"status": "success", "data": company})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -127,12 +127,12 @@ def create():
         clean, errors = _validate_company(data, True)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        existing = model.get_by_rif(clean['rif'])
+        existing = model.ejecutar("get_by_rif", clean['rif'])
         if existing and existing.get('estado'):
             return jsonify({"status": "error", "message": "Este rif ya esta registrado.", "errors": {"rif": "Este rif ya esta registrado."}}), 400
-        if clean.get('email') and model.email_exists_globally(clean['email'], {"cliente_cedula": clean['rif']}):
+        if clean.get('email') and model.ejecutar("email_exists_globally", clean['email'], {"cliente_cedula": clean['rif']}):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        result = model.create(clean)
+        result = model.ejecutar("create", clean)
 
         return jsonify({"status": "success", "message": "Empresa registrada correctamente.", "id": result.get('rif')}), 201
     except Exception:
@@ -151,9 +151,9 @@ def update(rif):
         clean, errors = _validate_company({**data, 'rif': rif}, False)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if clean.get('email') and model.email_exists_globally(clean['email'], {"cliente_cedula": rif}):
+        if clean.get('email') and model.ejecutar("email_exists_globally", clean['email'], {"cliente_cedula": rif}):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        model.update_company(rif, clean)
+        model.ejecutar("update_company", rif, clean)
 
         return jsonify({"status": "success", "message": "Empresa modificada correctamente."})
     except Exception:
@@ -168,7 +168,7 @@ def delete(rif):
             return auth
         if not is_employee():
             return deny()
-        model.soft_delete(rif)
+        model.ejecutar("soft_delete", rif)
 
         return jsonify({"status": "success", "message": "Empresa eliminada correctamente."})
     except Exception:
@@ -199,7 +199,7 @@ def add_representative(rif):
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         
-        model.add_representative(rif, clean)
+        model.ejecutar("add_representative", rif, clean)
         return jsonify({"status": "success", "message": "Representante guardado correctamente."})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo registrar el representante."}), 500
@@ -215,7 +215,7 @@ def toggle_representative(rid):
             return deny()
         data = request.get_json() or {}
         estado = int(data.get('estado', 1))
-        model.toggle_representative_relation(rid, estado)
+        model.ejecutar("toggle_representative_relation", rid, estado)
         return jsonify({"status": "success", "message": "Estado del representante actualizado correctamente."})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo actualizar el estado del representante."}), 500

@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, session, send_file
+from model.order_model import OrderModel
 from model.scanner_model import ScannerModel
 from model.notification_model import NotificationModel
 
@@ -25,17 +26,17 @@ def scan_qr():
         data = request.get_json() or {}
         raw = data.get('raw') or data.get('codigo') or ''
 
-        qr, error = model.resolve_qr_from_raw(raw)
+        qr, error = model.ejecutar("resolve_qr_from_raw", raw)
         if error:
             return jsonify({"status": "error", "message": error}), 400
 
         source = data.get('source') or ''
         if source == 'client':
-            result = model.process_scan_for_client(qr, session.get('user_cedula'))
+            result = model.ejecutar("process_scan_for_client", qr, session.get('user_cedula'))
         elif _is_employee():
-            result = model.process_scan_for_employee(qr)
+            result = model.ejecutar("process_scan_for_employee", qr)
         elif session.get('user_tipo') == 'cliente':
-            result = model.process_scan_for_client(qr, session.get('user_cedula'))
+            result = model.ejecutar("process_scan_for_client", qr, session.get('user_cedula'))
         else:
             return jsonify({"status": "error", "message": "Tipo de usuario no permitido"}), 403
 
@@ -64,7 +65,7 @@ def get_table_qrs():
         if not _is_employee():
             return jsonify({"status": "error", "message": "Solo empleados"}), 403
 
-        return jsonify({"status": "success", "data": model.get_table_qrs()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_table_qrs")})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -82,7 +83,7 @@ def create_table_qr():
         if not codigo_mesa:
             return jsonify({"status": "error", "message": "Codigo de mesa requerido"}), 400
 
-        result = model.create_table_qr(session.get('user_cedula'), codigo_mesa)
+        result = model.ejecutar("create_table_qr", session.get('user_cedula'), codigo_mesa)
 
 
 
@@ -107,7 +108,7 @@ def update_table_qr_action(qr_id):
         accion = data.get('accion')
         promocion_id = data.get('promocion_id')
 
-        qr = model.set_table_qr_action(qr_id, accion, promocion_id)
+        qr = model.ejecutar("set_table_qr_action", qr_id, accion, promocion_id)
 
 
 
@@ -127,7 +128,7 @@ def scanner_promotions():
         if not _is_employee():
             return jsonify({"status": "error", "message": "Solo empleados"}), 403
 
-        return jsonify({"status": "success", "data": model.get_active_promotions()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_active_promotions")})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -138,7 +139,7 @@ def invoice_qr_image(order_id):
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
 
-        order = model.get_order_full(order_id)
+        order = model.ejecutar("get_order_full", order_id)
         if not order:
             return jsonify({"status": "error", "message": "Orden no encontrada"}), 404
 
@@ -148,7 +149,7 @@ def invoice_qr_image(order_id):
         if str(order.get('estado') or '').lower() not in ('aprobada', 'aprobado', 'verificado', 'pagado'):
             return jsonify({"status": "error", "message": "El QR de factura solo esta disponible cuando el pago esta aprobado."}), 403
 
-        qr_obj = model.ensure_invoice_qr(order_id)
+        qr_obj = model.ejecutar("ensure_invoice_qr", order_id)
         if not qr_obj:
             return jsonify({"status": "error", "message": "No se pudo generar QR de factura"}), 500
 
@@ -199,21 +200,21 @@ def solicitar_validacion():
         if not orden_id:
             return jsonify({"status": "error", "message": "ID de orden requerido"}), 400
 
-        orden = model.fetch_one("transalca", "SELECT * FROM ordenes_venta WHERE id = %s", (orden_id,))
+        orden = model.ejecutar("get_order_basic", orden_id)
         if not orden:
             return jsonify({"status": "error", "message": "La orden no existe"}), 404
         if orden['cliente_cedula'] != session['user_cedula']:
             return jsonify({"status": "error", "message": "No autorizado para esta orden"}), 403
 
-        existing = model.fetch_one("transalca",
-            "SELECT id FROM solicitudes_validacion WHERE orden_venta_id = %s AND estado = 'pendiente'",
-            (orden_id,))
+        comp = model.ejecutar("latest_comprobante", orden_id)
+        if not comp:
+            return jsonify({"status": "error", "message": "La orden no tiene comprobante de pago registrado."}), 400
+
+        existing = model.ejecutar("pending_validation_for_order", orden_id)
         if existing:
             return jsonify({"status": "success", "message": "Ya existe una solicitud de validacion pendiente."})
 
-        model.insert("transalca",
-            "INSERT INTO solicitudes_validacion (tipo, orden_venta_id, estado) VALUES (%s, %s, 'pendiente')",
-            (tipo, orden_id))
+        model.ejecutar("create_validation_request", tipo, comp['id_comprobante_pago'])
 
         return jsonify({"status": "success", "message": "Solicitud de validacion enviada al administrador."})
     except Exception as e:
@@ -228,17 +229,15 @@ def get_solicitudes_pendientes():
         if not _is_employee():
             return jsonify({"status": "error", "message": "Solo empleados"}), 403
 
-        reqs = model.fetch_all("transalca",
-            "SELECT * FROM solicitudes_validacion WHERE estado = 'pendiente' ORDER BY created_at ASC")
+        reqs = model.ejecutar("get_pending_validations")
 
         result = []
         for r in reqs:
-            orden = model.get_order_full(r['orden_venta_id'])
+            orden = model.ejecutar("get_order_full", r['orden_venta_id'])
             if not orden:
                 continue
 
-            comp = model.fetch_one("transalca", "SELECT imagen_url FROM comprobantes_pago WHERE orden_venta_id = %s", (r['orden_venta_id'],))
-            comprobante_img = comp['imagen_url'] if comp else None
+            comprobante_img = r.get('imagen_url')
 
             client = orden.get('cliente') or {}
 
@@ -279,32 +278,51 @@ def responder_validacion():
         if not solicitud_id or not respuesta:
             return jsonify({"status": "error", "message": "Datos incompletos"}), 400
 
-        req = model.fetch_one("transalca", "SELECT * FROM solicitudes_validacion WHERE id = %s", (solicitud_id,))
+        req = model.ejecutar("get_validation_by_id", solicitud_id)
         if not req:
             return jsonify({"status": "error", "message": "Solicitud no encontrada"}), 404
 
-        revisado_por = session['user_cedula']
         estado_solicitud = 'aprobada' if respuesta == 'aprobar' else 'rechazada'
 
-        model.update("transalca", "UPDATE solicitudes_validacion SET estado = %s, revisado_por = %s WHERE id = %s", (estado_solicitud, revisado_por, solicitud_id))
+        model.ejecutar("set_validation_status", solicitud_id, estado_solicitud)
 
         orden_id = req['orden_venta_id']
-        orden = model.fetch_one("transalca", "SELECT cliente_cedula FROM ordenes_venta WHERE id = %s", (orden_id,))
+        orden = model.ejecutar("order_client_cedula", orden_id)
         if respuesta == 'aprobar':
-            model.update("transalca", "UPDATE ordenes_venta SET estado = 'aprobada' WHERE id = %s", (orden_id,))
-            model.update("transalca", "UPDATE comprobantes_pago SET estado = 'verificado', revisado_por = %s WHERE orden_venta_id = %s", (revisado_por, orden_id))
+            model.ejecutar("set_order_status", orden_id, 'aprobada')
+            model.ejecutar("set_comprobante_status", req['comprobante_pago_id'], 'verificado')
+            OrderModel().ejecutar("activate_services_for_order", orden_id)
             if orden:
-                notification_model.notify_payment_status(orden.get('cliente_cedula'), orden_id, True)
+                notification_model.ejecutar("notify_payment_status", orden.get('cliente_cedula'), orden_id, True)
             msg = "Validacion aprobada con exito."
         else:
             if req['tipo'] == 'validar_pago':
-                model.update("transalca", "UPDATE ordenes_venta SET estado = 'rechazada' WHERE id = %s", (orden_id,))
-                model.update("transalca", "UPDATE comprobantes_pago SET estado = 'rechazado', revisado_por = %s WHERE orden_venta_id = %s", (revisado_por, orden_id))
+                model.ejecutar("set_order_status", orden_id, 'rechazada')
+                model.ejecutar("set_comprobante_status", req['comprobante_pago_id'], 'rechazado')
                 if orden:
-                    notification_model.notify_payment_status(orden.get('cliente_cedula'), orden_id, False, 'Validacion de pago rechazada por el equipo.')
+                    notification_model.ejecutar("notify_payment_status", orden.get('cliente_cedula'), orden_id, False, 'Validacion de pago rechazada por el equipo.')
             msg = "Validacion rechazada."
 
         return jsonify({"status": "success", "message": msg})
     except Exception as e:
         return jsonify({"status": "error", "message": "Error al procesar respuesta"}), 500
+
+
+@scanner_bp.route('/alerta-vista', methods=['POST'])
+def alerta_vista():
+    try:
+        if 'user_id' not in session:
+            return jsonify({"status": "error", "message": "No autorizado"}), 401
+        if not _is_employee():
+            return jsonify({"status": "error", "message": "Solo empleados"}), 403
+
+        data = request.get_json() or {}
+        solicitud_id = data.get('solicitud_id')
+        if not solicitud_id:
+            return jsonify({"status": "error", "message": "ID de solicitud requerido"}), 400
+
+        model.ejecutar("mark_alert_seen", solicitud_id)
+        return jsonify({"status": "success", "message": "Alerta marcada como vista."})
+    except Exception as e:
+        return jsonify({"status": "error", "message": "No se pudo marcar la alerta"}), 500
 

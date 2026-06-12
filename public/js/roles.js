@@ -26,9 +26,8 @@ const MODULE_LABELS = {
     notificaciones: 'Notificaciones',
     mantenimiento: 'G. Mantenimiento',
     tasas_avanzadas: 'G. Tasa de Cambio',
-    cotizaciones: 'G. Cotizaciones',
     filtros: 'G. Filtros',
-    combustible: 'G. Combustible'
+    bitacora_vehiculo: 'R. Bitacora Vehiculo'
 };
 
 $(document).ready(function() {

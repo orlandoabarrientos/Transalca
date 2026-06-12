@@ -20,7 +20,7 @@ def get_all():
     try:
         _ensure_bcv_auto_sync()
         limit = request.args.get('limit', 30, type=int)
-        return jsonify({"status": "success", "data": model.get_all(limit)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_all", limit)})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -29,7 +29,7 @@ def get_all():
 def get_today():
     try:
         _ensure_bcv_auto_sync()
-        tasa = model.get_today()
+        tasa = model.ejecutar("get_today")
         if tasa:
             return jsonify({"status": "success", "data": tasa})
         return jsonify({"status": "error", "message": "No hay tasa registrada hoy."}), 404
@@ -41,7 +41,7 @@ def get_today():
 def get_latest():
     try:
         _ensure_bcv_auto_sync()
-        tasa = model.get_latest()
+        tasa = model.ejecutar("get_latest")
         if tasa:
             return jsonify({"status": "success", "data": tasa})
         return jsonify({"status": "error", "message": "No hay tasas registradas."}), 404
@@ -68,7 +68,7 @@ def create():
             errors['fuente'] = 'Fuente requerida'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        tasa_id = model.create(data)
+        tasa_id = model.ejecutar("create", data)
 
 
         return jsonify({"status": "success", "message": "Tasa registrada correctamente.", "id": tasa_id})
@@ -95,7 +95,7 @@ def update(tasa_id):
             errors['fuente'] = 'Fuente requerida'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        model.update_tasa(tasa_id, data)
+        model.ejecutar("update_tasa", tasa_id, data)
 
 
         return jsonify({"status": "success", "message": "Tasa modificada correctamente."})
@@ -108,7 +108,7 @@ def delete(tasa_id):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        model.delete_tasa(tasa_id)
+        model.ejecutar("delete_tasa", tasa_id)
 
 
         return jsonify({"status": "success", "message": "Tasa eliminada correctamente."})

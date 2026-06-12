@@ -8,6 +8,12 @@ from config.config import MAIL_PASSWORD, MAIL_PORT, MAIL_SERVER, MAIL_USERNAME
 from model.connection import Connection
 from model.notification_model import NotificationModel
 
+# monto_deuda ya no se almacena: se calcula como total de la orden menos abonos.
+DEUDA_SQL = (
+    "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc "
+    "WHERE pc.id_credito = cr.id_credito), 0))"
+)
+
 
 class CreditModel(Connection):
     def __init__(self):
@@ -50,7 +56,7 @@ class CreditModel(Connection):
                 'prioridad': priority
             })
         if notifications:
-            self.notifications.create_bulk(notifications)
+            self.notifications.ejecutar("create_bulk", notifications)
 
     def _send_expired_email(self, to_email, company_name, order_id, due_date):
         if not to_email or not MAIL_USERNAME or not MAIL_PASSWORD:
@@ -83,33 +89,33 @@ class CreditModel(Connection):
         except Exception:
             return False
 
-    def sync_credit_statuses(self):
+    def _sync_credit_statuses(self):
         rows = self.fetch_all("transalca",
-            "SELECT ov.id, ov.credito_estado, ov.fecha_vencimiento_credito, "
-            "COALESCE(ov.monto_deuda, ov.total, 0) AS monto_deuda, "
-            "COALESCE(ov.credito_notificacion_7d, 0) AS credito_notificacion_7d, "
-            "COALESCE(ov.credito_notificacion_2d, 0) AS credito_notificacion_2d, "
-            "COALESCE(ov.credito_notificacion_vencido, 0) AS credito_notificacion_vencido, "
-            "c.email, e.razon_social, e.rif "
-            "FROM ordenes_venta ov "
-            "INNER JOIN clientes c ON c.cedula = ov.cliente_cedula "
-            "INNER JOIN empresas e ON e.rif = c.cedula "
-            "WHERE ov.tipo_pago = 'credito' "
-            "AND COALESCE(ov.credito_estado, '') NOT IN ('pagado', 'anulado', 'sin_credito') "
-            "AND COALESCE(ov.monto_deuda, ov.total, 0) > 0")
+            "SELECT cr.id_credito, cr.orden_venta_id AS id, cr.estado_credito, cr.fecha_vencimiento_credito, "
+            + DEUDA_SQL + " AS monto_deuda, "
+            "COALESCE(cr.notificacion_7d, 0) AS notificacion_7d, "
+            "COALESCE(cr.notificacion_2d, 0) AS notificacion_2d, "
+            "COALESCE(cr.notificacion_vencido, 0) AS notificacion_vencido, "
+            "c.correo_cliente AS email, c.nombre_cliente AS razon_social, c.identificador_cliente AS rif "
+            "FROM creditos_orden_venta cr "
+            "INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id "
+            "INNER JOIN cliente c ON c.identificador_cliente = ov.cliente_cedula "
+            "WHERE cr.estado_credito NOT IN ('pagado', 'anulado')")
         today = self._today()
         for row in rows:
+            if self._as_money(row.get('monto_deuda')) <= 0:
+                continue
             due_date = self._as_date(row.get('fecha_vencimiento_credito'))
             if not due_date:
                 continue
             days_left = (due_date - today).days
             company = row.get('razon_social') or row.get('rif') or 'Empresa'
             if days_left <= 0:
-                if row.get('credito_estado') != 'vencido':
+                if row.get('estado_credito') != 'vencido':
                     self.update("transalca",
-                        "UPDATE ordenes_venta SET credito_estado = 'vencido' WHERE id = %s AND tipo_pago = 'credito'",
-                        (row['id'],))
-                if not int(row.get('credito_notificacion_vencido') or 0):
+                        "UPDATE creditos_orden_venta SET estado_credito = 'vencido' WHERE id_credito = %s",
+                        (row['id_credito'],))
+                if not int(row.get('notificacion_vencido') or 0):
                     self._notify_credit_users(
                         "Crédito vencido",
                         f"El crédito de {company} para la orden #{row['id']} venció.",
@@ -117,64 +123,70 @@ class CreditModel(Connection):
                     )
                     self._send_expired_email(row.get('email'), company, row['id'], due_date)
                     self.update("transalca",
-                        "UPDATE ordenes_venta SET credito_notificacion_vencido = 1 WHERE id = %s",
-                        (row['id'],))
+                        "UPDATE creditos_orden_venta SET notificacion_vencido = 1 WHERE id_credito = %s",
+                        (row['id_credito'],))
                 continue
-            if days_left <= 2 and not int(row.get('credito_notificacion_2d') or 0):
+            if days_left <= 2 and not int(row.get('notificacion_2d') or 0):
                 self._notify_credit_users(
                     "Crédito por vencer",
                     f"El crédito de {company} para la orden #{row['id']} vence en {days_left} días.",
                     'alta'
                 )
                 self.update("transalca",
-                    "UPDATE ordenes_venta SET credito_notificacion_2d = 1 WHERE id = %s",
-                    (row['id'],))
-            if days_left <= 7 and not int(row.get('credito_notificacion_7d') or 0):
+                    "UPDATE creditos_orden_venta SET notificacion_2d = 1 WHERE id_credito = %s",
+                    (row['id_credito'],))
+            if days_left <= 7 and not int(row.get('notificacion_7d') or 0):
                 self._notify_credit_users(
                     "Crédito por vencer",
                     f"El crédito de {company} para la orden #{row['id']} vence en {days_left} días.",
                     'media'
                 )
                 self.update("transalca",
-                    "UPDATE ordenes_venta SET credito_notificacion_7d = 1 WHERE id = %s",
-                    (row['id'],))
+                    "UPDATE creditos_orden_venta SET notificacion_7d = 1 WHERE id_credito = %s",
+                    (row['id_credito'],))
 
-    def get_all(self, search=None, estado=None):
-        self.sync_credit_statuses()
+    def _get_all(self, search=None, estado=None):
+        self._sync_credit_statuses()
         sql = (
-            "SELECT ov.*, COALESCE(ov.monto_deuda, ov.total, 0) AS monto_deuda, "
-            "c.nombre, c.email, c.telefono, e.rif, e.razon_social, e.nombre_comercial, "
-            "e.limite_credito, e.dias_credito, mp.nombre AS metodo_pago_nombre "
-            "FROM ordenes_venta ov "
-            "INNER JOIN clientes c ON c.cedula = ov.cliente_cedula "
-            "INNER JOIN empresas e ON e.rif = c.cedula "
-            "LEFT JOIN metodos_pago mp ON mp.id = ov.metodo_pago_id "
-            "WHERE c.tipo_cliente = 'empresa' AND ov.tipo_pago = 'credito'"
+            "SELECT ov.id_orden_venta AS id, ov.cliente_cedula, ov.fecha_orden_venta AS fecha, ov.total_orden_venta AS total, ov.estado AS estado_orden, "
+            "ov.tipo_pago, mp.moneda, "
+            "cr.id_credito, cr.estado_credito AS credito_estado, cr.fecha_inicio_credito, "
+            "cr.fecha_vencimiento_credito, cr.fecha_pago_credito, "
+            + DEUDA_SQL + " AS monto_deuda, "
+            "c.nombre_cliente AS nombre, c.correo_cliente AS email, c.telefono_cliente AS telefono, "
+            "c.identificador_cliente AS rif, c.nombre_cliente AS razon_social, "
+            "j.limite_credito, j.dias_credito, mp.nombre_metodo_pago AS metodo_pago_nombre "
+            "FROM creditos_orden_venta cr "
+            "INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id "
+            "INNER JOIN cliente c ON c.identificador_cliente = ov.cliente_cedula "
+            "LEFT JOIN cliente_juridico j ON j.id_cliente = c.id_cliente "
+            "LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
+            "WHERE 1=1"
         )
         params = []
         if search:
             q = f"%{search}%"
-            sql += " AND (e.rif LIKE %s OR e.razon_social LIKE %s OR ov.id LIKE %s)"
+            sql += " AND (c.identificador_cliente LIKE %s OR c.nombre_cliente LIKE %s OR ov.id_orden_venta LIKE %s)"
             params.extend([q, q, q])
         if estado:
             if estado == 'activo':
-                sql += " AND ov.credito_estado IN ('activo','pendiente','aprobado')"
+                sql += " AND cr.estado_credito IN ('activo','pendiente','aprobado')"
             else:
-                sql += " AND ov.credito_estado = %s"
+                sql += " AND cr.estado_credito = %s"
                 params.append(estado)
-        sql += " ORDER BY ov.fecha DESC"
+        sql += " ORDER BY ov.fecha_orden_venta DESC"
         return self.fetch_all("transalca", sql, tuple(params))
 
-    def get_stats(self):
-        self.sync_credit_statuses()
+    def _get_stats(self):
+        self._sync_credit_statuses()
         row = self.fetch_one("transalca",
             "SELECT COUNT(*) total, "
-            "SUM(CASE WHEN credito_estado IN ('pendiente','aprobado','activo') THEN 1 ELSE 0 END) pendientes, "
-            "SUM(CASE WHEN credito_estado='pagado' THEN 1 ELSE 0 END) pagados, "
-            "SUM(CASE WHEN credito_estado='vencido' THEN 1 ELSE 0 END) vencidos, "
-            "COALESCE(SUM(CASE WHEN credito_estado NOT IN ('pagado','anulado') "
-            "THEN COALESCE(monto_deuda,total,0) ELSE 0 END),0) saldo "
-            "FROM ordenes_venta WHERE tipo_pago='credito'")
+            "SUM(CASE WHEN cr.estado_credito IN ('pendiente','aprobado','activo') THEN 1 ELSE 0 END) pendientes, "
+            "SUM(CASE WHEN cr.estado_credito='pagado' THEN 1 ELSE 0 END) pagados, "
+            "SUM(CASE WHEN cr.estado_credito='vencido' THEN 1 ELSE 0 END) vencidos, "
+            "COALESCE(SUM(CASE WHEN cr.estado_credito NOT IN ('pagado','anulado') "
+            "THEN " + DEUDA_SQL + " ELSE 0 END),0) saldo "
+            "FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id")
         if not row:
             return {'total': 0, 'pendientes': 0, 'pagados': 0, 'vencidos': 0, 'saldo': 0}
         return {
@@ -185,40 +197,66 @@ class CreditModel(Connection):
             'saldo': row.get('saldo') or 0,
         }
 
-    def update_status(self, order_id, estado):
+    def _update_status(self, order_id, estado):
         if estado == 'pagado':
-            return self.mark_paid(order_id)
-        if estado == 'anulado':
-            return self.update("transalca",
-                "UPDATE ordenes_venta SET credito_estado='anulado', monto_deuda=0 WHERE id=%s AND tipo_pago='credito'",
-                (order_id,))
+            return self._mark_paid(order_id)
         return self.update("transalca",
-            "UPDATE ordenes_venta SET credito_estado=%s WHERE id=%s AND tipo_pago='credito'",
+            "UPDATE creditos_orden_venta SET estado_credito=%s WHERE orden_venta_id=%s",
             (estado, order_id))
 
-    def get_by_order(self, order_id):
+    def _get_by_order(self, order_id):
         return self.fetch_one("transalca",
-            "SELECT id, total, COALESCE(monto_deuda, total, 0) AS monto_deuda, credito_estado "
-            "FROM ordenes_venta WHERE id=%s AND tipo_pago='credito'",
+            "SELECT ov.id_orden_venta AS id, ov.total_orden_venta AS total, cr.id_credito, "
+            + DEUDA_SQL + " AS monto_deuda, cr.estado_credito AS credito_estado, "
+            "cr.fecha_inicio_credito, cr.fecha_vencimiento_credito, cr.fecha_pago_credito "
+            "FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id "
+            "WHERE ov.id_orden_venta=%s",
             (order_id,))
 
-    def update_dates(self, order_id, fecha_inicio, fecha_fin):
+    def _get_payments(self, order_id):
+        return self.fetch_all("transalca",
+            "SELECT pc.id_pago_credito, pc.monto_pago, pc.fecha_pago, pc.observaciones_pago "
+            "FROM pagos_credito pc INNER JOIN creditos_orden_venta cr ON cr.id_credito = pc.id_credito "
+            "WHERE cr.orden_venta_id = %s ORDER BY pc.fecha_pago DESC",
+            (order_id,))
+
+    def _update_dates(self, order_id, fecha_inicio, fecha_fin):
         return self.update("transalca",
-            "UPDATE ordenes_venta SET fecha_inicio_credito=%s, fecha_vencimiento_credito=%s, "
-            "credito_estado=CASE WHEN credito_estado IN ('pagado','anulado') THEN credito_estado ELSE 'activo' END, "
-            "credito_notificacion_7d=0, credito_notificacion_2d=0, credito_notificacion_vencido=0 "
-            "WHERE id=%s AND tipo_pago='credito'",
+            "UPDATE creditos_orden_venta SET fecha_inicio_credito=%s, fecha_vencimiento_credito=%s, "
+            "estado_credito=CASE WHEN estado_credito IN ('pagado','anulado') THEN estado_credito ELSE 'activo' END, "
+            "notificacion_7d=0, notificacion_2d=0, notificacion_vencido=0 "
+            "WHERE orden_venta_id=%s",
             (fecha_inicio, fecha_fin, order_id))
 
-    def mark_paid(self, order_id):
+    def _mark_paid(self, order_id):
+        credit = self._get_by_order(order_id)
+        if not credit:
+            return 0
+        remaining = self._as_money(credit.get('monto_deuda'))
+        if remaining > 0:
+            self.insert("transalca",
+                "INSERT INTO pagos_credito (id_credito, monto_pago, observaciones_pago) VALUES (%s, %s, %s)",
+                (credit['id_credito'], remaining, 'Pago total del credito'))
         return self.update("transalca",
-            "UPDATE ordenes_venta SET credito_estado='pagado', monto_deuda=0, fecha_pago_credito=NOW() "
-            "WHERE id=%s AND tipo_pago='credito'",
+            "UPDATE creditos_orden_venta SET estado_credito='pagado', fecha_pago_credito=NOW() "
+            "WHERE orden_venta_id=%s",
             (order_id,))
 
-    def create_credit(self, data):
+    def _create_credit_for_order(self, order_id, fecha_inicio=None, dias_credito=0):
+        fecha_inicio = self._as_date(fecha_inicio) or self._today()
+        fecha_fin = fecha_inicio + timedelta(days=int(dias_credito or 0))
+        return self.insert("transalca",
+            "INSERT INTO creditos_orden_venta (orden_venta_id, fecha_inicio_credito, fecha_vencimiento_credito, estado_credito) "
+            "VALUES (%s, %s, %s, 'activo') "
+            "ON DUPLICATE KEY UPDATE fecha_inicio_credito = VALUES(fecha_inicio_credito), "
+            "fecha_vencimiento_credito = VALUES(fecha_vencimiento_credito)",
+            (order_id, fecha_inicio, fecha_fin))
+
+    def _create_credit(self, data):
         client = self.fetch_one("transalca",
-            "SELECT c.cedula, e.dias_credito FROM clientes c INNER JOIN empresas e ON e.rif = c.cedula WHERE c.cedula = %s AND c.estado = 1",
+            "SELECT c.identificador_cliente AS cedula, j.dias_credito FROM cliente c "
+            "INNER JOIN cliente_juridico j ON j.id_cliente = c.id_cliente "
+            "WHERE c.identificador_cliente = %s AND c.estado = 1",
             (data['cliente_cedula'],))
         if not client:
             return {'ok': False, 'message': 'La empresa no existe o esta inactiva.'}
@@ -228,20 +266,21 @@ class CreditModel(Connection):
         fecha_inicio = data.get('fecha_inicio') or self._today()
         dias = int(client.get('dias_credito') or 0)
         fecha_fin = data.get('fecha_fin') or (self._as_date(fecha_inicio) + timedelta(days=dias))
-        observaciones = data.get('observaciones', '')
-        sql = (
-            "INSERT INTO ordenes_venta (cliente_cedula, total, monto_deuda, tipo_pago, credito_estado, fecha_inicio_credito, fecha_vencimiento_credito, observaciones) "
-            "VALUES (%s, %s, %s, 'credito', 'activo', %s, %s, %s)"
-        )
         try:
-            order_id = self.insert("transalca", sql, (
-                data['cliente_cedula'], total, total, fecha_inicio, fecha_fin, observaciones
-            ))
+            order_id = self.insert("transalca",
+                "INSERT INTO ordenes_venta (cliente_cedula, total_orden_venta, tipo_pago, tasa_cambio_id) "
+                "VALUES (%s, %s, 'credito', "
+                "(SELECT t.id_tasa_cambio FROM tasas_cambio t WHERE t.tipo_tasa_cambio='bcv' ORDER BY t.fecha_tasa_cambio DESC, t.id_tasa_cambio DESC LIMIT 1))",
+                (data['cliente_cedula'], total))
+            self.insert("transalca",
+                "INSERT INTO creditos_orden_venta (orden_venta_id, fecha_inicio_credito, fecha_vencimiento_credito, estado_credito) "
+                "VALUES (%s, %s, %s, 'activo')",
+                (order_id, fecha_inicio, fecha_fin))
             return {'ok': True, 'id': order_id, 'message': 'Credito registrado correctamente.'}
         except Exception as e:
             return {'ok': False, 'message': f'Error al registrar el credito: {str(e)}'}
 
-    def register_payment(self, order_id, amount):
+    def _register_payment(self, order_id, amount, observaciones=None):
         amount = self._as_money(amount)
         if amount <= 0:
             return {'ok': False, 'message': 'El monto del abono debe ser mayor a cero.'}
@@ -250,41 +289,60 @@ class CreditModel(Connection):
             conn.begin()
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT id, total, COALESCE(monto_deuda, total, 0) AS monto_deuda, credito_estado "
-                "FROM ordenes_venta WHERE id=%s AND tipo_pago='credito' FOR UPDATE",
+                "SELECT cr.id_credito, ov.total_orden_venta AS total, cr.estado_credito, "
+                + DEUDA_SQL + " AS monto_deuda "
+                "FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id "
+                "WHERE ov.id_orden_venta=%s FOR UPDATE",
                 (order_id,)
             )
             row = cursor.fetchone()
             if not row:
                 conn.rollback()
                 return {'ok': False, 'status_code': 404, 'message': 'Crédito no encontrado.'}
-            if row.get('credito_estado') == 'pagado':
+            if row.get('estado_credito') == 'pagado':
                 conn.rollback()
                 return {'ok': False, 'message': 'Este crédito ya está pagado.'}
             debt = self._as_money(row.get('monto_deuda'))
             if debt <= 0:
                 cursor.execute(
-                    "UPDATE ordenes_venta SET credito_estado='pagado', monto_deuda=0, fecha_pago_credito=NOW() WHERE id=%s",
-                    (order_id,)
+                    "UPDATE creditos_orden_venta SET estado_credito='pagado', fecha_pago_credito=NOW() WHERE id_credito=%s",
+                    (row['id_credito'],)
                 )
                 conn.commit()
                 return {'ok': True, 'monto_deuda': Decimal("0.00"), 'pagado': True}
             if amount > debt:
                 conn.rollback()
                 return {'ok': False, 'message': 'El abono no puede ser mayor a la deuda.'}
+            cursor.execute(
+                "INSERT INTO pagos_credito (id_credito, monto_pago, observaciones_pago) VALUES (%s, %s, %s)",
+                (row['id_credito'], amount, observaciones or 'Abono registrado')
+            )
             new_debt = (debt - amount).quantize(Decimal("0.01"))
             if new_debt == 0:
                 cursor.execute(
-                    "UPDATE ordenes_venta SET monto_deuda=0, credito_estado='pagado', fecha_pago_credito=NOW() WHERE id=%s",
-                    (order_id,)
-                )
-            else:
-                cursor.execute(
-                    "UPDATE ordenes_venta SET monto_deuda=%s WHERE id=%s",
-                    (new_debt, order_id)
+                    "UPDATE creditos_orden_venta SET estado_credito='pagado', fecha_pago_credito=NOW() WHERE id_credito=%s",
+                    (row['id_credito'],)
                 )
             conn.commit()
             return {'ok': True, 'monto_deuda': new_debt, 'pagado': new_debt == 0}
         except Exception:
             conn.rollback()
             raise
+
+    def ejecutar(self, accion, *args, **kwargs):
+        acciones = {
+            "sync_credit_statuses": self._sync_credit_statuses,
+            "get_all": self._get_all,
+            "get_stats": self._get_stats,
+            "update_status": self._update_status,
+            "get_by_order": self._get_by_order,
+            "get_payments": self._get_payments,
+            "update_dates": self._update_dates,
+            "mark_paid": self._mark_paid,
+            "create_credit_for_order": self._create_credit_for_order,
+            "create_credit": self._create_credit,
+            "register_payment": self._register_payment,
+        }
+        if accion not in acciones:
+            raise ValueError("Accion no permitida")
+        return acciones[accion](*args, **kwargs)

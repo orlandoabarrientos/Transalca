@@ -22,18 +22,18 @@ class PurchaseOrderModel(Connection):
         except (InvalidOperation, ValueError):
             return Decimal("0.00")
 
-    def get_all(self, search=None, estado=None):
+    def _get_all(self, search=None, estado=None):
         sql = (
-            "SELECT oc.*, p.nombre AS proveedor_nombre, s.nombre AS sucursal_nombre "
+            "SELECT oc.*, oc.id_orden_compra AS id, oc.fecha_orden_compra AS fecha, oc.total_orden_compra AS total, oc.observaciones_orden_compra AS observaciones, p.nombre_proveedor AS proveedor_nombre, s.nombre_sucursal AS sucursal_nombre "
             "FROM ordenes_compra oc "
-            "INNER JOIN proveedores p ON p.rif = oc.proveedor_rif "
-            "INNER JOIN sucursales s ON s.id = oc.sucursal_id"
+            "INNER JOIN proveedores p ON p.rif_proveedor = oc.proveedor_rif "
+            "INNER JOIN sucursales s ON s.id_sucursal = oc.sucursal_id"
         )
         params = []
         where_clauses = []
         if search:
             q = f"%{search}%"
-            where_clauses.append("(p.rif LIKE %s OR p.nombre LIKE %s OR oc.id LIKE %s)")
+            where_clauses.append("(p.rif_proveedor LIKE %s OR p.nombre_proveedor LIKE %s OR oc.id_orden_compra LIKE %s)")
             params.extend([q, q, q])
         if estado:
             where_clauses.append("oc.estado = %s")
@@ -42,15 +42,15 @@ class PurchaseOrderModel(Connection):
         if where_clauses:
             sql += " WHERE " + " AND ".join(where_clauses)
 
-        sql += " ORDER BY oc.fecha DESC"
+        sql += " ORDER BY oc.fecha_orden_compra DESC"
         return self.fetch_all("transalca", sql, tuple(params))
 
-    def get_stats(self):
+    def _get_stats(self):
         row = self.fetch_one("transalca",
             "SELECT COUNT(*) AS total, "
             "SUM(CASE WHEN estado='pendiente' THEN 1 ELSE 0 END) AS pendientes, "
             "SUM(CASE WHEN estado='comprado' THEN 1 ELSE 0 END) AS comprados, "
-            "COALESCE(SUM(total), 0) AS total_invertido "
+            "COALESCE(SUM(total_orden_compra), 0) AS total_invertido "
             "FROM ordenes_compra")
         if not row:
             return {'total': 0, 'pendientes': 0, 'comprados': 0, 'total_invertido': 0}
@@ -61,24 +61,25 @@ class PurchaseOrderModel(Connection):
             'total_invertido': row.get('total_invertido') or 0
         }
 
-    def get_by_id(self, order_id):
+    def _get_by_id(self, order_id):
         order = self.fetch_one("transalca",
-            "SELECT oc.*, p.nombre AS proveedor_nombre, p.telefono AS proveedor_telefono, "
-            "p.email AS proveedor_email, p.direccion AS proveedor_direccion, "
-            "s.nombre AS sucursal_nombre, s.direccion AS sucursal_direccion "
+            "SELECT oc.*, oc.id_orden_compra AS id, oc.fecha_orden_compra AS fecha, oc.total_orden_compra AS total, oc.observaciones_orden_compra AS observaciones, "
+            "p.nombre_proveedor AS proveedor_nombre, p.telefono_proveedor AS proveedor_telefono, "
+            "p.email_proveedor AS proveedor_email, p.direccion_proveedor AS proveedor_direccion, "
+            "s.nombre_sucursal AS sucursal_nombre, s.direccion_sucursal AS sucursal_direccion "
             "FROM ordenes_compra oc "
-            "INNER JOIN proveedores p ON p.rif = oc.proveedor_rif "
-            "INNER JOIN sucursales s ON s.id = oc.sucursal_id "
-            "WHERE oc.id = %s", (order_id,))
+            "INNER JOIN proveedores p ON p.rif_proveedor = oc.proveedor_rif "
+            "INNER JOIN sucursales s ON s.id_sucursal = oc.sucursal_id "
+            "WHERE oc.id_orden_compra = %s", (order_id,))
         if order:
             order['detalles'] = self.fetch_all("transalca",
-                "SELECT doc.*, prod.nombre AS producto_nombre "
+                "SELECT doc.*, doc.id_detalle_orden_compra AS id, doc.precio_unitario_compra AS precio_unitario, prod.nombre_producto AS producto_nombre "
                 "FROM detalle_orden_compra doc "
                 "INNER JOIN productos prod ON prod.codigo = doc.producto_codigo "
                 "WHERE doc.orden_compra_id = %s", (order_id,))
         return order
 
-    def create(self, data):
+    def _create(self, data):
 
         conn = self.con_transalca()
         try:
@@ -86,12 +87,12 @@ class PurchaseOrderModel(Connection):
             cursor = conn.cursor()
 
 
-            cursor.execute("SELECT id FROM sucursales WHERE id = %s AND estado = 1", (data['sucursal_id'],))
+            cursor.execute("SELECT id_sucursal FROM sucursales WHERE id_sucursal = %s AND estado = 1", (data['sucursal_id'],))
             if not cursor.fetchone():
                 conn.rollback()
                 return {'ok': False, 'message': 'La sucursal destino no existe o esta inactiva.'}
 
-            cursor.execute("SELECT rif FROM proveedores WHERE rif = %s AND estado = 1", (data['proveedor_rif'],))
+            cursor.execute("SELECT rif_proveedor FROM proveedores WHERE rif_proveedor = %s AND estado = 1", (data['proveedor_rif'],))
             if not cursor.fetchone():
                 conn.rollback()
                 return {'ok': False, 'message': 'El proveedor no existe o esta inactivo.'}
@@ -99,7 +100,7 @@ class PurchaseOrderModel(Connection):
 
             total = Decimal("0.00")
             cursor.execute(
-                "INSERT INTO ordenes_compra (proveedor_rif, sucursal_id, total, estado, observaciones) "
+                "INSERT INTO ordenes_compra (proveedor_rif, sucursal_id, total_orden_compra, estado, observaciones_orden_compra) "
                 "VALUES (%s, %s, %s, 'pendiente', %s)",
                 (data['proveedor_rif'], data['sucursal_id'], total, data.get('observaciones', ''))
             )
@@ -120,14 +121,14 @@ class PurchaseOrderModel(Connection):
                     return {'ok': False, 'message': f'El producto con codigo {prod_code} no existe o esta inactivo.'}
 
                 cursor.execute(
-                    "INSERT INTO detalle_orden_compra (orden_compra_id, producto_codigo, cantidad, precio_unitario, subtotal) "
+                    "INSERT INTO detalle_orden_compra (orden_compra_id, producto_codigo, cantidad, precio_unitario_compra, subtotal) "
                     "VALUES (%s, %s, %s, %s, %s)",
                     (order_id, prod_code, qty, price, subtotal)
                 )
 
 
             cursor.execute(
-                "UPDATE ordenes_compra SET total = %s WHERE id = %s",
+                "UPDATE ordenes_compra SET total_orden_compra = %s WHERE id_orden_compra = %s",
                 (total, order_id)
             )
 
@@ -137,7 +138,7 @@ class PurchaseOrderModel(Connection):
             conn.rollback()
             return {'ok': False, 'message': f'Error al registrar la orden: {str(e)}'}
 
-    def mark_as_bought(self, order_id):
+    def _mark_as_bought(self, order_id):
         conn = self.con_transalca()
         try:
             conn.begin()
@@ -145,7 +146,7 @@ class PurchaseOrderModel(Connection):
 
 
             cursor.execute(
-                "SELECT id, sucursal_id, estado FROM ordenes_compra WHERE id = %s FOR UPDATE",
+                "SELECT id_orden_compra AS id, sucursal_id, estado FROM ordenes_compra WHERE id_orden_compra = %s FOR UPDATE",
                 (order_id,)
             )
             order = cursor.fetchone()
@@ -188,7 +189,7 @@ class PurchaseOrderModel(Connection):
 
 
             cursor.execute(
-                "UPDATE ordenes_compra SET estado = 'comprado' WHERE id = %s",
+                "UPDATE ordenes_compra SET estado = 'comprado' WHERE id_orden_compra = %s",
                 (order_id,)
             )
 
@@ -197,3 +198,15 @@ class PurchaseOrderModel(Connection):
         except Exception as e:
             conn.rollback()
             return {'ok': False, 'message': f'Error al procesar la compra: {str(e)}'}
+
+    def ejecutar(self, accion, *args, **kwargs):
+        acciones = {
+            "get_all": self._get_all,
+            "get_stats": self._get_stats,
+            "get_by_id": self._get_by_id,
+            "create": self._create,
+            "mark_as_bought": self._mark_as_bought,
+        }
+        if accion not in acciones:
+            raise ValueError("Accion no permitida")
+        return acciones[accion](*args, **kwargs)

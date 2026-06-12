@@ -1422,6 +1422,15 @@ function markValidationRequestIdAsShown(id) {
     shownValidationRequestIds.add(id);
 }
 
+function markValidationAlertSeen(id) {
+    fetch('/api/scanner/alerta-vista', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ solicitud_id: id })
+    }).catch(() => { });
+}
+
 function startAdminValidationPolling() {
     if (typeof Swal === 'undefined') {
         let link = document.createElement('link');
@@ -1494,6 +1503,7 @@ function showValidationAlert(req) {
             clearInterval(timerInterval);
         }
     }).then((result) => {
+        markValidationAlertSeen(req.id);
         if (result.isConfirmed) {
             openAdminValidationDetailsModal(req);
         }

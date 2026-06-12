@@ -30,7 +30,7 @@ def _get_accessible_card(card_id):
     if login_error:
         return None, login_error
 
-    card = model.get_card_by_id(card_id)
+    card = model.ejecutar("get_card_by_id", card_id)
     if not card:
         return None, (jsonify({"status": "error", "message": "Tarjeta no encontrada."}), 404)
     if not can_access_client(card.get('cliente_cedula')):
@@ -64,7 +64,7 @@ def check_unique():
         exclude = request.args.get('exclude', '').strip()
         if not value:
             return jsonify({"status": "success", "unique": True})
-        exists = model.nombre_exists(value, exclude if exclude else None)
+        exists = model.ejecutar("nombre_exists", value, exclude if exclude else None)
         return jsonify({"status": "success", "unique": not exists})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -73,7 +73,7 @@ def check_unique():
 @promotion_bp.route('/', methods=['GET'])
 def get_all():
     try:
-        return jsonify({"status": "success", "data": model.get_all()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_all")})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar las promociones."}), 500
 
@@ -81,7 +81,7 @@ def get_all():
 @promotion_bp.route('/active', methods=['GET'])
 def get_active():
     try:
-        return jsonify({"status": "success", "data": model.get_active()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_active")})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar las promociones."}), 500
 
@@ -89,7 +89,7 @@ def get_active():
 @promotion_bp.route('/<int:promo_id>', methods=['GET'])
 def get_one(promo_id):
     try:
-        promo = model.get_by_id(promo_id)
+        promo = model.ejecutar("get_by_id", promo_id)
         if promo:
             return jsonify({"status": "success", "data": promo})
         return jsonify({"status": "error", "message": "Promocion no encontrada."}), 404
@@ -106,16 +106,16 @@ def create():
         data, errors = _validate_promo(request.get_json() or {})
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        existing = model.get_by_nombre(data['nombre'])
+        existing = model.ejecutar("get_by_nombre", data['nombre'])
         if existing:
             if existing['estado'] == 1:
                 return jsonify({"status": "error", "message": "Ya existe una promocion con ese nombre.", "errors": {"nombre": "Ya existe una promocion con ese nombre."}}), 400
             else:
-                model.update_promotion(existing['id'], data)
-                model.update("transalca", "UPDATE promociones SET estado = 1 WHERE id = %s", (existing['id'],))
+                model.ejecutar("update_promotion", existing['id'], data)
+                model.ejecutar("reactivar", existing['id'])
 
                 return jsonify({"status": "success", "message": "Promocion registrada correctamente.", "id": existing['id']})
-        promo_id = model.create(data)
+        promo_id = model.ejecutar("create", data)
 
         return jsonify({"status": "success", "message": "Promocion registrada correctamente.", "id": promo_id})
     except Exception:
@@ -131,9 +131,9 @@ def update(promo_id):
         data, errors = _validate_promo(request.get_json() or {})
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if model.nombre_exists(data['nombre'], promo_id):
+        if model.ejecutar("nombre_exists", data['nombre'], promo_id):
             return jsonify({"status": "error", "message": "Ya existe una promocion con ese nombre.", "errors": {"nombre": "Ya existe una promocion con ese nombre."}}), 400
-        model.update_promotion(promo_id, data)
+        model.ejecutar("update_promotion", promo_id, data)
 
         return jsonify({"status": "success", "message": "Promocion modificada correctamente."})
     except Exception:
@@ -146,7 +146,7 @@ def delete(promo_id):
         auth_error = _require_employee()
         if auth_error:
             return auth_error
-        new_estado = model.soft_delete(promo_id)
+        new_estado = model.ejecutar("soft_delete", promo_id)
         if new_estado is None:
             return jsonify({"status": "error", "message": "Promocion no encontrada."}), 404
 
@@ -161,7 +161,7 @@ def upload_image(promo_id):
         auth_error = _require_employee()
         if auth_error:
             return auth_error
-        if not model.get_by_id(promo_id):
+        if not model.ejecutar("get_by_id", promo_id):
             return jsonify({"status": "error", "message": "Promocion no encontrada."}), 404
         if 'image' not in request.files:
             return jsonify({"status": "error", "message": "No se envio archivo."}), 400
@@ -174,7 +174,7 @@ def upload_image(promo_id):
         filename = secure_filename(f"promo_{promo_id}_{file.filename}")
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         file.save(os.path.join(UPLOAD_FOLDER, filename))
-        model.update_image(promo_id, filename)
+        model.ejecutar("update_image", promo_id, filename)
         return jsonify({"status": "success", "message": "Imagen modificada correctamente.", "filename": filename})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo subir la imagen."}), 500
@@ -189,7 +189,7 @@ def assign_card():
         data = request.get_json() or {}
         if not data.get('cliente_cedula') or not data.get('promocion_id'):
             return jsonify({"status": "error", "message": "Datos incompletos."}), 400
-        card_id = model.assign_card_to_client(data['cliente_cedula'], data['promocion_id'])
+        card_id = model.ejecutar("assign_card_to_client", data['cliente_cedula'], data['promocion_id'])
         if not card_id:
             return jsonify({"status": "error", "message": "No se pudo registrar la tarjeta."}), 400
 
@@ -206,7 +206,7 @@ def client_cards(cliente_cedula):
             return login_error
         if not can_access_client(cliente_cedula):
             return deny()
-        return jsonify({"status": "success", "data": model.get_client_cards(cliente_cedula, scanned_only=True)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_client_cards", cliente_cedula, scanned_only=True)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar las tarjetas."}), 500
 
@@ -219,7 +219,7 @@ def my_cards():
             return login_error
         if 'user_cedula' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        return jsonify({"status": "success", "data": model.get_client_cards(session['user_cedula'], scanned_only=True)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_client_cards", session['user_cedula'], scanned_only=True)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar las tarjetas."}), 500
 
@@ -232,7 +232,7 @@ def add_point(card_id):
             return auth_error
         data = request.get_json() or {}
         descripcion = optional_text({}, 'descripcion', data.get('descripcion', 'Punto registrado'), 'La descripcion', max_len=200, allow_serial=True)
-        result = model.add_point(card_id, descripcion or 'Punto registrado')
+        result = model.ejecutar("add_point", card_id, descripcion or 'Punto registrado')
         if result:
             return jsonify({"status": "success", "message": "Punto registrado correctamente.", "data": result})
         return jsonify({"status": "error", "message": "Tarjeta no valida o ya canjeada."}), 400
@@ -246,7 +246,7 @@ def card_history(card_id):
         _, access_error = _get_accessible_card(card_id)
         if access_error:
             return access_error
-        return jsonify({"status": "success", "data": model.get_card_history(card_id)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_card_history", card_id)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cargar el historial."}), 500
 
@@ -257,7 +257,7 @@ def all_cards():
         auth_error = _require_employee()
         if auth_error:
             return auth_error
-        return jsonify({"status": "success", "data": model.get_all_cards(scanned_only=True)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_all_cards", scanned_only=True)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar las tarjetas."}), 500
 

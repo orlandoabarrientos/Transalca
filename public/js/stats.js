@@ -4,7 +4,8 @@ const chartCanvasIds = {
     revenue: 'revenueChart',
     status: 'statusChart',
     products: 'productsChart',
-    payments: 'paymentsChart'
+    payments: 'paymentsChart',
+    services: 'servicesChart'
 };
 const chartTypes = ['line', 'bar', 'doughnut', 'pie', 'polarArea'];
 const chartTypeLabels = {
@@ -18,7 +19,8 @@ const currentChartTypes = {
     revenue: 'line',
     status: 'doughnut',
     products: 'bar',
-    payments: 'bar'
+    payments: 'bar',
+    services: 'bar'
 };
 
 $(document).ready(function() {
@@ -58,6 +60,7 @@ function initCharts() {
     charts.status = createChart('status', currentChartTypes.status);
     charts.products = createChart('products', currentChartTypes.products);
     charts.payments = createChart('payments', currentChartTypes.payments);
+    charts.services = createChart('services', currentChartTypes.services);
 }
 
 function createChart(key, type) {
@@ -77,12 +80,13 @@ function buildDataset(key, type, data) {
         revenue: ['#1A365D', '#E77817', '#10B981', '#6366F1', '#F59E0B'],
         status: ['#E77817', '#10B981', '#F59E0B', '#EF4444', '#64748b'],
         products: ['#10B981', '#34D399', '#059669', '#6366F1', '#E77817'],
-        payments: ['#6366F1', '#818CF8', '#10B981', '#E77817', '#F59E0B']
+        payments: ['#6366F1', '#818CF8', '#10B981', '#E77817', '#F59E0B'],
+        services: ['#0EA5E9', '#38BDF8', '#0284C7', '#E77817', '#10B981']
     };
     const colors = palettes[key] || palettes.revenue;
     const circular = ['doughnut', 'pie', 'polarArea'].includes(type);
     return {
-        label: key === 'revenue' ? 'Ventas ($)' : key === 'products' ? 'Unidades vendidas' : key === 'payments' ? 'Transacciones' : 'Estados',
+        label: key === 'revenue' ? 'Ventas ($)' : key === 'products' ? 'Unidades vendidas' : key === 'payments' ? 'Transacciones' : key === 'services' ? 'Veces solicitado' : 'Estados',
         data,
         borderColor: colors[0],
         backgroundColor: circular ? colors : colors[0],
@@ -158,5 +162,16 @@ function loadStats() {
 
     apiCall('/api/stats/payments').then(res => {
         if(res.data) updateChart('payments', res.data.labels, res.data.data);
+    });
+
+    apiCall('/api/stats/services').then(res => {
+        if(res.data) {
+            updateChart('services', res.data.labels, res.data.data);
+            const resumen = document.getElementById('servicesIngreso');
+            if (resumen && Array.isArray(res.data.ingresos)) {
+                const total = res.data.ingresos.reduce((a, b) => a + b, 0);
+                resumen.textContent = `Ingreso generado: $${total.toFixed(2)}`;
+            }
+        }
     });
 }

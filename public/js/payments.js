@@ -19,7 +19,7 @@ function loadPending() {
                 allData: res.data || [],
                 itemName: 'pagos pendientes',
                 renderRow: (p) => {
-                    const comprobante = p.imagen_url || p.comprobante_url || '';
+                    const comprobante = p.imagen_url || '';
                     return `<tr class="fade-in-up">
                         <td>#${p.id}</td>
                         <td>#${p.orden_venta_id}</td>
@@ -58,10 +58,9 @@ function loadAll() {
                         <td>${escapeHtml(p.metodo_pago || '-')}</td>
                         <td>${stateHtml}</td>
                         <td>${formatDate(p.fecha)}</td>
-                        <td>${escapeHtml(p.revisado_por_nombre || p.revisado_por || '-')}</td>
                     </tr>`;
                 },
-                onEmpty: () => '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-credit-card"></i><p>Sin pagos</p></div></td></tr>'
+                onEmpty: () => '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-credit-card"></i><p>Sin pagos</p></div></td></tr>'
             });
         } else {
             allPaginator.updateData(res.data || []);
@@ -75,7 +74,7 @@ function viewComp(id, readOnly = false) {
         if (res.status === 'error') return showToast(res.message, 'error');
         const p = res.data || {};
         const img = document.getElementById('compImg');
-        const comprobante = p.imagen_url || p.comprobante_url || '';
+        const comprobante = p.imagen_url || '';
         let infoHtml = '';
         if (comprobante) {
             infoHtml = `<img src="/public/assets/comprobantes/${escapeHtml(comprobante)}" style="max-width:100%;border-radius:var(--radius);" alt="Comprobante" onerror="this.parentElement.innerHTML='<div class=&quot;empty-state&quot;><i class=&quot;bi bi-image&quot;></i><p>No se encontro el comprobante</p></div>'"><p class="mt-3 text-muted">Metodo: ${escapeHtml(p.metodo_pago || 'N/A')} | Fecha: ${formatDate(p.fecha)}</p>`;

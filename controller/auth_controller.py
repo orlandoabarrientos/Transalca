@@ -49,7 +49,7 @@ def do_login():
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         if login_throttle.is_locked(request.remote_addr, email):
             return jsonify({"status": "error", "message": "Demasiados intentos fallidos. Intente nuevamente en unos minutos."}), 429
-        user = model.login(email, credential_value)
+        user = model.ejecutar("login", email, credential_value)
         if not user:
             login_throttle.register_failure(request.remote_addr, email)
             return jsonify({"status": "error", "message": "Credenciales incorrectas."}), 401
@@ -63,18 +63,16 @@ def do_login():
         session['user_email'] = user['email']
         session['user_tipo'] = user['tipo']
         session['user_foto'] = user['foto_perfil']
-        permissions = model.get_user_permissions(user['id'])
+        permissions = model.ejecutar("get_user_permissions", user['id'])
         session['permisos'] = {p['modulo']: {'crear': p['crear'], 'leer': p['leer'], 'actualizar': p['actualizar'], 'eliminar': p['eliminar']} for p in permissions}
-        roles = model.get_user_roles(user['id'])
+        roles = model.ejecutar("get_user_roles", user['id'])
         session['roles'] = [r['nombre'] for r in roles]
         redirect_url = '/client/home' if user['tipo'] == 'cliente' else '/admin/dashboard'
         requested_next = (data.get('next') or '').strip()
         if requested_next.startswith('/') and not requested_next.startswith('//'):
             redirect_url = requested_next
 
-        model.insert("mantenimiento",
-            "INSERT INTO eventos_sistema (usuario_id, accion, modulo, descripcion, ip) VALUES (%s, %s, %s, %s, %s)",
-            (user['id'], 'LOGIN', 'AUTH', f"Inicio de sesion: {user['email']}", request.remote_addr))
+        model.ejecutar("log_event", user['id'], 'LOGIN', 'AUTH', f"Inicio de sesion: {user['email']}", request.remote_addr)
         return jsonify({"status": "success", "redirect": redirect_url, "user": {"nombre": user['nombre'], "tipo": user['tipo']}})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo iniciar sesion."}), 500
@@ -106,11 +104,11 @@ def do_register():
             'email': email,
             'direccion': direccion
         })
-        if model.email_exists(email, exclude_client_cedula=cedula):
+        if model.ejecutar("email_exists", email, exclude_client_cedula=cedula):
             return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        if model.cedula_exists(cedula):
+        if model.ejecutar("cedula_exists", cedula):
             return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
-        user_id = model.register(data)
+        user_id = model.ejecutar("register", data)
         if user_id:
             return jsonify({"status": "success", "message": "Cliente registrado correctamente. Ahora puede iniciar sesion."})
         return jsonify({"status": "error", "message": "No se pudo registrar el cliente."}), 500
@@ -132,13 +130,13 @@ def check_unique():
             if errors:
                 return jsonify({"status": "error", "message": errors['email']}), 400
             cedula_exclude = (payload.get('cedula') or '').strip()
-            return jsonify({"status": "success", "exists": model.email_exists(email, exclude_client_cedula=cedula_exclude)})
+            return jsonify({"status": "success", "exists": model.ejecutar("email_exists", email, exclude_client_cedula=cedula_exclude)})
         if field == 'cedula':
             errors = {}
             cedula, _, _ = normalize_cedula(errors, {'cedula': value})
             if errors:
                 return jsonify({"status": "error", "message": errors['cedula']}), 400
-            return jsonify({"status": "success", "exists": model.cedula_exists(cedula)})
+            return jsonify({"status": "success", "exists": model.ejecutar("cedula_exists", cedula)})
         return jsonify({"status": "error", "message": "Campo no valido."}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo validar el dato."}), 500
@@ -150,7 +148,7 @@ def do_recover():
         data = request.get_json()
         if not data.get('email') or not re.match(r'^[^@]+@[^@]+\.[^@]+$', data.get('email', '')):
             return jsonify({"status": "error", "message": "Ingrese un correo valido.", "errors": {"email": "Ingrese un correo valido."}}), 400
-        token = model.create_recovery_token(data['email'].strip())
+        token = model.ejecutar("create_recovery_token", data['email'].strip())
         if token:
             return jsonify({"status": "success", "message": "Se ha generado un enlace de recuperacion.", "token": token})
         return jsonify({"status": "error", "message": "Correo no encontrado.", "errors": {"email": "No existe una cuenta con ese correo."}}), 404
@@ -164,7 +162,7 @@ def do_reset():
         data = request.get_json()
         if not data.get(CREDENTIAL_FIELD) or not re.match(CREDENTIAL_PATTERN, data.get(CREDENTIAL_FIELD, '')):
             return jsonify({"status": "error", "message": "La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial.", "errors": {CREDENTIAL_FIELD: "Contrasena no cumple requisitos."}}), 400
-        if model.reset_password(data.get('token', ''), data[CREDENTIAL_FIELD]):
+        if model.ejecutar("reset_password", data.get('token', ''), data[CREDENTIAL_FIELD]):
             return jsonify({"status": "success", "message": "Contrasena modificada correctamente."})
         return jsonify({"status": "error", "message": "Token invalido o expirado."}), 400
     except Exception as e:
@@ -176,9 +174,7 @@ def logout():
     try:
         if 'user_id' in session:
 
-            model.insert("mantenimiento",
-                "INSERT INTO eventos_sistema (usuario_id, accion, modulo, descripcion, ip) VALUES (%s, %s, %s, %s, %s)",
-                (session['user_id'], 'LOGOUT', 'AUTH', 'Cierre de sesion', request.remote_addr))
+            model.ejecutar("log_event", session['user_id'], 'LOGOUT', 'AUTH', 'Cierre de sesion', request.remote_addr)
         session.clear()
         return jsonify({"status": "success", "redirect": "/auth/login"})
     except Exception:

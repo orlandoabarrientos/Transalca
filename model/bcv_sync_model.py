@@ -40,7 +40,7 @@ def sync_bcv_rate_if_needed(force=False, now=None):
         return result
 
     model = TasaCambioModel()
-    existing = model.get_by_date(target_date)
+    existing = model.ejecutar("get_by_date", target_date)
     if existing and not force and _is_auto_source(existing.get('fuente')):
         result['reason'] = 'already_synced'
         result['id'] = existing.get('id')
@@ -57,7 +57,7 @@ def sync_bcv_rate_if_needed(force=False, now=None):
     if monto <= 0:
         raise ValueError("No se pudo obtener tasa BCV valida")
 
-    db_result = model.upsert_from_scraping(monto, fecha=target_date, fuente=BCV_AUTO_SOURCE)
+    db_result = model.ejecutar("upsert_from_scraping", monto, fecha=target_date, fuente=BCV_AUTO_SOURCE)
     if db_result.get('action') == 'lock_busy':
         result['reason'] = 'lock_busy'
         return result

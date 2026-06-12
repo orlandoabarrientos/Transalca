@@ -178,7 +178,7 @@ class Connection:
         elif class_name == 'SupplierModel' or 'proveedor_rif' in exclude:
             tables_to_check.append("proveedores")
         elif class_name in ('ClientModel', 'CompanyModel', 'UserModel', 'AuthModel', 'ProfileModel') or any(k in exclude for k in ('cliente_cedula', 'usuario_cedula', 'usuario_id')):
-            tables_to_check.append("clientes")
+            tables_to_check.append("cliente")
             tables_to_check.append("usuarios")
         else:
             tables_to_check = ["usuarios", "clientes", "proveedores", "sucursales"]
@@ -188,14 +188,14 @@ class Connection:
                 (" AND id != %s", exclude.get("usuario_id")),
                 (" AND cedula != %s", exclude.get("usuario_cedula")),
             ]),
-            ("clientes", "transalca", "SELECT cedula FROM clientes WHERE LOWER(email) = %s AND estado = 1", [
-                (" AND cedula != %s", exclude.get("cliente_cedula")),
+            ("cliente", "transalca", "SELECT identificador_cliente FROM cliente WHERE LOWER(correo_cliente) = %s AND estado = 1", [
+                (" AND identificador_cliente != %s", exclude.get("cliente_cedula")),
             ]),
-            ("proveedores", "transalca", "SELECT rif FROM proveedores WHERE LOWER(email) = %s AND estado = 1", [
-                (" AND rif != %s", exclude.get("proveedor_rif")),
+            ("proveedores", "transalca", "SELECT rif_proveedor FROM proveedores WHERE LOWER(email_proveedor) = %s AND estado = 1", [
+                (" AND rif_proveedor != %s", exclude.get("proveedor_rif")),
             ]),
-            ("sucursales", "transalca", "SELECT id FROM sucursales WHERE LOWER(email) = %s AND estado = 1", [
-                (" AND id != %s", exclude.get("sucursal_id")),
+            ("sucursales", "transalca", "SELECT id_sucursal FROM sucursales WHERE LOWER(email_sucursal) = %s AND estado = 1", [
+                (" AND id_sucursal != %s", exclude.get("sucursal_id")),
             ]),
         ]
         for table, db, base_sql, optional_filters in checks:

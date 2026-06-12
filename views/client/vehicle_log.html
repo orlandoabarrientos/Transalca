@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transalca Group | Bitacora del Vehiculo</title>
+    <link rel="icon" type="image/png" href="/public/img/transalca-logo.png">
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/sweetalert2/sweetalert2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/public/css/styles.css">
+    <style>
+        .vlog-timeline { border-left: 3px solid var(--primary, #e95d0f); padding-left: 1.25rem; }
+        .vlog-entry { position: relative; margin-bottom: 1.25rem; }
+        .vlog-entry::before { content: ''; position: absolute; left: -1.7rem; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--primary, #e95d0f); }
+        .vlog-entry .vlog-date { font-size: 0.78rem; color: #6b7280; }
+        .vlog-entry .vlog-detail { font-size: 0.85rem; color: #374151; }
+        .alerta-card { border-left: 4px solid #ccc; }
+        .alerta-card.critica { border-left-color: #DC2626; }
+        .alerta-card.alta { border-left-color: #F59E0B; }
+        .alerta-card.media { border-left-color: #3B82F6; }
+        .alerta-card.baja { border-left-color: #10B981; }
+        .vehiculo-chip { cursor: pointer; }
+        .vehiculo-chip.active { background: var(--primary, #e95d0f) !important; color: #fff !important; }
+    </style>
+</head>
+<body class="client-store">
+    <div id="navbarContainer"></div>
+
+    <section class="client-page-hero compact-page-hero">
+        <div class="container">
+            <span class="store-eyebrow"><i class="bi bi-car-front me-2"></i>Mi Vehiculo</span>
+            <h1>Bitacora del Vehiculo</h1>
+            <p>Historial de servicios, productos y cauchos usados, con recomendaciones de proximos mantenimientos.</p>
+        </div>
+    </section>
+
+    <div class="container py-4 client-inner-page">
+        <div id="vlogGuestBox" class="alert alert-warning" style="display:none;">
+            Debe iniciar sesion como cliente para ver la bitacora de sus vehiculos.
+        </div>
+
+        <div id="vlogApp" style="display:none;">
+            <div class="mb-3 d-flex gap-2 flex-wrap" id="vehiculosChips"></div>
+
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <div class="card-custom mb-3">
+                        <div class="card-header"><span><i class="bi bi-clock-history me-2"></i>Historial del vehiculo</span></div>
+                        <div class="card-body">
+                            <div id="vlogHistorial" class="vlog-timeline">
+                                <p class="text-muted mb-0">Cargando historial...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="card-custom mb-3">
+                        <div class="card-header"><span><i class="bi bi-bell me-2"></i>Proximas recomendaciones y alertas</span></div>
+                        <div class="card-body" id="vlogAlertas">
+                            <p class="text-muted mb-0">Cargando recomendaciones...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="footerContainer"></div>
+
+    <script src="/public/jquery/jquery.min.js"></script>
+    <script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="/public/sweetalert2/sweetalert2.all.min.js"></script>
+    <script src="/public/js/client_common.js"></script>
+    <script src="/public/js/pages/client_vehicle_log.js"></script>
+</body>
+</html>

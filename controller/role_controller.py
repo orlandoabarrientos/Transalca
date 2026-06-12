@@ -13,7 +13,7 @@ def get_all():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        return jsonify({"status": "success", "data": model.get_all()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_all")})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -23,9 +23,9 @@ def get_one(role_id):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        role = model.get_by_id(role_id)
+        role = model.ejecutar("get_by_id", role_id)
         if role:
-            role['permisos'] = model.get_permissions(role_id)
+            role['permisos'] = model.ejecutar("get_permissions", role_id)
             return jsonify({"status": "success", "data": role})
         return jsonify({"status": "error", "message": "Rol no encontrado"}), 404
     except Exception as e:
@@ -43,9 +43,9 @@ def create():
         data['descripcion'] = optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=150, allow_serial=True)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        role_id = model.create(data)
+        role_id = model.ejecutar("create", data)
         if data.get('permisos'):
-            model.save_all_permissions(role_id, data['permisos'])
+            model.ejecutar("save_all_permissions", role_id, data['permisos'])
 
 
         return jsonify({"status": "success", "message": "Rol registrado correctamente", "id": role_id})
@@ -64,9 +64,9 @@ def update(role_id):
         data['descripcion'] = optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=150, allow_serial=True)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        model.update_role(role_id, data)
+        model.ejecutar("update_role", role_id, data)
         if data.get('permisos'):
-            model.save_all_permissions(role_id, data['permisos'])
+            model.ejecutar("save_all_permissions", role_id, data['permisos'])
 
 
         return jsonify({"status": "success", "message": "Rol modificado correctamente"})
@@ -79,7 +79,7 @@ def delete(role_id):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        result = model.soft_delete(role_id)
+        result = model.ejecutar("soft_delete", role_id)
         if result is False:
             return jsonify({"status": "error", "message": "No se puede eliminar el rol Administrador"}), 400
         if result is None:
@@ -94,7 +94,7 @@ def delete(role_id):
 @role_bp.route('/<int:role_id>/permissions', methods=['GET'])
 def get_permissions(role_id):
     try:
-        return jsonify({"status": "success", "data": model.get_permissions(role_id)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_permissions", role_id)})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -105,7 +105,7 @@ def save_permissions(role_id):
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         data = request.get_json()
-        model.save_all_permissions(role_id, data.get('permisos', []))
+        model.ejecutar("save_all_permissions", role_id, data.get('permisos', []))
 
 
         return jsonify({"status": "success", "message": "Permisos actualizados"})
@@ -116,6 +116,6 @@ def save_permissions(role_id):
 @role_bp.route('/modules', methods=['GET'])
 def get_modules():
     try:
-        return jsonify({"status": "success", "data": model.get_modules()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_modules")})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

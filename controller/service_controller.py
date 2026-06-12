@@ -24,7 +24,7 @@ def _validate_service(data, current_id=None):
     else:
         clean['tipo'] = tipo
 
-    current = model.get_by_id(current_id) if current_id else None
+    current = model.ejecutar("get_by_id", current_id) if current_id else None
     current_suc_ids = [int(v) for v in (current.get('sucursal_ids') or '').split(',') if v] if current else []
 
     raw_ids = data.get('sucursal_ids')
@@ -40,7 +40,7 @@ def _validate_service(data, current_id=None):
             errors['sucursal_id'] = SELECT_TAMPER_MESSAGE
         else:
             is_current_suc = sucursal_id in current_suc_ids
-            if not is_current_suc and not model.sucursal_exists(sucursal_id):
+            if not is_current_suc and not model.ejecutar("sucursal_exists", sucursal_id):
                 errors['sucursal_id'] = SELECT_TAMPER_MESSAGE
             elif sucursal_id not in clean['sucursal_ids']:
                 clean['sucursal_ids'].append(sucursal_id)
@@ -58,7 +58,7 @@ def check_unique():
         exclude = request.args.get('exclude', '').strip()
         if not value:
             return jsonify({"status": "success", "unique": True})
-        exists = model.nombre_exists(value, exclude if exclude else None)
+        exists = model.ejecutar("nombre_exists", value, exclude if exclude else None)
         return jsonify({"status": "success", "unique": not exists})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
@@ -67,7 +67,7 @@ def check_unique():
 @service_bp.route('/', methods=['GET'])
 def get_all():
     try:
-        return jsonify({"status": "success", "data": model.get_all()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_all")})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los servicios."}), 500
 
@@ -75,7 +75,7 @@ def get_all():
 @service_bp.route('/active', methods=['GET'])
 def get_active():
     try:
-        return jsonify({"status": "success", "data": model.get_active()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_active")})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los servicios."}), 500
 
@@ -83,7 +83,7 @@ def get_active():
 @service_bp.route('/<int:sid>', methods=['GET'])
 def get_one(sid):
     try:
-        item = model.get_by_id(sid)
+        item = model.ejecutar("get_by_id", sid)
         if item:
             return jsonify({"status": "success", "data": item})
         return jsonify({"status": "error", "message": "Servicio no encontrado."}), 404
@@ -94,7 +94,7 @@ def get_one(sid):
 @service_bp.route('/sucursal/<int:suc_id>', methods=['GET'])
 def get_by_sucursal(suc_id):
     try:
-        return jsonify({"status": "success", "data": model.get_by_sucursal(suc_id)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_by_sucursal", suc_id)})
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los servicios."}), 500
 
@@ -108,16 +108,16 @@ def create():
         clean, errors = _validate_service(data)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        existing = model.get_by_nombre(clean['nombre'])
+        existing = model.ejecutar("get_by_nombre", clean['nombre'])
         if existing:
             if existing['estado'] == 1:
                 return jsonify({"status": "error", "message": "Ya existe un servicio con ese nombre.", "errors": {"nombre": "Ya existe un servicio con ese nombre."}}), 400
             else:
-                model.update_service(existing['id'], clean)
-                model.update("transalca", "UPDATE servicios SET estado = 1 WHERE id = %s", (existing['id'],))
+                model.ejecutar("update_service", existing['id'], clean)
+                model.ejecutar("reactivar", existing['id'])
 
                 return jsonify({"status": "success", "message": "Servicio registrado correctamente.", "id": existing['id']})
-        sid = model.create(clean)
+        sid = model.ejecutar("create", clean)
 
 
         return jsonify({"status": "success", "message": "Servicio registrado correctamente.", "id": sid})
@@ -134,9 +134,9 @@ def update(sid):
         clean, errors = _validate_service(data, sid)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if model.nombre_exists(clean['nombre'], sid):
+        if model.ejecutar("nombre_exists", clean['nombre'], sid):
             return jsonify({"status": "error", "message": "Ya existe un servicio con ese nombre.", "errors": {"nombre": "Ya existe un servicio con ese nombre."}}), 400
-        model.update_service(sid, clean)
+        model.ejecutar("update_service", sid, clean)
 
 
         return jsonify({"status": "success", "message": "Servicio modificado correctamente."})
@@ -149,7 +149,7 @@ def delete(sid):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        model.soft_delete(sid)
+        model.ejecutar("soft_delete", sid)
 
 
         return jsonify({"status": "success", "message": "Servicio eliminado correctamente."})
@@ -162,10 +162,10 @@ def toggle(sid):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        model.toggle_estado(sid)
+        model.ejecutar("toggle_estado", sid)
 
 
-        item = model.get_by_id(sid)
+        item = model.ejecutar("get_by_id", sid)
         msg = "Servicio reactivado correctamente." if item and item.get('estado') else "Servicio eliminado correctamente."
         return jsonify({"status": "success", "message": msg})
     except Exception:

@@ -164,6 +164,7 @@ async function loadAssignments() {
 
 function statusSelect(id, current) {
     const options = [
+        ['sin_asignar', 'Sin asignar'],
         ['asignado', 'Asignado'],
         ['en_proceso', 'En proceso'],
         ['completado', 'Completado'],
@@ -184,7 +185,8 @@ function openAssignmentModal() {
     $('#observaciones').val('');
     $('#cliente_cedula').val('').trigger('change');
     $('#vehiculo_placa').val('').trigger('change');
-    $('#estado').val('asignado').trigger('change');
+    $('#estado').val('sin_asignar').trigger('change');
+    $('#porcentaje_comision').val('');
 
     const now = new Date();
     const tzoffset = now.getTimezoneOffset() * 60000;
@@ -213,8 +215,9 @@ async function saveAssignment() {
         observaciones: document.getElementById('observaciones').value || '',
         cliente_cedula: document.getElementById('cliente_cedula').value || null,
         vehiculo_placa: document.getElementById('vehiculo_placa').value || null,
-        estado: document.getElementById('estado').value || 'asignado',
-        fecha: document.getElementById('fecha').value || null
+        estado: document.getElementById('estado').value || 'sin_asignar',
+        fecha: document.getElementById('fecha').value || null,
+        porcentaje_comision: document.getElementById('porcentaje_comision').value || null
     };
     const saveBtn = document.querySelector('#assignmentModal .btn-orange');
 
@@ -243,7 +246,8 @@ function editAssignment(id) {
         $('#assignmentId').val(a.id);
         $('#orden_venta_id').val(a.orden_venta_id || '');
         $('#observaciones').val(a.observaciones || '');
-        $('#estado').val(a.estado || 'asignado').trigger('change');
+        $('#estado').val(a.estado || 'sin_asignar').trigger('change');
+        $('#porcentaje_comision').val(a.porcentaje_comision || '');
 
 
         const serviceSelect = document.getElementById('servicio_id');
@@ -326,9 +330,10 @@ async function saveMechanicAssignment() {
     try {
         const saveBtn = document.querySelector('#mechanicAssignModal .btn-orange');
         setButtonLoading(saveBtn, true, 'Asignando...');
-        const res = await apiCall(`/api/service-mechanics/${assignmentId}/mechanic`, 'PUT', {
-            mecanico_cedula: mecanicoCedula
-        });
+        const payload = { mecanico_cedula: mecanicoCedula };
+        const pct = document.getElementById('assignment_mechanic_commission').value;
+        if (pct) payload.porcentaje_comision = pct;
+        const res = await apiCall(`/api/service-mechanics/${assignmentId}/mechanic`, 'PUT', payload);
         setButtonLoading(saveBtn, false);
         if (res.status === 'error') return showToast(res.message, 'error');
         mechanicModal.hide();
@@ -341,7 +346,8 @@ async function updateAssignmentStatus(assignmentId, estado) {
     try {
         const res = await apiCall(`/api/service-mechanics/${assignmentId}/status`, 'PUT', { estado });
         if (res.status === 'error') {
-            showToast(res.message, 'error');
+            const detalles = res.errors ? Object.values(res.errors).join(' ') : '';
+            showToast(detalles || res.message, 'error');
             loadAssignments();
             return;
         }

@@ -13,7 +13,7 @@ model = ReportModel()
 @report_bp.route('/dashboard', methods=['GET'])
 def dashboard():
     try:
-        return jsonify({"status": "success", "data": model.get_dashboard_stats()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_dashboard_stats")})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -22,7 +22,7 @@ def dashboard():
 def recent_orders():
     try:
         limit = int(request.args.get('limit', 10))
-        return jsonify({"status": "success", "data": model.get_recent_orders(limit)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_recent_orders", limit)})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -40,15 +40,15 @@ def query_reports():
 
         data = []
         if report_type == 'sales':
-            data = model.get_sales_history(start_date, end_date, status)
+            data = model.ejecutar("get_sales_history", start_date, end_date, status)
         elif report_type == 'payments':
-            data = model.get_payments_history(start_date, end_date, status)
+            data = model.ejecutar("get_payments_history", start_date, end_date, status)
         elif report_type == 'inventory':
-            data = model.get_inventory_kardex(start_date, end_date)
+            data = model.ejecutar("get_inventory_kardex", start_date, end_date)
         elif report_type == 'mechanics':
-            data = model.get_mechanics_performance(start_date, end_date)
+            data = model.ejecutar("get_mechanics_performance", start_date, end_date)
         elif report_type == 'bitacora':
-            data = model.get_bitacora_audit(start_date, end_date, status)
+            data = model.ejecutar("get_bitacora_audit", start_date, end_date, status)
         else:
             return jsonify({"status": "error", "message": "Tipo de reporte invalido"}), 400
 
@@ -75,27 +75,27 @@ def export_reports():
         headers = []
 
         if report_type == 'sales':
-            data = model.get_sales_history(start_date, end_date, status)
+            data = model.ejecutar("get_sales_history", start_date, end_date, status)
             headers = ["ID", "Cliente", "Fecha", "Total", "Estado"]
             rows = [[d['id'], d['cliente'], d['fecha'], d['total'], d['estado']] for d in data]
             title = "Reporte Orden de Venta"
         elif report_type == 'payments':
-            data = model.get_payments_history(start_date, end_date, status)
+            data = model.ejecutar("get_payments_history", start_date, end_date, status)
             headers = ["ID", "Orden", "Cliente", "Fecha", "Referencia", "Monto", "Moneda", "Método", "Estado"]
             rows = [[d['id'], d['orden_id'], d['cliente'], d['fecha'], d['referencia'], d['monto'], d['moneda'], d['metodo'], d['estado']] for d in data]
             title = "Flujo de Pagos"
         elif report_type == 'inventory':
-            data = model.get_inventory_kardex(start_date, end_date)
+            data = model.ejecutar("get_inventory_kardex", start_date, end_date)
             headers = ["ID", "Producto", "Código", "Motivo", "Tipo Obra", "Fecha", "Cantidad"]
             rows = [[d['id'], d['producto'], d['codigo'], d['motivo'], d['tipo'], d['fecha'], d['cantidad']] for d in data]
             title = "Kardex de Stock"
         elif report_type == 'mechanics':
-            data = model.get_mechanics_performance(start_date, end_date)
+            data = model.ejecutar("get_mechanics_performance", start_date, end_date)
             headers = ["Mecánico", "Servicios Asignados", "Completados", "Ingreso Generado"]
             rows = [[d['mecanico_nombre'], d['total_asignados'], d['total_completados'], d['ingreso_generado']] for d in data]
             title = "Desempeño de Mecánicos"
         elif report_type == 'bitacora':
-            data = model.get_bitacora_audit(start_date, end_date, status)
+            data = model.ejecutar("get_bitacora_audit", start_date, end_date, status)
             headers = ["ID", "Fecha", "Usuario", "Módulo", "Acción", "Descripción", "IP"]
             rows = [[d['id'], d['fecha'], d['usuario'], d['modulo'], d['accion'], d['descripcion'], d['ip']] for d in data]
             title = "Auditoría de Bitácora"

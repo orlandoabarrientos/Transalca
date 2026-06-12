@@ -23,15 +23,14 @@ def get_all():
             return auth
         if not is_employee():
             return deny()
-        estado = request.args.get('estado_pago')
         mecanico = request.args.get('mecanico')
         roles = [r.lower() for r in session.get('roles', [])]
         if 'mecanico' in roles:
             mecanico = session.get('user_cedula')
         if mecanico:
-            return jsonify({"status": "success", "data": model.get_by_mecanico(mecanico, estado)})
-        return jsonify({"status": "success", "data": model.get_all(estado)})
-    except Exception as e:
+            return jsonify({"status": "success", "data": model.ejecutar("get_by_mecanico", mecanico)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_all")})
+    except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
@@ -41,13 +40,13 @@ def get_one(cid):
         auth = require_login()
         if auth:
             return auth
-        c = model.get_by_id(cid)
+        c = model.ejecutar("get_by_id", cid)
         if not c:
             return jsonify({"status": "error", "message": "Comision no encontrada"}), 404
         if not mechanic_cedula_allowed(c.get('mecanico_cedula')):
             return deny()
         return jsonify({"status": "success", "data": c})
-    except Exception as e:
+    except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
@@ -63,9 +62,9 @@ def create():
         required = ['servicio_mecanico_id', 'precio_servicio']
         if not data or not all(data.get(k) for k in required):
             return jsonify({"status": "error", "message": "Datos incompletos"}), 400
-        cid = model.create(data)
+        cid = model.ejecutar("create", data)
         return jsonify({"status": "success", "message": "Comision registrada", "id": cid}), 201
-    except Exception as e:
+    except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
@@ -77,39 +76,35 @@ def auto_create(sm_id):
             return auth
         if not is_employee():
             return deny()
-        cid = model.create_from_service(sm_id)
+        data = request.get_json(silent=True) or {}
+        cid = model.ejecutar("create_from_service", sm_id, data.get('porcentaje_comision'))
         if not cid:
             return jsonify({"status": "error", "message": "No se pudo crear comision"}), 400
         return jsonify({"status": "success", "message": "Comision generada", "id": cid}), 201
-    except Exception as e:
+    except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@commission_bp.route('/<int:cid>/pay', methods=['PUT'])
-def mark_paid(cid):
+@commission_bp.route('/<int:sm_id>/percentage', methods=['PUT'])
+def update_percentage(sm_id):
     try:
         auth = require_login()
         if auth:
             return auth
         if not is_employee():
             return deny()
-        model.mark_paid(cid)
-        return jsonify({"status": "success", "message": "Comision marcada como pagada"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
-
-
-@commission_bp.route('/<int:cid>/cancel', methods=['PUT'])
-def mark_cancelled(cid):
-    try:
-        auth = require_login()
-        if auth:
-            return auth
-        if not is_employee():
-            return deny()
-        model.mark_cancelled(cid)
-        return jsonify({"status": "success", "message": "Comision anulada"})
-    except Exception as e:
+        data = request.get_json() or {}
+        try:
+            porcentaje = float(data.get('porcentaje_comision'))
+        except (TypeError, ValueError):
+            return jsonify({"status": "error", "message": "Porcentaje de comision invalido"}), 400
+        if porcentaje <= 0 or porcentaje > 100:
+            return jsonify({"status": "error", "message": "El porcentaje debe estar entre 0 y 100"}), 400
+        cid = model.ejecutar("set_percentage", sm_id, porcentaje)
+        if not cid:
+            return jsonify({"status": "error", "message": "El servicio no tiene mecanico asignado"}), 400
+        return jsonify({"status": "success", "message": "Porcentaje de comision actualizado"})
+    except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
@@ -121,6 +116,6 @@ def summary(cedula):
             return auth
         if not mechanic_cedula_allowed(cedula):
             return deny()
-        return jsonify({"status": "success", "data": model.get_summary(cedula)})
-    except Exception as e:
+        return jsonify({"status": "success", "data": model.ejecutar("get_summary", cedula)})
+    except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

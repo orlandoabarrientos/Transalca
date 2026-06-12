@@ -108,21 +108,26 @@
                         <label class="form-label">Dirección</label>
                         <input type="text" class="form-control" id="direccion" name="direccion" maxlength="40">
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Rol <span class="required">*</span></label>
+                        <select class="form-select" id="rol_id" name="rol_id" required>
+                            <option value="">Seleccione un rol...</option>
+                        </select>
+                        <div class="invalid-feedback"></div>
+                    </div>
                     <div class="row" id="passwordRow">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Contraseña <span class="required">*</span></label>
-                            <input type="password" class="form-control" id="password" name="password">
+                            <input type="password" class="form-control" id="password" name="password" autocomplete="new-password">
                             <div class="invalid-feedback"></div>
                             <div class="password-strength mt-1">
                                 <div class="bar" id="passwordStrengthBar"></div>
                             </div>
-                            <small class="form-text">Mín 8, 1 mayúscula, 1 minúscula, 1 número, 1 especial</small>
+                            <small class="form-text">Mín 8 caracteres, 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial (@$!%*?&#.)</small>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Rol <span class="required">*</span></label>
-                            <select class="form-select" id="rol_id" name="rol_id" required>
-                                <option value="">Seleccione un rol...</option>
-                            </select>
+                            <label class="form-label">Confirmar contraseña <span class="required">*</span></label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" autocomplete="new-password">
                             <div class="invalid-feedback"></div>
                         </div>
                     </div>

@@ -150,7 +150,6 @@ function showCreateCompanyModal() {
 function companyPayload(includeRif = true) {
     const data = {
         razon_social: $('#fRazonSocial').val(),
-        nombre_comercial: $('#fNombreComercial').val(),
         telefono: $('#fTelefono').val(),
         email: $('#fEmail').val(),
         direccion: $('#fDireccion').val(),
@@ -204,7 +203,6 @@ function editCompany(rif) {
         $('#fRifPrefijo').prop('disabled', true);
         $('#fRif').prop('disabled', true);
         $('#fRazonSocial').val(c.razon_social);
-        $('#fNombreComercial').val(c.nombre_comercial);
         $('#fSector').val(c.sector);
         $('#fTelefono').val(c.telefono);
         $('#fEmail').val(c.email);

@@ -12,7 +12,7 @@ def get_all():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        return jsonify({"status": "success", "data": model.get_all_qrs()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_all_qrs")})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -24,7 +24,7 @@ def my_qrs():
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         if session.get('user_tipo') != 'cliente':
             return jsonify({"status": "error", "message": "Solo clientes"}), 403
-        return jsonify({"status": "success", "data": model.get_user_qrs(session['user_cedula'])})
+        return jsonify({"status": "success", "data": model.ejecutar("get_user_qrs", session['user_cedula'])})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -32,7 +32,7 @@ def my_qrs():
 @qr_bp.route('/<int:qr_id>', methods=['GET'])
 def get_one(qr_id):
     try:
-        qr = model.get_by_id(qr_id)
+        qr = model.ejecutar("get_by_id", qr_id)
         if qr:
             return jsonify({"status": "success", "data": qr})
         return jsonify({"status": "error", "message": "QR no encontrado"}), 404
@@ -57,7 +57,7 @@ def create():
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         data['usuario_cedula'] = session['user_cedula']
-        qr_id = model.create_qr(data)
+        qr_id = model.ejecutar("create_qr", data)
 
 
         return jsonify({"status": "success", "message": "QR registrado correctamente.", "id": qr_id})
@@ -81,7 +81,7 @@ def update(qr_id):
             errors['referencia_id'] = 'Seleccione una referencia para esta utilidad'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        model.update_qr(qr_id, data)
+        model.ejecutar("update_qr", qr_id, data)
 
 
         return jsonify({"status": "success", "message": "QR modificado correctamente."})
@@ -94,7 +94,7 @@ def delete(qr_id):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        model.soft_delete(qr_id)
+        model.ejecutar("soft_delete", qr_id)
 
 
         return jsonify({"status": "success", "message": "QR eliminado correctamente."})
@@ -107,7 +107,7 @@ def scan(qr_id):
     try:
         if 'user_cedula' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        data = model.get_qr_data(qr_id)
+        data = model.ejecutar("get_qr_data", qr_id)
         if data:
             return jsonify({"status": "success", "data": data})
         return jsonify({"status": "error", "message": "QR no encontrado"}), 404
@@ -118,7 +118,7 @@ def scan(qr_id):
 @qr_bp.route('/<int:qr_id>/image', methods=['GET'])
 def generate_image(qr_id):
     try:
-        qr_obj = model.get_by_id(qr_id)
+        qr_obj = model.ejecutar("get_by_id", qr_id)
         if not qr_obj:
             return jsonify({"status": "error", "message": "QR no encontrado"}), 404
 

@@ -10,7 +10,7 @@ def revenue_timeline():
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         days = int(request.args.get('days', 30))
-        return jsonify({"status": "success", "data": model.get_revenue_timeline(days)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_revenue_timeline", days)})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -20,7 +20,7 @@ def top_products():
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         limit = int(request.args.get('limit', 5))
-        return jsonify({"status": "success", "data": model.get_top_performing_products(limit)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_top_performing_products", limit)})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -29,7 +29,7 @@ def order_status():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        return jsonify({"status": "success", "data": model.get_order_status_distribution()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_order_status_distribution")})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -38,6 +38,17 @@ def payment_methods():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        return jsonify({"status": "success", "data": model.get_payments_distribution()})
+        return jsonify({"status": "success", "data": model.ejecutar("get_payments_distribution")})
+    except Exception as e:
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
+
+
+@stats_bp.route('/services', methods=['GET'])
+def top_services():
+    try:
+        if 'user_id' not in session:
+            return jsonify({"status": "error", "message": "No autorizado"}), 401
+        limit = int(request.args.get('limit', 5))
+        return jsonify({"status": "success", "data": model.ejecutar("get_top_services", limit)})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

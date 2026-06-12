@@ -257,24 +257,39 @@ let allServices = [];
             const count = document.getElementById('serviceCount');
             if (count) count.textContent = `${services.length} servicio${services.length === 1 ? '' : 's'}`;
             grid.innerHTML = '';
-            const icons = { alineacion: 'bi-rulers', rotacion: 'bi-arrow-repeat', balanceo: 'bi-speedometer', cambio_aceite: 'bi-droplet-fill', general: 'bi-wrench-adjustable' };
+            const icons = { alineacion: 'bi-rulers', rotacion: 'bi-arrow-repeat', balanceo: 'bi-speedometer', cambio_aceite: 'bi-droplet-fill', frenos: 'bi-disc', general: 'bi-wrench-adjustable' };
+            const tipoLabels = { alineacion: 'Alineacion', rotacion: 'Rotacion', balanceo: 'Balanceo', cambio_aceite: 'Cambio de aceite', frenos: 'Frenos', general: 'Servicio general' };
             services.forEach(s => {
                 const safeName = escapeHtml(s.nombre || '');
-                const safeDesc = escapeHtml(s.descripcion || s.tipo || 'Servicio automotriz');
-                const safeBranch = escapeHtml(s.sucursal_nombre || '');
-                grid.innerHTML += `<div class="col-12 col-md-6 fade-in-up">
-                    <article class="service-card catalog-service-card" onclick="addToCart(${s.id},'servicio')">
-                        <div class="catalog-service-icon"><i class="bi ${icons[s.tipo] || 'bi-wrench-adjustable'}"></i></div>
-                        <div class="catalog-service-copy">
-                            <span>Servicio tecnico</span>
-                            <h6>${safeName}</h6>
-                            <p>${safeDesc}</p>
-                            ${safeBranch ? `<small><i class="bi bi-geo-alt"></i>${safeBranch}</small>` : ''}
-                        </div>
-                        <div class="catalog-service-action">
-                            <strong class="service-price" data-usd-price="${s.precio}">${formatUsdBs(s.precio)}</strong>
-                            <button type="button" class="btn btn-sm btn-orange"><i class="bi bi-cart-plus me-1"></i>Agregar</button>
-                        </div>
+                const safeDesc = escapeHtml(s.descripcion || 'Servicio profesional realizado por nuestros mecanicos certificados.');
+                const safeBranch = escapeHtml(s.sucursal_nombre || 'Todas las sucursales');
+                const tipoLabel = escapeHtml(tipoLabels[s.tipo] || (s.tipo || 'Servicio').replace(/_/g, ' '));
+                const duracion = s.duracion_estimada ? escapeHtml(String(s.duracion_estimada)) : null;
+                grid.innerHTML += `<div class="col-12 col-md-6 col-xl-4 fade-in-up">
+                    <article class="service-pro-card h-100">
+                        <header class="service-pro-head">
+                            <div class="service-pro-icon"><i class="bi ${icons[s.tipo] || 'bi-wrench-adjustable'}"></i></div>
+                            <div>
+                                <span class="service-pro-type">${tipoLabel}</span>
+                                <h6 class="service-pro-title">${safeName}</h6>
+                            </div>
+                            <span class="service-pro-status"><i class="bi bi-check-circle-fill me-1"></i>Disponible</span>
+                        </header>
+                        <p class="service-pro-desc">${safeDesc}</p>
+                        <ul class="service-pro-meta">
+                            ${duracion ? `<li><i class="bi bi-clock"></i> Duracion aprox.: ${duracion} min</li>` : ''}
+                            <li><i class="bi bi-geo-alt"></i> ${safeBranch}</li>
+                            <li><i class="bi bi-shield-check"></i> Garantia de servicio Transalca</li>
+                        </ul>
+                        <footer class="service-pro-footer">
+                            <div class="service-pro-price">
+                                <small>Precio</small>
+                                <strong class="service-price" data-usd-price="${s.precio}">${formatUsdBs(s.precio)}</strong>
+                            </div>
+                            <button type="button" class="btn btn-orange service-pro-cta" onclick="addToCart(${s.id},'servicio')">
+                                <i class="bi bi-cart-plus me-1"></i>Solicitar
+                            </button>
+                        </footer>
                     </article>
                 </div>`;
             });

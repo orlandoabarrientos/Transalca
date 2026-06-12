@@ -22,7 +22,7 @@ def get_profile():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        profile = model.get_profile(session['user_id'])
+        profile = model.ejecutar("get_profile", session['user_id'])
         if profile:
             return jsonify({"status": "success", "data": profile})
         return jsonify({"status": "error", "message": "Perfil no encontrado."}), 404
@@ -42,14 +42,14 @@ def update_profile():
             'apellido': require_text(errors, 'fApellido', data.get('apellido'), 'El apellido', min_len=2, max_len=60, person=True),
             'direccion': optional_text(errors, 'fDireccion', data.get('direccion'), 'La direccion', max_len=40)
         }
-        current = model.get_profile(session['user_id'])
+        current = model.ejecutar("get_profile", session['user_id'])
         if current and current.get('tipo') == 'cliente':
             clean['telefono'] = normalize_phone(errors, data.get('telefono'), 'fTelefono', required=True)
         else:
             clean['telefono'] = normalize_phone(errors, data.get('telefono'), 'fTelefono', required=False)
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        model.update_profile(session['user_id'], clean)
+        model.ejecutar("update_profile", session['user_id'], clean)
         session['user_nombre'] = clean['nombre']
         session['user_apellido'] = clean['apellido']
         return jsonify({"status": "success", "message": "Perfil modificado correctamente."})
@@ -67,7 +67,7 @@ def update_email():
         email = normalize_email(errors, data.get('email'), 'email', required=True)
         if errors:
             return jsonify({"status": "error", "message": "Correo invalido.", "errors": {"email": "Ingrese un correo valido."}}), 400
-        result = model.update_email(session['user_id'], email)
+        result = model.ejecutar("update_email", session['user_id'], email)
         if result:
             session['user_email'] = email
             return jsonify({"status": "success", "message": "Correo modificado correctamente."})
@@ -91,7 +91,7 @@ def change_password():
             errors[CONFIRM_CREDENTIAL_FIELD] = 'Las contrasenas no coinciden'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        result = model.change_password(session['user_id'], data[CURRENT_CREDENTIAL_FIELD], data[NEW_CREDENTIAL_FIELD])
+        result = model.ejecutar("change_password", session['user_id'], data[CURRENT_CREDENTIAL_FIELD], data[NEW_CREDENTIAL_FIELD])
         if result:
 
             return jsonify({"status": "success", "message": "Contrasena modificada correctamente."})
@@ -116,13 +116,13 @@ def update_photo():
             return jsonify({"status": "error", "message": "Solo se permiten imagenes png, jpg, jpeg o webp."}), 400
         if file.mimetype not in {'image/png', 'image/jpeg', 'image/webp'}:
             return jsonify({"status": "error", "message": "El archivo no es una imagen valida."}), 400
-        profile = model.get_profile(session['user_id'])
+        profile = model.ejecutar("get_profile", session['user_id'])
         filename = f"user_{session['user_id']}_{int(time.time())}.{ext}"
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
         try:
-            model.update_photo(session['user_id'], filename)
+            model.ejecutar("update_photo", session['user_id'], filename)
         except Exception:
             if os.path.exists(filepath):
                 os.remove(filepath)

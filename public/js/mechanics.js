@@ -44,13 +44,16 @@ function loadData() {
                         <td>${escapeHtml(m.especialidad || '-')}</td>
                         <td>${escapeHtml(m.telefono || '-')}</td>
                         <td>${statusBadge(m.estado)}</td>
+                        <td>${m.estado_operativo === 'Ocupado'
+                            ? '<span class="badge-status badge-warning" style="background:#FEF3C7;color:#B45309;"><i class="bi bi-tools me-1"></i>Ocupado</span>'
+                            : '<span class="badge-status badge-active"><i class="bi bi-check-circle me-1"></i>Disponible</span>'}</td>
                         <td>
                             <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editData('${encodeURIComponent(m.cedula)}')" title="Modificar Mecánico"><i class="bi bi-pencil"></i></button>
                             ${actionBtn}
                         </td>
                     </tr>`;
                 },
-                onEmpty: () => '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-person-badge"></i><p>No hay mecánicos registrados</p></div></td></tr>'
+                onEmpty: () => '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-person-badge"></i><p>No hay mecánicos registrados</p></div></td></tr>'
             });
         } else {
             paginator.updateData(res.data || []);

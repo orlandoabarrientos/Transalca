@@ -5,21 +5,23 @@ class ServiceMechanicModel(Connection):
     def __init__(self):
         super().__init__()
 
-    def get_all(self):
+    def _get_all(self):
         assignments = self.fetch_all("transalca",
-            "SELECT sm.id, sm.servicio_id, sm.mecanico_cedula, sm.orden_venta_id, "
-            "DATE_FORMAT(sm.fecha, '%%Y-%%m-%%dT%%H:%%i') as fecha, "
-            "sm.estado, sm.observaciones, "
-            "s.nombre as servicio_nombre, s.precio, "
-            "m.nombre as mecanico_nombre_base, m.apellido as mecanico_apellido_base, "
+            "SELECT sm.id_servicio_mecanico AS id, sm.servicio_id, sm.mecanico_cedula, sm.orden_venta_id, "
+            "DATE_FORMAT(sm.fecha_servicio, '%%Y-%%m-%%dT%%H:%%i') as fecha, "
+            "sm.estado_servicio AS estado, sm.observaciones_servicio AS observaciones, "
+            "s.nombre_servicio as servicio_nombre, s.precio_servicio AS precio, "
+            "m.nombre_mecanico as mecanico_nombre_base, m.apellido_mecanico as mecanico_apellido_base, "
             "COALESCE(sm.cliente_cedula, ov.cliente_cedula) as cliente_cedula, "
-            "COALESCE(sm.vehiculo_placa, bv.vehiculo_placa) as vehiculo_placa "
+            "COALESCE(sm.vehiculo_placa, bv.vehiculo_placa) as vehiculo_placa, "
+            "cm.porcentaje_comision "
             "FROM servicio_mecanico sm "
-            "INNER JOIN servicios s ON sm.servicio_id = s.id "
-            "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula "
-            "LEFT JOIN ordenes_venta ov ON sm.orden_venta_id = ov.id "
-            "LEFT JOIN bitacora_vehiculo bv ON sm.id = bv.servicio_mecanico_id "
-            "ORDER BY sm.fecha DESC")
+            "INNER JOIN servicios s ON sm.servicio_id = s.id_servicio "
+            "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula_mecanico "
+            "LEFT JOIN ordenes_venta ov ON sm.orden_venta_id = ov.id_orden_venta "
+            "LEFT JOIN bitacora_vehiculo bv ON sm.id_servicio_mecanico = bv.servicio_mecanico_id "
+            "LEFT JOIN comisiones_mecanico cm ON cm.servicio_mecanico_id = sm.id_servicio_mecanico "
+            "ORDER BY sm.fecha_servicio DESC")
         for a in assignments:
             nombre = (a.get('mecanico_nombre_base') or '').strip()
             apellido = (a.get('mecanico_apellido_base') or '').strip()
@@ -29,25 +31,27 @@ class ServiceMechanicModel(Connection):
             a.pop('mecanico_apellido_base', None)
         return assignments
 
-    def get_by_id(self, aid):
+    def _get_by_id(self, aid):
         item = self.fetch_one("transalca",
-            "SELECT sm.id, sm.servicio_id, sm.mecanico_cedula, sm.orden_venta_id, "
-            "DATE_FORMAT(sm.fecha, '%%Y-%%m-%%dT%%H:%%i') as fecha, "
-            "sm.estado, sm.observaciones, "
-            "s.nombre as servicio_nombre, "
+            "SELECT sm.id_servicio_mecanico AS id, sm.servicio_id, sm.mecanico_cedula, sm.orden_venta_id, "
+            "DATE_FORMAT(sm.fecha_servicio, '%%Y-%%m-%%dT%%H:%%i') as fecha, "
+            "sm.estado_servicio AS estado, sm.observaciones_servicio AS observaciones, "
+            "s.nombre_servicio as servicio_nombre, s.precio_servicio AS precio, "
             "COALESCE(sm.cliente_cedula, ov.cliente_cedula) as cliente_cedula, "
             "COALESCE(sm.vehiculo_placa, bv.vehiculo_placa) as vehiculo_placa, "
-            "c.nombre as cliente_nombre, c.apellido as cliente_apellido, "
-            "v.marca as vehiculo_marca, v.modelo as vehiculo_modelo, "
-            "m.nombre as mecanico_nombre_base, m.apellido as mecanico_apellido_base "
+            "c.nombre_cliente as cliente_nombre, '' as cliente_apellido, "
+            "v.marca_vehiculo as vehiculo_marca, v.modelo_vehiculo as vehiculo_modelo, "
+            "m.nombre_mecanico as mecanico_nombre_base, m.apellido_mecanico as mecanico_apellido_base, "
+            "cm.porcentaje_comision "
             "FROM servicio_mecanico sm "
-            "INNER JOIN servicios s ON sm.servicio_id = s.id "
-            "LEFT JOIN ordenes_venta ov ON sm.orden_venta_id = ov.id "
-            "LEFT JOIN bitacora_vehiculo bv ON sm.id = bv.servicio_mecanico_id "
-            "LEFT JOIN clientes c ON COALESCE(sm.cliente_cedula, ov.cliente_cedula) = c.cedula "
-            "LEFT JOIN vehiculos v ON COALESCE(sm.vehiculo_placa, bv.vehiculo_placa) = v.placa "
-            "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula "
-            "WHERE sm.id = %s", (aid,))
+            "INNER JOIN servicios s ON sm.servicio_id = s.id_servicio "
+            "LEFT JOIN ordenes_venta ov ON sm.orden_venta_id = ov.id_orden_venta "
+            "LEFT JOIN bitacora_vehiculo bv ON sm.id_servicio_mecanico = bv.servicio_mecanico_id "
+            "LEFT JOIN cliente c ON COALESCE(sm.cliente_cedula, ov.cliente_cedula) = c.identificador_cliente "
+            "LEFT JOIN vehiculos v ON COALESCE(sm.vehiculo_placa, bv.vehiculo_placa) = v.placa_vehiculo "
+            "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula_mecanico "
+            "LEFT JOIN comisiones_mecanico cm ON cm.servicio_mecanico_id = sm.id_servicio_mecanico "
+            "WHERE sm.id_servicio_mecanico = %s", (aid,))
         if item:
             nombre = (item.get('mecanico_nombre_base') or '').strip()
             apellido = (item.get('mecanico_apellido_base') or '').strip()
@@ -57,61 +61,75 @@ class ServiceMechanicModel(Connection):
             item.pop('mecanico_apellido_base', None)
         return item
 
-    def service_exists(self, servicio_id):
-        return self.fetch_one("transalca", "SELECT id FROM servicios WHERE id = %s AND estado = 1", (servicio_id,)) is not None
+    def _service_exists(self, servicio_id):
+        return self.fetch_one("transalca", "SELECT id_servicio FROM servicios WHERE id_servicio = %s AND estado = 1", (servicio_id,)) is not None
 
-    def mechanic_exists(self, cedula):
+    def _mechanic_exists(self, cedula):
         if not cedula:
             return True
-        return self.fetch_one("transalca", "SELECT cedula FROM mecanicos WHERE cedula = %s AND estado = 1", (cedula,)) is not None
+        return self.fetch_one("transalca", "SELECT cedula_mecanico FROM mecanicos WHERE cedula_mecanico = %s AND estado = 1", (cedula,)) is not None
 
-    def order_exists(self, orden_venta_id):
+    def _order_exists(self, orden_venta_id):
         if not orden_venta_id:
             return True
-        return self.fetch_one("transalca", "SELECT id FROM ordenes_venta WHERE id = %s", (orden_venta_id,)) is not None
+        return self.fetch_one("transalca", "SELECT id_orden_venta FROM ordenes_venta WHERE id_orden_venta = %s", (orden_venta_id,)) is not None
 
-    def _is_mechanic_nullable(self):
-        column = self.fetch_one("transalca", "SHOW COLUMNS FROM servicio_mecanico LIKE 'mecanico_cedula'")
-        if not column:
-            return False
-        return column.get('Null') == 'YES'
-
-    def ensure_optional_mechanic_support(self):
-        if self._is_mechanic_nullable():
-            return True
-        try:
-            self.update("transalca", "ALTER TABLE servicio_mecanico MODIFY mecanico_cedula VARCHAR(20) NULL")
-        except Exception:
-            return self._is_mechanic_nullable()
-        return self._is_mechanic_nullable()
-
-    def assign(self, data):
+    def _assign(self, data):
         mecanico_cedula = (data.get('mecanico_cedula') or '').strip() or None
-        if mecanico_cedula is None:
-            self.ensure_optional_mechanic_support()
-            if not self._is_mechanic_nullable():
-                raise Exception("La base de datos no permite registrar servicio sin mecanico")
+        estado = data.get('estado')
+        if not mecanico_cedula and (not estado or estado == 'asignado'):
+            estado = 'sin_asignar'
+        if mecanico_cedula and (not estado or estado == 'sin_asignar'):
+            estado = 'asignado'
         return self.insert("transalca",
-            "INSERT INTO servicio_mecanico (servicio_id, mecanico_cedula, orden_venta_id, observaciones, cliente_cedula, vehiculo_placa, estado, fecha) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            "INSERT INTO servicio_mecanico (servicio_id, mecanico_cedula, orden_venta_id, observaciones_servicio, cliente_cedula, vehiculo_placa, estado_servicio, fecha_servicio) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, COALESCE(%s, NOW()))",
             (data['servicio_id'], mecanico_cedula, data.get('orden_venta_id') or None, data.get('observaciones', '').strip(),
-             data.get('cliente_cedula') or None, data.get('vehiculo_placa') or None, data.get('estado') or 'asignado', data.get('fecha') or None))
+             data.get('cliente_cedula') or None, data.get('vehiculo_placa') or None, estado or 'sin_asignar', data.get('fecha') or None))
 
-    def update_mechanic(self, aid, mecanico_cedula):
+    def _update_mechanic(self, aid, mecanico_cedula):
         mecanico_cedula = (mecanico_cedula or '').strip()
         value = mecanico_cedula or None
+        if value:
+            return self.update("transalca",
+                "UPDATE servicio_mecanico SET mecanico_cedula = %s, "
+                "estado_servicio = CASE WHEN estado_servicio = 'sin_asignar' THEN 'asignado' ELSE estado_servicio END "
+                "WHERE id_servicio_mecanico = %s", (value, aid))
         return self.update("transalca",
-            "UPDATE servicio_mecanico SET mecanico_cedula = %s WHERE id = %s", (value, aid))
+            "UPDATE servicio_mecanico SET mecanico_cedula = NULL, "
+            "estado_servicio = CASE WHEN estado_servicio IN ('asignado','pendiente') THEN 'sin_asignar' ELSE estado_servicio END "
+            "WHERE id_servicio_mecanico = %s", (aid,))
 
-    def update_status(self, aid, estado):
+    def _update_status(self, aid, estado):
         return self.update("transalca",
-            "UPDATE servicio_mecanico SET estado = %s WHERE id = %s", (estado, aid))
+            "UPDATE servicio_mecanico SET estado_servicio = %s WHERE id_servicio_mecanico = %s", (estado, aid))
 
-    def update_assignment(self, aid, data):
+    def _update_assignment(self, aid, data):
         mecanico_cedula = (data.get('mecanico_cedula') or '').strip() or None
+        estado = data.get('estado')
+        if not mecanico_cedula and estado in (None, '', 'asignado'):
+            estado = 'sin_asignar'
         return self.update("transalca",
-            "UPDATE servicio_mecanico SET servicio_id = %s, mecanico_cedula = %s, orden_venta_id = %s, observaciones = %s, cliente_cedula = %s, vehiculo_placa = %s, estado = %s, fecha = %s WHERE id = %s",
+            "UPDATE servicio_mecanico SET servicio_id = %s, mecanico_cedula = %s, orden_venta_id = %s, observaciones_servicio = %s, cliente_cedula = %s, vehiculo_placa = %s, estado_servicio = %s, fecha_servicio = COALESCE(%s, fecha_servicio) WHERE id_servicio_mecanico = %s",
             (data['servicio_id'], mecanico_cedula, data.get('orden_venta_id') or None, data.get('observaciones', '').strip(),
-             data.get('cliente_cedula') or None, data.get('vehiculo_placa') or None, data.get('estado') or 'asignado', data.get('fecha') or None, aid))
+             data.get('cliente_cedula') or None, data.get('vehiculo_placa') or None, estado or 'sin_asignar', data.get('fecha') or None, aid))
 
-    def delete_assignment(self, aid):
-        return self.delete("transalca", "DELETE FROM servicio_mecanico WHERE id = %s", (aid,))
+    def _delete_assignment(self, aid):
+        return self.delete("transalca", "DELETE FROM servicio_mecanico WHERE id_servicio_mecanico = %s", (aid,))
+
+    def ejecutar(self, accion, *args, **kwargs):
+        acciones = {
+            "get_all": self._get_all,
+            "get_by_id": self._get_by_id,
+            "service_exists": self._service_exists,
+            "mechanic_exists": self._mechanic_exists,
+            "order_exists": self._order_exists,
+            "assign": self._assign,
+            "update_mechanic": self._update_mechanic,
+            "update_status": self._update_status,
+            "update_assignment": self._update_assignment,
+            "delete_assignment": self._delete_assignment,
+        }
+        if accion not in acciones:
+            raise ValueError("Accion no permitida")
+        return acciones[accion](*args, **kwargs)
