@@ -50,3 +50,4 @@ tmp_hash.txt
 .agents/
 .codex/
 skills-lock.json
+.claude

@@ -14,8 +14,20 @@ $(document).ready(function () {
 
     Validator.setRules('assignmentForm', {
         servicio_id: { required: true, requiredMsg: 'Debe seleccionar un servicio' },
+        cliente_cedula: { required: true, requiredMsg: 'Debe seleccionar un cliente' },
+        vehiculo_placa: { required: true, requiredMsg: 'Debe seleccionar un vehículo' },
         estado: { required: true, requiredMsg: 'Debe seleccionar un estado' },
-        fecha: { required: true, requiredMsg: 'Debe seleccionar una fecha' }
+        observaciones: {
+            maxLength: 255,
+            maxLengthMsg: 'Las observaciones no pueden superar los 255 caracteres.',
+            pattern: /^$|^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,-]+$/,
+            patternMsg: 'Las observaciones solo pueden contener letras, números, espacios, puntos, comas y guiones.',
+            custom: () => {
+                const el = document.getElementById('observaciones');
+                return !el || !el.value || el.value.trim().length > 0;
+            },
+            customMsg: 'Las observaciones no pueden contener solo espacios en blanco.'
+        }
     });
     Validator.setupRealtime('assignmentForm');
 
@@ -188,11 +200,6 @@ function openAssignmentModal() {
     $('#estado').val('sin_asignar').trigger('change');
     $('#porcentaje_comision').val('');
 
-    const now = new Date();
-    const tzoffset = now.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 16);
-    document.getElementById('fecha').value = localISOTime;
-
     onClienteChange();
 
     assignmentModal.show();
@@ -216,7 +223,6 @@ async function saveAssignment() {
         cliente_cedula: document.getElementById('cliente_cedula').value || null,
         vehiculo_placa: document.getElementById('vehiculo_placa').value || null,
         estado: document.getElementById('estado').value || 'sin_asignar',
-        fecha: document.getElementById('fecha').value || null,
         porcentaje_comision: document.getElementById('porcentaje_comision').value || null
     };
     const saveBtn = document.querySelector('#assignmentModal .btn-orange');
@@ -279,9 +285,6 @@ function editAssignment(id) {
             clientSelect.appendChild(opt);
         }
         $('#cliente_cedula').val(a.cliente_cedula || '').trigger('change');
-
-
-        $('#fecha').val(a.fecha || '');
 
         loadVehiclesForClient(a.cliente_cedula).then(() => {
             const vehicleSelect = document.getElementById('vehiculo_placa');

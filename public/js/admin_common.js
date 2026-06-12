@@ -540,15 +540,34 @@ function serializeForm(form) {
     return JSON.stringify(data);
 }
 
+function formHasMissingRequired(formId, form) {
+    const rules = Validator.rules[formId];
+    if (!rules) return false;
+    for (const [field, fieldRules] of Object.entries(rules)) {
+        if (!fieldRules || !fieldRules.required) continue;
+        const el = document.querySelector(`#${formId} #${cssEscapeValue(field)}`) || document.getElementById(field) || form.querySelector(`[name="${cssEscapeValue(field)}"]`);
+        if (!el || el.disabled) continue;
+        let value = '';
+        if (el.tagName === 'SELECT' && el.multiple) {
+            value = Array.from(el.selectedOptions).map(opt => opt.value).filter(val => val !== '').join(',');
+        } else {
+            value = (el.value || '').trim();
+        }
+        if (!value) return true;
+    }
+    return false;
+}
+
 function updateFormSubmitState(formId) {
     const form = document.getElementById(formId);
     if (!form) return;
     const modal = form.closest('.modal-content') || form;
     const hasErrors = !!form.querySelector('.is-invalid');
+    const missingRequired = formHasMissingRequired(formId, form);
     const isDirty = form._initialState ? (serializeForm(form) !== form._initialState) : true;
     modal.querySelectorAll('button[type="submit"], button[onclick*="save"], button[onclick*="Save"], #btnSaveVehicle, #btnSavePromo, button[onclick*="change"], button[onclick*="Change"], #btnChangePassword, .btn-success').forEach(btn => {
         if (!btn.dataset.loading) {
-            btn.disabled = hasErrors || (form._initialState ? !isDirty : false);
+            btn.disabled = hasErrors || missingRequired || (form._initialState ? !isDirty : false);
         }
     });
 }

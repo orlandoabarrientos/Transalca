@@ -1,3 +1,5 @@
+import re
+
 from flask import Blueprint, request, jsonify, session
 from model.sucursal_model import SucursalModel
 
@@ -6,6 +8,7 @@ from config.validation import normalize_email, normalize_phone, optional_text, r
 sucursal_bp = Blueprint('sucursales', __name__)
 model = SucursalModel()
 
+DIRECCION_RE = re.compile(r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,\-]+$")
 
 
 def _validate_sucursal(data):
@@ -19,6 +22,8 @@ def _validate_sucursal(data):
         'telefono': normalize_phone(errors, data.get('telefono'), required=False),
         'email': normalize_email(errors, data.get('email'), required=False)
     }
+    if clean['direccion'] and 'direccion' not in errors and not DIRECCION_RE.match(clean['direccion']):
+        errors['direccion'] = 'La direccion solo puede contener letras, numeros, espacios, puntos, comas y guiones.'
     return clean, errors
 
 

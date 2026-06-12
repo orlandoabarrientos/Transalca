@@ -19,11 +19,17 @@ $(document).ready(function() {
         direccion: {
             maxLength: 40,
             maxLengthMsg: 'La dirección no puede superar los 40 caracteres.',
-            custom: v => !v || v.trim().length > 0,
+            pattern: /^$|^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,-]+$/,
+            patternMsg: 'La dirección solo puede contener letras, números, espacios, puntos, comas y guiones.',
+            custom: () => {
+                const el = document.getElementById('direccion');
+                return !el || !el.value || el.value.trim().length > 0;
+            },
             customMsg: 'La dirección no puede contener solo espacios en blanco.'
         }
     });
     Validator.setupRealtime('sucursalForm');
+    document.getElementById('nombre')?.addEventListener('input', debounce(validateUniqueSucursalNombre, 350));
     document.getElementById('email')?.addEventListener('input', debounce(validateUniqueSucursalEmail, 350));
 });
 
@@ -97,6 +103,34 @@ function saveData() {
 function toggleEstado(id) {
     confirmAction('¿Estás seguro de que deseas eliminar esta sucursal?', () => {
         apiCall(`/api/sucursales/${id}`, 'DELETE').then(res => { showToast(res.message); loadData(); });
+    });
+}
+
+function validateUniqueSucursalNombre() {
+    const input = document.getElementById('nombre');
+    if (!input) return;
+    const value = input.value.trim();
+    if (!value) {
+        delete input.dataset.externalError;
+        clearFieldError(input);
+        updateFormSubmitState('sucursalForm');
+        return;
+    }
+    if (!Validator.validateField('sucursalForm', 'nombre')) {
+        delete input.dataset.externalError;
+        updateFormSubmitState('sucursalForm');
+        return;
+    }
+    const id = document.getElementById('sucursalId')?.value || '';
+    apiCall('/api/sucursales/check-unique', 'POST', { field: 'nombre', value, exclude: id }).then(res => {
+        if (res.status === 'success' && res.exists) {
+            input.dataset.externalError = 'Ya existe una sucursal con ese nombre.';
+            setFieldError(input, 'Ya existe una sucursal con ese nombre.');
+        } else if (res.status === 'success') {
+            delete input.dataset.externalError;
+            clearFieldError(input);
+        }
+        updateFormSubmitState('sucursalForm');
     });
 }
 

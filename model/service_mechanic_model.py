@@ -83,9 +83,9 @@ class ServiceMechanicModel(Connection):
             estado = 'asignado'
         return self.insert("transalca",
             "INSERT INTO servicio_mecanico (servicio_id, mecanico_cedula, orden_venta_id, observaciones_servicio, cliente_cedula, vehiculo_placa, estado_servicio, fecha_servicio) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, COALESCE(%s, NOW()))",
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())",
             (data['servicio_id'], mecanico_cedula, data.get('orden_venta_id') or None, data.get('observaciones', '').strip(),
-             data.get('cliente_cedula') or None, data.get('vehiculo_placa') or None, estado or 'sin_asignar', data.get('fecha') or None))
+             data.get('cliente_cedula') or None, data.get('vehiculo_placa') or None, estado or 'sin_asignar'))
 
     def _update_mechanic(self, aid, mecanico_cedula):
         mecanico_cedula = (mecanico_cedula or '').strip()
@@ -110,9 +110,9 @@ class ServiceMechanicModel(Connection):
         if not mecanico_cedula and estado in (None, '', 'asignado'):
             estado = 'sin_asignar'
         return self.update("transalca",
-            "UPDATE servicio_mecanico SET servicio_id = %s, mecanico_cedula = %s, orden_venta_id = %s, observaciones_servicio = %s, cliente_cedula = %s, vehiculo_placa = %s, estado_servicio = %s, fecha_servicio = COALESCE(%s, fecha_servicio) WHERE id_servicio_mecanico = %s",
+            "UPDATE servicio_mecanico SET servicio_id = %s, mecanico_cedula = %s, orden_venta_id = %s, observaciones_servicio = %s, cliente_cedula = %s, vehiculo_placa = %s, estado_servicio = %s WHERE id_servicio_mecanico = %s",
             (data['servicio_id'], mecanico_cedula, data.get('orden_venta_id') or None, data.get('observaciones', '').strip(),
-             data.get('cliente_cedula') or None, data.get('vehiculo_placa') or None, estado or 'sin_asignar', data.get('fecha') or None, aid))
+             data.get('cliente_cedula') or None, data.get('vehiculo_placa') or None, estado or 'sin_asignar', aid))
 
     def _delete_assignment(self, aid):
         return self.delete("transalca", "DELETE FROM servicio_mecanico WHERE id_servicio_mecanico = %s", (aid,))

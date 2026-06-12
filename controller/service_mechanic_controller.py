@@ -1,3 +1,5 @@
+import re
+
 from flask import Blueprint, request, jsonify, session
 from model.service_mechanic_model import ServiceMechanicModel
 
@@ -11,6 +13,7 @@ model = ServiceMechanicModel()
 commission_model = CommissionModel()
 
 ESTADOS_REQUIEREN_DATOS = {'en_proceso', 'completado'}
+OBSERVACIONES_RE = re.compile(r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,\-]+$")
 
 
 def _missing_required_data(item, estado, mecanico_cedula=None):
@@ -35,12 +38,20 @@ def _validate_assignment(data, current_id=None):
     if data.get('orden_venta_id') not in (None, ''):
         orden_venta_id = normalize_int(errors, 'orden_venta_id', data.get('orden_venta_id'), 'La orden')
     mecanico_cedula = (data.get('mecanico_cedula') or '').strip() or None
+    observaciones_raw = data.get('observaciones')
+    if observaciones_raw is not None and str(observaciones_raw) != '' and not str(observaciones_raw).strip():
+        errors['observaciones'] = 'Las observaciones no pueden contener solo espacios en blanco.'
     observaciones = optional_text(errors, 'observaciones', data.get('observaciones'), 'Las observaciones', max_len=255, allow_serial=True)
+    if observaciones and 'observaciones' not in errors and not OBSERVACIONES_RE.match(observaciones):
+        errors['observaciones'] = 'Las observaciones solo pueden contener letras, numeros, espacios, puntos, comas y guiones.'
     cliente_cedula = (data.get('cliente_cedula') or '').strip() or None
+    if not cliente_cedula:
+        errors['cliente_cedula'] = 'Debe seleccionar un cliente.'
     vehiculo_placa = (data.get('vehiculo_placa') or '').strip().upper() or None
+    if not vehiculo_placa:
+        errors['vehiculo_placa'] = 'Debe seleccionar un vehiculo.'
     estado_default = 'asignado' if mecanico_cedula else 'sin_asignar'
     estado = validate_choice(errors, 'estado', data.get('estado') or estado_default, ESTADOS_SERVICIO_MECANICO)
-    fecha = (data.get('fecha') or '').strip().replace('T', ' ') or None
 
     current = model.ejecutar("get_by_id", current_id) if current_id else None
 
@@ -71,8 +82,7 @@ def _validate_assignment(data, current_id=None):
         'observaciones': observaciones,
         'cliente_cedula': cliente_cedula,
         'vehiculo_placa': vehiculo_placa,
-        'estado': estado,
-        'fecha': fecha
+        'estado': estado
     }, errors
 
 

@@ -24,7 +24,7 @@ class PurchaseOrderModel(Connection):
 
     def _get_all(self, search=None, estado=None):
         sql = (
-            "SELECT oc.*, oc.id_orden_compra AS id, oc.fecha_orden_compra AS fecha, oc.total_orden_compra AS total, oc.observaciones_orden_compra AS observaciones, p.nombre_proveedor AS proveedor_nombre, s.nombre_sucursal AS sucursal_nombre "
+            "SELECT oc.*, oc.id_orden_compra AS id, DATE_FORMAT(oc.fecha_orden_compra, '%%Y-%%m-%%dT%%H:%%i:%%s') AS fecha, oc.total_orden_compra AS total, oc.observaciones_orden_compra AS observaciones, p.nombre_proveedor AS proveedor_nombre, s.nombre_sucursal AS sucursal_nombre "
             "FROM ordenes_compra oc "
             "INNER JOIN proveedores p ON p.rif_proveedor = oc.proveedor_rif "
             "INNER JOIN sucursales s ON s.id_sucursal = oc.sucursal_id"
@@ -63,7 +63,7 @@ class PurchaseOrderModel(Connection):
 
     def _get_by_id(self, order_id):
         order = self.fetch_one("transalca",
-            "SELECT oc.*, oc.id_orden_compra AS id, oc.fecha_orden_compra AS fecha, oc.total_orden_compra AS total, oc.observaciones_orden_compra AS observaciones, "
+            "SELECT oc.*, oc.id_orden_compra AS id, DATE_FORMAT(oc.fecha_orden_compra, '%%Y-%%m-%%dT%%H:%%i:%%s') AS fecha, oc.total_orden_compra AS total, oc.observaciones_orden_compra AS observaciones, "
             "p.nombre_proveedor AS proveedor_nombre, p.telefono_proveedor AS proveedor_telefono, "
             "p.email_proveedor AS proveedor_email, p.direccion_proveedor AS proveedor_direccion, "
             "s.nombre_sucursal AS sucursal_nombre, s.direccion_sucursal AS sucursal_direccion "

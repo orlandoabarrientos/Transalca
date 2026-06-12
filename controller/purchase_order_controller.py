@@ -204,7 +204,14 @@ def get_pdf(order_id):
         pdf.set_font("helvetica", "B", 10)
 
 
-        fecha_str = order['fecha'].strftime('%d/%m/%Y %H:%M') if isinstance(order['fecha'], datetime) else str(order['fecha'])
+        fecha_raw = order['fecha']
+        if isinstance(fecha_raw, datetime):
+            fecha_str = fecha_raw.strftime('%d/%m/%Y %H:%M')
+        else:
+            try:
+                fecha_str = datetime.strptime(str(fecha_raw)[:16], '%Y-%m-%dT%H:%M').strftime('%d/%m/%Y %H:%M')
+            except ValueError:
+                fecha_str = str(fecha_raw)
         pdf.cell(90, 5, f"Fecha de Emision: {fecha_str}")
         pdf.cell(90, 5, f"Estado de la Orden: {order['estado'].upper()}", align="R")
         pdf.ln(10)
