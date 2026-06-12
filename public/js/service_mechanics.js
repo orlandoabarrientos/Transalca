@@ -31,6 +31,20 @@ $(document).ready(function () {
     });
     Validator.setupRealtime('assignmentForm');
 
+    Validator.setRules('mechanicAssignForm', {
+        assignment_mechanic_cedula: { required: true, requiredMsg: 'Debe seleccionar un mecánico' },
+        assignment_mechanic_commission: {
+            required: true,
+            requiredMsg: 'El porcentaje de comisión es obligatorio',
+            custom: v => {
+                const n = parseFloat(v);
+                return !isNaN(n) && n > 0 && n <= 100;
+            },
+            customMsg: 'El porcentaje debe ser mayor a 0 y máximo 100'
+        }
+    });
+    Validator.setupRealtime('mechanicAssignForm');
+
     $('#orden_venta_id').change(function() {
         const orderId = $(this).val();
         if (orderId) {
@@ -316,12 +330,20 @@ function deleteAssignment(id) {
 }
 
 function openMechanicModal(assignmentId) {
+    Validator.clearForm('mechanicAssignForm');
     document.getElementById('assignmentIdForMechanic').value = assignmentId;
-    document.getElementById('assignment_mechanic_cedula').value = '';
+    $('#assignment_mechanic_cedula').val('').trigger('change');
+    document.getElementById('assignment_mechanic_commission').value = '';
     mechanicModal.show();
+    Validator.initTracking('mechanicAssignForm');
 }
 
 async function saveMechanicAssignment() {
+    if (!Validator.validate('mechanicAssignForm')) {
+        showToast('Corrija los errores del formulario', 'warning');
+        return;
+    }
+
     const assignmentId = document.getElementById('assignmentIdForMechanic').value;
     const mecanicoCedula = document.getElementById('assignment_mechanic_cedula').value;
 
@@ -333,12 +355,16 @@ async function saveMechanicAssignment() {
     try {
         const saveBtn = document.querySelector('#mechanicAssignModal .btn-orange');
         setButtonLoading(saveBtn, true, 'Asignando...');
-        const payload = { mecanico_cedula: mecanicoCedula };
-        const pct = document.getElementById('assignment_mechanic_commission').value;
-        if (pct) payload.porcentaje_comision = pct;
+        const payload = {
+            mecanico_cedula: mecanicoCedula,
+            porcentaje_comision: document.getElementById('assignment_mechanic_commission').value
+        };
         const res = await apiCall(`/api/service-mechanics/${assignmentId}/mechanic`, 'PUT', payload);
         setButtonLoading(saveBtn, false);
-        if (res.status === 'error') return showToast(res.message, 'error');
+        if (res.status === 'error') {
+            Validator.showServerErrors('mechanicAssignForm', res.errors);
+            return showToast(res.message, 'error');
+        }
         mechanicModal.hide();
         showToast(res.message || 'Mecánico asignado correctamente', 'success');
         loadAssignments();

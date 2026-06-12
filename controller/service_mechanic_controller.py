@@ -136,16 +136,28 @@ def update_mechanic(aid):
         if not model.ejecutar("get_by_id", aid):
             return jsonify({"status": "error", "message": "Asignacion no encontrada"}), 404
         data = request.get_json() or {}
+        errors = {}
         mecanico_cedula = (data.get('mecanico_cedula') or '').strip()
-        if not mecanico_cedula or not model.ejecutar("mechanic_exists", mecanico_cedula):
-            return jsonify({"status": "error", "message": SELECT_TAMPER_MESSAGE, "errors": {"mecanico_cedula": SELECT_TAMPER_MESSAGE}}), 400
-        model.ejecutar("update_mechanic", aid, mecanico_cedula)
-        porcentaje = data.get('porcentaje_comision')
-        if porcentaje not in (None, ''):
+        if not mecanico_cedula:
+            errors['mecanico_cedula'] = 'Debe seleccionar un mecanico.'
+        elif not model.ejecutar("mechanic_exists", mecanico_cedula):
+            errors['mecanico_cedula'] = SELECT_TAMPER_MESSAGE
+        porcentaje_raw = data.get('porcentaje_comision')
+        porcentaje = None
+        if porcentaje_raw in (None, ''):
+            errors['porcentaje_comision'] = 'El porcentaje de comision es obligatorio.'
+        else:
             try:
-                commission_model.ejecutar("set_percentage", aid, float(porcentaje))
+                porcentaje = float(porcentaje_raw)
             except (TypeError, ValueError):
-                pass
+                errors['porcentaje_comision'] = 'El porcentaje de comision debe ser numerico.'
+            else:
+                if porcentaje <= 0 or porcentaje > 100:
+                    errors['porcentaje_comision'] = 'El porcentaje de comision debe ser mayor a 0 y maximo 100.'
+        if errors:
+            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
+        model.ejecutar("update_mechanic", aid, mecanico_cedula)
+        commission_model.ejecutar("set_percentage", aid, porcentaje)
 
         return jsonify({"status": "success", "message": "Mecanico asignado correctamente"})
     except Exception:
