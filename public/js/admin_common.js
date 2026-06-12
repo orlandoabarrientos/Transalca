@@ -1267,7 +1267,7 @@ function normalizeActionButtons(root = document) {
         btn.classList.remove('btn-orange', 'btn-outline-orange', 'btn-warning', 'btn-outline-warning', 'btn-danger', 'btn-outline-danger', 'btn-success', 'btn-outline-success');
         const icon = btn.querySelector('i.bi');
         if (action === 'register') {
-            btn.classList.add('btn-orange');
+            btn.classList.add('btn-success');
             if (icon) icon.className = 'bi bi-plus-circle me-1';
         } else if (action === 'edit') {
             btn.classList.add('btn-warning');
