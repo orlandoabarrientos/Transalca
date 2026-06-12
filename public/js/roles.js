@@ -256,7 +256,7 @@ function saveData() {
     };
     const url = id ? `/api/roles/${id}` : '/api/roles/';
     const method = id ? 'PUT' : 'POST';
-    const saveBtn = document.querySelector('#roleModal .btn-success');
+    const saveBtn = document.querySelector('#roleModal .btn-orange');
     setButtonLoading(saveBtn, true, 'Guardando...');
     apiCall(url, method, data).then(res => {
         setButtonLoading(saveBtn, false);

@@ -289,7 +289,7 @@ function saveData() {
         formData.append('old_codigo', oldCodigo);
     }
 
-    const saveBtn = document.querySelector('#productModal .btn-success');
+    const saveBtn = document.querySelector('#productModal .btn-orange');
     const url = oldCodigo ? '/api/products/update' : '/api/products/';
     const method = oldCodigo ? 'PUT' : 'POST';
     setButtonLoading(saveBtn, true, 'Guardando...');

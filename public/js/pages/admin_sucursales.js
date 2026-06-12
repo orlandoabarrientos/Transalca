@@ -89,7 +89,7 @@ function saveData() {
     const data = { nombre: document.getElementById('nombre').value, direccion: document.getElementById('direccion').value, telefono: document.getElementById('telefono').value, email: document.getElementById('email').value };
     const url = id ? `/api/sucursales/${id}` : '/api/sucursales/';
     const method = id ? 'PUT' : 'POST';
-    const saveBtn = document.querySelector('#sucursalModal .btn-success');
+    const saveBtn = document.querySelector('#sucursalModal .btn-orange');
     setButtonLoading(saveBtn, true, 'Guardando...');
     apiCall(url, method, data).then(res => {
         setButtonLoading(saveBtn, false);

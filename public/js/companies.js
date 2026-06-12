@@ -173,7 +173,7 @@ function saveCompany() {
     const data = companyPayload(!editRif);
     const url = editRif ? `/api/companies/${encodeURIComponent(editRif)}` : '/api/companies/';
     const method = editRif ? 'PUT' : 'POST';
-    const btn = document.querySelector('#companyModal .modal-footer .btn-success');
+    const btn = document.querySelector('#companyModal .modal-footer .btn-orange');
     setButtonLoading(btn, true, 'Guardando...');
     $.ajax({
         url, type: method, contentType: 'application/json', data: JSON.stringify(data),
@@ -502,7 +502,7 @@ function saveRepresentative() {
         estado: parseInt($('#repEstado').val())
     };
     const url = `/api/companies/${encodeURIComponent(currentCompanyRif)}/representatives`;
-    const btn = document.querySelector('#representativeModal .modal-footer .btn-success');
+    const btn = document.querySelector('#representativeModal .modal-footer .btn-orange');
     setButtonLoading(btn, true, 'Guardando...');
     $.ajax({
         url, type: 'POST', contentType: 'application/json', data: JSON.stringify(data),

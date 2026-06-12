@@ -168,7 +168,7 @@ function saveData() {
     }
     const url = id ? `/api/users/${id}` : '/api/users/';
     const method = id ? 'PUT' : 'POST';
-    const saveBtn = document.querySelector('#userModal .btn-success');
+    const saveBtn = document.querySelector('#userModal .btn-orange');
     setButtonLoading(saveBtn, true, 'Guardando...');
     apiCall(url, method, data).then(res => {
         setButtonLoading(saveBtn, false);
