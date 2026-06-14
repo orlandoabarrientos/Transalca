@@ -101,7 +101,7 @@ CREATE TABLE `carrito_compra` (
   `cliente_cedula` varchar(20) NOT NULL,
   `producto_codigo` varchar(50) DEFAULT NULL,
   `servicio_id` int(11) DEFAULT NULL,
-  `tipo_carrito` varchar(20) NOT NULL DEFAULT 'producto',
+  `tipo_carrito` tinyint(4) NOT NULL DEFAULT 0,
   `cantidad_carrito` int(11) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id_carrito_compra`),
@@ -604,30 +604,31 @@ INSERT INTO `detalle_orden_venta_servicios` VALUES (2,2,1,1,15.00),(3,12,22,1,20
 UNLOCK TABLES;
 
 
-DROP TABLE IF EXISTS `empresa_representante`;
+DROP TABLE IF EXISTS `representante`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `empresa_representante` (
+CREATE TABLE `representante` (
   `id_empresa_representante` int(11) NOT NULL AUTO_INCREMENT,
   `empresa_rif` varchar(20) NOT NULL,
   `representante_cedula` varchar(20) NOT NULL,
+  `nombre_representante` varchar(150) NOT NULL,
+  `telefono_representante` varchar(20) DEFAULT NULL,
+  `email_representante` varchar(150) DEFAULT NULL,
   `cargo` varchar(50) NOT NULL DEFAULT 'Otro',
   `estado` tinyint(1) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id_empresa_representante`),
-  UNIQUE KEY `uk_empresa_representante` (`empresa_rif`,`representante_cedula`),
-  KEY `fk_er_representante` (`representante_cedula`),
-  CONSTRAINT `fk_er_empresa` FOREIGN KEY (`empresa_rif`) REFERENCES `cliente` (`identificador_cliente`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_er_representante` FOREIGN KEY (`representante_cedula`) REFERENCES `representantes` (`cedula_representante`) ON DELETE CASCADE ON UPDATE CASCADE
+  UNIQUE KEY `uk_representante_cedula` (`representante_cedula`),
+  CONSTRAINT `fk_er_empresa` FOREIGN KEY (`empresa_rif`) REFERENCES `cliente` (`identificador_cliente`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 
-LOCK TABLES `empresa_representante` WRITE;
-/*!40000 ALTER TABLE `empresa_representante` DISABLE KEYS */;
-INSERT INTO `empresa_representante` VALUES (2,'J-55656666-5','V-00000000','Encargado de flota',1,'2026-06-07 14:58:45','2026-06-07 14:58:45'),(5,'J-55656666-5','V-31423434','Representante legal',1,'2026-06-07 16:54:48','2026-06-07 16:54:48'),(9,'J-55656666-5','V-3131333','Encargado de flota',1,'2026-06-07 17:04:20','2026-06-07 17:04:20');
-/*!40000 ALTER TABLE `empresa_representante` ENABLE KEYS */;
+LOCK TABLES `representante` WRITE;
+/*!40000 ALTER TABLE `representante` DISABLE KEYS */;
+INSERT INTO `representante` VALUES (2,'J-55656666-5','V-00000000','Admin Sistema','0424-0000000','admin@transalca.com','Encargado de flota',1,'2026-06-07 14:58:45','2026-06-07 14:58:45'),(5,'J-55656666-5','V-31423434','dede dede','04122397209','business@tanqueteodigital.com','Representante legal',1,'2026-06-07 16:54:48','2026-06-07 16:54:48'),(9,'J-55656666-5','V-3131333','dede dede','04122222222','fderf@gmail.com','Encargado de flota',1,'2026-06-07 17:04:20','2026-06-07 17:04:20');
+/*!40000 ALTER TABLE `representante` ENABLE KEYS */;
 UNLOCK TABLES;
 
 
@@ -645,7 +646,7 @@ CREATE TABLE `empresa_vehiculo_representante` (
   PRIMARY KEY (`id_empresa_vehiculo_representante`),
   KEY `fk_evr_vehiculo` (`vehiculo_placa`),
   KEY `fk_evr_empresa_representante` (`empresa_representante_id`),
-  CONSTRAINT `fk_evr_empresa_representante` FOREIGN KEY (`empresa_representante_id`) REFERENCES `empresa_representante` (`id_empresa_representante`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_evr_empresa_representante` FOREIGN KEY (`empresa_representante_id`) REFERENCES `representante` (`id_empresa_representante`) ON UPDATE CASCADE,
   CONSTRAINT `fk_evr_vehiculo` FOREIGN KEY (`vehiculo_placa`) REFERENCES `vehiculos` (`placa_vehiculo`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1313,7 +1314,7 @@ DROP TABLE IF EXISTS `qr_codes`;
 CREATE TABLE `qr_codes` (
   `id_qr_code` int(11) NOT NULL AUTO_INCREMENT,
   `usuario_cedula` varchar(20) NOT NULL,
-  `tipo_qr_code` varchar(30) NOT NULL DEFAULT 'info',
+  `tipo_qr_code` tinyint(4) NOT NULL DEFAULT 0,
   `contenido` varchar(4300) DEFAULT NULL,
   `utilidad` varchar(150) DEFAULT NULL,
   `referencia_qr_code` int(11) DEFAULT NULL,
@@ -1337,7 +1338,7 @@ CREATE TABLE `qr_codes` (
 
 LOCK TABLES `qr_codes` WRITE;
 /*!40000 ALTER TABLE `qr_codes` DISABLE KEYS */;
-INSERT INTO `qr_codes` VALUES (1,'V-00000000','pago','{\"kind\": \"factura\", \"orden_id\": 1, \"estado\": \"cumplida\", \"fulfilled_at\": \"2026-06-03T02:24:20\"}','factura',1,NULL,NULL,1,0,'2026-05-18 04:33:01'),(2,'V-00000000','pago','{\"kind\": \"factura\", \"orden_id\": 2}','factura',2,NULL,NULL,2,0,'2026-05-21 06:08:02'),(3,'V-00000000','promocion','{\"kind\": \"promocion\", \"utilidad\": \"promocion\", \"referencia_id\": 1, \"estado\": \"activa\", \"assigned_at\": \"2026-06-03T01:54:22\", \"expires_at\": \"2026-06-03T02:04:22\", \"fulfilled_at\": null, \"nota\": \"\"}','promocion',1,1,NULL,NULL,0,'2026-06-03 05:54:22'),(4,'V-00000000','info','{\"kind\": \"validar_pago\", \"utilidad\": \"validar_pago\", \"referencia_id\": null, \"estado\": \"activa\", \"assigned_at\": \"2026-06-03T10:51:02\", \"expires_at\": \"2026-06-03T11:01:02\", \"fulfilled_at\": null, \"nota\": \"\"}','validar_pago',NULL,NULL,NULL,NULL,0,'2026-06-03 14:51:02'),(5,'V-00000000','info','{\"kind\": \"validar_pago\", \"utilidad\": \"validar_pago\", \"referencia_id\": null, \"estado\": \"activa\", \"assigned_at\": \"2026-06-03T10:51:33\", \"expires_at\": \"2026-06-03T11:01:33\", \"fulfilled_at\": null, \"nota\": \"ferfef\"}','validar_pago',NULL,NULL,NULL,NULL,1,'2026-06-03 14:51:33'),(6,'V-00000000','pago','{\"kind\": \"factura\", \"orden_id\": 1, \"estado\": \"cumplida\", \"fulfilled_at\": \"2026-06-03T10:55:42\"}','factura',1,NULL,NULL,1,1,'2026-06-03 14:54:44'),(7,'V-00000000','pago','{\"kind\": \"factura\", \"orden_id\": 9}','factura',9,NULL,NULL,9,1,'2026-06-03 15:39:55'),(8,'V-00000000','info','{\"kind\": \"promocion\", \"utilidad\": \"promocion\", \"referencia_id\": 1, \"estado\": \"cumplida\", \"assigned_at\": \"2026-06-03T13:01:50\", \"expires_at\": \"2026-06-03T13:11:50\", \"fulfilled_at\": \"2026-06-03T13:01:57\", \"nota\": \"dede\", \"expired_at\": \"2026-06-03T12:58:43\"}','promocion',1,1,NULL,NULL,1,'2026-06-03 16:38:09'),(9,'V-00000000','pago','{\"kind\": \"factura\", \"orden_id\": 11}','factura',11,NULL,NULL,11,1,'2026-06-08 21:17:57'),(10,'V-00000000','pago','{\"kind\": \"factura\", \"orden_id\": 12}','factura',12,NULL,NULL,12,1,'2026-06-10 21:09:31'),(11,'30396029','pago','{\"kind\": \"factura\", \"orden_id\": 13}','factura',13,NULL,NULL,13,1,'2026-06-11 06:14:42');
+INSERT INTO `qr_codes` VALUES (1,'V-00000000',1,'{\"kind\": \"factura\", \"orden_id\": 1, \"estado\": \"cumplida\", \"fulfilled_at\": \"2026-06-03T02:24:20\"}','factura',1,NULL,NULL,1,0,'2026-05-18 04:33:01'),(2,'V-00000000',1,'{\"kind\": \"factura\", \"orden_id\": 2}','factura',2,NULL,NULL,2,0,'2026-05-21 06:08:02'),(3,'V-00000000',2,'{\"kind\": \"promocion\", \"utilidad\": \"promocion\", \"referencia_id\": 1, \"estado\": \"activa\", \"assigned_at\": \"2026-06-03T01:54:22\", \"expires_at\": \"2026-06-03T02:04:22\", \"fulfilled_at\": null, \"nota\": \"\"}','promocion',1,1,NULL,NULL,0,'2026-06-03 05:54:22'),(4,'V-00000000',0,'{\"kind\": \"validar_pago\", \"utilidad\": \"validar_pago\", \"referencia_id\": null, \"estado\": \"activa\", \"assigned_at\": \"2026-06-03T10:51:02\", \"expires_at\": \"2026-06-03T11:01:02\", \"fulfilled_at\": null, \"nota\": \"\"}','validar_pago',NULL,NULL,NULL,NULL,0,'2026-06-03 14:51:02'),(5,'V-00000000',0,'{\"kind\": \"validar_pago\", \"utilidad\": \"validar_pago\", \"referencia_id\": null, \"estado\": \"activa\", \"assigned_at\": \"2026-06-03T10:51:33\", \"expires_at\": \"2026-06-03T11:01:33\", \"fulfilled_at\": null, \"nota\": \"ferfef\"}','validar_pago',NULL,NULL,NULL,NULL,1,'2026-06-03 14:51:33'),(6,'V-00000000',1,'{\"kind\": \"factura\", \"orden_id\": 1, \"estado\": \"cumplida\", \"fulfilled_at\": \"2026-06-03T10:55:42\"}','factura',1,NULL,NULL,1,1,'2026-06-03 14:54:44'),(7,'V-00000000',1,'{\"kind\": \"factura\", \"orden_id\": 9}','factura',9,NULL,NULL,9,1,'2026-06-03 15:39:55'),(8,'V-00000000',0,'{\"kind\": \"promocion\", \"utilidad\": \"promocion\", \"referencia_id\": 1, \"estado\": \"cumplida\", \"assigned_at\": \"2026-06-03T13:01:50\", \"expires_at\": \"2026-06-03T13:11:50\", \"fulfilled_at\": \"2026-06-03T13:01:57\", \"nota\": \"dede\", \"expired_at\": \"2026-06-03T12:58:43\"}','promocion',1,1,NULL,NULL,1,'2026-06-03 16:38:09'),(9,'V-00000000',1,'{\"kind\": \"factura\", \"orden_id\": 11}','factura',11,NULL,NULL,11,1,'2026-06-08 21:17:57'),(10,'V-00000000',1,'{\"kind\": \"factura\", \"orden_id\": 12}','factura',12,NULL,NULL,12,1,'2026-06-10 21:09:31'),(11,'30396029',1,'{\"kind\": \"factura\", \"orden_id\": 13}','factura',13,NULL,NULL,13,1,'2026-06-11 06:14:42');
 /*!40000 ALTER TABLE `qr_codes` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
@@ -1381,29 +1382,6 @@ DELIMITER ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
-
-
-DROP TABLE IF EXISTS `representantes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `representantes` (
-  `cedula_representante` varchar(20) NOT NULL,
-  `nombre_representante` varchar(150) NOT NULL,
-  `telefono_representante` varchar(20) DEFAULT NULL,
-  `email_representante` varchar(150) DEFAULT NULL,
-  `estado` tinyint(1) DEFAULT 1,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`cedula_representante`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
-
-LOCK TABLES `representantes` WRITE;
-/*!40000 ALTER TABLE `representantes` DISABLE KEYS */;
-INSERT INTO `representantes` VALUES ('V-00000000','Admin Sistema','0424-0000000','admin@transalca.com',1,'2026-06-11 20:39:15','2026-06-11 20:39:15'),('V-3131333','dede dede','04122222222','fderf@gmail.com',1,'2026-06-11 20:39:15','2026-06-11 20:39:15'),('V-31423434','dede dede','04122397209','business@tanqueteodigital.com',1,'2026-06-11 20:39:15','2026-06-11 20:39:15');
-/*!40000 ALTER TABLE `representantes` ENABLE KEYS */;
-UNLOCK TABLES;
 
 
 DROP TABLE IF EXISTS `servicio_mecanico`;

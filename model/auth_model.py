@@ -141,7 +141,7 @@ class AuthModel(Connection):
 
     def _log_event(self, usuario_id, accion, modulo, descripcion, ip):
         return self.insert("mantenimiento",
-            "INSERT INTO eventos_sistema (usuario_id, accion, modulo, descripcion, ip) VALUES (%s, %s, %s, %s, %s)",
+            "INSERT INTO bitacora (usuario_id, accion, modulo, descripcion, ip) VALUES (%s, %s, %s, %s, %s)",
             (usuario_id, accion, modulo, descripcion, ip))
 
     def ejecutar(self, accion, *args, **kwargs):

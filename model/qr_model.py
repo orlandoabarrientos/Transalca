@@ -3,7 +3,17 @@ from model.order_model import DETAIL_UNION
 import json
 from datetime import datetime, timedelta
 
-QR_ALIAS = "q.*, q.id_qr_code AS id, q.tipo_qr_code AS tipo, q.referencia_qr_code AS referencia_id"
+QR_TIPO_INT = {'info': 0, 'pago': 1, 'promocion': 2, 'servicio': 3}
+TIPO_QR_LABEL_SQL = "CASE q.tipo_qr_code WHEN 1 THEN 'pago' WHEN 2 THEN 'promocion' WHEN 3 THEN 'servicio' ELSE 'info' END"
+
+
+def qr_tipo_to_int(value):
+    if isinstance(value, int):
+        return value
+    return QR_TIPO_INT.get((value or 'info').strip().lower(), 0)
+
+
+QR_ALIAS = "q.*, q.id_qr_code AS id, " + TIPO_QR_LABEL_SQL + " AS tipo, q.referencia_qr_code AS referencia_id"
 
 
 class QRModel(Connection):
@@ -93,7 +103,7 @@ class QRModel(Connection):
                       'servicio_id': 'servicio_id', 'orden_venta_id': 'orden_venta_id'}
         extra = [k for k in column_map if column_map[k] in columns]
         names = ['usuario_cedula', 'tipo_qr_code', 'contenido', 'utilidad'] + [column_map[k] for k in extra]
-        values = [data['usuario_cedula'], data.get('tipo', 'info'), contenido, utilidad] + [fields[k] for k in extra]
+        values = [data['usuario_cedula'], qr_tipo_to_int(data.get('tipo', 'info')), contenido, utilidad] + [fields[k] for k in extra]
         return self.insert("transalca",
             self.build_insert_sql("qr_codes", names, {"qr_codes"}, columns),
             tuple(values))
@@ -128,7 +138,7 @@ class QRModel(Connection):
                       'servicio_id': 'servicio_id', 'orden_venta_id': 'orden_venta_id'}
         extra = [k for k in column_map if column_map[k] in columns]
         update_columns = ['tipo_qr_code', 'contenido', 'utilidad'] + [column_map[k] for k in extra]
-        values = [data.get('tipo', 'info'), contenido, utilidad] + [fields[k] for k in extra] + [qr_id]
+        values = [qr_tipo_to_int(data.get('tipo', 'info')), contenido, utilidad] + [fields[k] for k in extra] + [qr_id]
         return self.update("transalca",
             self.build_update_by_key_sql("qr_codes", update_columns, "id_qr_code", {"qr_codes"}, columns),
             tuple(values))

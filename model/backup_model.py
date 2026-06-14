@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import threading
 from datetime import datetime
 
 from config.config import BACKUP_FOLDER, DB_CONFIG_MANTENIMIENTO, DB_CONFIG_TRANSALCA
@@ -114,10 +115,15 @@ class BackupModel(Connection):
             return filepath
         return None
 
-    def _log_event(self, usuario_id, accion, modulo, descripcion, ip):
+    def _log_event(self, usuario_id, accion, modulo, descripcion, ip, respaldo=0):
         return self.insert("mantenimiento",
-            "INSERT INTO eventos_sistema (usuario_id, accion, modulo, descripcion, ip) VALUES (%s, %s, %s, %s, %s)",
-            (usuario_id, accion, modulo, descripcion, ip))
+            "INSERT INTO bitacora (usuario_id, accion, modulo, descripcion, ip, respaldo) VALUES (%s, %s, %s, %s, %s, %s)",
+            (usuario_id, accion, modulo, descripcion, ip, int(respaldo)))
+
+    def _has_backup_this_week(self):
+        row = self.fetch_one("mantenimiento",
+            "SELECT 1 FROM bitacora WHERE respaldo = 1 AND YEARWEEK(fecha, 3) = YEARWEEK(CURDATE(), 3) LIMIT 1")
+        return row is not None
 
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {
@@ -126,7 +132,52 @@ class BackupModel(Connection):
             "delete_backup": self._delete_backup,
             "get_backup_path": self._get_backup_path,
             "log_event": self._log_event,
+            "has_backup_this_week": self._has_backup_this_week,
         }
         if accion not in acciones:
             raise ValueError("Accion no permitida")
         return acciones[accion](*args, **kwargs)
+
+
+class WeeklyBackupScheduler:
+    def __init__(self, interval_seconds=3600):
+        self.interval_seconds = max(60, int(interval_seconds))
+        self._stop_event = threading.Event()
+        self._thread = None
+        self._lock = threading.Lock()
+        self._model = BackupModel()
+
+    def start(self):
+        with self._lock:
+            if self._thread and self._thread.is_alive():
+                return False
+            self._stop_event.clear()
+            self._thread = threading.Thread(target=self._run_loop, name='weekly-backup', daemon=True)
+            self._thread.start()
+            return True
+
+    def stop(self):
+        self._stop_event.set()
+
+    def _run_loop(self):
+        while not self._stop_event.wait(self.interval_seconds):
+            self._run_once()
+
+    def _run_once(self):
+        try:
+            if self._model.ejecutar("has_backup_this_week"):
+                return
+            files = self._model.ejecutar("create_backup")
+            if files:
+                nombres = ', '.join(f['filename'] for f in files)
+                self._model.ejecutar("log_event", 1, 'CREAR', 'RESPALDOS', f"Respaldo creado: {nombres}", '127.0.0.1', 1)
+                logger.info("Respaldo semanal automatico creado: %s", nombres)
+        except Exception:
+            logger.exception("Error en respaldo semanal automatico.")
+
+
+_scheduler = WeeklyBackupScheduler()
+
+
+def start_backup_scheduler():
+    return _scheduler.start()

@@ -137,20 +137,13 @@ class VehicleModel(Connection):
                 representante_cedula = data.get('representante_cedula', '').strip()
                 if representante_cedula:
                     rep_rel = self.fetch_one("transalca",
-                        "SELECT id_empresa_representante AS id FROM empresa_representante WHERE empresa_rif = %s AND representante_cedula = %s",
+                        "SELECT id_empresa_representante AS id FROM representante WHERE empresa_rif = %s AND representante_cedula = %s",
                         (cliente_cedula, representante_cedula))
-                    if not rep_rel:
-                        rep_id = self.insert("transalca",
-                            "INSERT INTO empresa_representante (empresa_rif, representante_cedula, cargo, estado) "
-                            "VALUES (%s, %s, 'Otro', 1)",
-                            (cliente_cedula, representante_cedula))
-                    else:
-                        rep_id = rep_rel['id']
-
-                    self.insert("transalca",
-                        "INSERT INTO empresa_vehiculo_representante (empresa_representante_id, vehiculo_placa, tipo_operacion) "
-                        "VALUES (%s, %s, 'registro')",
-                        (rep_id, placa))
+                    if rep_rel:
+                        self.insert("transalca",
+                            "INSERT INTO empresa_vehiculo_representante (empresa_representante_id, vehiculo_placa, tipo_operacion) "
+                            "VALUES (%s, %s, 'registro')",
+                            (rep_rel['id'], placa))
             conn.commit()
             return placa
         except Exception:

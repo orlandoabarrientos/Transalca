@@ -26,7 +26,7 @@ def create_backup():
         if files:
 
 
-            model.ejecutar("log_event", session['user_id'], 'CREAR', 'RESPALDOS', f"Respaldo creado: {', '.join([f['filename'] for f in files])}", request.remote_addr)
+            model.ejecutar("log_event", session['user_id'], 'CREAR', 'RESPALDOS', f"Respaldo creado: {', '.join([f['filename'] for f in files])}", request.remote_addr, 1)
             return jsonify({"status": "success", "message": "Respaldo creado", "data": files})
         return jsonify({"status": "error", "message": "Error al crear respaldo"}), 500
     except Exception as e:

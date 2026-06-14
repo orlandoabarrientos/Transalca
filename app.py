@@ -57,6 +57,7 @@ from controller.vehicle_log_controller import vehicle_log_bp
 from componente_ia.api_asistente import asistente_bp
 from model.bcv_sync_model import start_bcv_auto_sync_scheduler
 from model.vehicle_log_model import start_bitacora_scheduler
+from model.backup_model import start_backup_scheduler
 
 app = Flask(__name__, static_folder='public', template_folder='views')
 app.secret_key = SECRET_KEY
@@ -329,4 +330,5 @@ if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not APP_DEBUG:
         start_bcv_auto_sync_scheduler()
         start_bitacora_scheduler()
+        start_backup_scheduler()
     app.run(debug=APP_DEBUG, host=APP_HOST, port=APP_PORT)

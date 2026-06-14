@@ -61,10 +61,10 @@ class OrderModel(Connection):
 
     def _get_cart(self, cliente_cedula):
         items = self.fetch_all("transalca",
-            "SELECT c.*, c.id_carrito_compra AS id, c.tipo_carrito as tipo, c.cantidad_carrito as cantidad, "
-            "CASE WHEN c.tipo_carrito = 'producto' THEN p.nombre_producto ELSE s.nombre_servicio END as item_nombre, "
-            "CASE WHEN c.tipo_carrito = 'producto' THEN p.precio_producto ELSE s.precio_servicio END as precio, "
-            "CASE WHEN c.tipo_carrito = 'producto' THEN "
+            "SELECT c.*, c.id_carrito_compra AS id, CASE WHEN c.tipo_carrito = 0 THEN 'producto' ELSE 'servicio' END as tipo, c.cantidad_carrito as cantidad, "
+            "CASE WHEN c.tipo_carrito = 0 THEN p.nombre_producto ELSE s.nombre_servicio END as item_nombre, "
+            "CASE WHEN c.tipo_carrito = 0 THEN p.precio_producto ELSE s.precio_servicio END as precio, "
+            "CASE WHEN c.tipo_carrito = 0 THEN "
             "  CASE WHEN p.imagen_producto IS NOT NULL AND p.imagen_producto != 'default_product.png' AND p.imagen_producto != '' THEN CONCAT('product_imgs/', p.imagen_producto) "
             "  ELSE CONCAT('images/', COALESCE(NULLIF(cat.imagen_categoria, ''), 'product-default-parts.png')) "
             "  END "
@@ -114,25 +114,25 @@ class OrderModel(Connection):
             if not product:
                 raise ValueError("Producto no disponible")
             existing = self.fetch_one("transalca",
-                "SELECT id_carrito_compra AS id, cantidad_carrito AS cantidad FROM carrito_compra WHERE cliente_cedula = %s AND producto_codigo = %s AND tipo_carrito = 'producto'",
+                "SELECT id_carrito_compra AS id, cantidad_carrito AS cantidad FROM carrito_compra WHERE cliente_cedula = %s AND producto_codigo = %s AND tipo_carrito = 0",
                 (cliente_cedula, item_id))
             if existing:
                 return self.update("transalca",
                     "UPDATE carrito_compra SET cantidad_carrito = cantidad_carrito + %s WHERE id_carrito_compra = %s", (cantidad, existing['id']))
             return self.insert("transalca",
-                "INSERT INTO carrito_compra (cliente_cedula, producto_codigo, servicio_id, tipo_carrito, cantidad_carrito) VALUES (%s, %s, %s, 'producto', %s)",
+                "INSERT INTO carrito_compra (cliente_cedula, producto_codigo, servicio_id, tipo_carrito, cantidad_carrito) VALUES (%s, %s, %s, 0, %s)",
                 (cliente_cedula, item_id, None, cantidad))
         else:
             service = self.fetch_one("transalca", "SELECT id_servicio FROM servicios WHERE id_servicio = %s AND estado = 1", (item_id,))
             if not service:
                 raise ValueError("Servicio no disponible")
             existing = self.fetch_one("transalca",
-                "SELECT id_carrito_compra AS id FROM carrito_compra WHERE cliente_cedula = %s AND servicio_id = %s AND tipo_carrito = 'servicio'",
+                "SELECT id_carrito_compra AS id FROM carrito_compra WHERE cliente_cedula = %s AND servicio_id = %s AND tipo_carrito = 1",
                 (cliente_cedula, item_id))
             if existing:
                 return existing['id']
             return self.insert("transalca",
-                "INSERT INTO carrito_compra (cliente_cedula, producto_codigo, servicio_id, tipo_carrito, cantidad_carrito) VALUES (%s, %s, %s, 'servicio', 1)",
+                "INSERT INTO carrito_compra (cliente_cedula, producto_codigo, servicio_id, tipo_carrito, cantidad_carrito) VALUES (%s, %s, %s, 1, 1)",
                 (cliente_cedula, None, item_id))
 
     def _update_cart_quantity(self, cart_id, cantidad):
@@ -237,11 +237,11 @@ class OrderModel(Connection):
                 qr_payload = json.dumps({"kind": "factura", "orden_id": order_id})
                 if qr_has_order_relation:
                     cursor.execute(
-                        "INSERT INTO qr_codes (usuario_cedula, tipo_qr_code, contenido, utilidad, referencia_qr_code, orden_venta_id) VALUES (%s, 'pago', %s, 'factura', %s, %s)",
+                        "INSERT INTO qr_codes (usuario_cedula, tipo_qr_code, contenido, utilidad, referencia_qr_code, orden_venta_id) VALUES (%s, 1, %s, 'factura', %s, %s)",
                         (cliente_cedula, qr_payload, order_id, order_id))
                 else:
                     cursor.execute(
-                        "INSERT INTO qr_codes (usuario_cedula, tipo_qr_code, contenido, utilidad, referencia_qr_code) VALUES (%s, 'pago', %s, 'factura', %s)",
+                        "INSERT INTO qr_codes (usuario_cedula, tipo_qr_code, contenido, utilidad, referencia_qr_code) VALUES (%s, 1, %s, 'factura', %s)",
                         (cliente_cedula, qr_payload, order_id))
             except Exception:
                 logger.warning("No se pudo crear el QR de factura para la orden %s.", order_id, exc_info=True)

@@ -91,6 +91,13 @@ def check_unique():
             if errors:
                 return jsonify({"status": "error", "message": errors['email']}), 400
             return jsonify({"status": "success", "exists": model.ejecutar("email_exists_globally", email, {"cliente_cedula": exclude})})
+        if field == 'representante_cedula':
+            errors = {}
+            cedula, _, _ = normalize_cedula(errors, {'cedula': value}, field='cedula', required=True)
+            if errors:
+                return jsonify({"status": "error", "message": errors['cedula']}), 400
+            owner = model.ejecutar("find_representative_by_cedula", cedula, exclude or None)
+            return jsonify({"status": "success", "exists": bool(owner)})
         return jsonify({"status": "error", "message": "Campo no valido."}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo validar el dato."}), 500
@@ -196,9 +203,13 @@ def add_representative(rif):
             'cargo': require_text(errors, 'cargo', data.get('cargo'), 'El cargo', min_len=2, max_len=50),
             'estado': int(data.get('estado', 1))
         }
+        if not errors.get('cedula') and clean['cedula']:
+            owner = model.ejecutar("find_representative_by_cedula", clean['cedula'])
+            if owner and owner['empresa_rif'] != rif:
+                errors['cedula'] = 'Esta cedula ya esta registrada como representante de otra empresa.'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        
+
         model.ejecutar("add_representative", rif, clean)
         return jsonify({"status": "success", "message": "Representante guardado correctamente."})
     except Exception as e:

@@ -220,47 +220,43 @@ class CompanyModel(Connection):
 
     def _get_representatives(self, rif):
         return self.fetch_all("transalca",
-            "SELECT er.id_empresa_representante AS id, er.cargo, er.estado, r.cedula_representante AS cedula, NULL AS cedula_prefijo, "
-            "r.nombre_representante AS nombre, '' AS apellido, r.telefono_representante AS telefono, r.email_representante AS email "
-            "FROM empresa_representante er "
-            "INNER JOIN representantes r ON er.representante_cedula = r.cedula_representante "
-            "WHERE er.empresa_rif = %s ORDER BY er.created_at DESC", (rif,))
+            "SELECT id_empresa_representante AS id, cargo, estado, representante_cedula AS cedula, NULL AS cedula_prefijo, "
+            "nombre_representante AS nombre, '' AS apellido, telefono_representante AS telefono, email_representante AS email "
+            "FROM representante "
+            "WHERE empresa_rif = %s ORDER BY created_at DESC", (rif,))
 
     def _add_representative(self, company_rif, data):
         rep_cedula = data['cedula'].strip()
         nombre = (data['nombre'].strip() + ' ' + (data.get('apellido') or '').strip()).strip()
-        conn = self.con_transalca()
-        conn.begin()
-        try:
-            self.insert("transalca",
-                "INSERT INTO representantes (cedula_representante, nombre_representante, telefono_representante, email_representante) "
-                "VALUES (%s, %s, %s, %s) "
-                "ON DUPLICATE KEY UPDATE nombre_representante = VALUES(nombre_representante), "
-                "telefono_representante = VALUES(telefono_representante), email_representante = VALUES(email_representante), estado = 1",
-                (rep_cedula, nombre, data['telefono'].strip(), data.get('email', '').strip()))
-
-            existing_rel = self.fetch_one("transalca",
-                "SELECT id_empresa_representante AS id, estado FROM empresa_representante WHERE empresa_rif = %s AND representante_cedula = %s",
-                (company_rif, rep_cedula))
-            if not existing_rel:
-                self.insert("transalca",
-                    "INSERT INTO empresa_representante (empresa_rif, representante_cedula, cargo, estado) "
-                    "VALUES (%s, %s, %s, %s)",
-                    (company_rif, rep_cedula, data.get('cargo', 'Otro'), int(data.get('estado', 1))))
-            else:
-                self.update("transalca",
-                    "UPDATE empresa_representante SET cargo = %s, estado = %s WHERE id_empresa_representante = %s",
-                    (data.get('cargo', 'Otro'), int(data.get('estado', 1)), existing_rel['id']))
-            conn.commit()
-            return True
-        except Exception:
-            conn.rollback()
-            raise
+        telefono = data['telefono'].strip()
+        email = data.get('email', '').strip()
+        cargo = data.get('cargo', 'Otro')
+        estado = int(data.get('estado', 1))
+        existing_rel = self.fetch_one("transalca",
+            "SELECT id_empresa_representante AS id FROM representante WHERE empresa_rif = %s AND representante_cedula = %s",
+            (company_rif, rep_cedula))
+        if not existing_rel:
+            return self.insert("transalca",
+                "INSERT INTO representante (empresa_rif, representante_cedula, nombre_representante, telefono_representante, email_representante, cargo, estado) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (company_rif, rep_cedula, nombre, telefono, email, cargo, estado))
+        return self.update("transalca",
+            "UPDATE representante SET nombre_representante = %s, telefono_representante = %s, email_representante = %s, cargo = %s, estado = %s WHERE id_empresa_representante = %s",
+            (nombre, telefono, email, cargo, estado, existing_rel['id']))
 
     def _toggle_representative_relation(self, relation_id, estado):
         return self.update("transalca",
-            "UPDATE empresa_representante SET estado = %s WHERE id_empresa_representante = %s",
+            "UPDATE representante SET estado = %s WHERE id_empresa_representante = %s",
             (int(estado), relation_id))
+
+    def _find_representative_by_cedula(self, cedula, exclude_id=None):
+        if exclude_id:
+            return self.fetch_one("transalca",
+                "SELECT id_empresa_representante AS id, empresa_rif, estado FROM representante WHERE representante_cedula = %s AND id_empresa_representante != %s",
+                (cedula, exclude_id))
+        return self.fetch_one("transalca",
+            "SELECT id_empresa_representante AS id, empresa_rif, estado FROM representante WHERE representante_cedula = %s",
+            (cedula,))
 
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {
@@ -275,6 +271,7 @@ class CompanyModel(Connection):
             "get_representatives": self._get_representatives,
             "add_representative": self._add_representative,
             "toggle_representative_relation": self._toggle_representative_relation,
+            "find_representative_by_cedula": self._find_representative_by_cedula,
             "email_exists_globally": self.email_exists_globally,
         }
         if accion not in acciones:

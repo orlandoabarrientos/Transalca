@@ -58,6 +58,7 @@ $(document).ready(function () {
     Validator.setupRealtime('representativeForm');
     $('#fRif, #fRifPrefijo').on('input change', debounce(validateUniqueCompanyRif, 350));
     $('#fEmail').on('input', debounce(validateUniqueCompanyEmail, 350));
+    $('#repCedulaNumero, #repCedulaPrefijo').on('input change', debounce(validateUniqueRepresentanteCedula, 350));
 });
 
 function debounce(fn, ms) {
@@ -423,6 +424,33 @@ async function validateUniqueCompanyEmail() {
     return true;
 }
 
+async function validateUniqueRepresentanteCedula() {
+    const input = document.getElementById('repCedulaNumero');
+    if (!input || input.disabled || !input.value.trim()) return true;
+    if (!Validator.validateField('representativeForm', 'repCedulaNumero')) return false;
+    try {
+        const exclude = $('#editRepId').val();
+        const value = buildDocumentValue('repCedulaPrefijo', 'repCedulaNumero');
+        const res = await fetch('/api/companies/check-unique', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ field: 'representante_cedula', value, exclude })
+        });
+        const data = await res.json();
+        if (data.status === 'success' && data.exists) {
+            input.dataset.externalError = 'Esta cedula ya esta registrada como representante';
+            setFieldError(input, 'Esta cedula ya esta registrada como representante');
+            updateFormSubmitState('representativeForm');
+            return false;
+        }
+        delete input.dataset.externalError;
+        clearFieldError(input);
+        updateFormSubmitState('representativeForm');
+    } catch (e) {}
+    return true;
+}
+
 function renderRepresentatives(items) {
     if (!items.length) {
         $('#representativesList').html('<p class="text-muted text-center py-3">Sin representantes registrados</p>');
@@ -458,6 +486,7 @@ function showRepresentativeModal() {
     $('#editRepId').val('');
     $('#repCedulaPrefijo').val('V').prop('disabled', false);
     $('#repCedulaNumero').val('').prop('disabled', false);
+    delete document.getElementById('repCedulaNumero').dataset.externalError;
     $('#repNombre').val('');
     $('#repApellido').val('');
     $('#repTelefono').val('');
@@ -475,6 +504,7 @@ function editRepresentative(r) {
     const doc = splitRifValue(r.cedula, 'V');
     $('#repCedulaPrefijo').val(doc.prefix || 'V').prop('disabled', true);
     $('#repCedulaNumero').val(doc.number || '').prop('disabled', true);
+    delete document.getElementById('repCedulaNumero').dataset.externalError;
     $('#repNombre').val(r.nombre);
     $('#repApellido').val(r.apellido || '');
     $('#repTelefono').val(r.telefono || '');
