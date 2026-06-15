@@ -33,7 +33,7 @@ $(document).ready(function () {
             },
             customMsg: `El año del vehículo debe estar entre 1940 y ${new Date().getFullYear() + 1}`
         },
-        vPlaca: { required: true, minLength: 5, maxLength: 10, requiredMsg: 'Placa requerida', maxLengthMsg: 'La placa no puede superar los 10 caracteres.' },
+        vPlaca: { required: true, minLength: 5, maxLength: 10, pattern: /^[A-Za-z0-9-]+$/, requiredMsg: 'Placa requerida', minLengthMsg: 'La placa debe tener al menos 5 caracteres.', maxLengthMsg: 'La placa no puede superar los 10 caracteres.', patternMsg: 'La placa solo puede contener letras, numeros y guiones.' },
         vColor: { maxLength: 20, maxLengthMsg: 'El color no puede superar los 20 caracteres.' },
         vTipo: { maxLength: 30, maxLengthMsg: 'El tipo de vehículo no puede superar los 30 caracteres.' },
         vKm: { min: 0, minMsg: 'El kilometraje no puede ser negativo' },
@@ -59,7 +59,34 @@ $(document).ready(function () {
     $('#fRif, #fRifPrefijo').on('input change', debounce(validateUniqueCompanyRif, 350));
     $('#fEmail').on('input', debounce(validateUniqueCompanyEmail, 350));
     $('#repCedulaNumero, #repCedulaPrefijo').on('input change', debounce(validateUniqueRepresentanteCedula, 350));
+    $('#vPlaca').on('input', debounce(validateUniqueFleetPlaca, 350));
 });
+
+async function validateUniqueFleetPlaca() {
+    const input = document.getElementById('vPlaca');
+    if (!input || !input.value.trim() || !currentCompanyRif) return true;
+    if (!Validator.validateField('fleetForm', 'vPlaca')) return false;
+    try {
+        const exclude = $('#editVehicleId').val();
+        const res = await fetch('/api/clients/check-unique', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ field: 'placa', value: input.value.trim().toUpperCase(), cedula: currentCompanyRif, exclude })
+        });
+        const data = await res.json();
+        if (data.status === 'success' && data.exists) {
+            input.dataset.externalError = 'Esta placa ya esta registrada para esta empresa';
+            setFieldError(input, 'Esta placa ya esta registrada para esta empresa');
+            updateFormSubmitState('fleetForm');
+            return false;
+        }
+        delete input.dataset.externalError;
+        clearFieldError(input);
+        updateFormSubmitState('fleetForm');
+    } catch (e) {}
+    return true;
+}
 
 function debounce(fn, ms) {
     let t; return function (...a) { clearTimeout(t); t = setTimeout(() => fn.apply(this, a), ms); };
@@ -280,6 +307,7 @@ function renderCompanyOrders(items) {
 }
 
 function showFleetModal(vehicle) {
+    setTimeout(() => { const p = document.getElementById('vPlaca'); if (p) delete p.dataset.externalError; }, 0);
     if (!currentCompanyRif) return;
     Validator.clearForm('fleetForm');
     if (vehicle) {

@@ -410,6 +410,7 @@ CREATE TABLE `comprobantes_pago` (
   PRIMARY KEY (`id_comprobante_pago`),
   KEY `orden_venta_id` (`orden_venta_id`),
   KEY `estado` (`estado`),
+  KEY `idx_comprobante_estado_fecha` (`estado`,`fecha_comprobante`),
   CONSTRAINT `comprobantes_pago_ibfk_1` FOREIGN KEY (`orden_venta_id`) REFERENCES `ordenes_venta` (`id_orden_venta`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -990,6 +991,7 @@ CREATE TABLE `ordenes_venta` (
   KEY `idx_ordenes_venta_cliente` (`cliente_cedula`),
   KEY `fk_ordenes_venta_metodo_pago` (`metodo_pago_id`),
   KEY `fk_ordenes_venta_tasa_cambio` (`tasa_cambio_id`),
+  KEY `idx_orden_estado_fecha` (`estado`,`fecha_orden_venta`),
   CONSTRAINT `fk_ordenes_venta_metodo_pago` FOREIGN KEY (`metodo_pago_id`) REFERENCES `metodos_pago` (`id_metodo_pago`) ON DELETE SET NULL,
   CONSTRAINT `fk_ordenes_venta_tasa_cambio` FOREIGN KEY (`tasa_cambio_id`) REFERENCES `tasas_cambio` (`id_tasa_cambio`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `ordenes_venta_ibfk_1` FOREIGN KEY (`cliente_cedula`) REFERENCES `cliente` (`identificador_cliente`) ON UPDATE CASCADE,
@@ -1034,13 +1036,13 @@ DELIMITER ;;
                 INNER JOIN detalle_orden_venta_productos d ON d.producto_codigo = s.producto_codigo
                     AND d.orden_id = NEW.id_orden_venta
                 SET s.stock = s.stock - d.cantidad_detalle_orden_venta_producto
-                WHERE s.sucursal_id = NEW.sucursal_id;
+                WHERE (NEW.sucursal_id IS NULL OR s.sucursal_id = NEW.sucursal_id);
             ELSEIF OLD.estado = 'aprobada' AND NEW.estado IN ('rechazada', 'cancelada', 'anulada') THEN
                 UPDATE stock s
                 INNER JOIN detalle_orden_venta_productos d ON d.producto_codigo = s.producto_codigo
                     AND d.orden_id = NEW.id_orden_venta
                 SET s.stock = s.stock + d.cantidad_detalle_orden_venta_producto
-                WHERE s.sucursal_id = NEW.sucursal_id;
+                WHERE (NEW.sucursal_id IS NULL OR s.sucursal_id = NEW.sucursal_id);
             END IF;
         END */;;
 DELIMITER ;
@@ -2011,6 +2013,71 @@ DELIMITER ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
+DROP VIEW IF EXISTS `vw_reporte_pagos`;
+CREATE VIEW `vw_reporte_pagos` AS
+SELECT cp.id_comprobante_pago AS id, ov.cliente_cedula, cp.orden_venta_id AS orden_id,
+  CONCAT('IMG-', cp.id_comprobante_pago) AS referencia,
+  ov.total_orden_venta AS monto, COALESCE(mp.moneda, 'USD') AS moneda,
+  mp.nombre_metodo_pago AS metodo,
+  cp.fecha_comprobante AS fecha_ts,
+  DATE_FORMAT(cp.fecha_comprobante, '%Y-%m-%dT%H:%i:%s') AS fecha,
+  cp.estado,
+  c.nombre_cliente AS nombre, '' AS apellido, c.tipo_cliente, c.nombre_cliente AS razon_social
+FROM comprobantes_pago cp
+INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id_orden_venta
+LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id
+LEFT JOIN cliente c ON ov.cliente_cedula = c.identificador_cliente;
+
+DROP VIEW IF EXISTS `vw_reporte_ventas`;
+CREATE VIEW `vw_reporte_ventas` AS
+SELECT ov.id_orden_venta AS id, ov.cliente_cedula,
+  ov.fecha_orden_venta AS fecha_ts,
+  DATE_FORMAT(ov.fecha_orden_venta, '%Y-%m-%dT%H:%i:%s') AS fecha,
+  ov.total_orden_venta AS total, ov.estado,
+  c.nombre_cliente AS nombre, '' AS apellido, c.tipo_cliente, c.nombre_cliente AS razon_social
+FROM ordenes_venta ov
+LEFT JOIN cliente c ON ov.cliente_cedula = c.identificador_cliente;
+
+DROP VIEW IF EXISTS `vw_stock_detalle`;
+CREATE VIEW `vw_stock_detalle` AS
+SELECT i.*, p.nombre_producto AS producto_nombre, p.codigo, p.precio_producto AS precio,
+  p.categoria AS categoria_nombre, s.nombre_sucursal AS sucursal_nombre, i.ubicacion_stock AS ubicacion
+FROM stock i
+INNER JOIN productos p ON i.producto_codigo = p.codigo
+LEFT JOIN sucursales s ON i.sucursal_id = s.id_sucursal;
+
+DROP PROCEDURE IF EXISTS `sp_aprobar_pago`;
+DELIMITER ;;
+CREATE PROCEDURE `sp_aprobar_pago`(IN p_comprobante_id INT)
+BEGIN
+    DECLARE v_orden INT DEFAULT NULL;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+    START TRANSACTION;
+    SELECT orden_venta_id INTO v_orden FROM comprobantes_pago WHERE id_comprobante_pago = p_comprobante_id;
+    UPDATE comprobantes_pago SET estado = 'verificado' WHERE id_comprobante_pago = p_comprobante_id;
+    UPDATE ordenes_venta SET estado = 'aprobada' WHERE id_orden_venta = v_orden;
+    UPDATE solicitudes_validacion sv INNER JOIN comprobantes_pago cp ON cp.id_comprobante_pago = sv.comprobante_pago_id
+      SET sv.estado_validacion = 'aprobada' WHERE sv.estado_validacion = 'pendiente' AND cp.orden_venta_id = v_orden;
+    COMMIT;
+END ;;
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS `sp_rechazar_pago`;
+DELIMITER ;;
+CREATE PROCEDURE `sp_rechazar_pago`(IN p_comprobante_id INT, IN p_observaciones VARCHAR(500))
+BEGIN
+    DECLARE v_orden INT DEFAULT NULL;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+    START TRANSACTION;
+    SELECT orden_venta_id INTO v_orden FROM comprobantes_pago WHERE id_comprobante_pago = p_comprobante_id;
+    UPDATE comprobantes_pago SET estado = 'rechazado', observaciones = p_observaciones WHERE id_comprobante_pago = p_comprobante_id;
+    UPDATE ordenes_venta SET estado = 'rechazada' WHERE id_orden_venta = v_orden;
+    UPDATE solicitudes_validacion sv INNER JOIN comprobantes_pago cp ON cp.id_comprobante_pago = sv.comprobante_pago_id
+      SET sv.estado_validacion = 'rechazada' WHERE sv.estado_validacion = 'pendiente' AND cp.orden_venta_id = v_orden;
+    COMMIT;
+END ;;
+DELIMITER ;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

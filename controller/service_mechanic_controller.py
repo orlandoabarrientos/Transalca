@@ -156,6 +156,8 @@ def update_mechanic(aid):
                     errors['porcentaje_comision'] = 'El porcentaje de comision debe ser mayor a 0 y maximo 100.'
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
+        if not data.get('confirmar') and model.ejecutar("mechanic_busy_elsewhere", mecanico_cedula, aid):
+            return jsonify({"status": "confirm", "message": "Este mecanico ya se encuentra asignado a otro servicio. ¿Quieres volverlo a asignar?"})
         model.ejecutar("update_mechanic", aid, mecanico_cedula)
         commission_model.ejecutar("set_percentage", aid, porcentaje)
 

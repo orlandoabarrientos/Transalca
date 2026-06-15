@@ -1,3 +1,5 @@
+import re
+
 from flask import Blueprint, request, jsonify
 from model.client_model import ClientModel
 from model.vehicle_model import VehicleModel
@@ -41,7 +43,10 @@ def _validate_vehicle(data):
     clean['marca'] = require_text(errors, 'marca', data.get('marca'), 'La marca', min_len=2, max_len=100, allow_serial=False)
     clean['modelo'] = require_text(errors, 'modelo', data.get('modelo'), 'El modelo', min_len=1, max_len=100, allow_serial=False)
     clean['anio'] = normalize_int(errors, 'anio', data.get('anio'), 'El ano', min_value=1900, max_value=2100) if data.get('anio') not in (None, '') else None
-    clean['placa'] = optional_text(errors, 'placa', data.get('placa'), 'La placa', max_len=20).upper()
+    placa = require_text(errors, 'placa', data.get('placa'), 'La placa', min_len=5, max_len=20, allow_serial=True).upper()
+    if placa and not re.fullmatch(r'[A-Z0-9-]+', placa):
+        errors['placa'] = 'La placa solo puede contener letras, numeros y guiones.'
+    clean['placa'] = placa
     clean['color'] = optional_text(errors, 'color', data.get('color'), 'El color', max_len=50, allow_serial=False)
     clean['tipo_vehiculo'] = optional_text(errors, 'tipo_vehiculo', data.get('tipo_vehiculo'), 'El tipo de vehiculo', max_len=50, allow_serial=False)
     clean['tipo_combustible'] = validate_choice(errors, 'tipo_combustible', data.get('tipo_combustible') or 'gasolina', TIPOS_COMBUSTIBLE)
@@ -110,6 +115,13 @@ def check_unique():
             if errors:
                 return jsonify({"status": "error", "message": errors['email']}), 400
             exists = model.ejecutar("email_exists_globally", email, {"cliente_cedula": exclude, "usuario_cedula": exclude})
+            return jsonify({"status": "success", "exists": exists})
+        if field == 'placa':
+            placa = value.upper()
+            if not placa:
+                return jsonify({"status": "error", "message": "La placa es obligatoria."}), 400
+            owner = (payload.get('cedula') or '').strip()
+            exists = vehicle_model.ejecutar("owner_has_placa", owner, placa, exclude or None)
             return jsonify({"status": "success", "exists": exists})
         return jsonify({"status": "error", "message": "Campo no valido."}), 400
     except Exception:
@@ -231,6 +243,8 @@ def add_vehicle(cedula):
         if errors:
             return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
         clean['cliente_cedula'] = cedula
+        if vehicle_model.ejecutar("owner_has_placa", cedula, clean['placa']):
+            return jsonify({"status": "error", "message": "Esta placa ya esta registrada para este cliente.", "errors": {"placa": "Esta placa ya esta registrada para este cliente."}}), 400
         if data.get('representante_cedula'):
             clean['representante_cedula'] = str(data.get('representante_cedula')).strip()
         vid = vehicle_model.ejecutar("create", clean)

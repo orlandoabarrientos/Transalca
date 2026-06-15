@@ -8,7 +8,7 @@ class PaymentModel(Connection):
 
     def _base_select(self):
         return (
-            "SELECT cp.*, cp.id_comprobante_pago AS id, cp.fecha_comprobante AS fecha, ov.total_orden_venta AS total, ov.fecha_orden_venta as orden_fecha, mp.nombre_metodo_pago AS metodo_pago "
+            "SELECT cp.*, cp.id_comprobante_pago AS id, DATE_FORMAT(cp.fecha_comprobante, '%%Y-%%m-%%dT%%H:%%i:%%s') AS fecha, ov.total_orden_venta AS total, ov.fecha_orden_venta as orden_fecha, mp.nombre_metodo_pago AS metodo_pago "
             "FROM comprobantes_pago cp INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id_orden_venta "
             "LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
         )
@@ -47,17 +47,7 @@ class PaymentModel(Connection):
         comp = self.fetch_one("transalca", "SELECT cp.*, cp.id_comprobante_pago AS id FROM comprobantes_pago cp WHERE cp.id_comprobante_pago = %s", (comprobante_id,))
         if not comp:
             return False
-        self.update("transalca",
-            "UPDATE comprobantes_pago SET estado = 'verificado' WHERE id_comprobante_pago = %s",
-            (comprobante_id,))
-        self.update("transalca",
-            "UPDATE ordenes_venta SET estado = 'aprobada' WHERE id_orden_venta = %s", (comp['orden_venta_id'],))
-        self.update("transalca",
-            "UPDATE solicitudes_validacion sv "
-            "INNER JOIN comprobantes_pago cp ON cp.id_comprobante_pago = sv.comprobante_pago_id "
-            "SET sv.estado_validacion = 'aprobada' "
-            "WHERE sv.estado_validacion = 'pendiente' AND cp.orden_venta_id = %s",
-            (comp['orden_venta_id'],))
+        self.update("transalca", "CALL sp_aprobar_pago(%s)", (comprobante_id,))
         OrderModel().ejecutar("activate_services_for_order", comp['orden_venta_id'])
         return True
 
@@ -65,22 +55,12 @@ class PaymentModel(Connection):
         comp = self.fetch_one("transalca", "SELECT cp.*, cp.id_comprobante_pago AS id FROM comprobantes_pago cp WHERE cp.id_comprobante_pago = %s", (comprobante_id,))
         if not comp:
             return False
-        self.update("transalca",
-            "UPDATE comprobantes_pago SET estado = 'rechazado', observaciones = %s WHERE id_comprobante_pago = %s",
-            (observaciones, comprobante_id))
-        self.update("transalca",
-            "UPDATE ordenes_venta SET estado = 'rechazada' WHERE id_orden_venta = %s", (comp['orden_venta_id'],))
-        self.update("transalca",
-            "UPDATE solicitudes_validacion sv "
-            "INNER JOIN comprobantes_pago cp ON cp.id_comprobante_pago = sv.comprobante_pago_id "
-            "SET sv.estado_validacion = 'rechazada' "
-            "WHERE sv.estado_validacion = 'pendiente' AND cp.orden_venta_id = %s",
-            (comp['orden_venta_id'],))
+        self.update("transalca", "CALL sp_rechazar_pago(%s, %s)", (comprobante_id, observaciones))
         return True
 
     def _get_by_id(self, comprobante_id):
         comp = self.fetch_one("transalca",
-            "SELECT cp.*, cp.id_comprobante_pago AS id, cp.fecha_comprobante AS fecha, ov.total_orden_venta AS total, ov.fecha_orden_venta as orden_fecha, ov.cliente_cedula, mp.nombre_metodo_pago AS metodo_pago "
+            "SELECT cp.*, cp.id_comprobante_pago AS id, DATE_FORMAT(cp.fecha_comprobante, '%%Y-%%m-%%dT%%H:%%i:%%s') AS fecha, ov.total_orden_venta AS total, ov.fecha_orden_venta as orden_fecha, ov.cliente_cedula, mp.nombre_metodo_pago AS metodo_pago "
             "FROM comprobantes_pago cp INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id_orden_venta "
             "LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id WHERE cp.id_comprobante_pago = %s",
             (comprobante_id,))

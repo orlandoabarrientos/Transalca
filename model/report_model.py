@@ -45,31 +45,25 @@ class ReportModel(Connection):
         orders = self.fetch_all("transalca",
             "SELECT ov.*, ov.id_orden_venta AS id, ov.fecha_orden_venta AS fecha, ov.total_orden_venta AS total, mp.nombre_metodo_pago AS metodo_pago, mp.nombre_metodo_pago AS metodo_pago_nombre, mp.moneda "
             "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
-            "ORDER BY ov.fecha_orden_venta DESC LIMIT %s", (limit,))
+            "ORDER BY ov.id_orden_venta DESC LIMIT %s", (limit,))
         for order in orders:
             order['cliente_nombre'] = self._client_name(order['cliente_cedula'])
             order['fecha'] = order['fecha'].isoformat() if hasattr(order['fecha'], 'isoformat') else order['fecha']
         return orders
 
     def _get_sales_history(self, start_date=None, end_date=None, status=None):
-        sql = (
-            "SELECT ov.id_orden_venta AS id, ov.cliente_cedula, ov.fecha_orden_venta AS fecha, ov.total_orden_venta AS total, ov.estado, "
-            "c.nombre_cliente AS nombre, '' AS apellido, c.tipo_cliente, c.nombre_cliente AS razon_social "
-            "FROM ordenes_venta ov "
-            "LEFT JOIN cliente c ON ov.cliente_cedula = c.identificador_cliente "
-            "WHERE 1=1"
-        )
+        sql = "SELECT * FROM vw_reporte_ventas WHERE 1=1"
         params = []
         if start_date:
-            sql += " AND DATE(ov.fecha_orden_venta) >= %s"
+            sql += " AND DATE(fecha_ts) >= %s"
             params.append(start_date)
         if end_date:
-            sql += " AND DATE(ov.fecha_orden_venta) <= %s"
+            sql += " AND DATE(fecha_ts) <= %s"
             params.append(end_date)
         if status:
-            sql += " AND ov.estado = %s"
+            sql += " AND estado = %s"
             params.append(status)
-        sql += " ORDER BY ov.fecha_orden_venta DESC"
+        sql += " ORDER BY fecha_ts DESC"
 
         orders = self.fetch_all("transalca", sql, tuple(params) if params else None)
 
@@ -82,27 +76,18 @@ class ReportModel(Connection):
         return orders
 
     def _get_payments_history(self, start_date=None, end_date=None, status=None):
-        sql = (
-            "SELECT cp.id_comprobante_pago AS id, ov.cliente_cedula, cp.orden_venta_id as orden_id, CONCAT('IMG-', cp.id_comprobante_pago) as referencia, "
-            "ov.total_orden_venta as monto, COALESCE(mp.moneda, 'USD') as moneda, mp.nombre_metodo_pago as metodo, cp.fecha_comprobante AS fecha, cp.estado, "
-            "c.nombre_cliente AS nombre, '' AS apellido, c.tipo_cliente, c.nombre_cliente AS razon_social "
-            "FROM comprobantes_pago cp "
-            "INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id_orden_venta "
-            "LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
-            "LEFT JOIN cliente c ON ov.cliente_cedula = c.identificador_cliente "
-            "WHERE 1=1"
-        )
+        sql = "SELECT * FROM vw_reporte_pagos WHERE 1=1"
         params = []
         if start_date:
-            sql += " AND DATE(cp.fecha_comprobante) >= %s"
+            sql += " AND DATE(fecha_ts) >= %s"
             params.append(start_date)
         if end_date:
-            sql += " AND DATE(cp.fecha_comprobante) <= %s"
+            sql += " AND DATE(fecha_ts) <= %s"
             params.append(end_date)
         if status:
-            sql += " AND cp.estado = %s"
+            sql += " AND estado = %s"
             params.append(status)
-        sql += " ORDER BY cp.fecha_comprobante DESC"
+        sql += " ORDER BY fecha_ts DESC"
 
         payments = self.fetch_all("transalca", sql, tuple(params) if params else None)
         for p in payments:

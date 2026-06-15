@@ -43,11 +43,6 @@ let allServices = [];
             const options = Array.from(sel.options);
             if (requestedCategory && options.some(o => o.value === requestedCategory)) {
                 sel.value = requestedCategory;
-                return;
-            }
-            if (!requestedCategory) {
-                const tireOption = options.find(o => normalizeProductText(o.value).includes('caucho'));
-                if (tireOption) sel.value = tireOption.value;
             }
         }
 

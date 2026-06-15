@@ -37,7 +37,7 @@ $(document).ready(function () {
             },
             customMsg: `El año del vehículo debe estar entre 1940 y ${new Date().getFullYear() + 1}`
         },
-        vPlaca: { maxLength: 10, maxLengthMsg: 'La placa no puede superar los 10 caracteres.' },
+        vPlaca: { required: true, minLength: 5, maxLength: 10, pattern: /^[A-Za-z0-9-]+$/, requiredMsg: 'La placa es obligatoria', minLengthMsg: 'La placa debe tener al menos 5 caracteres.', maxLengthMsg: 'La placa no puede superar los 10 caracteres.', patternMsg: 'La placa solo puede contener letras, numeros y guiones.' },
         vColor: { maxLength: 20, maxLengthMsg: 'El color no puede superar los 20 caracteres.' },
         vTipo: { maxLength: 30, maxLengthMsg: 'El tipo de vehículo no puede superar los 30 caracteres.' },
         vKm: { min: 0, minMsg: 'El kilometraje no puede ser negativo' }
@@ -47,7 +47,34 @@ $(document).ready(function () {
     $('#fCedula').on('input', debounce(validateUniqueClientCedula, 350));
     $('#fCedulaPrefijo').on('change', debounce(validateUniqueClientCedula, 350));
     $('#fEmail').on('input', debounce(validateUniqueClientEmail, 350));
+    $('#vPlaca').on('input', debounce(validateUniqueVehiclePlaca, 350));
 });
+
+async function validateUniqueVehiclePlaca() {
+    const input = document.getElementById('vPlaca');
+    if (!input || !input.value.trim() || !currentCedula) return true;
+    if (!Validator.validateField('vehicleForm', 'vPlaca')) return false;
+    try {
+        const exclude = $('#editVehicleId').val();
+        const res = await fetch('/api/clients/check-unique', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ field: 'placa', value: input.value.trim().toUpperCase(), cedula: currentCedula, exclude })
+        });
+        const data = await res.json();
+        if (data.status === 'success' && data.exists) {
+            input.dataset.externalError = 'Esta placa ya esta registrada para este cliente';
+            setFieldError(input, 'Esta placa ya esta registrada para este cliente');
+            updateFormSubmitState('vehicleForm');
+            return false;
+        }
+        delete input.dataset.externalError;
+        clearFieldError(input);
+        updateFormSubmitState('vehicleForm');
+    } catch (e) {}
+    return true;
+}
 
 function debounce(fn, ms) {
     let t; return function (...a) { clearTimeout(t); t = setTimeout(() => fn.apply(this, a), ms); };
@@ -278,6 +305,7 @@ function toggleClient(cedula) {
 function showVehicleModal(vehicleData) {
     if (!currentCedula) return;
     Validator.clearForm('vehicleForm');
+    delete document.getElementById('vPlaca').dataset.externalError;
     pendingVehicleCarnetFile = null;
     $('#vCarnetFile').val('');
     $('#vCarnetFileName').text('No seleccionado');

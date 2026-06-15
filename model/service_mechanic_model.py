@@ -74,6 +74,18 @@ class ServiceMechanicModel(Connection):
             return True
         return self.fetch_one("transalca", "SELECT id_orden_venta FROM ordenes_venta WHERE id_orden_venta = %s", (orden_venta_id,)) is not None
 
+    def _mechanic_busy_elsewhere(self, mecanico_cedula, exclude_id=None):
+        mecanico_cedula = (mecanico_cedula or '').strip()
+        if not mecanico_cedula:
+            return False
+        if exclude_id:
+            return self.fetch_one("transalca",
+                "SELECT 1 FROM servicio_mecanico WHERE mecanico_cedula = %s AND estado_servicio IN ('asignado', 'en_proceso') AND id_servicio_mecanico != %s LIMIT 1",
+                (mecanico_cedula, exclude_id)) is not None
+        return self.fetch_one("transalca",
+            "SELECT 1 FROM servicio_mecanico WHERE mecanico_cedula = %s AND estado_servicio IN ('asignado', 'en_proceso') LIMIT 1",
+            (mecanico_cedula,)) is not None
+
     def _assign(self, data):
         mecanico_cedula = (data.get('mecanico_cedula') or '').strip() or None
         estado = data.get('estado')
@@ -123,6 +135,7 @@ class ServiceMechanicModel(Connection):
             "get_by_id": self._get_by_id,
             "service_exists": self._service_exists,
             "mechanic_exists": self._mechanic_exists,
+            "mechanic_busy_elsewhere": self._mechanic_busy_elsewhere,
             "order_exists": self._order_exists,
             "assign": self._assign,
             "update_mechanic": self._update_mechanic,

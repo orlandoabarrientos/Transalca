@@ -230,8 +230,8 @@ class OrderModel(Connection):
                         (order_id, item['servicio_id'], item_price))
             if comprobante_url:
                 cursor.execute(
-                    "INSERT INTO comprobantes_pago (orden_venta_id, imagen_url) VALUES (%s, %s)",
-                    (order_id, comprobante_url))
+                    "INSERT INTO comprobantes_pago (orden_venta_id, imagen_url, fecha_comprobante) VALUES (%s, %s, %s)",
+                    (order_id, comprobante_url, caracas_now()))
 
             try:
                 qr_payload = json.dumps({"kind": "factura", "orden_id": order_id})
@@ -313,7 +313,7 @@ class OrderModel(Connection):
             if client:
                 order.update(client)
             comprobante = self.fetch_one("transalca",
-                "SELECT cp.*, cp.id_comprobante_pago AS id, cp.fecha_comprobante AS fecha FROM comprobantes_pago cp "
+                "SELECT cp.*, cp.id_comprobante_pago AS id, DATE_FORMAT(cp.fecha_comprobante, '%%Y-%%m-%%dT%%H:%%i:%%s') AS fecha FROM comprobantes_pago cp "
                 "WHERE cp.orden_venta_id = %s ORDER BY cp.id_comprobante_pago DESC LIMIT 1", (order_id,))
             order['comprobante'] = comprobante
         return order

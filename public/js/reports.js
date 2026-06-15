@@ -17,7 +17,7 @@ const reportDescriptions = {
     sales: "Muestra las órdenes de venta registradas en el sistema, permitiendo filtrar por fechas y estados (pendiente, aprobada, completada, cancelada) para evaluar el volumen de facturación.",
     payments: "Detalla el flujo de pagos realizados por los clientes, incluyendo número de referencia, monto, moneda, método de pago y estado de verificación (pendiente, aprobado, rechazado).",
     inventory: "Presenta el Kardex de stock con las entradas y salidas de inventario por producto, indicando la cantidad, motivo del movimiento, tipo de transacción y fecha.",
-    mechanics: "Evalúa el desempeño de los mecánicos de la empresa según los servicios asignados, completados, tasa de efectividad (performance) e ingresos totales generados en dólares.",
+    mechanics: "Evalúa el desempeño de los mecánicos de la empresa según los servicios asignados, completados, tasa de efectividad e ingresos totales generados en dólares.",
     bitacora: "Exhibe la bitácora de auditoría del sistema con las acciones críticas realizadas por los usuarios (creación, modificación, eliminación), indicando módulo, fecha, usuario e IP."
 };
 
@@ -103,7 +103,7 @@ function renderTable(type, data) {
     } else if (type === 'inventory') {
         hHtml += '<th>ID</th><th>Producto</th><th>Código</th><th>Motivo</th><th>Tipo</th><th>Cantidad</th><th>Fecha</th>';
     } else if (type === 'mechanics') {
-        hHtml += '<th>Mecánico</th><th>Servicios Asignados</th><th>Completados</th><th>Performance</th><th>Ingreso Generado</th>';
+        hHtml += '<th>Mecánico</th><th>Servicios Asignados</th><th>Completados</th><th>Desempeño</th><th>Ingreso Generado</th>';
     } else if (type === 'bitacora') {
         hHtml += '<th>ID</th><th>Fecha</th><th>Usuario</th><th>Módulo</th><th>Acción</th><th>Descripción</th><th>IP</th>';
     }
@@ -128,7 +128,7 @@ function renderTable(type, data) {
                 } else if (currentReport === 'mechanics') {
                     const perf = d.total_asignados > 0 ? Math.round((d.total_completados / d.total_asignados) * 100) : 0;
                     const perfColor = perf > 80 ? 'success' : perf > 50 ? 'warning' : 'danger';
-                    return `<tr><td><strong>${escapeHtml(d.mecanico_nombre)}</strong></td><td>${d.total_asignados}</td><td>${d.total_completados}</td><td><div class="progress" style="height:6px;width:80px;display:inline-flex;align-items:center;margin-right:8px;"><div class="progress-bar bg-${perfColor}" style="width:${perf}%"></div></div><small>${perf}%</small></td><td>$${formatCurrency(d.ingreso_generado)}</td></tr>`;
+                    return `<tr><td><strong>${escapeHtml(d.mecanico_nombre)}</strong></td><td>${d.total_asignados}</td><td>${d.total_completados}</td><td><div class="progress" style="height:6px;width:80px;display:inline-flex;margin-right:8px;"><div class="progress-bar bg-${perfColor}" style="width:${perf}%;height:100%"></div></div><small>${perf}%</small></td><td>$${formatCurrency(d.ingreso_generado)}</td></tr>`;
                 } else if (currentReport === 'bitacora') {
                     return `<tr><td>${d.id}</td><td>${formatDate(d.fecha)}</td><td>${escapeHtml(d.usuario)}</td><td><span class="badge-status badge-info">${escapeHtml(d.modulo)}</span></td><td><strong>${escapeHtml(d.accion)}</strong></td><td>${escapeHtml(d.descripcion)}</td><td><small class="text-muted">${escapeHtml(d.ip)}</small></td></tr>`;
                 }

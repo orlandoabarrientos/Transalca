@@ -207,6 +207,19 @@ class VehicleModel(Connection):
         rows = self.fetch_all("transalca", "SELECT cliente_cedula FROM cliente_vehiculo WHERE vehiculo_placa = %s AND estado = 1", (self._plate(placa),))
         return [r['cliente_cedula'] for r in rows]
 
+    def _owner_has_active_placa(self, cliente_cedula, placa, exclude_placa=None):
+        placa = self._plate(placa)
+        cliente_cedula = (str(cliente_cedula or '')).strip()
+        if not cliente_cedula or not placa:
+            return False
+        if exclude_placa:
+            return self.fetch_one("transalca",
+                "SELECT 1 FROM cliente_vehiculo WHERE cliente_cedula = %s AND vehiculo_placa = %s AND estado = 1 AND vehiculo_placa != %s",
+                (cliente_cedula, placa, self._plate(exclude_placa))) is not None
+        return self.fetch_one("transalca",
+            "SELECT 1 FROM cliente_vehiculo WHERE cliente_cedula = %s AND vehiculo_placa = %s AND estado = 1",
+            (cliente_cedula, placa)) is not None
+
     def _placa_exists(self, placa, exclude_id=None):
         if not placa:
             return False
@@ -334,6 +347,7 @@ class VehicleModel(Connection):
             "soft_delete_relationship": self._soft_delete_relationship,
             "get_clients_by_vehicle": self._get_clients_by_vehicle,
             "placa_exists": self._placa_exists,
+            "owner_has_placa": self._owner_has_active_placa,
             "get_km_history": self._get_km_history,
             "search": self._search,
             "get_cauchos": self._get_cauchos,

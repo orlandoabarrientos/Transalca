@@ -338,7 +338,7 @@ function openMechanicModal(assignmentId) {
     Validator.initTracking('mechanicAssignForm');
 }
 
-async function saveMechanicAssignment() {
+async function saveMechanicAssignment(confirmar) {
     if (!Validator.validate('mechanicAssignForm')) {
         showToast('Corrija los errores del formulario', 'warning');
         return;
@@ -357,10 +357,15 @@ async function saveMechanicAssignment() {
         setButtonLoading(saveBtn, true, 'Asignando...');
         const payload = {
             mecanico_cedula: mecanicoCedula,
-            porcentaje_comision: document.getElementById('assignment_mechanic_commission').value
+            porcentaje_comision: document.getElementById('assignment_mechanic_commission').value,
+            confirmar: !!confirmar
         };
         const res = await apiCall(`/api/service-mechanics/${assignmentId}/mechanic`, 'PUT', payload);
         setButtonLoading(saveBtn, false);
+        if (res.status === 'confirm') {
+            confirmAction(res.message, () => saveMechanicAssignment(true));
+            return;
+        }
         if (res.status === 'error') {
             Validator.showServerErrors('mechanicAssignForm', res.errors);
             return showToast(res.message, 'error');

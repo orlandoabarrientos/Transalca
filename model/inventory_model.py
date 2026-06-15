@@ -2,12 +2,7 @@ from model.connection import Connection
 from model.notification_model import NotificationModel
 from model.order_model import DETAIL_UNION
 
-INV_SELECT = (
-    "SELECT i.*, p.nombre_producto as producto_nombre, p.codigo, p.precio_producto AS precio, "
-    "p.categoria as categoria_nombre, s.nombre_sucursal as sucursal_nombre, i.ubicacion_stock AS ubicacion "
-    "FROM stock i INNER JOIN productos p ON i.producto_codigo = p.codigo "
-    "LEFT JOIN sucursales s ON i.sucursal_id = s.id_sucursal"
-)
+INV_SELECT = "SELECT * FROM vw_stock_detalle"
 
 
 class InventoryModel(Connection):
@@ -15,27 +10,24 @@ class InventoryModel(Connection):
         super().__init__()
 
     def _get_all(self):
-        return self.fetch_all("transalca", INV_SELECT + " ORDER BY p.nombre_producto")
+        return self.fetch_all("transalca", INV_SELECT + " ORDER BY producto_nombre")
 
     def _get_by_sucursal(self, sucursal_id):
         return self.fetch_all("transalca",
-            INV_SELECT + " WHERE i.sucursal_id = %s ORDER BY p.nombre_producto", (sucursal_id,))
+            INV_SELECT + " WHERE sucursal_id = %s ORDER BY producto_nombre", (sucursal_id,))
 
     def _get_paginated(self, page, per_page, sucursal_id=None, q=None):
         where = []
         params = []
         if sucursal_id:
-            where.append("i.sucursal_id = %s")
+            where.append("sucursal_id = %s")
             params.append(sucursal_id)
         if q:
             like = f"%{q}%"
-            where.append("(p.nombre_producto LIKE %s OR p.codigo LIKE %s OR p.categoria LIKE %s OR s.nombre_sucursal LIKE %s)")
+            where.append("(producto_nombre LIKE %s OR codigo LIKE %s OR categoria_nombre LIKE %s OR sucursal_nombre LIKE %s)")
             params.extend([like, like, like, like])
 
-        from_sql = (
-            "FROM stock i INNER JOIN productos p ON i.producto_codigo = p.codigo "
-            "LEFT JOIN sucursales s ON i.sucursal_id = s.id_sucursal"
-        )
+        from_sql = "FROM vw_stock_detalle"
         where_sql = f" WHERE {' AND '.join(where)}" if where else ""
         total_row = self.fetch_one("transalca", f"SELECT COUNT(*) as total {from_sql}{where_sql}", tuple(params))
         total = total_row['total'] if total_row else 0
@@ -44,9 +36,7 @@ class InventoryModel(Connection):
             page = pages
         offset = (page - 1) * per_page
         data = self.fetch_all("transalca",
-            "SELECT i.*, p.nombre_producto as producto_nombre, p.codigo, p.precio_producto AS precio, "
-            "p.categoria as categoria_nombre, s.nombre_sucursal as sucursal_nombre, i.ubicacion_stock AS ubicacion "
-            f"{from_sql}{where_sql} ORDER BY p.nombre_producto LIMIT %s OFFSET %s",
+            f"SELECT * {from_sql}{where_sql} ORDER BY producto_nombre LIMIT %s OFFSET %s",
             tuple(params + [per_page, offset]))
         return {
             "data": data,
