@@ -3032,7 +3032,8 @@ body.client-store .loyalty-page>p.text-muted.mb-4 {
 }
 
 body.client-store .loyalty-grid {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 360px));
+    justify-content: center;
     gap: 22px;
 }
 
@@ -3944,7 +3945,8 @@ body.client-store .loyalty-page {
 }
 
 body.client-store .loyalty-grid {
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 360px));
+    justify-content: center;
     gap: 24px;
 }
 

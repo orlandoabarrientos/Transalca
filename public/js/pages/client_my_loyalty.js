@@ -1,8 +1,3 @@
-function formatCardNumber(id) {
-            const padded = String(id || 0).padStart(8, '0');
-            return `4318 0092 ${padded.slice(0, 4)} ${padded.slice(4)}`;
-        }
-
         function getCardBackground(imagenTarjeta) {
             if (imagenTarjeta) {
                 const url = `/public/assets/images/${encodeURIComponent(imagenTarjeta)}`;
@@ -115,28 +110,8 @@ function formatCardNumber(id) {
                     }
 
                     var bg = getCardBackground(card.imagen_tarjeta);
-                    var cardNum = formatCardNumber(card.id);
-                    var statusClass = card.canjeada ? 'redeemed-badge' : 'active-badge';
-                    var statusText = card.canjeada ? 'Canjeada' : 'Activa';
-
                     html += '<div class="loyalty-card-wrapper fade-in-up">' +
-                        '<div class="fidelity-card-physical" style="background: ' + bg + ';">' +
-                            '<div class="card-meta-row">' +
-                                '<span class="card-brand-logo">TRANSALCA</span>' +
-                                '<span class="card-status-badge ' + statusClass + '">' + statusText + '</span>' +
-                            '</div>' +
-                            '<div class="card-meta-row mt-2">' +
-                                '<div class="card-chip-gold"></div>' +
-                                '<i class="bi bi-wifi card-contactless"></i>' +
-                            '</div>' +
-                            '<div class="card-number-display">' + cardNum + '</div>' +
-                            '<div class="card-holder-row">' +
-                                '<div>' +
-                                    '<div class="card-holder-name">' + escapeHtml(card.cliente_nombre || 'N/A') + '</div>' +
-                                    '<div class="card-holder-cedula">C.I. ' + escapeHtml(card.cliente_cedula_display || card.cliente_cedula || '-') + '</div>' +
-                                    '</div>' +
-                                '</div>' +
-                            '</div>' +
+                        '<div class="fidelity-card-physical" style="background: ' + bg + ';"></div>' +
                         '<div class="card-stamps-panel">' +
                             '<div class="d-flex justify-content-between align-items-center mb-1">' +
                                 '<strong class="text-orange fs-6" style="font-weight:700;">' + escapeHtml(card.promo_nombre || card.promocion_nombre || 'Promoción') + '</strong>' +

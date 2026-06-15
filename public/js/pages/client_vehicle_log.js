@@ -14,7 +14,11 @@ $(document).ready(function () {
 
 async function initVehicleLogPage() {
     const loggedIn = await checkSession();
-    if (!loggedIn || !currentUser || currentUser.tipo !== 'cliente') {
+    if (loggedIn && currentUser && currentUser.tipo !== 'cliente') {
+        window.location.replace('/client/home');
+        return;
+    }
+    if (!loggedIn || !currentUser) {
         $('#vlogGuestBox').show();
         $('#vlogApp').hide();
         return;

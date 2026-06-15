@@ -161,8 +161,10 @@ def _content_security_policy(nonce):
 
 def _apply_html_nonce(response, nonce):
     content_type = response.headers.get('Content-Type', '')
-    if response.direct_passthrough or 'text/html' not in content_type.lower():
+    if 'text/html' not in content_type.lower():
         return response
+    if response.direct_passthrough:
+        response.direct_passthrough = False
     try:
         body = response.get_data(as_text=True)
     except RuntimeError:

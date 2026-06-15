@@ -129,29 +129,10 @@ function loadCards() {
                     slotsHtml += '</div>';
 
                     const bg = getCardBackground(c.imagen_tarjeta);
-                    const cardNum = formatCardNumber(c.id);
-                    const statusClass = c.canjeada ? 'redeemed-badge' : 'active-badge';
-                    const statusText = c.canjeada ? 'Canjeada' : 'Activa';
                     const completedAlertHtml = buildCompletedPromoAlert(c, accumulated, required);
 
                     return `<div class="loyalty-card-wrapper fade-in-up">
-                        <div class="fidelity-card-physical" style="background: ${bg};">
-                            <div class="card-meta-row">
-                                <span class="card-brand-logo">TRANSALCA</span>
-                                <span class="card-status-badge ${statusClass}">${statusText}</span>
-                            </div>
-                            <div class="card-meta-row mt-2">
-                                <div class="card-chip-gold"></div>
-                                <i class="bi bi-wifi card-contactless"></i>
-                            </div>
-                            <div class="card-number-display">${cardNum}</div>
-                            <div class="card-holder-row">
-                                <div>
-                                    <div class="card-holder-name">${escapeHtml(c.cliente_nombre || 'N/A')}</div>
-                                    <div class="card-holder-cedula">C.I. ${escapeHtml(c.cliente_cedula_display || c.cliente_cedula || '-')}</div>
-                                </div>
-                            </div>
-                        </div>
+                        <div class="fidelity-card-physical" style="background: ${bg};"></div>
 
                         <div class="card-stamps-panel">
                             <div class="d-flex justify-content-between align-items-center mb-1">
@@ -202,8 +183,8 @@ function promotionToTemplateCard(p) {
         tipo: p.tipo || '',
         canjeada: 0,
         is_template: true,
-        cliente_nombre: 'PLANTILLA',
-        cliente_cedula_display: 'Sin cliente'
+        cliente_nombre: '',
+        cliente_cedula_display: ''
     });
 }
 
@@ -247,32 +228,10 @@ function renderAdminPromotionCard(c) {
     slotsHtml += '</div>';
 
     const bg = getCardBackground(c.imagen_tarjeta);
-    const cardNum = formatCardNumber(c.card_number_id || c.id);
-    const statusClass = c.is_template ? 'template-badge' : (c.canjeada ? 'redeemed-badge' : 'active-badge');
-    const statusText = c.is_template ? 'Plantilla' : (c.canjeada ? 'Canjeada' : 'Activa');
     const completedAlertHtml = c.is_template ? '' : buildCompletedPromoAlert(c, accumulated, required);
-    const holderCedula = c.is_template
-        ? escapeHtml(c.cliente_cedula_display || 'Sin cliente')
-        : `C.I. ${escapeHtml(c.cliente_cedula_display || c.cliente_cedula || '-')}`;
 
     return `<div class="loyalty-card-wrapper fade-in-up">
-        <div class="fidelity-card-physical" style="background: ${bg};">
-            <div class="card-meta-row">
-                <span class="card-brand-logo">TRANSALCA</span>
-                <span class="card-status-badge ${statusClass}">${statusText}</span>
-            </div>
-            <div class="card-meta-row mt-2">
-                <div class="card-chip-gold"></div>
-                <i class="bi bi-wifi card-contactless"></i>
-            </div>
-            <div class="card-number-display">${cardNum}</div>
-            <div class="card-holder-row">
-                <div>
-                    <div class="card-holder-name">${escapeHtml(c.cliente_nombre || 'N/A')}</div>
-                    <div class="card-holder-cedula">${holderCedula}</div>
-                </div>
-            </div>
-        </div>
+        <div class="fidelity-card-physical" style="background: ${bg};"></div>
 
         <div class="card-stamps-panel">
             <div class="d-flex justify-content-between align-items-center mb-1">
@@ -304,26 +263,8 @@ function loadPromotionCardTemplates(container) {
             slotsHtml += '</div>';
 
             const bg = getCardBackground(p.imagen_tarjeta);
-            const cardNum = formatCardNumber(0);
-
             container.innerHTML += `<div class="loyalty-card-wrapper fade-in-up">
-                <div class="fidelity-card-physical" style="background: ${bg};">
-                    <div class="card-meta-row">
-                        <span class="card-brand-logo">TRANSALCA</span>
-                        <span class="card-status-badge template-badge">Plantilla</span>
-                    </div>
-                    <div class="card-meta-row mt-2">
-                        <div class="card-chip-gold"></div>
-                        <i class="bi bi-wifi card-contactless"></i>
-                    </div>
-                    <div class="card-number-display">${cardNum}</div>
-                    <div class="card-holder-row">
-                        <div>
-                            <div class="card-holder-name">CLIENTE DE PRUEBA</div>
-                            <div class="card-holder-cedula">C.I. V-00000000</div>
-                        </div>
-                    </div>
-                </div>
+                <div class="fidelity-card-physical" style="background: ${bg};"></div>
 
                 <div class="card-stamps-panel">
                     <div class="d-flex justify-content-between align-items-center mb-1">
@@ -523,11 +464,6 @@ function getCardBackground(imagenTarjeta) {
         return `url('${url}')`;
     }
     return 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)';
-}
-
-function formatCardNumber(id) {
-    const padded = String(id || 0).replace(/\D/g, '').padStart(8, '0').slice(-8);
-    return `4318 0092 ${padded.slice(0, 4)} ${padded.slice(4)}`;
 }
 
 function buildCompletedPromoAlert(card, accumulated, required) {

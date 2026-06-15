@@ -14,7 +14,8 @@
     <style>
         .loyalty-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 360px));
+            justify-content: center;
             gap: 24px;
             padding: 10px 0;
         }
@@ -30,6 +31,8 @@
             flex-direction: column;
             gap: 16px;
             transition: var(--transition);
+            max-width: 360px;
+            width: 100%;
         }
 
         .loyalty-card-wrapper:hover {
