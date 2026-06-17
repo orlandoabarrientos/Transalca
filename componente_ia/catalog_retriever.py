@@ -1,7 +1,9 @@
 import logging
 import re
+import threading
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from componente_ia.automotive_entities import (
@@ -106,45 +108,62 @@ class CatalogProvider:
     def __init__(self, ttl_seconds=60):
         self.ttl_seconds = ttl_seconds
         self._cache = None
+        self._lock = threading.RLock()
+        self.last_success_at = None
+        self.last_error_at = None
 
     def load(self, force=False):
-        if not force and self._cache and time.time() - self._cache.loaded_at < self.ttl_seconds:
-            return self._cache
-        product_error = None
-        service_error = None
-        try:
-            raw_products = ProductModel().ejecutar("get_active") or []
-            products = [normalize_catalog_item(item, 'producto') for item in raw_products if str(item.get('codigo') or '') != 'SIN_PRODUCTO']
-        except Exception as exc:
-            logger.exception('assistant.catalog.products_failed')
-            product_error = exc.__class__.__name__
-            products = []
-        try:
-            raw_services = ServiceModel().ejecutar("get_active") or []
-            services = [normalize_catalog_item(item, 'servicio') for item in raw_services]
-        except Exception as exc:
-            logger.exception('assistant.catalog.services_failed')
-            service_error = exc.__class__.__name__
-            services = []
-        snapshot = CatalogSnapshot(
-            products=products,
-            services=services,
-            catalog_available=not (product_error or service_error),
-            product_error=product_error,
-            service_error=service_error,
-        )
-        self._cache = snapshot
-        return snapshot
+        with self._lock:
+            if not force and self._cache and time.time() - self._cache.loaded_at < self.ttl_seconds:
+                return self._cache
+            product_error = None
+            service_error = None
+            try:
+                raw_products = ProductModel().ejecutar("get_active") or []
+                products = [normalize_catalog_item(item, 'producto') for item in raw_products if str(item.get('codigo') or '') != 'SIN_PRODUCTO']
+            except Exception as exc:
+                logger.exception('assistant.catalog.products_failed')
+                product_error = exc.__class__.__name__
+                products = []
+            try:
+                raw_services = ServiceModel().ejecutar("get_active") or []
+                services = [normalize_catalog_item(item, 'servicio') for item in raw_services]
+            except Exception as exc:
+                logger.exception('assistant.catalog.services_failed')
+                service_error = exc.__class__.__name__
+                services = []
+            snapshot = CatalogSnapshot(
+                products=products,
+                services=services,
+                catalog_available=not (product_error or service_error),
+                product_error=product_error,
+                service_error=service_error,
+            )
+            self._cache = snapshot
+            if snapshot.catalog_available:
+                self.last_success_at = time.time()
+            else:
+                self.last_error_at = time.time()
+            return snapshot
 
     def health(self):
-        snapshot = self.load(force=True)
+        snapshot = self.load(force=False)
         return {
             'available': snapshot.catalog_available,
             'products': len(snapshot.products),
             'services': len(snapshot.services),
+            'cached_items': len(snapshot.products) + len(snapshot.services),
+            'last_success_at': _iso(self.last_success_at),
+            'last_error_at': _iso(self.last_error_at),
             'product_error': snapshot.product_error,
             'service_error': snapshot.service_error,
         }
+
+
+def _iso(epoch):
+    if not epoch:
+        return None
+    return datetime.fromtimestamp(epoch, timezone.utc).isoformat().replace('+00:00', 'Z')
 
 
 def product_line(item, include_stock=True):

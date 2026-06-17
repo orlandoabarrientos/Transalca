@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from model.role_model import RoleModel
 
-from config.validation import optional_text, require_text
+from config.validation import ValidationError
 
 role_bp = Blueprint('roles', __name__)
 model = RoleModel()
@@ -38,17 +38,12 @@ def create():
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         data = request.get_json() or {}
-        errors = {}
-        data['nombre'] = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=60, allow_serial=False)
-        data['descripcion'] = optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=150, allow_serial=True)
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         role_id = model.ejecutar("create", data)
         if data.get('permisos'):
             model.ejecutar("save_all_permissions", role_id, data['permisos'])
-
-
         return jsonify({"status": "success", "message": "Rol registrado correctamente", "id": role_id})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar el rol"}), 500
 
@@ -59,17 +54,12 @@ def update(role_id):
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         data = request.get_json() or {}
-        errors = {}
-        data['nombre'] = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=60, allow_serial=False)
-        data['descripcion'] = optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=150, allow_serial=True)
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         model.ejecutar("update_role", role_id, data)
         if data.get('permisos'):
             model.ejecutar("save_all_permissions", role_id, data['permisos'])
-
-
         return jsonify({"status": "success", "message": "Rol modificado correctamente"})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el rol"}), 500
 

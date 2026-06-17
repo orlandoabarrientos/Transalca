@@ -3,13 +3,10 @@ from model.auth_model import AuthModel
 
 from config.validation import (
     LoginThrottle,
+    ValidationError,
     normalize_cedula,
     normalize_email,
-    normalize_phone,
-    optional_text,
-    require_text,
 )
-import re
 
 auth_bp = Blueprint('auth', __name__)
 model = AuthModel()
@@ -17,8 +14,6 @@ model = AuthModel()
 login_throttle = LoginThrottle()
 
 CREDENTIAL_FIELD = 'pass' + 'word'
-CONFIRM_CREDENTIAL_FIELD = 'confirm_' + CREDENTIAL_FIELD
-CREDENTIAL_PATTERN = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$'
 
 
 @auth_bp.route('/login', methods=['GET'])
@@ -40,13 +35,7 @@ def recover_page():
 def do_login():
     try:
         data = request.get_json() or {}
-        errors = {}
-        email = normalize_email(errors, data.get('email'), required=True)
-        credential_value = data.get(CREDENTIAL_FIELD)
-        if not credential_value or not str(credential_value).strip():
-            errors[CREDENTIAL_FIELD] = 'La contrasena es obligatoria.'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
+        email, credential_value = model.ejecutar("validate_login", data)
         if login_throttle.is_locked(request.remote_addr, email):
             return jsonify({"status": "error", "message": "Demasiados intentos fallidos. Intente nuevamente en unos minutos."}), 429
         user = model.ejecutar("login", email, credential_value)
@@ -74,6 +63,8 @@ def do_login():
 
         model.ejecutar("log_event", user['id'], 'LOGIN', 'AUTH', f"Inicio de sesion: {user['email']}", request.remote_addr)
         return jsonify({"status": "success", "redirect": redirect_url, "user": {"nombre": user['nombre'], "tipo": user['tipo']}})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo iniciar sesion."}), 500
 
@@ -82,36 +73,12 @@ def do_login():
 def do_register():
     try:
         data = request.get_json() or {}
-        errors = {}
-        nombre = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=100, person=True)
-        apellido = require_text(errors, 'apellido', data.get('apellido'), 'El apellido', min_len=2, max_len=100, person=True)
-        cedula, cedula_prefijo, _ = normalize_cedula(errors, data)
-        telefono = normalize_phone(errors, data.get('telefono'))
-        email = normalize_email(errors, data.get('email'))
-        direccion = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40)
-        if not data.get(CREDENTIAL_FIELD) or not re.match(CREDENTIAL_PATTERN, data.get(CREDENTIAL_FIELD, '')):
-            errors[CREDENTIAL_FIELD] = 'La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial.'
-        if data.get(CREDENTIAL_FIELD) != data.get(CONFIRM_CREDENTIAL_FIELD):
-            errors[CONFIRM_CREDENTIAL_FIELD] = 'Las contrasenas no coinciden.'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        data.update({
-            'nombre': nombre,
-            'apellido': apellido,
-            'cedula': cedula,
-            'cedula_prefijo': cedula_prefijo,
-            'telefono': telefono,
-            'email': email,
-            'direccion': direccion
-        })
-        if model.ejecutar("email_exists", email, exclude_client_cedula=cedula):
-            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        if model.ejecutar("cedula_exists", cedula):
-            return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
         user_id = model.ejecutar("register", data)
         if user_id:
             return jsonify({"status": "success", "message": "Cliente registrado correctamente. Ahora puede iniciar sesion."})
         return jsonify({"status": "error", "message": "No se pudo registrar el cliente."}), 500
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
@@ -145,13 +112,13 @@ def check_unique():
 @auth_bp.route('/do_recover', methods=['POST'])
 def do_recover():
     try:
-        data = request.get_json()
-        if not data.get('email') or not re.match(r'^[^@]+@[^@]+\.[^@]+$', data.get('email', '')):
-            return jsonify({"status": "error", "message": "Ingrese un correo valido.", "errors": {"email": "Ingrese un correo valido."}}), 400
-        token = model.ejecutar("create_recovery_token", data['email'].strip())
+        data = request.get_json() or {}
+        token = model.ejecutar("create_recovery_token", data.get('email'))
         if token:
             return jsonify({"status": "success", "message": "Se ha generado un enlace de recuperacion.", "token": token})
         return jsonify({"status": "error", "message": "Correo no encontrado.", "errors": {"email": "No existe una cuenta con ese correo."}}), 404
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -159,12 +126,12 @@ def do_recover():
 @auth_bp.route('/do_reset', methods=['POST'])
 def do_reset():
     try:
-        data = request.get_json()
-        if not data.get(CREDENTIAL_FIELD) or not re.match(CREDENTIAL_PATTERN, data.get(CREDENTIAL_FIELD, '')):
-            return jsonify({"status": "error", "message": "La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial.", "errors": {CREDENTIAL_FIELD: "Contrasena no cumple requisitos."}}), 400
-        if model.ejecutar("reset_password", data.get('token', ''), data[CREDENTIAL_FIELD]):
+        data = request.get_json() or {}
+        if model.ejecutar("reset_password", data.get('token', ''), data.get(CREDENTIAL_FIELD)):
             return jsonify({"status": "success", "message": "Contrasena modificada correctamente."})
         return jsonify({"status": "error", "message": "Token invalido o expirado."}), 400
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 

@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from model.qr_model import QRModel
 
+from config.validation import ValidationError
 
 qr_bp = Blueprint('qr', __name__)
 model = QRModel()
@@ -46,21 +47,11 @@ def create():
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         data = request.get_json() or {}
-        errors = {}
-        if not data.get('tipo'):
-            errors['tipo'] = 'Seleccione un tipo de QR'
-        utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
-        if not utilidad_tipo:
-            errors['utilidad_tipo'] = 'La utilidad es obligatoria'
-        elif utilidad_tipo in ('promocion', 'mesa') and not str(data.get('referencia_id') or '').strip():
-            errors['referencia_id'] = 'Seleccione una referencia para esta utilidad'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         data['usuario_cedula'] = session['user_cedula']
         qr_id = model.ejecutar("create_qr", data)
-
-
         return jsonify({"status": "success", "message": "QR registrado correctamente.", "id": qr_id})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -71,20 +62,10 @@ def update(qr_id):
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         data = request.get_json() or {}
-        errors = {}
-        if not data.get('tipo'):
-            errors['tipo'] = 'Seleccione un tipo de QR'
-        utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
-        if not utilidad_tipo:
-            errors['utilidad_tipo'] = 'La utilidad es obligatoria'
-        elif utilidad_tipo in ('promocion', 'mesa') and not str(data.get('referencia_id') or '').strip():
-            errors['referencia_id'] = 'Seleccione una referencia para esta utilidad'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
         model.ejecutar("update_qr", qr_id, data)
-
-
         return jsonify({"status": "success", "message": "QR modificado correctamente."})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 

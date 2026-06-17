@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from model.mechanic_model import MechanicModel
 
-from config.validation import normalize_cedula, normalize_phone, optional_text, require_text
+from config.validation import ValidationError, normalize_cedula
 from werkzeug.utils import secure_filename
 import os
 import time
@@ -10,20 +10,6 @@ mechanic_bp = Blueprint('mechanics', __name__)
 model = MechanicModel()
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
-
-
-def _validate_mechanic(data):
-    errors = {}
-    cedula, cedula_prefijo, _ = normalize_cedula(errors, data)
-    clean = {
-        'cedula': cedula,
-        'cedula_prefijo': cedula_prefijo,
-        'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=60, person=True),
-        'apellido': require_text(errors, 'apellido', data.get('apellido'), 'El apellido', min_len=2, max_len=60, person=True),
-        'telefono': normalize_phone(errors, data.get('telefono'), required=False),
-        'especialidad': optional_text(errors, 'especialidad', data.get('especialidad'), 'La especialidad', max_len=120, allow_serial=False)
-    }
-    return clean, errors
 
 
 def _save_photo(file, cedula):
@@ -85,31 +71,19 @@ def create():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        data, errors = _validate_mechanic(request.form.to_dict())
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        existing = model.ejecutar("get_by_cedula", data['cedula'])
-        if existing:
-            if existing['estado'] == 1:
-                return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
-            else:
-                filename, file_error = _save_photo(request.files.get('foto_perfil'), data['cedula'])
-                if file_error:
-                    return jsonify({"status": "error", "message": file_error, "errors": {"foto_perfil": file_error}}), 400
-                if filename:
-                    data['foto_perfil'] = filename
-                model.ejecutar("update_mechanic", existing['cedula'], data)
-                model.ejecutar("reactivar", existing['cedula'])
-
-                return jsonify({"status": "success", "message": "Mecanico registrado correctamente.", "cedula": existing['cedula']})
-        filename, file_error = _save_photo(request.files.get('foto_perfil'), data['cedula'])
+        data = request.form.to_dict()
+        clean = model.ejecutar("validate", data)
+        filename, file_error = _save_photo(request.files.get('foto_perfil'), clean['cedula'])
         if file_error:
             return jsonify({"status": "error", "message": file_error, "errors": {"foto_perfil": file_error}}), 400
         if filename:
             data['foto_perfil'] = filename
-        model.ejecutar("create", data)
-
-        return jsonify({"status": "success", "message": "Mecanico registrado correctamente.", "cedula": data['cedula']})
+        elif str(data.get('foto_perfil_remove') or '').strip() == '1':
+            data['foto_perfil'] = 'default.png'
+        cedula = model.ejecutar("create", data)
+        return jsonify({"status": "success", "message": "Mecanico registrado correctamente.", "cedula": cedula})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar el mecanico."}), 500
 
@@ -120,22 +94,18 @@ def update():
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
         raw = request.form.to_dict()
-        old_cedula = raw.get('old_cedula', '')
-        data, errors = _validate_mechanic(raw)
-        if not old_cedula:
-            errors['old_cedula'] = 'Identificador requerido.'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if data['cedula'] != old_cedula and model.ejecutar("cedula_exists", data['cedula']):
-            return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
-        filename, file_error = _save_photo(request.files.get('foto_perfil'), data['cedula'])
+        clean = model.ejecutar("validate", raw)
+        filename, file_error = _save_photo(request.files.get('foto_perfil'), clean['cedula'])
         if file_error:
             return jsonify({"status": "error", "message": file_error, "errors": {"foto_perfil": file_error}}), 400
         if filename:
-            data['foto_perfil'] = filename
-        model.ejecutar("update_mechanic", old_cedula, data)
-
+            raw['foto_perfil'] = filename
+        elif str(raw.get('foto_perfil_remove') or '').strip() == '1':
+            raw['foto_perfil'] = 'default.png'
+        model.ejecutar("update_mechanic", raw.get('old_cedula', ''), raw)
         return jsonify({"status": "success", "message": "Mecanico modificado correctamente."})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el mecanico."}), 500
 

@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from model.inventory_model import InventoryModel
 
+from config.validation import ValidationError
 
 inventory_bp = Blueprint('inventory', __name__)
 model = InventoryModel()
@@ -62,22 +63,11 @@ def update_stock():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        data = request.get_json()
-        errors = {}
-        if not data.get('producto_codigo'):
-            errors['producto_codigo'] = 'Debe seleccionar un producto'
-        try:
-            stock = int(data.get('stock', -1))
-            if stock < 0:
-                errors['stock'] = 'El stock no puede ser negativo'
-        except (ValueError, TypeError):
-            errors['stock'] = 'Stock invalido'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        model.ejecutar("update_stock", data['producto_codigo'], stock, data.get('sucursal_id'))
-
-
+        data = request.get_json() or {}
+        model.ejecutar("update_stock", data)
         return jsonify({"status": "success", "message": "Stock actualizado"})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 

@@ -47,7 +47,18 @@ APP_ENV = os.getenv("TRANSALCA_ENV", "local").strip().lower()
 APP_DEBUG = _env_bool("TRANSALCA_DEBUG", APP_ENV == "local")
 SESSION_COOKIE_SECURE = _env_bool("TRANSALCA_SESSION_COOKIE_SECURE", APP_ENV in {"prod", "production"})
 SESSION_COOKIE_SAMESITE = os.getenv("TRANSALCA_SESSION_COOKIE_SAMESITE", "Lax")
-ALLOWED_ORIGINS = {
+_LOCAL_DEV_ORIGINS = {
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+    "http://127.0.0.1:5000",
+    "http://localhost:5000",
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+} if APP_ENV == "local" else set()
+
+ALLOWED_ORIGINS = _LOCAL_DEV_ORIGINS | {
     origin.strip().rstrip("/")
     for origin in os.getenv("TRANSALCA_ALLOWED_ORIGINS", "").split(",")
     if origin.strip()

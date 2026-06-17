@@ -1,6 +1,7 @@
 from model.connection import Connection
 from model.notification_model import NotificationModel
 from model.order_model import DETAIL_UNION
+from config.validation import ValidationError
 
 INV_SELECT = "SELECT * FROM vw_stock_detalle"
 
@@ -73,7 +74,20 @@ class InventoryModel(Connection):
                 int(item.get('stock') or 0), umbral, item.get('sucursal_nombre'))
         return created
 
-    def _update_stock(self, producto_codigo, stock, sucursal_id=None):
+    def _update_stock(self, data):
+        errors = {}
+        producto_codigo = data.get('producto_codigo')
+        if not producto_codigo:
+            errors['producto_codigo'] = 'Debe seleccionar un producto'
+        try:
+            stock = int(data.get('stock', -1))
+            if stock < 0:
+                errors['stock'] = 'El stock no puede ser negativo'
+        except (ValueError, TypeError):
+            errors['stock'] = 'Stock invalido'
+        if errors:
+            raise ValidationError(errors)
+        sucursal_id = data.get('sucursal_id')
         if sucursal_id:
             existing = self.fetch_one("transalca",
                 "SELECT producto_codigo FROM stock WHERE producto_codigo = %s AND sucursal_id = %s",

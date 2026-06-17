@@ -1,6 +1,14 @@
 from model.connection import Connection
-from config.constants import TIPOS_COMBUSTIBLE, validate_choice
+from config.constants import TIPOS_COMBUSTIBLE
+from config.validation import (
+    ValidationError,
+    normalize_int,
+    optional_text,
+    require_text,
+    validate_choice,
+)
 import json
+import re
 
 VEHICULO_ALIAS = (
     "v.*, v.placa_vehiculo as id, v.placa_vehiculo as placa, v.marca_vehiculo as marca, "
@@ -91,13 +99,34 @@ class VehicleModel(Connection):
         return self.fetch_one("transalca",
             "SELECT " + VEHICULO_ALIAS + " FROM vehiculos v WHERE v.placa_vehiculo = %s", (self._plate(placa),))
 
+    def _validate(self, data):
+        errors = {}
+        clean = {}
+        clean['marca'] = require_text(errors, 'marca', data.get('marca'), 'La marca', min_len=2, max_len=100, allow_serial=False)
+        clean['modelo'] = require_text(errors, 'modelo', data.get('modelo'), 'El modelo', min_len=1, max_len=100, allow_serial=False)
+        clean['anio'] = normalize_int(errors, 'anio', data.get('anio'), 'El ano', min_value=1900, max_value=2100) if data.get('anio') not in (None, '') else None
+        placa = require_text(errors, 'placa', data.get('placa'), 'La placa', min_len=5, max_len=20, allow_serial=True).upper()
+        if placa and not re.fullmatch(r'[A-Z0-9-]+', placa):
+            errors['placa'] = 'La placa solo puede contener letras, numeros y guiones.'
+        clean['placa'] = placa
+        clean['color'] = optional_text(errors, 'color', data.get('color'), 'El color', max_len=50, allow_serial=False)
+        clean['tipo_vehiculo'] = optional_text(errors, 'tipo_vehiculo', data.get('tipo_vehiculo'), 'El tipo de vehiculo', max_len=50, allow_serial=False)
+        clean['tipo_combustible'] = validate_choice(errors, 'tipo_combustible', data.get('tipo_combustible') or 'gasolina', TIPOS_COMBUSTIBLE)
+        clean['kilometraje_actual'] = normalize_int(errors, 'kilometraje_actual', data.get('kilometraje_actual') or 0, 'El kilometraje', min_value=0, max_value=9999999)
+        if errors:
+            raise ValidationError(errors)
+        return clean
+
     def _create(self, data):
-        validate_choice(data.get('tipo_combustible', 'gasolina'), TIPOS_COMBUSTIBLE, 'tipo_combustible')
+        clean = self._validate(data)
+        data = {**data, **clean}
         self.marca = data['marca']
         self.modelo = data['modelo']
         self.placa = data.get('placa')
         placa = self._placa
         cliente_cedula = data.get('cliente_cedula', '').strip()
+        if cliente_cedula and self._owner_has_active_placa(cliente_cedula, placa):
+            raise ValidationError({'placa': 'Esta placa ya esta registrada para este cliente.'})
 
         conn = self.con_transalca()
         conn.begin()
@@ -151,7 +180,10 @@ class VehicleModel(Connection):
             raise
 
     def _update_vehicle(self, vid, data):
-        validate_choice(data.get('tipo_combustible', 'gasolina'), TIPOS_COMBUSTIBLE, 'tipo_combustible')
+        clean = self._validate(data)
+        if self._placa_exists(clean['placa'], exclude_id=vid):
+            raise ValidationError({'placa': 'Esta placa ya esta registrada.'})
+        data = {**data, **clean}
         self.marca = data['marca']
         self.modelo = data['modelo']
         self.placa = data.get('placa')
@@ -339,6 +371,7 @@ class VehicleModel(Connection):
             "get_by_id": self._get_by_id,
             "get_by_cliente": self._get_by_cliente,
             "get_by_placa": self._get_by_placa,
+            "validate": self._validate,
             "create": self._create,
             "update_vehicle": self._update_vehicle,
             "update_kilometraje": self._update_kilometraje,

@@ -1,4 +1,11 @@
 from model.connection import Connection
+from config.validation import (
+    SELECT_TAMPER_MESSAGE,
+    ValidationError,
+    normalize_decimal,
+    optional_text,
+    require_text,
+)
 
 
 class ProductModel(Connection):
@@ -223,51 +230,115 @@ class ProductModel(Connection):
             if not existing:
                 self.insert("transalca", "INSERT INTO stock (producto_codigo, sucursal_id, stock) VALUES (%s, %s, 0)", (codigo, sucursal_id))
 
-    def _create(self, data):
-        self.codigo = data['codigo']
-        self.nombre = data['nombre']
-        self.descripcion = data.get('descripcion', '')
-        self.precio = data['precio']
-        columns = self._columns()
-        values = {
-            'codigo': self._codigo,
-            'nombre_producto': self._nombre,
-            'descripcion_producto': self._descripcion,
-            'precio_producto': self._precio,
-            'categoria': data.get('categoria') or None,
-            'marca': data.get('marca') or None,
-            'imagen_producto': data.get('imagen') or 'default_product.png'
+    def _validate(self, data, old_codigo=None):
+        errors = {}
+        codigo = optional_text(errors, 'codigo', data.get('codigo'), 'El codigo', max_len=50, allow_serial=True)
+        if not codigo or len(codigo) < 2:
+            errors['codigo'] = 'El codigo debe tener al menos 2 caracteres.'
+        clean = {
+            'codigo': (codigo or '').upper(),
+            'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=150, allow_serial=False),
+            'descripcion': optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=500, allow_serial=True),
+            'precio': normalize_decimal(errors, 'precio', data.get('precio'), 'El precio'),
+            'categoria': require_text(errors, 'categoria', data.get('categoria'), 'La categoria', min_len=1, max_len=150, allow_serial=True),
+            'marca': require_text(errors, 'marca', data.get('marca'), 'La marca', min_len=1, max_len=150, allow_serial=True),
         }
-        keys = [k for k in values if k in columns]
-        pid = self.insert("transalca",
-            self.build_insert_sql("productos", keys, {"productos"}, columns),
-            tuple(values[k] for k in keys))
-        self._sync_sucursales(values['codigo'], data.get('sucursal_ids') or [])
-        return pid
+        existing = self._get_by_codigo(old_codigo) if old_codigo else None
+        if clean['categoria'] and not errors.get('categoria'):
+            is_current_cat = existing and existing.get('categoria') == clean['categoria']
+            if not is_current_cat and not self._category_exists(clean['categoria']):
+                errors['categoria'] = SELECT_TAMPER_MESSAGE
+        if clean['marca'] and not errors.get('marca'):
+            is_current_brand = existing and existing.get('marca') == clean['marca']
+            if not is_current_brand and not self._brand_exists(clean['marca']):
+                errors['marca'] = SELECT_TAMPER_MESSAGE
+        sucursal_ids = data.get('sucursal_ids')
+        if sucursal_ids is not None:
+            if not isinstance(sucursal_ids, list):
+                errors['sucursal_id'] = 'Formato de sucursales invalido.'
+            else:
+                cleaned_ids = []
+                for s_id in sucursal_ids:
+                    try:
+                        cleaned_ids.append(int(s_id))
+                    except (ValueError, TypeError):
+                        continue
+                if not cleaned_ids:
+                    errors['sucursal_id'] = 'Seleccione al menos una sucursal.'
+                else:
+                    clean['sucursal_ids'] = cleaned_ids
+        else:
+            errors['sucursal_id'] = 'Seleccione al menos una sucursal.'
+        if errors:
+            raise ValidationError(errors)
+        return clean
 
-    def _update_product(self, old_codigo, data):
-        self.codigo = data['codigo']
-        self.nombre = data['nombre']
-        self.descripcion = data.get('descripcion', '')
-        self.precio = data['precio']
+    def _apply_update(self, old_codigo, clean):
+        self.codigo = clean['codigo']
+        self.nombre = clean['nombre']
+        self.descripcion = clean.get('descripcion', '') or ''
+        self.precio = clean['precio']
         columns = self._columns()
         values = {
             'codigo': self._codigo,
             'nombre_producto': self._nombre,
             'descripcion_producto': self._descripcion,
             'precio_producto': self._precio,
-            'categoria': data.get('categoria') or None,
-            'marca': data.get('marca') or None
+            'categoria': clean.get('categoria') or None,
+            'marca': clean.get('marca') or None,
         }
-        if 'imagen' in data:
-            values['imagen_producto'] = data['imagen']
+        if clean.get('imagen') is not None:
+            values['imagen_producto'] = clean['imagen']
         keys = [k for k in values if k in columns]
         params = [values[k] for k in keys] + [old_codigo]
         res = self.update("transalca",
             self.build_update_by_key_sql("productos", keys, "codigo", {"productos"}, columns),
             tuple(params))
-        self._sync_sucursales(values['codigo'], data.get('sucursal_ids') or [])
+        self._sync_sucursales(self._codigo, clean.get('sucursal_ids') or [])
         return res
+
+    def _create(self, data):
+        clean = self._validate(data)
+        if data.get('imagen') is not None:
+            clean['imagen'] = data['imagen']
+        existing = self._get_by_codigo(clean['codigo'])
+        if existing:
+            if existing['estado'] == 1:
+                raise ValidationError({'codigo': 'Este codigo ya esta registrado.'})
+            self._apply_update(existing['codigo'], clean)
+            self._reactivar(existing['codigo'])
+            return existing['codigo']
+        self.codigo = clean['codigo']
+        self.nombre = clean['nombre']
+        self.descripcion = clean.get('descripcion', '') or ''
+        self.precio = clean['precio']
+        columns = self._columns()
+        values = {
+            'codigo': self._codigo,
+            'nombre_producto': self._nombre,
+            'descripcion_producto': self._descripcion,
+            'precio_producto': self._precio,
+            'categoria': clean.get('categoria') or None,
+            'marca': clean.get('marca') or None,
+            'imagen_producto': clean.get('imagen') or 'default_product.png'
+        }
+        keys = [k for k in values if k in columns]
+        pid = self.insert("transalca",
+            self.build_insert_sql("productos", keys, {"productos"}, columns),
+            tuple(values[k] for k in keys))
+        self._sync_sucursales(self._codigo, clean.get('sucursal_ids') or [])
+        return pid
+
+    def _update_product(self, old_codigo, data):
+        old_codigo = (old_codigo or '').strip()
+        if not old_codigo:
+            raise ValidationError({'old_codigo': 'Identificador de producto requerido.'})
+        clean = self._validate(data, old_codigo)
+        if clean['codigo'] != old_codigo and self._codigo_exists(clean['codigo']):
+            raise ValidationError({'codigo': 'Este codigo ya esta registrado.'})
+        if 'imagen' in data:
+            clean['imagen'] = data['imagen']
+        return self._apply_update(old_codigo, clean)
 
     def _soft_delete(self, codigo):
         return self.update("transalca", "UPDATE productos SET estado = 0 WHERE codigo = %s", (codigo,))
@@ -312,6 +383,7 @@ class ProductModel(Connection):
             "get_by_brand": self._get_by_brand,
             "get_by_sucursal": self._get_by_sucursal,
             "search": self._search,
+            "validate": self._validate,
             "create": self._create,
             "update_product": self._update_product,
             "soft_delete": self._soft_delete,

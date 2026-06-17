@@ -3,14 +3,13 @@ from model.order_model import OrderModel
 
 import os
 from werkzeug.utils import secure_filename
-from config.validation import SELECT_TAMPER_MESSAGE, normalize_int, validate_choice
+from config.validation import SELECT_TAMPER_MESSAGE, ValidationError
 
 order_bp = Blueprint('orders', __name__)
 model = OrderModel()
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'public', 'assets', 'comprobantes')
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
-TIPOS_ITEM = ['producto', 'servicio']
 
 
 @order_bp.route('/cart', methods=['GET'])
@@ -41,16 +40,10 @@ def add_to_cart():
         if 'user_cedula' not in session:
             return jsonify({"status": "error", "message": "Debe iniciar sesion para agregar al carrito"}), 401
         data = request.get_json() or {}
-        errors = {}
-        tipo = validate_choice(errors, 'tipo', data.get('tipo') or 'producto', TIPOS_ITEM)
-        cantidad = normalize_int(errors, 'cantidad', data.get('cantidad') or 1, 'La cantidad', min_value=1, max_value=999)
-        item_id = data.get('item_id')
-        if not item_id:
-            errors['item_id'] = 'Debe seleccionar un producto o servicio.'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        model.ejecutar("add_to_cart", session['user_cedula'], item_id, tipo, cantidad)
+        model.ejecutar("add_to_cart", session['user_cedula'], data)
         return jsonify({"status": "success", "message": "Producto registrado en el carrito correctamente"})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
     except Exception:
@@ -65,12 +58,10 @@ def update_cart(cart_id):
         if model.ejecutar("cart_item_owner", cart_id) != session['user_cedula']:
             return jsonify({"status": "error", "message": "No autorizado"}), 403
         data = request.get_json() or {}
-        errors = {}
-        cantidad = normalize_int(errors, 'cantidad', data.get('cantidad'), 'La cantidad', min_value=1, max_value=999)
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        model.ejecutar("update_cart_quantity", cart_id, cantidad)
+        model.ejecutar("update_cart_quantity", cart_id, data.get('cantidad'))
         return jsonify({"status": "success", "message": "Carrito modificado correctamente"})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el carrito"}), 500
 

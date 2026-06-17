@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transalca Admin | Gestionar Módulos</title>
+    <link rel="icon" type="image/png" href="/public/img/transalca-logo.png">
+    <link href="/public/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="/public/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/public/css/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <div class="main-content">
+        <div id="navbarContainer"></div>
+        <div class="content-area">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <h4 class="fw-bold mb-0">Gestionar Módulos</h4>
+                <button class="btn btn-orange" onclick="openModal()"><i class="bi bi-plus-lg me-2"></i>Registrar Módulo</button>
+            </div>
+            <div class="card mb-3">
+                <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+                    <input type="search" class="form-control table-search-input" id="searchModulo" placeholder="Buscar módulo..." style="max-width:260px;">
+                    <select class="form-select" id="filterGrupo" data-no-select2 style="max-width:200px;">
+                        <option value="">Todos los grupos</option>
+                        <option value="Principal">Principal</option>
+                        <option value="Gestión">Gestión</option>
+                        <option value="Servicios">Servicios</option>
+                        <option value="Ventas">Ventas</option>
+                        <option value="Sistema">Sistema</option>
+                        <option value="Análisis">Análisis</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body p-0">
+                    <table class="table mb-0" data-no-auto-search>
+                        <thead>
+                            <tr>
+                                <th>Módulo</th>
+                                <th>Clave</th>
+                                <th>Ruta</th>
+                                <th>Grupo</th>
+                                <th>Orden</th>
+                                <th>Sidebar</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="moduloBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="moduloModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Registrar Módulo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="moduloForm">
+                    <input type="hidden" id="moduloId" name="old_modulo_id">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombre del módulo <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="titulo" name="titulo" maxlength="150">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Clave <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="nombre" name="nombre" maxlength="100" placeholder="ej: ordenes_compra">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control" id="descripcion" name="descripcion" rows="2" maxlength="255"></textarea>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Ruta <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="ruta" name="ruta" maxlength="150" placeholder="/admin/ejemplo">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Ícono</label>
+                            <input type="text" class="form-control" id="icono" name="icono" maxlength="60" placeholder="bi bi-app">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Grupo <span class="required">*</span></label>
+                            <select class="form-select" id="grupo" name="grupo" data-no-select2>
+                                <option value="Principal">Principal</option>
+                                <option value="Gestión">Gestión</option>
+                                <option value="Servicios">Servicios</option>
+                                <option value="Ventas">Ventas</option>
+                                <option value="Sistema">Sistema</option>
+                                <option value="Análisis">Análisis</option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Orden <span class="required">*</span></label>
+                            <input type="number" class="form-control" id="orden" name="orden" min="0" max="9999" value="0" data-numeric="integer">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Mostrar en sidebar</label>
+                            <select class="form-select" id="en_sidebar" name="en_sidebar" data-no-select2>
+                                <option value="1">Sí</option>
+                                <option value="0">No</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Público</label>
+                            <select class="form-select" id="publico" name="publico" data-no-select2>
+                                <option value="0">No</option>
+                                <option value="1">Sí</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Estado</label>
+                            <select class="form-select" id="estado" name="estado" data-no-select2>
+                                <option value="1">Activo</option>
+                                <option value="0">Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-orange" onclick="saveData()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="/public/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/public/jquery/jquery.min.js"></script>
+<script src="/public/js/admin_common.js"></script>
+<script src="/public/js/modulos.js"></script>
+</body>
+</html>

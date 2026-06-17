@@ -1,4 +1,5 @@
 from model.connection import Connection
+from config.validation import ValidationError, normalize_cedula, normalize_phone, optional_text, require_text
 
 
 OCUPADO_SQL = (
@@ -99,25 +100,63 @@ class MechanicModel(Connection):
         return self.fetch_all("transalca",
             MECANICO_SELECT + " WHERE m.estado = 1 ORDER BY m.nombre_mecanico, m.apellido_mecanico")
 
+    def _validate(self, data):
+        errors = {}
+        cedula, cedula_prefijo, _ = normalize_cedula(errors, data)
+        clean = {
+            'cedula': cedula,
+            'cedula_prefijo': cedula_prefijo,
+            'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=60, person=True),
+            'apellido': require_text(errors, 'apellido', data.get('apellido'), 'El apellido', min_len=2, max_len=60, person=True),
+            'telefono': normalize_phone(errors, data.get('telefono'), required=False),
+            'especialidad': optional_text(errors, 'especialidad', data.get('especialidad'), 'La especialidad', max_len=120, allow_serial=False),
+        }
+        if errors:
+            raise ValidationError(errors)
+        return clean
+
     def _create(self, data):
-        self.cedula = data['cedula']
-        self.nombre = data['nombre']
-        self.apellido = data['apellido']
-        self.telefono = data.get('telefono', '')
-        self.especialidad = data.get('especialidad', '')
-        return self.insert("transalca",
+        clean = self._validate(data)
+        data = {**data, **clean}
+        self.cedula = clean['cedula']
+        self.nombre = clean['nombre']
+        self.apellido = clean['apellido']
+        self.telefono = clean.get('telefono', '') or ''
+        self.especialidad = clean.get('especialidad', '') or ''
+        existing = self._get_by_cedula(self._cedula)
+        if existing:
+            if existing['estado'] == 1:
+                raise ValidationError({'cedula': 'Esta cedula ya esta registrada.'})
+            sets = ["cedula_prefijo=%s", "nombre_mecanico=%s", "apellido_mecanico=%s", "telefono_mecanico=%s", "especialidad_mecanico=%s"]
+            params = [clean.get('cedula_prefijo'), self._nombre, self._apellido, self._telefono, self._especialidad]
+            if data.get('foto_perfil'):
+                sets.append("foto_perfil_mecanico=%s")
+                params.append(data['foto_perfil'])
+            sets.append("estado=1")
+            params.append(existing['cedula'])
+            self.update("transalca", "UPDATE mecanicos SET " + ", ".join(sets) + " WHERE cedula_mecanico=%s", tuple(params))
+            return existing['cedula']
+        self.insert("transalca",
             "INSERT INTO mecanicos (cedula_mecanico, cedula_prefijo, nombre_mecanico, apellido_mecanico, "
             "telefono_mecanico, especialidad_mecanico, foto_perfil_mecanico) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-            (self._cedula, data.get('cedula_prefijo'), self._nombre, self._apellido,
+            (self._cedula, clean.get('cedula_prefijo'), self._nombre, self._apellido,
              self._telefono, self._especialidad,
              data.get('foto_perfil', 'default.png')))
+        return self._cedula
 
     def _update_mechanic(self, old_cedula, data):
-        self.cedula = data['cedula']
-        self.nombre = data['nombre']
-        self.apellido = data['apellido']
-        self.telefono = data.get('telefono', '')
-        self.especialidad = data.get('especialidad', '')
+        clean = self._validate(data)
+        old_cedula = (old_cedula or '').strip()
+        if not old_cedula:
+            raise ValidationError({'old_cedula': 'Identificador requerido.'})
+        if clean['cedula'] != old_cedula and self._cedula_exists(clean['cedula']):
+            raise ValidationError({'cedula': 'Esta cedula ya esta registrada.'})
+        self.cedula = clean['cedula']
+        self.nombre = clean['nombre']
+        self.apellido = clean['apellido']
+        self.telefono = clean.get('telefono', '') or ''
+        self.especialidad = clean.get('especialidad', '') or ''
+        data = {**data, **clean}
         sets = ["cedula_mecanico=%s", "cedula_prefijo=%s", "nombre_mecanico=%s", "apellido_mecanico=%s",
                 "telefono_mecanico=%s", "especialidad_mecanico=%s"]
         params = [self._cedula, data.get('cedula_prefijo'), self._nombre,
@@ -158,13 +197,14 @@ class MechanicModel(Connection):
             (cedula,))
 
     def _reactivar(self, cedula):
-        return self.update("transalca", "UPDATE mecanicos SET estado = 1 WHERE cedula = %s", (cedula,))
+        return self.update("transalca", "UPDATE mecanicos SET estado = 1 WHERE cedula_mecanico = %s", (cedula,))
 
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {
             "get_all": self._get_all,
             "get_by_cedula": self._get_by_cedula,
             "get_active": self._get_active,
+            "validate": self._validate,
             "create": self._create,
             "update_mechanic": self._update_mechanic,
             "soft_delete": self._soft_delete,

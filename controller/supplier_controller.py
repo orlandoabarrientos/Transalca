@@ -1,28 +1,10 @@
 from flask import Blueprint, request, jsonify, session
 from model.supplier_model import SupplierModel
 
-from config.validation import normalize_email, normalize_phone, normalize_rif, optional_text, require_text
+from config.validation import ValidationError, normalize_email, normalize_rif
 
 supplier_bp = Blueprint('suppliers', __name__)
 model = SupplierModel()
-
-
-
-def _validate_supplier(data):
-    errors = {}
-    rif, rif_prefijo, _ = normalize_rif(errors, data)
-    direccion_raw = data.get('direccion')
-    if direccion_raw is not None and str(direccion_raw) != '' and not str(direccion_raw).strip():
-        errors['direccion'] = 'La direccion no puede contener solo espacios en blanco.'
-    clean = {
-        'rif': rif,
-        'rif_prefijo': rif_prefijo,
-        'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=150, allow_serial=False),
-        'telefono': normalize_phone(errors, data.get('telefono'), required=False),
-        'email': normalize_email(errors, data.get('email'), required=False),
-        'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40)
-    }
-    return clean, errors
 
 
 @supplier_bp.route('/', methods=['GET'])
@@ -78,23 +60,10 @@ def create():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        data, errors = _validate_supplier(request.get_json() or {})
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        existing = model.ejecutar("get_by_rif", data['rif'])
-        if existing:
-            if existing['estado'] == 1:
-                return jsonify({"status": "error", "message": "Este rif ya esta registrado.", "errors": {"rif": "Este rif ya esta registrado."}}), 400
-            else:
-                model.ejecutar("update_supplier", existing['rif'], data)
-                model.ejecutar("reactivar", existing['rif'])
-
-                return jsonify({"status": "success", "message": "Proveedor registrado correctamente.", "rif": existing['rif']})
-        if data.get('email') and model.ejecutar("email_exists_globally", data['email'], {"proveedor_rif": data['rif']}):
-            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        model.ejecutar("create", data)
-
-        return jsonify({"status": "success", "message": "Proveedor registrado correctamente.", "rif": data['rif']})
+        rif = model.ejecutar("create", request.get_json() or {})
+        return jsonify({"status": "success", "message": "Proveedor registrado correctamente.", "rif": rif})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar el proveedor."}), 500
 
@@ -105,19 +74,10 @@ def update():
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
         raw = request.get_json() or {}
-        old_rif = raw.get('old_rif', '')
-        data, errors = _validate_supplier(raw)
-        if not old_rif:
-            errors['old_rif'] = 'Identificador de proveedor requerido.'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if data['rif'] != old_rif and model.ejecutar("rif_exists", data['rif']):
-            return jsonify({"status": "error", "message": "Este rif ya esta registrado.", "errors": {"rif": "Este rif ya esta registrado."}}), 400
-        if data.get('email') and model.ejecutar("email_exists_globally", data['email'], {"proveedor_rif": old_rif}):
-            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        model.ejecutar("update_supplier", old_rif, data)
-
+        model.ejecutar("update_supplier", raw.get('old_rif', ''), raw)
         return jsonify({"status": "success", "message": "Proveedor modificado correctamente."})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el proveedor."}), 500
 

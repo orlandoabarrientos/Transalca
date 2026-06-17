@@ -1,4 +1,15 @@
+import re
 from model.connection import Connection
+from config.constants import TIPOS_PROMOCION
+from config.validation import (
+    ValidationError,
+    normalize_int,
+    optional_text,
+    require_text,
+    validate_choice,
+)
+
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 class PromotionModel(Connection):
@@ -81,30 +92,63 @@ class PromotionModel(Connection):
     def _get_by_id(self, promo_id):
         return self._format_promo_dates(self.fetch_one("transalca", "SELECT pr.*, pr.id_promocion AS id, pr.nombre_promocion AS nombre, pr.descripcion_promocion AS descripcion, pr.tipo_promocion AS tipo, pr.recompensa_promocion AS recompensa, pr.fecha_inicio_promocion AS fecha_inicio, pr.fecha_fin_promocion AS fecha_fin FROM promociones pr WHERE pr.id_promocion = %s", (promo_id,)))
 
+    def _validate(self, data):
+        errors = {}
+        clean = {
+            'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=150, allow_serial=False),
+            'descripcion': optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=500, allow_serial=True),
+            'tipo': validate_choice(errors, 'tipo', data.get('tipo'), TIPOS_PROMOCION),
+            'puntos_requeridos': normalize_int(errors, 'puntos_requeridos', data.get('puntos_requeridos') or 1, 'Los puntos', min_value=1, max_value=999999),
+            'recompensa': optional_text(errors, 'recompensa', data.get('recompensa'), 'La recompensa', max_len=200, allow_serial=True),
+            'fecha_inicio': data.get('fecha_inicio') or None,
+            'fecha_fin': data.get('fecha_fin') or None,
+        }
+        for field in ('fecha_inicio', 'fecha_fin'):
+            if clean[field] and not DATE_RE.match(str(clean[field])):
+                errors[field] = 'La fecha debe tener formato valido.'
+        if clean['fecha_inicio'] and clean['fecha_fin'] and clean['fecha_fin'] < clean['fecha_inicio']:
+            errors['fecha_fin'] = 'La fecha fin no puede ser menor que la fecha inicio.'
+        if errors:
+            raise ValidationError(errors)
+        return clean
+
+    def _apply_save(self, clean):
+        self.nombre = clean['nombre']
+        self.descripcion = clean.get('descripcion', '') or ''
+        self.recompensa = clean.get('recompensa', '') or ''
+        self.fecha_inicio = clean.get('fecha_inicio')
+        self.fecha_fin = clean.get('fecha_fin')
+
+    def _apply_update(self, promo_id, clean):
+        self._apply_save(clean)
+        return self.update("transalca",
+            "UPDATE promociones SET nombre_promocion = %s, descripcion_promocion = %s, tipo_promocion = %s, puntos_requeridos = %s, recompensa_promocion = %s, fecha_inicio_promocion = %s, fecha_fin_promocion = %s WHERE id_promocion = %s",
+            (self._nombre, self._descripcion, clean.get('tipo', 'puntos'),
+             clean.get('puntos_requeridos', 3), self._recompensa,
+             self._fecha_inicio, self._fecha_fin, promo_id))
+
     def _create(self, data):
-        self.nombre = data['nombre']
-        self.descripcion = data.get('descripcion', '')
-        self.recompensa = data.get('recompensa', '')
-        self.fecha_inicio = data.get('fecha_inicio')
-        self.fecha_fin = data.get('fecha_fin')
+        clean = self._validate(data)
+        existing = self._get_by_nombre(clean['nombre'])
+        if existing:
+            if existing['estado'] == 1:
+                raise ValidationError({'nombre': 'Ya existe una promocion con ese nombre.'})
+            self._apply_update(existing['id'], clean)
+            self._reactivar(existing['id'])
+            return existing['id']
+        self._apply_save(clean)
         return self.insert("transalca",
             "INSERT INTO promociones (nombre_promocion, descripcion_promocion, tipo_promocion, puntos_requeridos, recompensa_promocion, imagen_tarjeta, fecha_inicio_promocion, fecha_fin_promocion) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-            (self._nombre, self._descripcion, data.get('tipo', 'puntos'),
-             data.get('puntos_requeridos', 3), self._recompensa,
-             data.get('imagen_tarjeta', 'default_card.png'),
+            (self._nombre, self._descripcion, clean.get('tipo', 'puntos'),
+             clean.get('puntos_requeridos', 3), self._recompensa,
+             'default_card.png',
              self._fecha_inicio, self._fecha_fin))
 
     def _update_promotion(self, promo_id, data):
-        self.nombre = data['nombre']
-        self.descripcion = data.get('descripcion', '')
-        self.recompensa = data.get('recompensa', '')
-        self.fecha_inicio = data.get('fecha_inicio')
-        self.fecha_fin = data.get('fecha_fin')
-        return self.update("transalca",
-            "UPDATE promociones SET nombre_promocion = %s, descripcion_promocion = %s, tipo_promocion = %s, puntos_requeridos = %s, recompensa_promocion = %s, fecha_inicio_promocion = %s, fecha_fin_promocion = %s WHERE id_promocion = %s",
-            (self._nombre, self._descripcion, data.get('tipo', 'puntos'),
-             data.get('puntos_requeridos', 3), self._recompensa,
-             self._fecha_inicio, self._fecha_fin, promo_id))
+        clean = self._validate(data)
+        if self._nombre_exists(clean['nombre'], promo_id):
+            raise ValidationError({'nombre': 'Ya existe una promocion con ese nombre.'})
+        return self._apply_update(promo_id, clean)
 
     def _update_image(self, promo_id, filename):
         return self.update("transalca",
@@ -259,13 +303,14 @@ class PromotionModel(Connection):
         return self._format_promo_dates(self.fetch_one("transalca", "SELECT pr.*, pr.id_promocion AS id, pr.nombre_promocion AS nombre, pr.descripcion_promocion AS descripcion, pr.tipo_promocion AS tipo, pr.recompensa_promocion AS recompensa, pr.fecha_inicio_promocion AS fecha_inicio, pr.fecha_fin_promocion AS fecha_fin FROM promociones pr WHERE pr.nombre_promocion = %s", (nombre,)))
 
     def _reactivar(self, promo_id):
-        return self.update("transalca", "UPDATE promociones SET estado = 1 WHERE id = %s", (promo_id,))
+        return self.update("transalca", "UPDATE promociones SET estado = 1 WHERE id_promocion = %s", (promo_id,))
 
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {
             "get_all": self._get_all,
             "get_active": self._get_active,
             "get_by_id": self._get_by_id,
+            "validate": self._validate,
             "create": self._create,
             "update_promotion": self._update_promotion,
             "update_image": self._update_image,

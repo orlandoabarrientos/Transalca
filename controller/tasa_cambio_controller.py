@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from model.tasa_cambio_model import TasaCambioModel
+from config.validation import ValidationError
 
 from model.bcv_sync_model import sync_bcv_rate_if_needed
 
@@ -54,24 +55,10 @@ def create():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        data = request.get_json()
-        errors = {}
-        if not data.get('fecha'):
-            errors['fecha'] = 'Fecha requerida'
-        try:
-            monto = float(data.get('monto', 0))
-            if monto <= 0:
-                errors['monto'] = 'El monto debe ser mayor a 0'
-        except (ValueError, TypeError):
-            errors['monto'] = 'Monto invalido'
-        if not data.get('fuente') or len(data['fuente'].strip()) < 2:
-            errors['fuente'] = 'Fuente requerida'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        tasa_id = model.ejecutar("create", data)
-
-
+        tasa_id = model.ejecutar("create", request.get_json() or {})
         return jsonify({"status": "success", "message": "Tasa registrada correctamente.", "id": tasa_id})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -81,24 +68,10 @@ def update(tasa_id):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        data = request.get_json() or {}
-        errors = {}
-        if not data.get('fecha'):
-            errors['fecha'] = 'Fecha requerida'
-        try:
-            monto = float(data.get('monto', 0))
-            if monto <= 0:
-                errors['monto'] = 'El monto debe ser mayor a 0'
-        except (ValueError, TypeError):
-            errors['monto'] = 'Monto invalido'
-        if not data.get('fuente') or len(data['fuente'].strip()) < 2:
-            errors['fuente'] = 'Fuente requerida'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        model.ejecutar("update_tasa", tasa_id, data)
-
-
+        model.ejecutar("update_tasa", tasa_id, request.get_json() or {})
         return jsonify({"status": "success", "message": "Tasa modificada correctamente."})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 

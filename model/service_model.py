@@ -1,4 +1,12 @@
 from model.connection import Connection
+from config.validation import (
+    SELECT_TAMPER_MESSAGE,
+    ValidationError,
+    normalize_decimal,
+    normalize_int,
+    optional_text,
+    require_text,
+)
 
 SERVICIO_ALIAS = (
     "s.*, s.id_servicio AS id, s.nombre_servicio AS nombre, s.descripcion_servicio AS descripcion, "
@@ -98,30 +106,80 @@ class ServiceModel(Connection):
                 "INSERT INTO servicio_sucursal (servicio_id, sucursal_id) VALUES (%s, %s)",
                 (sid, sucursal_id))
 
+    def _validate(self, data, current_id=None):
+        errors = {}
+        clean = {}
+        clean['nombre'] = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=200, allow_serial=False)
+        clean['descripcion'] = optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=1000)
+        clean['precio'] = normalize_decimal(errors, 'precio', data.get('precio'), 'El precio')
+        clean['duracion_estimada'] = normalize_int(errors, 'duracion_estimada', data.get('duracion_estimada') or 60, 'La duracion', min_value=1, max_value=1440)
+        tipo = (data.get('tipo') or '').strip().lower()
+        if not tipo:
+            errors['tipo'] = 'El tipo de servicio es obligatorio.'
+        elif tipo not in ('alineacion', 'rotacion', 'balanceo', 'cambio_aceite', 'general'):
+            errors['tipo'] = SELECT_TAMPER_MESSAGE
+        else:
+            clean['tipo'] = tipo
+        current = self._get_by_id(current_id) if current_id else None
+        current_suc_ids = [int(v) for v in (current.get('sucursal_ids') or '').split(',') if v] if current else []
+        raw_ids = data.get('sucursal_ids')
+        if raw_ids is None:
+            raw_ids = [data.get('sucursal_id')] if data.get('sucursal_id') else []
+        if isinstance(raw_ids, str):
+            raw_ids = [v for v in raw_ids.split(',') if v]
+        clean['sucursal_ids'] = []
+        for raw_id in raw_ids:
+            try:
+                sucursal_id = int(raw_id)
+            except (TypeError, ValueError):
+                errors['sucursal_id'] = SELECT_TAMPER_MESSAGE
+            else:
+                is_current_suc = sucursal_id in current_suc_ids
+                if not is_current_suc and not self._sucursal_exists(sucursal_id):
+                    errors['sucursal_id'] = SELECT_TAMPER_MESSAGE
+                elif sucursal_id not in clean['sucursal_ids']:
+                    clean['sucursal_ids'].append(sucursal_id)
+        if not clean['sucursal_ids'] and not errors.get('sucursal_id'):
+            errors['sucursal_id'] = 'Debe seleccionar al menos una sucursal.'
+        if errors:
+            raise ValidationError(errors)
+        return clean
+
+    def _apply_fields(self, clean):
+        self.nombre = clean['nombre']
+        self.descripcion = clean.get('descripcion', '') or ''
+        self.tipo = clean.get('tipo', 'general')
+        self.precio = clean['precio']
+
     def _create(self, data):
-        self.nombre = data['nombre']
-        self.descripcion = data.get('descripcion', '')
-        self.tipo = data.get('tipo', 'general')
-        self.precio = data['precio']
-        duration = data.get('duracion_estimada', 60)
+        clean = self._validate(data)
+        self._apply_fields(clean)
+        duration = clean.get('duracion_estimada', 60)
+        existing = self._get_by_nombre(clean['nombre'])
+        if existing:
+            if existing['estado'] == 1:
+                raise ValidationError({'nombre': 'Ya existe un servicio con ese nombre.'})
+            self.update("transalca",
+                "UPDATE servicios SET nombre_servicio=%s, descripcion_servicio=%s, tipo_servicio=%s, precio_servicio=%s, duracion_estimada=%s, estado=1 WHERE id_servicio=%s",
+                (self._nombre, self._descripcion, self._tipo, self._precio, str(duration).strip(), existing['id']))
+            self._sync_sucursales(existing['id'], clean.get('sucursal_ids') or [])
+            return existing['id']
         sid = self.insert("transalca",
             "INSERT INTO servicios (nombre_servicio, descripcion_servicio, tipo_servicio, precio_servicio, duracion_estimada) VALUES (%s, %s, %s, %s, %s)",
-            (self._nombre, self._descripcion, self._tipo, self._precio,
-             str(duration).strip()))
-        self._sync_sucursales(sid, data.get('sucursal_ids') or [])
+            (self._nombre, self._descripcion, self._tipo, self._precio, str(duration).strip()))
+        self._sync_sucursales(sid, clean.get('sucursal_ids') or [])
         return sid
 
     def _update_service(self, sid, data):
-        self.nombre = data['nombre']
-        self.descripcion = data.get('descripcion', '')
-        self.tipo = data.get('tipo', 'general')
-        self.precio = data['precio']
-        duration = data.get('duracion_estimada', 60)
+        clean = self._validate(data, current_id=sid)
+        if self._nombre_exists(clean['nombre'], sid):
+            raise ValidationError({'nombre': 'Ya existe un servicio con ese nombre.'})
+        self._apply_fields(clean)
+        duration = clean.get('duracion_estimada', 60)
         result = self.update("transalca",
             "UPDATE servicios SET nombre_servicio = %s, descripcion_servicio = %s, tipo_servicio = %s, precio_servicio = %s, duracion_estimada = %s WHERE id_servicio = %s",
-            (self._nombre, self._descripcion, self._tipo, self._precio,
-             str(duration).strip(), sid))
-        self._sync_sucursales(sid, data.get('sucursal_ids') or [])
+            (self._nombre, self._descripcion, self._tipo, self._precio, str(duration).strip(), sid))
+        self._sync_sucursales(sid, clean.get('sucursal_ids') or [])
         return result
 
     def _soft_delete(self, sid):
@@ -142,7 +200,7 @@ class ServiceModel(Connection):
             "SELECT " + SERVICIO_ALIAS + " FROM servicios s WHERE s.nombre_servicio = %s", (nombre,))
 
     def _reactivar(self, sid):
-        return self.update("transalca", "UPDATE servicios SET estado = 1 WHERE id = %s", (sid,))
+        return self.update("transalca", "UPDATE servicios SET estado = 1 WHERE id_servicio = %s", (sid,))
 
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {

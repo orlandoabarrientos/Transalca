@@ -1,17 +1,6 @@
-from decimal import Decimal
-
 from flask import Blueprint, jsonify, request
 
-from config.validation import (
-    normalize_cedula,
-    normalize_decimal,
-    normalize_email,
-    normalize_int,
-    normalize_phone,
-    normalize_rif,
-    optional_text,
-    require_text,
-)
+from config.validation import ValidationError, normalize_cedula, normalize_email, normalize_rif
 from controller._guards import can_access_client, deny, is_employee, require_login
 from model.company_model import CompanyModel
 
@@ -20,24 +9,6 @@ from model.company_model import CompanyModel
 company_bp = Blueprint('companies', __name__)
 model = CompanyModel()
 
-
-
-def _validate_company(data, require_rif=True):
-    errors = {}
-    clean = {}
-    if require_rif:
-        rif, prefix, _ = normalize_rif(errors, data)
-        clean['rif'] = rif
-        clean['rif_prefijo'] = prefix
-    clean['razon_social'] = require_text(errors, 'razon_social', data.get('razon_social'), 'La razon social', min_len=2, max_len=60, allow_serial=True)
-    clean['nombre_comercial'] = optional_text(errors, 'nombre_comercial', data.get('nombre_comercial'), 'El nombre comercial', max_len=200)
-    clean['telefono'] = normalize_phone(errors, data.get('telefono'))
-    clean['email'] = normalize_email(errors, data.get('email'), required=False)
-    clean['direccion'] = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40)
-    clean['sector'] = optional_text(errors, 'sector', data.get('sector'), 'El sector', max_len=150)
-    clean['limite_credito'] = normalize_decimal(errors, 'limite_credito', data.get('limite_credito') or '0', 'El limite de credito', min_value=Decimal('0'))
-    clean['dias_credito'] = normalize_int(errors, 'dias_credito', data.get('dias_credito') or 0, 'Los dias de credito', min_value=0, max_value=365)
-    return clean, errors
 
 
 @company_bp.route('/', methods=['GET'])
@@ -131,17 +102,10 @@ def create():
         if not is_employee():
             return deny()
         data = request.get_json() or {}
-        clean, errors = _validate_company(data, True)
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        existing = model.ejecutar("get_by_rif", clean['rif'])
-        if existing and existing.get('estado'):
-            return jsonify({"status": "error", "message": "Este rif ya esta registrado.", "errors": {"rif": "Este rif ya esta registrado."}}), 400
-        if clean.get('email') and model.ejecutar("email_exists_globally", clean['email'], {"cliente_cedula": clean['rif']}):
-            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        result = model.ejecutar("create", clean)
-
+        result = model.ejecutar("create", data)
         return jsonify({"status": "success", "message": "Empresa registrada correctamente.", "id": result.get('rif')}), 201
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -155,14 +119,10 @@ def update(rif):
         if not is_employee():
             return deny()
         data = request.get_json() or {}
-        clean, errors = _validate_company({**data, 'rif': rif}, False)
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if clean.get('email') and model.ejecutar("email_exists_globally", clean['email'], {"cliente_cedula": rif}):
-            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        model.ejecutar("update_company", rif, clean)
-
+        model.ejecutar("update_company", rif, data)
         return jsonify({"status": "success", "message": "Empresa modificada correctamente."})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -191,27 +151,10 @@ def add_representative(rif):
         if not is_employee():
             return deny()
         data = request.get_json() or {}
-        errors = {}
-        cedula, prefijo, _ = normalize_cedula(errors, data, field='cedula', required=True)
-        clean = {
-            'cedula': cedula,
-            'cedula_prefijo': prefijo,
-            'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=100, person=True),
-            'apellido': optional_text(errors, 'apellido', data.get('apellido'), 'El apellido', max_len=100, person=True),
-            'telefono': normalize_phone(errors, data.get('telefono')),
-            'email': normalize_email(errors, data.get('email'), required=False),
-            'cargo': require_text(errors, 'cargo', data.get('cargo'), 'El cargo', min_len=2, max_len=50),
-            'estado': int(data.get('estado', 1))
-        }
-        if not errors.get('cedula') and clean['cedula']:
-            owner = model.ejecutar("find_representative_by_cedula", clean['cedula'])
-            if owner and owner['empresa_rif'] != rif:
-                errors['cedula'] = 'Esta cedula ya esta registrada como representante de otra empresa.'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-
-        model.ejecutar("add_representative", rif, clean)
+        model.ejecutar("add_representative", rif, data)
         return jsonify({"status": "success", "message": "Representante guardado correctamente."})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo registrar el representante."}), 500
 

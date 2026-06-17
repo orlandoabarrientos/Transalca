@@ -2,9 +2,12 @@
 (function () {
     'use strict';
 
-    const ASSISTANT_API_URL = window.TRANSALCA_ASSISTANT_API_URL || '';
+    const ASSISTANT_API_URL = window.TRANSALCA_ASSISTANT_API_URL || resolveAssistantApiUrl();
     const WEBHOOK_URL = window.TRANSALCA_ASSISTANT_WEBHOOK_URL || '';
     const BOT_NAME = 'Asistente Transalca';
+    const REQUEST_TIMEOUT_MS = Number(window.TRANSALCA_ASSISTANT_TIMEOUT_MS || 12000);
+    const SHOW_SUGGESTIONS = window.TRANSALCA_ASSISTANT_SHOW_SUGGESTIONS !== false
+        && String(window.TRANSALCA_ASSISTANT_SHOW_SUGGESTIONS ?? 'true').toLowerCase() !== 'false';
     const BRAND_WELCOME_MSG = 'Hola! Soy el asistente de Transalca Group. Cuentame que necesitas y te ayudo. Si quieres hablar con una persona real, me dices y te paso el numero.';
     const WELCOME_MSG = 'Hola! Soy el asistente de Transalca Group. Cuentame que necesitas y te ayudo. Si quieres hablar con una persona real, me dices y te paso el numero.';
     const SUGGESTIONS = [
@@ -18,6 +21,15 @@
     let sessionId = null;
     let isOpen = false;
     let messages = [];
+
+    function resolveAssistantApiUrl() {
+        const devPorts = ['3000', '5173', '5500', '5501'];
+        const isDetachedFrontend = window.location.protocol === 'file:' || devPorts.includes(window.location.port);
+        if (isDetachedFrontend) {
+            return 'http://127.0.0.1:5000/api/asistente/mensaje';
+        }
+        return '/api/asistente/mensaje';
+    }
 
     function generateSessionId() {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -92,6 +104,11 @@
         const container = document.getElementById('chatChips');
         if (!container) return;
         container.innerHTML = '';
+        if (!SHOW_SUGGESTIONS) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = '';
         SUGGESTIONS.forEach(text => {
             const chip = document.createElement('span');
             chip.className = 'chat-chip';
@@ -148,8 +165,8 @@
         scrollToBottom();
     }
 
-    function addBotMessage(text) {
-        const msg = { type: 'bot', text, time: new Date() };
+    function addBotMessage(text, sources) {
+        const msg = { type: 'bot', text, sources: Array.isArray(sources) ? sources.slice(0, 4) : [], time: new Date() };
         messages.push(msg);
         renderMessage(msg);
         scrollToBottom();
@@ -162,9 +179,46 @@
         const div = document.createElement('div');
         div.className = `chat-msg ${msg.type}`;
 
-        const timeStr = msg.time.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
-        div.innerHTML = `${msg.text}<div class="chat-msg-time">${timeStr}</div>`;
+        const text = document.createElement('span');
+        text.textContent = msg.text;
+        const time = document.createElement('div');
+        time.className = 'chat-msg-time';
+        time.textContent = msg.time.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+        div.appendChild(text);
+        if (msg.type === 'bot' && Array.isArray(msg.sources) && msg.sources.length) {
+            div.appendChild(renderSources(msg.sources));
+        }
+        div.appendChild(time);
         container.appendChild(div);
+    }
+
+    function renderSources(sources) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'chat-sources';
+        const title = document.createElement('div');
+        title.className = 'chat-sources-title';
+        title.textContent = 'Fuentes';
+        wrapper.appendChild(title);
+        sources.slice(0, 4).forEach((source) => {
+            const url = String(source.url || '');
+            const label = String(source.title || source.domain || 'Referencia').slice(0, 90);
+            const domain = String(source.domain || '').slice(0, 80);
+            const item = document.createElement('a');
+            item.className = 'chat-source-link';
+            item.textContent = domain ? `${label} (${domain})` : label;
+            try {
+                const parsed = new URL(url);
+                if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+                    item.href = parsed.href;
+                    item.target = '_blank';
+                    item.rel = 'noopener noreferrer';
+                }
+            } catch (error) {
+                item.removeAttribute('href');
+            }
+            wrapper.appendChild(item);
+        });
+        return wrapper;
     }
 
     function scrollToBottom() {
@@ -192,10 +246,13 @@
 
     async function sendToAssistant(message) {
         if (ASSISTANT_API_URL) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
             try {
                 const response = await fetch(ASSISTANT_API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal,
                     body: JSON.stringify({
                         session_id: sessionId,
                         id_aleatorio: sessionId,
@@ -211,14 +268,20 @@
                 if (response.ok) {
                     const data = await response.json();
                     const botReply = data.respuesta || data.message || data.output || data.text || 'Recibido. Un asesor te contactará pronto.';
-                    addBotMessage(botReply);
+                    addBotMessage(botReply, data.sources || []);
                 } else {
                     addBotMessage('Disculpa, hubo un problema al procesar tu solicitud. Intenta de nuevo o llámanos al +58 424-5026456.');
                 }
+                clearTimeout(timeout);
                 return;
             } catch (error) {
+                clearTimeout(timeout);
                 hideTyping();
-                addBotMessage('No se pudo conectar con el asistente. Por favor intenta más tarde o contáctanos directamente al +58 424-5026456.');
+                if (error && error.name === 'AbortError') {
+                    addBotMessage('La consulta tardo demasiado y fue cancelada. Intenta con una pregunta mas puntual o prueba de nuevo.');
+                } else {
+                    addBotMessage('No se pudo conectar con el asistente. Por favor intenta más tarde o contáctanos directamente al +58 424-5026456.');
+                }
                 return;
             }
         }
@@ -244,10 +307,13 @@
             return;
         }
 
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
         try {
             const response = await fetch(WEBHOOK_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal,
                 body: JSON.stringify(payload)
             });
 
@@ -256,13 +322,19 @@
             if (response.ok) {
                 const data = await response.json();
                 const botReply = data.respuesta || data.message || data.output || data.text || 'Recibido. Un asesor te contactará pronto.';
-                addBotMessage(botReply);
+                addBotMessage(botReply, data.sources || []);
             } else {
                 addBotMessage('Disculpa, hubo un problema al procesar tu solicitud. Intenta de nuevo o llámanos al +58 424-5026456.');
             }
+            clearTimeout(timeout);
         } catch (error) {
+            clearTimeout(timeout);
             hideTyping();
-            addBotMessage('No se pudo conectar con el asistente. Por favor intenta más tarde o contáctanos directamente al +58 424-5026456.');
+            if (error && error.name === 'AbortError') {
+                addBotMessage('La consulta tardo demasiado y fue cancelada. Intenta con una pregunta mas puntual o prueba de nuevo.');
+            } else {
+                addBotMessage('No se pudo conectar con el asistente. Por favor intenta más tarde o contáctanos directamente al +58 424-5026456.');
+            }
         }
     }
 

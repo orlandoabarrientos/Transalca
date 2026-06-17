@@ -1,4 +1,5 @@
 from model.connection import Connection
+from config.validation import ValidationError, require_text
 
 METODO_PAGO_ALIAS = "mp.*, mp.id_metodo_pago AS id, mp.nombre_metodo_pago AS nombre, mp.datos_metodo_pago AS datos_pago"
 
@@ -83,20 +84,45 @@ class PaymentMethodModel(Connection):
         return self.fetch_one("transalca",
             "SELECT " + METODO_PAGO_ALIAS + " FROM metodos_pago mp WHERE LOWER(mp.nombre_metodo_pago) = LOWER(%s)", (value,))
 
+    def _validate(self, data):
+        errors = {}
+        clean = {}
+        clean['nombre'] = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=100, allow_serial=True)
+        clean['datos_pago'] = require_text(errors, 'datos_pago', data.get('datos_pago'), 'Los datos de pago', min_len=3, max_len=80, allow_serial=True)
+        clean['permite_credito'] = 1 if data.get('permite_credito') in (1, '1', True, 'true', 'on') else 0
+        clean['moneda'] = (data.get('moneda') or 'usd').strip().lower()
+        if clean['moneda'] not in ('usd', 'bs'):
+            errors['moneda'] = 'La moneda debe ser usd o bs.'
+        if errors:
+            raise ValidationError(errors)
+        return clean
+
     def _create(self, data):
-        self.nombre = data['nombre']
-        self.permite_credito = data.get('permite_credito')
-        self.moneda = data.get('moneda', 'usd')
-        self.datos_pago = data.get('datos_pago') or ''
+        clean = self._validate(data)
+        self.nombre = clean['nombre']
+        self.permite_credito = clean['permite_credito']
+        self.moneda = clean['moneda']
+        self.datos_pago = clean['datos_pago']
+        existing = self._get_by_name(clean['nombre'])
+        if existing:
+            if existing['estado'] == 1:
+                raise ValidationError({'nombre': 'Este método de pago ya está registrado.'})
+            self.update("transalca",
+                "UPDATE metodos_pago SET nombre_metodo_pago=%s, permite_credito=%s, moneda=%s, datos_metodo_pago=%s, estado=1 WHERE id_metodo_pago=%s",
+                (self._nombre, self._permite_credito, self._moneda, self._datos_pago, existing['id']))
+            return existing['id']
         return self.insert("transalca",
             "INSERT INTO metodos_pago (nombre_metodo_pago, permite_credito, moneda, datos_metodo_pago) VALUES (%s,%s,%s,%s)",
             (self._nombre, self._permite_credito, self._moneda, self._datos_pago))
 
     def _update_method(self, method_id, data):
-        self.nombre = data['nombre']
-        self.permite_credito = data.get('permite_credito')
-        self.moneda = data.get('moneda', 'usd')
-        self.datos_pago = data.get('datos_pago') or ''
+        clean = self._validate(data)
+        if self._name_exists(clean['nombre'], method_id):
+            raise ValidationError({'nombre': 'Este método de pago ya está registrado.'})
+        self.nombre = clean['nombre']
+        self.permite_credito = clean['permite_credito']
+        self.moneda = clean['moneda']
+        self.datos_pago = clean['datos_pago']
         return self.update("transalca",
             "UPDATE metodos_pago SET nombre_metodo_pago=%s, permite_credito=%s, moneda=%s, datos_metodo_pago=%s WHERE id_metodo_pago=%s",
             (self._nombre, self._permite_credito, self._moneda, self._datos_pago, method_id))
@@ -106,7 +132,7 @@ class PaymentMethodModel(Connection):
             "UPDATE metodos_pago SET estado=0 WHERE id_metodo_pago=%s", (method_id,))
 
     def _reactivar(self, method_id):
-        return self.update("transalca", "UPDATE metodos_pago SET estado = 1 WHERE id = %s", (method_id,))
+        return self.update("transalca", "UPDATE metodos_pago SET estado = 1 WHERE id_metodo_pago = %s", (method_id,))
 
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {

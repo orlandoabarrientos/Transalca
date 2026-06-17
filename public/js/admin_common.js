@@ -119,6 +119,172 @@ function syncSelect2ValidationState(el) {
     selection.classList.toggle('is-valid', el.classList.contains('is-valid'));
 }
 
+const SELECT_TAMPER_MESSAGE = 'El valor seleccionado no es válido o fue modificado. Recargue la página e intente nuevamente.';
+
+function selectAllowedValues(select) {
+    return Array.from(select.options || []).map(opt => opt.value);
+}
+
+function isSelectRequired(formId, select) {
+    if (select.required || select.dataset.required === 'true') return true;
+    const rule = formId && Validator.rules[formId] ? Validator.rules[formId][select.id] : null;
+    return !!(rule && rule.required);
+}
+
+function validateSelectIntegrity(formId, select) {
+    if (!select || select.tagName !== 'SELECT' || select.disabled) {
+        if (select) clearFieldError(select);
+        return true;
+    }
+    if (select.dataset.externalError) {
+        setFieldError(select, select.dataset.externalError);
+        return false;
+    }
+    const rule = formId && Validator.rules[formId] ? Validator.rules[formId][select.id] : null;
+    const required = isSelectRequired(formId, select);
+    const allowed = selectAllowedValues(select);
+    if (select.multiple) {
+        const selected = Array.from(select.selectedOptions).map(opt => opt.value).filter(val => val !== '');
+        if (selected.length === 0) {
+            if (required) { setFieldError(select, (rule && rule.requiredMsg) || 'Debe seleccionar al menos una opción.'); return false; }
+            clearFieldError(select); select.classList.remove('is-valid'); return true;
+        }
+        if (selected.some(val => !allowed.includes(val))) { setFieldError(select, SELECT_TAMPER_MESSAGE); return false; }
+        select.classList.add('is-valid'); clearFieldError(select); return true;
+    }
+    const value = (select.value || '').trim();
+    if (!value) {
+        if (required) { setFieldError(select, (rule && rule.requiredMsg) || 'Debe seleccionar una opción.'); return false; }
+        clearFieldError(select); select.classList.remove('is-valid'); return true;
+    }
+    if (!allowed.includes(value)) { setFieldError(select, SELECT_TAMPER_MESSAGE); return false; }
+    select.classList.add('is-valid'); clearFieldError(select); return true;
+}
+
+let sidebarRenderInFlight = false;
+const SIDEBAR_GROUP_ORDER = ['Principal', 'Gestión', 'Servicios', 'Ventas', 'Sistema', 'Análisis'];
+
+async function renderDynamicSidebar() {
+    const sidebar = document.getElementById('adminSidebar');
+    if (!sidebar || sidebar.dataset.dynamicReady === '1' || sidebarRenderInFlight) return;
+    sidebarRenderInFlight = true;
+    try {
+        const res = await apiCall('/api/modulos/sidebar');
+        const mods = (res && res.data) || [];
+        if (!mods.length) { sidebarRenderInFlight = false; return; }
+        const groups = {};
+        mods.forEach(m => { (groups[m.grupo] = groups[m.grupo] || []).push(m); });
+        const orderedGroups = Object.keys(groups).sort((a, b) => {
+            const ia = SIDEBAR_GROUP_ORDER.indexOf(a), ib = SIDEBAR_GROUP_ORDER.indexOf(b);
+            return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+        });
+        let html = '';
+        orderedGroups.forEach(group => {
+            html += `<div class="nav-section">${escapeHtml(group)}</div>`;
+            groups[group].sort((a, b) => (a.orden || 0) - (b.orden || 0)).forEach(m => {
+                const page = (m.ruta || '').split('/').pop();
+                html += `<a href="${escapeHtml(m.ruta)}" class="nav-link" data-page="${escapeHtml(page)}"><i class="${escapeHtml(m.icono || 'bi bi-app')}"></i> ${escapeHtml(m.titulo)}</a>`;
+            });
+        });
+        html += '<hr style="border-color:rgba(255,255,255,0.1);margin:8px 16px;">';
+        html += '<a href="/client/home" class="nav-link" style="color:#22c55e;"><i class="bi bi-shop"></i> Ver Tienda</a>';
+        html += '<a href="#" class="nav-link" id="btnLogout"><i class="bi bi-box-arrow-left"></i> Cerrar Sesión</a>';
+        sidebar.innerHTML = html;
+        sidebar.dataset.dynamicReady = '1';
+        const path = window.location.pathname;
+        sidebar.querySelectorAll('.nav-link').forEach(link => {
+            if (link.getAttribute('href') === path) link.classList.add('active');
+        });
+    } catch (e) { }
+    sidebarRenderInFlight = false;
+}
+
+function setupImageRemovers(root = document) {
+    const scope = root instanceof Element ? root : document;
+    scope.querySelectorAll('input[type="file"]').forEach(input => {
+        const accept = (input.getAttribute('accept') || '').toLowerCase();
+        if (!accept.includes('image')) return;
+        if (input.dataset.removerBound === '1') return;
+        if (input.classList.contains('d-none') || (input.style && input.style.display === 'none')) return;
+        const container = input.closest('.mb-3, .form-group') || input.parentElement;
+        if (!container) return;
+        input.dataset.removerBound = '1';
+        let preview = container.querySelector('img');
+        if (!preview) {
+            preview = document.createElement('img');
+            preview.alt = 'Vista previa';
+            preview.style.display = 'none';
+            container.appendChild(preview);
+        }
+        let wrap = preview.closest('.image-preview-wrap');
+        if (!wrap) {
+            wrap = document.createElement('span');
+            wrap.className = 'image-preview-wrap';
+            preview.parentNode.insertBefore(wrap, preview);
+            wrap.appendChild(preview);
+        }
+        let btn = wrap.querySelector('.image-preview-remove');
+        if (!btn) {
+            btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'image-preview-remove';
+            btn.setAttribute('aria-label', 'Quitar imagen');
+            btn.innerHTML = '<i class="bi bi-x"></i>';
+            wrap.appendChild(btn);
+        }
+        const form = input.closest('form');
+        const removeFlagName = (input.name || input.id || 'imagen') + '_remove';
+        const syncVisibility = () => {
+            const hasSrc = !!preview.getAttribute('src');
+            const shown = getComputedStyle(preview).display !== 'none';
+            wrap.style.display = (hasSrc && shown) ? 'inline-block' : 'none';
+        };
+        btn.addEventListener('click', () => {
+            input.value = '';
+            preview.removeAttribute('src');
+            preview.style.display = 'none';
+            wrap.style.display = 'none';
+            if (form) {
+                let flag = form.querySelector(`input[name="${removeFlagName}"]`);
+                if (!flag) {
+                    flag = document.createElement('input');
+                    flag.type = 'hidden';
+                    flag.name = removeFlagName;
+                    form.appendChild(flag);
+                }
+                flag.value = '1';
+            }
+        });
+        input.addEventListener('change', () => {
+            if (form) {
+                const flag = form.querySelector(`input[name="${removeFlagName}"]`);
+                if (flag) flag.value = '';
+            }
+            const file = input.files && input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = event => { preview.src = event.target.result; preview.style.display = ''; syncVisibility(); };
+                reader.readAsDataURL(file);
+            }
+        });
+        new MutationObserver(syncVisibility).observe(preview, { attributes: true, attributeFilter: ['src', 'style'] });
+        syncVisibility();
+    });
+}
+
+function bindGlobalSelectGuards() {
+    if (document.body.dataset.selectGuardsBound === '1') return;
+    document.body.dataset.selectGuardsBound = '1';
+    document.addEventListener('change', event => {
+        const select = event.target && event.target.closest ? event.target.closest('select') : null;
+        if (!select) return;
+        const form = select.closest('form');
+        if (!form) return;
+        validateSelectIntegrity(form.id, select);
+        if (form.id) updateFormSubmitState(form.id);
+    });
+}
+
 function showToast(message, type = 'success') {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -189,8 +355,7 @@ const Validator = {
     },
 
     validate(formId) {
-        const rules = this.rules[formId];
-        if (!rules) return true;
+        const rules = this.rules[formId] || {};
         let isValid = true;
         document.querySelectorAll(`#${formId} .is-invalid`).forEach(el => el.classList.remove('is-invalid'));
         document.querySelectorAll(`#${formId} .is-valid`).forEach(el => el.classList.remove('is-valid'));
@@ -198,6 +363,7 @@ const Validator = {
         for (const [field, fieldRules] of Object.entries(rules)) {
             const el = document.getElementById(field) || document.querySelector(`#${formId} [name="${cssEscapeValue(field)}"]`);
             if (!el) continue;
+            if (el.tagName === 'SELECT') continue;
             const value = el.value.trim();
             let error = '';
 
@@ -233,6 +399,9 @@ const Validator = {
                 clearFieldError(el);
             }
         }
+        document.querySelectorAll(`#${formId} select`).forEach(sel => {
+            if (!validateSelectIntegrity(formId, sel)) isValid = false;
+        });
         return isValid;
     },
 
@@ -262,10 +431,13 @@ const Validator = {
 
     validateField(formId, field) {
         const rules = this.rules[formId];
-        if (!rules || !rules[field]) return true;
-        const fieldRules = rules[field];
         const el = document.querySelector(`#${formId} #${field}`) || document.getElementById(field) || document.querySelector(`#${formId} [name="${cssEscapeValue(field)}"]`);
         if (!el) return true;
+        if (el.tagName === 'SELECT') {
+            return validateSelectIntegrity(formId, el);
+        }
+        if (!rules || !rules[field]) return true;
+        const fieldRules = rules[field];
 
         let value = '';
         if (el.tagName === 'SELECT' && el.multiple) {
@@ -617,15 +789,117 @@ function bindInputGuards() {
     });
 }
 
+const formDrafts = {};
+
+function modalRecordKey(form) {
+    const idField = form.querySelector('input[name^="old_"], input[id^="old_"], input[name="id"], input[id="id"], input[name*="codigo"], input[name*="cedula"], input[name*="rif"], input[name*="placa"]');
+    const val = idField ? (idField.value || '').trim() : '';
+    return `${form.id || 'form'}:${val || 'new'}`;
+}
+
+function serializeDraft(form) {
+    const data = {};
+    form.querySelectorAll('input, select, textarea').forEach(el => {
+        if (!el.name && !el.id) return;
+        if (el.type === 'file' || el.type === 'password') return;
+        const key = el.id || el.name;
+        if (el.type === 'checkbox' || el.type === 'radio') data[key] = el.checked;
+        else if (el.multiple) data[key] = Array.from(el.selectedOptions).map(opt => opt.value);
+        else data[key] = el.value;
+    });
+    return data;
+}
+
+function draftHasContent(form, data) {
+    return Object.entries(data).some(([key, value]) => {
+        const el = document.getElementById(key) || form.querySelector(`[name="${cssEscapeValue(key)}"]`);
+        if (!el || el.type === 'hidden') return false;
+        if (Array.isArray(value)) return value.length > 0;
+        if (typeof value === 'boolean') return false;
+        return String(value || '').trim() !== '';
+    });
+}
+
+function saveModalDraft(form) {
+    if (!form || !form.id) return;
+    const data = serializeDraft(form);
+    if (!draftHasContent(form, data)) {
+        clearModalDraft(form);
+        return;
+    }
+    formDrafts[modalRecordKey(form)] = data;
+}
+
+function clearModalDraft(form) {
+    if (form) delete formDrafts[modalRecordKey(form)];
+}
+
+function restoreModalDrafts(modal) {
+    modal.querySelectorAll('form').forEach(form => {
+        if (!form.id) return;
+        const data = formDrafts[modalRecordKey(form)];
+        if (!data) return;
+        Object.entries(data).forEach(([key, value]) => {
+            const el = document.getElementById(key) || form.querySelector(`[name="${cssEscapeValue(key)}"]`);
+            if (!el || el.type === 'file') return;
+            if (el.type === 'checkbox' || el.type === 'radio') {
+                el.checked = !!value;
+            } else if (el.multiple && Array.isArray(value)) {
+                Array.from(el.options).forEach(opt => { opt.selected = value.includes(opt.value); });
+            } else {
+                el.value = value;
+            }
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        if (window.jQuery && window.jQuery.fn?.select2) {
+            form.querySelectorAll('select').forEach(sel => {
+                if (window.jQuery(sel).hasClass('select2-hidden-accessible')) window.jQuery(sel).trigger('change.select2');
+            });
+        }
+        delete form._initialState;
+        form._isDirty = true;
+        updateFormSubmitState(form.id);
+    });
+}
+
+function bindModalDismissReasons() {
+    if (document.body.dataset.modalDismissBound === '1') return;
+    document.body.dataset.modalDismissBound = '1';
+    document.addEventListener('mousedown', event => {
+        const modal = event.target.closest ? event.target.closest('.modal') : null;
+        if (!modal) return;
+        if (event.target === modal) { modal._dismissReason = 'x'; return; }
+        if (event.target.closest('.btn-close, [data-modal-close]')) { modal._dismissReason = 'x'; return; }
+        if (event.target.closest('[data-bs-dismiss="modal"]')) { modal._dismissReason = 'cancel'; }
+    }, true);
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        const modal = document.querySelector('.modal.show');
+        if (modal) modal._dismissReason = 'x';
+    }, true);
+}
+
 function bindModalValidationReset() {
     document.querySelectorAll('.modal').forEach(modal => {
         if (modal.dataset.validationResetBound) return;
         modal.dataset.validationResetBound = '1';
         modal.addEventListener('shown.bs.modal', () => {
             enhanceSearchableSelects(modal);
+            setupImageRemovers(modal);
+            setTimeout(() => restoreModalDrafts(modal), 200);
         });
         modal.addEventListener('hidden.bs.modal', () => {
-            modal.querySelectorAll('form').forEach(form => Validator.clearForm(form.id));
+            const reason = modal._dismissReason;
+            delete modal._dismissReason;
+            modal.querySelectorAll('form').forEach(form => {
+                if (reason === 'x') {
+                    saveModalDraft(form);
+                } else {
+                    clearModalDraft(form);
+                }
+                Validator.clearForm(form.id);
+            });
             cleanupUiLocks();
         });
     });
@@ -1062,8 +1336,12 @@ function runDomEnhancements(root = document) {
     domEnhancementRunning = true;
     try {
         bindModalValidationReset();
+        bindModalDismissReasons();
         bindReliableSidebarNavigation();
         bindInputGuards();
+        bindGlobalSelectGuards();
+        setupImageRemovers(root);
+        renderDynamicSidebar();
         enhanceSearchableSelects(root);
         installListSearches(root);
         hydrateDualPrices(root);

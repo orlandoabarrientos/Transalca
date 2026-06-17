@@ -1,5 +1,21 @@
-from model.connection import Connection
+from decimal import Decimal
 
+from model.connection import Connection
+from config.validation import (
+    ValidationError,
+    normalize_cedula,
+    normalize_decimal,
+    normalize_email,
+    normalize_int,
+    normalize_phone,
+    normalize_rif,
+    optional_text,
+    require_text,
+    validate_choice,
+)
+
+
+CARGOS_REPRESENTANTE = ['Representante legal', 'Encargado de flota', 'Persona autorizada', 'Otro']
 
 DEUDA_SQL = (
     "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc "
@@ -133,7 +149,33 @@ class CompanyModel(Connection):
         sql = self._company_select() + " AND c.identificador_cliente = %s"
         return self.fetch_one("transalca", sql, (rif,))
 
+    def _validate(self, data, require_rif=True):
+        errors = {}
+        clean = {}
+        if require_rif:
+            rif, prefix, _ = normalize_rif(errors, data)
+            clean['rif'] = rif
+            clean['rif_prefijo'] = prefix
+        clean['razon_social'] = require_text(errors, 'razon_social', data.get('razon_social'), 'La razon social', min_len=2, max_len=60, allow_serial=True)
+        clean['nombre_comercial'] = optional_text(errors, 'nombre_comercial', data.get('nombre_comercial'), 'El nombre comercial', max_len=200)
+        clean['telefono'] = normalize_phone(errors, data.get('telefono'))
+        clean['email'] = normalize_email(errors, data.get('email'), required=False)
+        clean['direccion'] = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40)
+        clean['sector'] = optional_text(errors, 'sector', data.get('sector'), 'El sector', max_len=150)
+        clean['limite_credito'] = normalize_decimal(errors, 'limite_credito', data.get('limite_credito') or '0', 'El limite de credito', min_value=Decimal('0'))
+        clean['dias_credito'] = normalize_int(errors, 'dias_credito', data.get('dias_credito') or 0, 'Los dias de credito', min_value=0, max_value=365)
+        if errors:
+            raise ValidationError(errors)
+        return clean
+
     def _create(self, data):
+        clean = self._validate(data, require_rif=True)
+        data = {**data, **clean}
+        existing = self._get_by_rif(clean['rif'])
+        if existing and existing.get('estado'):
+            raise ValidationError({'rif': 'Este rif ya esta registrado.'})
+        if clean.get('email') and self.email_exists_globally(clean['email'], {"cliente_cedula": clean['rif']}):
+            raise ValidationError({'email': 'Este correo ya esta registrado.'})
         self.rif = data['rif']
         self.razon_social = data['razon_social']
         self.telefono = data.get('telefono', '')
@@ -169,6 +211,10 @@ class CompanyModel(Connection):
             raise
 
     def _update_company(self, rif, data):
+        clean = self._validate({**data, 'rif': rif}, require_rif=False)
+        if clean.get('email') and self.email_exists_globally(clean['email'], {"cliente_cedula": rif}):
+            raise ValidationError({'email': 'Este correo ya esta registrado.'})
+        data = {**data, **clean}
         self.razon_social = data['razon_social']
         self.telefono = data.get('telefono', '')
         self.email = data.get('email', '')
@@ -226,12 +272,28 @@ class CompanyModel(Connection):
             "WHERE empresa_rif = %s ORDER BY created_at DESC", (rif,))
 
     def _add_representative(self, company_rif, data):
-        rep_cedula = data['cedula'].strip()
-        nombre = (data['nombre'].strip() + ' ' + (data.get('apellido') or '').strip()).strip()
-        telefono = data['telefono'].strip()
-        email = data.get('email', '').strip()
-        cargo = data.get('cargo', 'Otro')
-        estado = int(data.get('estado', 1))
+        errors = {}
+        cedula, _, _ = normalize_cedula(errors, data, field='cedula', required=True)
+        nombre_in = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=100, person=True)
+        apellido_in = optional_text(errors, 'apellido', data.get('apellido'), 'El apellido', max_len=100, person=True)
+        telefono_in = normalize_phone(errors, data.get('telefono'))
+        email_in = normalize_email(errors, data.get('email'), required=False)
+        cargo_in = validate_choice(errors, 'cargo', data.get('cargo'), CARGOS_REPRESENTANTE)
+        if not errors.get('cedula') and cedula:
+            owner = self._find_representative_by_cedula(cedula)
+            if owner and owner['empresa_rif'] != company_rif:
+                errors['cedula'] = 'Esta cedula ya esta registrada como representante de otra empresa.'
+        if errors:
+            raise ValidationError(errors)
+        try:
+            estado = int(data.get('estado', 1))
+        except (TypeError, ValueError):
+            estado = 1
+        rep_cedula = cedula
+        nombre = (nombre_in + ' ' + (apellido_in or '')).strip()
+        telefono = telefono_in
+        email = email_in or ''
+        cargo = cargo_in
         existing_rel = self.fetch_one("transalca",
             "SELECT id_empresa_representante AS id FROM representante WHERE empresa_rif = %s AND representante_cedula = %s",
             (company_rif, rep_cedula))

@@ -1,9 +1,14 @@
+import re
+
 from model.connection import Connection
+from config.validation import ValidationError, normalize_email, normalize_phone, optional_text, require_text
 
 SUCURSAL_ALIAS = (
     "s.*, s.id_sucursal AS id, s.nombre_sucursal AS nombre, s.direccion_sucursal AS direccion, "
     "s.telefono_sucursal AS telefono, s.email_sucursal AS email"
 )
+
+DIRECCION_RE = re.compile(r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,\-]+$")
 
 
 class SucursalModel(Connection):
@@ -65,20 +70,55 @@ class SucursalModel(Connection):
         return self.fetch_one("transalca",
             "SELECT " + SUCURSAL_ALIAS + " FROM sucursales s WHERE s.id_sucursal = %s", (sucursal_id,))
 
+    def _validate(self, data):
+        errors = {}
+        direccion_raw = data.get('direccion')
+        if direccion_raw is not None and str(direccion_raw) != '' and not str(direccion_raw).strip():
+            errors['direccion'] = 'La direccion no puede contener solo espacios en blanco.'
+        clean = {
+            'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=200, allow_serial=False),
+            'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40),
+            'telefono': normalize_phone(errors, data.get('telefono'), required=False),
+            'email': normalize_email(errors, data.get('email'), required=False),
+        }
+        if clean['direccion'] and 'direccion' not in errors and not DIRECCION_RE.match(clean['direccion']):
+            errors['direccion'] = 'La direccion solo puede contener letras, numeros, espacios, puntos, comas y guiones.'
+        if errors:
+            raise ValidationError(errors)
+        return clean
+
     def _create(self, data):
-        self.nombre = data['nombre']
-        self.direccion = data.get('direccion', '')
-        self.telefono = data.get('telefono', '')
-        self.email = data.get('email', '')
+        clean = self._validate(data)
+        self.nombre = clean['nombre']
+        self.direccion = clean.get('direccion', '') or ''
+        self.telefono = clean.get('telefono', '') or ''
+        self.email = clean.get('email', '') or ''
+        existing = self._get_by_nombre(self._nombre)
+        if existing:
+            if existing['estado'] == 1:
+                raise ValidationError({'nombre': 'Ya existe una sucursal con ese nombre.'})
+            if clean.get('email') and self.email_exists_globally(clean['email'], {"sucursal_id": existing['id']}):
+                raise ValidationError({'email': 'Este correo ya esta registrado.'})
+            self.update("transalca",
+                "UPDATE sucursales SET direccion_sucursal=%s, telefono_sucursal=%s, email_sucursal=%s, estado=1 WHERE id_sucursal=%s",
+                (self._direccion, self._telefono, self._email, existing['id']))
+            return existing['id']
+        if clean.get('email') and self.email_exists_globally(clean['email']):
+            raise ValidationError({'email': 'Este correo ya esta registrado.'})
         return self.insert("transalca",
             "INSERT INTO sucursales (nombre_sucursal, direccion_sucursal, telefono_sucursal, email_sucursal) VALUES (%s, %s, %s, %s)",
             (self._nombre, self._direccion, self._telefono, self._email))
 
     def _update_sucursal(self, sucursal_id, data):
-        self.nombre = data['nombre']
-        self.direccion = data.get('direccion', '')
-        self.telefono = data.get('telefono', '')
-        self.email = data.get('email', '')
+        clean = self._validate(data)
+        if self._nombre_exists(clean['nombre'], sucursal_id):
+            raise ValidationError({'nombre': 'Ya existe una sucursal con ese nombre.'})
+        if clean.get('email') and self.email_exists_globally(clean['email'], {"sucursal_id": sucursal_id}):
+            raise ValidationError({'email': 'Este correo ya esta registrado.'})
+        self.nombre = clean['nombre']
+        self.direccion = clean.get('direccion', '') or ''
+        self.telefono = clean.get('telefono', '') or ''
+        self.email = clean.get('email', '') or ''
         return self.update("transalca",
             "UPDATE sucursales SET nombre_sucursal = %s, direccion_sucursal = %s, telefono_sucursal = %s, email_sucursal = %s WHERE id_sucursal = %s",
             (self._nombre, self._direccion, self._telefono, self._email, sucursal_id))
@@ -104,7 +144,7 @@ class SucursalModel(Connection):
             "SELECT " + SUCURSAL_ALIAS + " FROM sucursales s WHERE s.nombre_sucursal = %s", (nombre,))
 
     def _reactivar(self, sucursal_id):
-        return self.update("transalca", "UPDATE sucursales SET estado = 1 WHERE id = %s", (sucursal_id,))
+        return self.update("transalca", "UPDATE sucursales SET estado = 1 WHERE id_sucursal = %s", (sucursal_id,))
 
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {

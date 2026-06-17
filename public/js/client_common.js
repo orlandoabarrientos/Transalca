@@ -257,6 +257,61 @@ function normalizeActionButtons(root = document) {
     });
 }
 
+const CLIENT_SELECT_TAMPER_MESSAGE = 'El valor seleccionado no es válido o fue modificado. Recargue la página e intente nuevamente.';
+
+function clientSelectFeedback(select) {
+    let feedback = select.parentNode ? select.parentNode.querySelector('.invalid-feedback') : null;
+    if (!feedback && select.parentNode) {
+        feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+        select.parentNode.appendChild(feedback);
+    }
+    return feedback;
+}
+
+function validateClientSelect(select) {
+    if (!select || select.tagName !== 'SELECT' || select.disabled) return true;
+    const allowed = Array.from(select.options || []).map(opt => opt.value);
+    const required = select.required || select.dataset.required === 'true';
+    const value = (select.value || '').trim();
+    const feedback = clientSelectFeedback(select);
+    let message = '';
+    if (!value) {
+        if (required) message = 'Debe seleccionar una opción.';
+    } else if (!allowed.includes(value)) {
+        message = CLIENT_SELECT_TAMPER_MESSAGE;
+    }
+    if (message) {
+        select.classList.add('is-invalid');
+        select.classList.remove('is-valid');
+        if (feedback) { feedback.textContent = message; feedback.style.display = 'block'; }
+        return false;
+    }
+    select.classList.remove('is-invalid');
+    if (value) select.classList.add('is-valid');
+    if (feedback) { feedback.textContent = ''; feedback.style.display = 'none'; }
+    return true;
+}
+
+function updateClientFormSubmitState(form) {
+    if (!form) return;
+    const invalid = !!form.querySelector('.is-invalid');
+    form.querySelectorAll('button[type="submit"], .btn-success, [data-client-submit]').forEach(btn => {
+        if (!btn.dataset.loading) btn.disabled = invalid;
+    });
+}
+
+function bindClientSelectGuards() {
+    if (document.body.dataset.clientSelectGuardsBound === '1') return;
+    document.body.dataset.clientSelectGuardsBound = '1';
+    document.addEventListener('change', event => {
+        const select = event.target && event.target.closest ? event.target.closest('select') : null;
+        if (!select) return;
+        validateClientSelect(select);
+        updateClientFormSubmitState(select.closest('form'));
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     document.title = 'Transalca Group | La mejor calidad';
     checkSession().then(loggedIn => {
@@ -265,6 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadExchangeRatesCached().then(() => hydrateDualPrices());
     installClientListSearches();
     normalizeActionButtons();
+    bindClientSelectGuards();
     updateCurrencyMenuLabel();
     const observer = new MutationObserver((mutations) => {
         applyAuthVisibility();

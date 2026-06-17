@@ -5,9 +5,12 @@ from difflib import SequenceMatcher
 
 
 METRIC_SIZE_PATTERN = re.compile(r'(?<![a-z0-9])(?P<prefix>lt|p)?\s*(?P<w>\d{3})\s*/\s*(?P<p>\d{2})\s*r\s*(?P<r>\d{2})\b', re.IGNORECASE)
+LOOSE_METRIC_SIZE_PATTERN = re.compile(r'(?<![a-z0-9-])(?P<w>\d{3})[\s\-.x/]+(?P<p>\d{2})[\s\-./]*(?:r\s*)?(?P<r>\d{2})\b', re.IGNORECASE)
 FLOTATION_SIZE_PATTERN = re.compile(r'(?<![a-z0-9])(?P<h>\d{2})\s*x\s*(?P<w>\d{1,2}(?:\.\d{1,2})?)\s*r\s*(?P<r>\d{2})\b', re.IGNORECASE)
 RIM_PATTERN = re.compile(r'\b(?:rin|rines|aro|aros|ring|r)\s*-?\s*(?P<rim>\d{2})\b', re.IGNORECASE)
+BARE_RIM_PATTERN = re.compile(r'^(?:y\s+)?(?P<rim>1[2-9]|2[0-4])$')
 YEAR_PATTERN = re.compile(r'\b(19[8-9]\d|20[0-3]\d)\b')
+SHORT_YEAR_PATTERN = re.compile(r'\b0(?P<yy>1[0-9]|2[0-9])\b')
 OIL_PATTERN = re.compile(r'\b\d{1,2}w-?\d{2}\b', re.IGNORECASE)
 LOAD_SPEED_PATTERN = re.compile(r'\b\d{2,3}[a-z]\b', re.IGNORECASE)
 
@@ -63,6 +66,12 @@ COMMON_TYPOS = {
     'hiluxx': 'hilux',
     'corola': 'corolla',
     'corrola': 'corolla',
+    'fronetier': 'frontier',
+    'frontera': 'frontier',
+    'renger': 'ranger',
+    'amaro': 'amarok',
+    'sportach': 'sportage',
+    'sportach': 'sportage',
     'forruner': '4runner',
     'forrunner': '4runner',
     'runer': '4runner',
@@ -84,6 +93,9 @@ COMMON_TYPOS = {
     'silenciosas': 'silencioso',
     'chillen': 'chillar',
     'suene': 'sonar',
+    'camio': 'camioneta',
+    'camioeta': 'camioneta',
+    'vendeme': 'venden',
 }
 
 SPANISH_NUMBERS = {
@@ -107,7 +119,8 @@ SPANISH_NUMBERS = {
 VEHICLE_MAKES = {
     'toyota', 'chevrolet', 'ford', 'jeep', 'nissan', 'mitsubishi', 'hyundai',
     'kia', 'honda', 'mazda', 'dodge', 'ram', 'fiat', 'renault', 'volkswagen',
-    'vw', 'mercedes', 'benz', 'bmw', 'chery', 'dongfeng', 'jac'
+    'vw', 'mercedes', 'benz', 'bmw', 'chery', 'dongfeng', 'jac', 'isuzu',
+    'lexus', 'daihatsu'
 }
 
 MODEL_ALIASES = {
@@ -125,6 +138,9 @@ MODEL_ALIASES = {
     'prado': 'prado',
     'machito': 'machito',
     'tacoma': 'tacoma',
+    'land cruiser': 'land cruiser',
+    'landcruiser': 'land cruiser',
+    'autana': 'autana',
     'terios': 'terios',
     'aveo': 'aveo',
     'cruze': 'cruze',
@@ -134,25 +150,43 @@ MODEL_ALIASES = {
     'explorer': 'explorer',
     'ranger': 'ranger',
     'f150': 'f150',
+    'f-150': 'f150',
+    'raptor': 'raptor',
     'cherokee': 'cherokee',
     'grand cherokee': 'grand cherokee',
+    'wrangler': 'wrangler',
     'grand': 'grand',
     'vitara': 'vitara',
     'grand vitara': 'grand vitara',
     'gran vitara': 'grand vitara',
     'frontier': 'frontier',
+    'navara': 'navara',
+    'x-trail': 'x-trail',
+    'xtrail': 'x-trail',
     'patrol': 'patrol',
     'sentra': 'sentra',
     'l200': 'l200',
+    'd-max': 'd-max',
+    'dmax': 'd-max',
     'montero': 'montero',
+    'amarok': 'amarok',
     'tucson': 'tucson',
     'elantra': 'elantra',
     'accent': 'accent',
     'rio': 'rio',
     'sportage': 'sportage',
+    'duster': 'duster',
     'civic': 'civic',
     'accord': 'accord',
+    'cr-v': 'cr-v',
+    'crv': 'cr-v',
     'bt50': 'bt50',
+    'bt-50': 'bt50',
+    'gx': 'gx',
+    'gx460': 'gx',
+    'trailblazer': 'trailblazer',
+    'tahoe': 'tahoe',
+    '1500': '1500',
 }
 
 MODEL_MAKE = {
@@ -165,7 +199,9 @@ MODEL_MAKE = {
     'fortuner': 'toyota',
     'prado': 'toyota',
     'machito': 'toyota',
+    'land cruiser': 'toyota',
     'tacoma': 'toyota',
+    'autana': 'toyota',
     'terios': 'daihatsu',
     'aveo': 'chevrolet',
     'cruze': 'chevrolet',
@@ -175,23 +211,35 @@ MODEL_MAKE = {
     'explorer': 'ford',
     'ranger': 'ford',
     'f150': 'ford',
+    'raptor': 'ford',
     'cherokee': 'jeep',
     'grand cherokee': 'jeep',
+    'wrangler': 'jeep',
     'vitara': 'suzuki',
     'grand vitara': 'suzuki',
     'frontier': 'nissan',
+    'navara': 'nissan',
+    'x-trail': 'nissan',
     'patrol': 'nissan',
     'sentra': 'nissan',
     'l200': 'mitsubishi',
     'montero': 'mitsubishi',
+    'd-max': 'isuzu',
+    'amarok': 'volkswagen',
     'tucson': 'hyundai',
     'elantra': 'hyundai',
     'accent': 'hyundai',
     'rio': 'kia',
     'sportage': 'kia',
+    'duster': 'renault',
     'civic': 'honda',
     'accord': 'honda',
+    'cr-v': 'honda',
     'bt50': 'mazda',
+    'gx': 'lexus',
+    'trailblazer': 'chevrolet',
+    'tahoe': 'chevrolet',
+    '1500': 'ram',
 }
 
 TIRE_TERMS = {
@@ -208,19 +256,24 @@ SERVICE_TERMS = {
 PRODUCT_TERMS = {
     'producto', 'productos', 'repuesto', 'repuestos', 'catalogo', 'precio',
     'precios', 'comprar', 'compra', 'stock', 'disponible', 'disponibles',
-    'tienen', 'tienes', 'hay', 'venden', 'venta'
+    'tienen', 'tienes', 'hay', 'venden', 'venta', 'busco', 'buscar',
+    'muestra', 'muestrame', 'mostrar', 'muestre', 'inventario'
 }
 
 BUSINESS_TERMS = (
     TIRE_TERMS | SERVICE_TERMS | PRODUCT_TERMS | {
-        'automotriz', 'carro', 'auto', 'vehiculo', 'camioneta', 'rustiqueo',
-        'trocha', 'carretera', 'autopista', 'tierra', 'barro', 'grava',
+        'automotriz', 'carro', 'carros', 'auto', 'vehiculo', 'camioneta', 'rustiqueo',
+        'trocha', 'carretera', 'autopista', 'tierra', 'barro', 'grava', 'tacos',
         'lluvia', 'aceite', 'lubricante', 'filtro', 'filtros', 'bateria',
         'baterias', 'freno', 'frenos', 'pastilla', 'pastillas', 'disco',
         'discos', 'motor', 'pedido', 'pedidos', 'pago', 'pagos',
         'promocion', 'promociones', 'sucursal', 'sucursales', 'volante',
         'vibra', 'vibracion', 'tiembla', 'temblor', 'arranca', 'check',
-        'tablero', 'luz', 'ruido', 'chilla', 'remolque', 'carga'
+        'tablero', 'luz', 'ruido', 'chilla', 'remolque', 'carga',
+        'presion', 'psi', 'dot', 'fecha', 'indice', 'velocidad', 'xl',
+        'offset', 'diametro', 'direccional', 'direccionales', 'asimetrico',
+        'asimetricos', 'aquaplaning', 'hidroplaneo', 'agotado', 'agoto',
+        'agotaron', 'precio', 'actual'
     }
 )
 
@@ -236,7 +289,7 @@ USE_TERMS = {
     'lluvia': {'lluvia', 'mojado', 'agua'},
     'grava': {'grava', 'piedra'},
     'tierra': {'tierra', 'trocha', 'rustiqueo', 'rustiquear', 'camino'},
-    'barro': {'barro', 'lodo', 'fango'},
+    'barro': {'barro', 'lodo', 'fango', 'tacos'},
     'carga': {'carga', 'cargar', 'peso'},
     'remolque': {'remolque', 'remolcar'},
 }
@@ -347,11 +400,14 @@ def basic_normalize(value):
     text = re.sub(r'\b4\s+runner\b', '4runner', text)
     text = re.sub(r'\bgran\s+vitara\b', 'grand vitara', text)
     text = re.sub(r'\bpa\s+', 'para ', text)
+    text = re.sub(r'\b([a-z]+)(20\d{2})r(\d{2})(at|mt|ht)?([a-z]+)?\b', r'\1 \2 rin \3 \4 \5', text)
     text = re.sub(r'\btengo(4runner)(20\d{2})rin(\d{2})\b', r'\1 \2 rin \3', text)
     text = re.sub(r'\b(4runner)(20\d{2})rin(\d{2})\b', r'\1 \2 rin \3', text)
     text = re.sub(r'\b(a|m|h|r)\s*/\s*t\b', r'\1/t', text)
     text = re.sub(r'\b(\d{1,2})w\s*-?\s*(\d{2})\b', r'\1w-\2', text)
     text = re.sub(r'(?<![a-z0-9])(lt|p)?\s*(\d{3})\s*/\s*(\d{2})\s*r\s*(\d{2})\b', lambda m: f"{m.group(1) or ''}{m.group(2)}/{m.group(3)}r{m.group(4)}", text)
+    text = re.sub(r'(?<![a-z0-9])(\d{3})[\s\-.]+(\d{2})[\s\-.]+(\d{2})\b', r'\1/\2r\3', text)
+    text = re.sub(r'(?<![a-z0-9])(\d{3})\.(\d{2})r(\d{2})\b', r'\1/\2r\3', text)
     text = re.sub(r'(?<![a-z0-9])(\d{2})\s*x\s*(\d{1,2}(?:\.\d{1,2})?)\s*r\s*(\d{2})\b', r'\1x\2r\3', text)
     text = re.sub(r'[^a-z0-9/\.\sx-]', ' ', text)
     return re.sub(r'\s+', ' ', text).strip()
@@ -417,6 +473,14 @@ def extract_sizes(value):
         if normalized not in seen:
             seen.add(normalized)
             sizes.append(TireSize(match.group(0).upper().replace(' ', ''), normalized, width, profile, rim, prefix, False))
+    for match in LOOSE_METRIC_SIZE_PATTERN.finditer(clean):
+        width = int(match.group('w'))
+        profile = int(match.group('p'))
+        rim = int(match.group('r'))
+        normalized = f"{width}/{profile}R{rim}"
+        if normalized not in seen:
+            seen.add(normalized)
+            sizes.append(TireSize(match.group(0).upper().replace(' ', ''), normalized, width, profile, rim, '', False))
     for match in FLOTATION_SIZE_PATTERN.finditer(clean):
         rim = int(match.group('r'))
         normalized = f"{match.group('h')}X{match.group('w')}R{rim}".upper()
@@ -434,6 +498,9 @@ def extract_rim(value):
     match = RIM_PATTERN.search(clean)
     if match:
         return int(match.group('rim'))
+    bare = BARE_RIM_PATTERN.search(clean)
+    if bare:
+        return int(bare.group('rim'))
     tokens = clean.split()
     for index, token in enumerate(tokens[:-1]):
         if token in {'rin', 'rines', 'aro', 'aros'} and tokens[index + 1] in SPANISH_NUMBERS.values():
@@ -443,7 +510,12 @@ def extract_rim(value):
 
 def extract_year(value):
     years = [int(match.group(1)) for match in YEAR_PATTERN.finditer(str(value or ''))]
-    return years[0] if years else None
+    if years:
+        return years[0]
+    short = SHORT_YEAR_PATTERN.search(str(value or ''))
+    if short:
+        return 2000 + int(short.group('yy'))
+    return None
 
 
 def extract_vehicle(clean, tokens):
@@ -456,10 +528,17 @@ def extract_vehicle(clean, tokens):
             break
 
     joined = ' '.join(token_list)
+    candidates = []
     for alias in sorted(MODEL_ALIASES, key=len, reverse=True):
-        if re.search(rf'\b{re.escape(alias)}\b', joined):
-            model = MODEL_ALIASES[alias]
-            break
+        match = re.search(rf'\b{re.escape(alias)}\b', joined)
+        if not match:
+            continue
+        prefix = joined[max(0, match.start() - 18):match.start()]
+        if re.search(r'\bno\s+(?:es\s+)?para\s+(?:mi\s+)?$', prefix):
+            continue
+        candidates.append((match.start(), MODEL_ALIASES[alias]))
+    if candidates:
+        model = sorted(candidates, key=lambda item: item[0])[0][1]
 
     if model == 'grand' and 'cherokee' in tokens:
         model = 'grand cherokee'
@@ -540,10 +619,14 @@ def detect_followup(tokens):
 
 def detect_intent_hint(entities):
     tokens = entities.tokens
-    if detect_followup(tokens):
+    if detect_followup(tokens) and not (entities.tire_size or entities.rim or entities.tire_type or entities.has_vehicle()):
         return 'seguimiento'
     if tokens & {'pedido', 'pedidos', 'pago', 'pagos', 'comprobante'}:
         return 'pedido'
+    if tokens & {'codigo'}:
+        return 'producto'
+    if entities.has_vehicle() and not (tokens & SERVICE_TERMS) and not any(tokens & words for words in SERVICE_SYMPTOMS.values()):
+        return 'medida_caucho'
     if entities.tire_size or entities.rim or entities.tire_type or tokens & TIRE_TERMS:
         service_explicit = tokens & {'balanceo', 'balancear', 'alineacion', 'alinear', 'rotacion', 'montaje', 'instalacion', 'scanner'}
         if service_explicit and not (entities.tire_size or entities.rim or entities.tire_type):
@@ -556,7 +639,7 @@ def detect_intent_hint(entities):
             return 'inventario_cauchos'
         if entities.has_vehicle() and not entities.tire_size:
             return 'medida_caucho'
-        if entities.rim and tokens & TIRE_TERMS and not entities.has_vehicle():
+        if entities.rim and not entities.has_vehicle():
             return 'inventario_cauchos'
         if tokens & {'stock', 'disponible', 'disponibles', 'tienen', 'tienes', 'hay', 'venden', 'precio', 'precios', 'codigo'}:
             return 'inventario_cauchos'
@@ -565,11 +648,13 @@ def detect_intent_hint(entities):
         return 'servicio'
     if tokens & PRODUCT_TERMS:
         return 'producto'
+    if tokens & {'presion', 'psi', 'dot', 'fecha', 'indice', 'velocidad', 'xl', 'offset', 'diametro', 'direccional', 'direccionales', 'asimetrico', 'asimetricos', 'aquaplaning', 'hidroplaneo'}:
+        return 'recomendacion_cauchos'
     return 'consulta'
 
 
 def is_business_related(entities):
-    if entities.tire_size or entities.has_vehicle():
+    if entities.tire_size or entities.rim or entities.tire_type or entities.has_vehicle():
         return True
     if entities.tokens & BUSINESS_TERMS:
         return True
@@ -607,7 +692,8 @@ def extract_entities(value):
         need=infer_need(tokens),
         followup=detect_followup(tokens) or clean.startswith('y '),
     )
-    entities.intent_hint = 'seguimiento' if entities.followup else detect_intent_hint(entities)
+    explicit_action = bool(entities.tire_size or entities.rim or entities.tire_type or entities.has_vehicle())
+    entities.intent_hint = detect_intent_hint(entities) if explicit_action else 'seguimiento' if entities.followup else detect_intent_hint(entities)
     if entities.tire_size and entities.tire_size.prefix in {'LT', 'P'}:
         entities.safety_constraints.append('validar indice de carga y velocidad indicado por el fabricante')
     return entities

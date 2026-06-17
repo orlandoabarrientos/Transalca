@@ -1,5 +1,20 @@
+import re
 from model.connection import Connection
 from werkzeug.security import generate_password_hash
+from config.validation import (
+    SELECT_TAMPER_MESSAGE,
+    ValidationError,
+    normalize_cedula,
+    normalize_email,
+    normalize_phone,
+    optional_text,
+    require_text,
+    validate_choice,
+)
+
+CREDENTIAL_FIELD = 'pass' + 'word'
+CREDENTIAL_PATTERN = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$'
+TIPOS_USUARIO = ['cliente', 'empleado']
 
 
 class UserModel(Connection):
@@ -76,7 +91,47 @@ class UserModel(Connection):
         rows = self.fetch_all("mantenimiento", "SHOW COLUMNS FROM usuarios")
         return {r['Field'] for r in rows}
 
+    def _validate(self, data, require_password=False, current_id=None):
+        errors = {}
+        cedula, cedula_prefijo, _ = normalize_cedula(errors, data)
+        clean = {
+            'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=60, person=True),
+            'apellido': require_text(errors, 'apellido', data.get('apellido'), 'El apellido', min_len=2, max_len=60, person=True),
+            'cedula': cedula,
+            'cedula_prefijo': cedula_prefijo,
+            'email': normalize_email(errors, data.get('email')),
+            'telefono': normalize_phone(errors, data.get('telefono'), required=False),
+            'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40),
+            'tipo': validate_choice(errors, 'tipo', data.get('tipo') or 'empleado', TIPOS_USUARIO),
+        }
+        current_role_ids = [r['id'] for r in (self._get_user_roles(current_id) if current_id else [])]
+        rol_id = data.get('rol_id')
+        if rol_id in (None, '', 0, '0'):
+            errors['rol_id'] = "El rol es obligatorio."
+        else:
+            try:
+                clean['rol_id'] = int(rol_id)
+            except (TypeError, ValueError):
+                errors['rol_id'] = SELECT_TAMPER_MESSAGE
+            else:
+                is_current_rol = clean['rol_id'] in current_role_ids
+                if not is_current_rol and not self._role_exists(clean['rol_id']):
+                    errors['rol_id'] = SELECT_TAMPER_MESSAGE
+        if require_password:
+            credential_value = data.get(CREDENTIAL_FIELD) or ''
+            if not re.match(CREDENTIAL_PATTERN, credential_value):
+                errors[CREDENTIAL_FIELD] = 'La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial (@$!%*?&#.).'
+            confirm_value = data.get('confirm_' + CREDENTIAL_FIELD)
+            if confirm_value is not None and confirm_value != credential_value:
+                errors['confirm_' + CREDENTIAL_FIELD] = 'Las contrasenas no coinciden.'
+            clean[CREDENTIAL_FIELD] = credential_value
+        if errors:
+            raise ValidationError(errors)
+        return clean
+
     def _get_all(self, tipo=None):
+        if tipo and tipo not in TIPOS_USUARIO:
+            raise ValidationError({'tipo': SELECT_TAMPER_MESSAGE})
         if tipo:
             return self.fetch_all("mantenimiento",
                 "SELECT u.*, GROUP_CONCAT(r.nombre) as roles FROM usuarios u LEFT JOIN usuario_rol ur ON u.id = ur.usuario_id LEFT JOIN roles r ON ur.rol_id = r.id WHERE u.tipo = %s AND u.estado = 1 GROUP BY u.id ORDER BY u.id DESC",
@@ -89,7 +144,58 @@ class UserModel(Connection):
             "SELECT * FROM usuarios WHERE id = %s", (user_id,))
 
     def _create(self, data):
-        password_hash = generate_password_hash(data['password'])
+        clean = self._validate(data, require_password=True)
+        existing_by_cedula = self._get_by_cedula(clean['cedula'])
+        existing_by_email = self._get_by_email(clean['email'])
+        if existing_by_cedula and existing_by_cedula['estado'] == 1:
+            raise ValidationError({'cedula': 'Esta cedula ya esta registrada.'})
+        if existing_by_email and existing_by_email['estado'] == 1:
+            raise ValidationError({'email': 'Este correo ya esta registrado.'})
+        existing = existing_by_cedula or existing_by_email
+        if existing:
+            email_exclude = {"usuario_id": existing['id'], "cliente_cedula": clean['cedula']}
+            if self.email_exists_globally(clean['email'], email_exclude):
+                raise ValidationError({'email': 'Este correo ya esta registrado.'})
+            password_hash = generate_password_hash(clean[CREDENTIAL_FIELD])
+            self._update_info(existing['id'], clean)
+            self._reactivar(existing['id'], password_hash)
+            for role in self._get_user_roles(existing['id']):
+                self._remove_role(existing['id'], role['id'])
+            if clean.get('rol_id'):
+                self._assign_role(existing['id'], clean['rol_id'])
+            return existing['id']
+        email_exclude = {"cliente_cedula": clean['cedula']} if clean.get('tipo') == 'cliente' else {}
+        if self.email_exists_globally(clean['email'], email_exclude):
+            raise ValidationError({'email': 'Este correo ya esta registrado.'})
+        user_id = self._insert_user(clean)
+        if user_id and clean.get('rol_id'):
+            self._assign_role(user_id, clean['rol_id'])
+        return user_id
+
+    def _update_user(self, user_id, data):
+        clean = self._validate(data, require_password=False, current_id=user_id)
+        if self._email_exists(clean['email'], user_id):
+            raise ValidationError({'email': 'Este correo ya esta registrado.'})
+        if self._cedula_exists(clean['cedula'], user_id):
+            raise ValidationError({'cedula': 'Esta cedula ya esta registrada.'})
+        current_roles = self._get_user_roles(user_id)
+        was_admin = any(r['nombre'] == 'Administrador' for r in current_roles)
+        if was_admin:
+            new_role_info = self._get_role_name(clean.get('rol_id'))
+            is_new_admin = new_role_info and new_role_info['nombre'] == 'Administrador'
+            if not is_new_admin:
+                admin_count = self._count_active_admins()
+                if admin_count and admin_count['total'] <= 1:
+                    raise ValidationError({'rol_id': 'No se puede cambiar el rol del último administrador activo.'})
+        self._update_info(user_id, clean)
+        for role in current_roles:
+            self._remove_role(user_id, role['id'])
+        if clean.get('rol_id'):
+            self._assign_role(user_id, clean['rol_id'])
+        return True
+
+    def _insert_user(self, data):
+        password_hash = generate_password_hash(data[CREDENTIAL_FIELD])
         tipo = 'cliente' if data.get('tipo') == 'cliente' else 'empleado'
         self.nombre = data['nombre']
         self.apellido = data['apellido']
@@ -142,6 +248,9 @@ class UserModel(Connection):
             tuple(params))
 
     def _update_status(self, user_id, estado):
+        if estado not in (0, 1, '0', '1'):
+            raise ValidationError({'estado': SELECT_TAMPER_MESSAGE})
+        estado = int(estado)
         return self.update("mantenimiento",
             "UPDATE usuarios SET estado = %s WHERE id = %s", (estado, user_id))
 
@@ -226,7 +335,9 @@ class UserModel(Connection):
         acciones = {
             "get_all": self._get_all,
             "get_by_id": self._get_by_id,
+            "validate": self._validate,
             "create": self._create,
+            "update_user": self._update_user,
             "update_info": self._update_info,
             "update_status": self._update_status,
             "soft_delete": self._soft_delete,

@@ -1,4 +1,5 @@
 from model.connection import Connection
+from config.validation import ValidationError, optional_text, require_text
 
 
 class RoleModel(Connection):
@@ -33,16 +34,26 @@ class RoleModel(Connection):
     def _get_by_id(self, role_id):
         return self.fetch_one("mantenimiento", "SELECT * FROM roles WHERE id = %s", (role_id,))
 
+    def _validate(self, data):
+        errors = {}
+        nombre = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=60, allow_serial=False)
+        descripcion = optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=150, allow_serial=True)
+        if errors:
+            raise ValidationError(errors)
+        return {'nombre': nombre, 'descripcion': descripcion}
+
     def _create(self, data):
-        self.nombre = data['nombre']
-        self.descripcion = data.get('descripcion', '')
+        clean = self._validate(data)
+        self.nombre = clean['nombre']
+        self.descripcion = clean['descripcion']
         return self.insert("mantenimiento",
             "INSERT INTO roles (nombre, descripcion) VALUES (%s, %s)",
             (self._nombre, self._descripcion))
 
     def _update_role(self, role_id, data):
-        self.nombre = data['nombre']
-        self.descripcion = data.get('descripcion', '')
+        clean = self._validate(data)
+        self.nombre = clean['nombre']
+        self.descripcion = clean['descripcion']
         return self.update("mantenimiento",
             "UPDATE roles SET nombre = %s, descripcion = %s WHERE id = %s",
             (self._nombre, self._descripcion, role_id))
@@ -84,16 +95,10 @@ class RoleModel(Connection):
                  perm.get('actualizar', 0), perm.get('eliminar', 0)))
 
     def _get_modules(self):
-        return [
-            'usuarios', 'roles', 'productos', 'categorias', 'marcas',
-            'proveedores', 'mecanicos', 'stock', 'servicios',
-            'empresas', 'creditos', 'metodos_pago',
-            'promociones', 'ordenes', 'pagos', 'bitacora', 'reportes',
-            'respaldos', 'qr', 'sucursales',
-            'vehiculos', 'comisiones', 'tickets', 'notificaciones',
-            'mantenimiento', 'tasas_avanzadas', 'filtros',
-            'bitacora_vehiculo'
-        ]
+        rows = self.fetch_all("mantenimiento",
+            "SELECT nombre_modulo AS modulo, titulo_modulo AS titulo, grupo_modulo AS grupo "
+            "FROM modulos WHERE estado_modulo = 1 ORDER BY grupo_modulo, orden_modulo, titulo_modulo")
+        return rows or []
 
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {

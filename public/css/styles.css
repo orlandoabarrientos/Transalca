@@ -874,11 +874,59 @@ a:hover {
 
 .modal-body {
     padding: 24px;
+    max-height: calc(100vh - 210px);
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .modal-footer {
     border-top: 1px solid var(--border);
     padding: 14px 20px;
+}
+
+.image-preview-wrap {
+    position: relative;
+    display: inline-block;
+    margin-top: 10px;
+    max-width: 100%;
+    vertical-align: top;
+}
+
+.image-preview-wrap img,
+.product-form-image,
+.promo-form-image,
+#imagePreview {
+    max-width: 100%;
+    max-height: 200px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+.image-preview-remove {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: var(--danger, #dc3545);
+    color: #fff;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    z-index: 3;
+    padding: 0;
+}
+
+.image-preview-remove:hover {
+    filter: brightness(0.9);
 }
 
 
@@ -946,6 +994,10 @@ a:hover {
     top: 20px;
     right: 20px;
     z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: calc(100vw - 40px);
 }
 
 .toast-custom {
@@ -957,8 +1009,16 @@ a:hover {
     align-items: center;
     gap: 12px;
     min-width: 320px;
+    max-width: 100%;
     animation: slideInRight 0.3s ease;
     border-left: 4px solid var(--primary);
+}
+
+@media (max-width: 480px) {
+    .toast-custom {
+        min-width: 0;
+        width: 100%;
+    }
 }
 
 .toast-custom.removing {

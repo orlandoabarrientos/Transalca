@@ -245,6 +245,112 @@ DELIMITER ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
+--
+-- Modulo G. Modulos: tabla de modulos + relaciones con permisos y bitacora
+--
+SET FOREIGN_KEY_CHECKS = 0;
+
+DROP TABLE IF EXISTS `modulos`;
+CREATE TABLE `modulos` (
+  `id_modulo` int(11) NOT NULL AUTO_INCREMENT,
+  `nombre_modulo` varchar(100) NOT NULL,
+  `titulo_modulo` varchar(150) NOT NULL,
+  `descripcion_modulo` varchar(255) DEFAULT NULL,
+  `ruta_modulo` varchar(150) DEFAULT NULL,
+  `icono_modulo` varchar(60) NOT NULL DEFAULT 'bi bi-app',
+  `grupo_modulo` varchar(60) NOT NULL DEFAULT 'Gestión',
+  `orden_modulo` int(11) NOT NULL DEFAULT 0,
+  `en_sidebar` tinyint(1) NOT NULL DEFAULT 1,
+  `publico_modulo` tinyint(1) NOT NULL DEFAULT 0,
+  `estado_modulo` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id_modulo`),
+  UNIQUE KEY `uq_modulo_nombre` (`nombre_modulo`),
+  UNIQUE KEY `uq_modulo_ruta` (`ruta_modulo`),
+  KEY `idx_modulo_grupo_orden` (`grupo_modulo`,`orden_modulo`),
+  KEY `idx_modulo_estado` (`estado_modulo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `modulos` (`nombre_modulo`,`titulo_modulo`,`ruta_modulo`,`icono_modulo`,`grupo_modulo`,`orden_modulo`,`en_sidebar`,`publico_modulo`,`estado_modulo`) VALUES
+('dashboard','Dashboard','/admin/dashboard','bi bi-grid-1x2-fill','Principal',1,1,1,1),
+('clientes','G. Clientes','/admin/clients','bi bi-people-fill','Gestión',1,1,0,1),
+('empresas','G. Empresa','/admin/companies','bi bi-buildings-fill','Gestión',2,1,0,1),
+('productos','G. Productos','/admin/products','bi bi-box-seam-fill','Gestión',3,1,0,1),
+('categorias','G. Categorías','/admin/categories','bi bi-tags-fill','Gestión',4,1,0,1),
+('marcas','G. Marcas','/admin/brands','bi bi-award-fill','Gestión',5,1,0,1),
+('proveedores','G. Proveedores','/admin/suppliers','bi bi-truck','Gestión',6,1,0,1),
+('orden_compra','G. Orden de Compra','/admin/purchase_orders','bi bi-cart-dash-fill','Gestión',7,1,0,1),
+('stock','R. Stock','/admin/inventory','bi bi-archive-fill','Gestión',8,1,0,1),
+('sucursales','G. Sucursales','/admin/sucursales','bi bi-building','Gestión',9,1,0,1),
+('servicios','G. Servicios','/admin/services','bi bi-wrench-adjustable','Servicios',1,1,0,1),
+('servicio_mecanico','G. Servicio Mecánico','/admin/service_mechanics','bi bi-tools','Servicios',2,1,0,1),
+('tickets','G. Tickets Soporte','/admin/tickets','bi bi-chat-dots-fill','Servicios',3,1,0,1),
+('mecanicos','G. Mecánicos','/admin/mechanics','bi bi-person-badge-fill','Servicios',4,1,0,1),
+('bitacora_vehiculo','R. Bitacora Vehiculo','/admin/vehicle_log','bi bi-car-front-fill','Servicios',5,1,0,1),
+('creditos','G. Crédito','/admin/credit','bi bi-receipt-cutoff','Ventas',1,1,0,1),
+('pagos','G. Pagos','/admin/payments','bi bi-credit-card-2-front-fill','Ventas',2,1,0,1),
+('metodos_pago','G. Métodos de Pago','/admin/payment_methods','bi bi-wallet2','Ventas',3,1,0,1),
+('promociones','G. Promociones','/admin/promotions','bi bi-gift-fill','Ventas',4,1,0,1),
+('usuarios','G. Usuarios','/admin/users','bi bi-people-fill','Sistema',1,1,0,1),
+('roles','G. Roles','/admin/roles','bi bi-shield-lock-fill','Sistema',2,1,0,1),
+('modulos','G. Módulos','/admin/modulos','bi bi-grid-3x3-gap-fill','Sistema',3,1,0,1),
+('qr','G. Códigos QR','/admin/qr','bi bi-qr-code','Sistema',4,1,0,1),
+('escaner','Escáner','/scanner','bi bi-upc-scan','Sistema',5,1,1,1),
+('tasas_avanzadas','G. Tasa de Cambio','/admin/tasas','bi bi-currency-dollar','Análisis',1,1,0,1),
+('ordenes','R. Orden de Venta','/admin/orders_sales','bi bi-cart-check-fill','Análisis',2,1,0,1),
+('reportes','Reportes','/admin/reports','bi bi-file-earmark-spreadsheet-fill','Análisis',3,1,0,1),
+('reportes_estadisticos','Reportes Estadísticos','/admin/report_stats','bi bi-pie-chart-fill','Análisis',4,1,0,1),
+('bitacora','G. Bitácora','/admin/bitacora','bi bi-journal-text','Análisis',5,1,0,1),
+('respaldos','G. Respaldos','/admin/backup','bi bi-database-fill-down','Análisis',6,1,0,1),
+('perfil','G. Mi Perfil','/admin/profile','bi bi-person-circle','Análisis',7,1,1,1),
+('guia','Guía','/admin/guide','bi bi-journal-bookmark-fill','Análisis',8,1,1,1),
+('vehiculos','G. Vehículos',NULL,'bi bi-car-front','Gestión',20,0,0,1),
+('comisiones','G. Comisiones',NULL,'bi bi-cash-coin','Ventas',20,0,0,1),
+('notificaciones','Notificaciones',NULL,'bi bi-bell','Sistema',20,0,0,1),
+('filtros','G. Filtros',NULL,'bi bi-funnel','Análisis',20,0,0,1),
+('mantenimiento','G. Mantenimiento',NULL,'bi bi-gear','Sistema',21,0,0,1);
+
+ALTER TABLE `permisos`
+  ADD COLUMN `id_modulo` int(11) DEFAULT NULL AFTER `modulo`,
+  ADD KEY `idx_permisos_modulo` (`id_modulo`),
+  ADD CONSTRAINT `fk_permisos_modulo` FOREIGN KEY (`id_modulo`) REFERENCES `modulos` (`id_modulo`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE `bitacora`
+  ADD COLUMN `id_modulo` int(11) DEFAULT NULL AFTER `modulo`,
+  ADD KEY `idx_bitacora_modulo` (`id_modulo`),
+  ADD CONSTRAINT `fk_bitacora_modulo` FOREIGN KEY (`id_modulo`) REFERENCES `modulos` (`id_modulo`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+INSERT INTO `permisos` (`rol_id`,`modulo`,`crear`,`leer`,`actualizar`,`eliminar`) VALUES
+(1,'orden_compra',1,1,1,1),
+(1,'servicio_mecanico',1,1,1,1),
+(1,'modulos',1,1,1,1),
+(1,'reportes_estadisticos',0,1,0,0),
+(1,'dashboard',0,1,0,0),
+(1,'perfil',0,1,0,0),
+(1,'guia',0,1,0,0),
+(1,'escaner',1,1,1,1)
+ON DUPLICATE KEY UPDATE leer = VALUES(leer);
+
+UPDATE `permisos` p JOIN `modulos` m ON p.modulo = m.nombre_modulo SET p.id_modulo = m.id_modulo;
+UPDATE `bitacora` b JOIN `modulos` m ON UPPER(m.nombre_modulo) = b.modulo SET b.id_modulo = m.id_modulo WHERE b.id_modulo IS NULL;
+
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50003 TRIGGER `trg_bitacora_set_modulo` BEFORE INSERT ON `bitacora` FOR EACH ROW BEGIN
+  IF NEW.id_modulo IS NULL THEN
+    SET NEW.id_modulo = (SELECT m.id_modulo FROM modulos m WHERE UPPER(m.nombre_modulo) = UPPER(NEW.modulo) LIMIT 1);
+  END IF;
+END */;;
+/*!50003 CREATE*/ /*!50003 TRIGGER `trg_permisos_set_modulo` BEFORE INSERT ON `permisos` FOR EACH ROW BEGIN
+  IF NEW.id_modulo IS NULL THEN
+    SET NEW.id_modulo = (SELECT m.id_modulo FROM modulos m WHERE m.nombre_modulo = NEW.modulo LIMIT 1);
+  END IF;
+END */;;
+DELIMITER ;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

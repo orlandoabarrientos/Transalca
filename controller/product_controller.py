@@ -4,7 +4,7 @@ import os
 import time
 from werkzeug.utils import secure_filename
 
-from config.validation import SELECT_TAMPER_MESSAGE, normalize_decimal, optional_text, require_text
+from config.validation import SELECT_TAMPER_MESSAGE, ValidationError, optional_text
 
 product_bp = Blueprint('products', __name__)
 model = ProductModel()
@@ -31,54 +31,6 @@ def _save_image(file, codigo):
     filepath = os.path.join(UPLOAD_FOLDER, filename)
     file.save(filepath)
     return filename, None
-
-
-
-def _validate_product(data, old_codigo=None):
-    errors = {}
-    codigo = optional_text(errors, 'codigo', data.get('codigo'), 'El codigo', max_len=50, allow_serial=True)
-    if not codigo or len(codigo) < 2:
-        errors['codigo'] = 'El codigo debe tener al menos 2 caracteres.'
-    clean = {
-        'codigo': codigo.upper(),
-        'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=150, allow_serial=False),
-        'descripcion': optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=500, allow_serial=True),
-        'precio': normalize_decimal(errors, 'precio', data.get('precio'), 'El precio'),
-        'categoria': require_text(errors, 'categoria', data.get('categoria'), 'La categoria', min_len=1, max_len=150, allow_serial=True),
-        'marca': require_text(errors, 'marca', data.get('marca'), 'La marca', min_len=1, max_len=150, allow_serial=True)
-    }
-
-    existing = model.ejecutar("get_by_codigo", old_codigo) if old_codigo else None
-
-    if clean['categoria'] and not errors.get('categoria'):
-        is_current_cat = existing and existing.get('categoria') == clean['categoria']
-        if not is_current_cat and not model.ejecutar("category_exists", clean['categoria']):
-            errors['categoria'] = SELECT_TAMPER_MESSAGE
-
-    if clean['marca'] and not errors.get('marca'):
-        is_current_brand = existing and existing.get('marca') == clean['marca']
-        if not is_current_brand and not model.ejecutar("brand_exists", clean['marca']):
-            errors['marca'] = SELECT_TAMPER_MESSAGE
-
-    sucursal_ids = data.get('sucursal_ids')
-    if sucursal_ids is not None:
-        if not isinstance(sucursal_ids, list):
-            errors['sucursal_id'] = 'Formato de sucursales invalido.'
-        else:
-            cleaned_ids = []
-            for s_id in sucursal_ids:
-                try:
-                    cleaned_ids.append(int(s_id))
-                except (ValueError, TypeError):
-                    continue
-            if not cleaned_ids:
-                errors['sucursal_id'] = 'Seleccione al menos una sucursal.'
-            else:
-                clean['sucursal_ids'] = cleaned_ids
-    else:
-        errors['sucursal_id'] = 'Seleccione al menos una sucursal.'
-
-    return clean, errors
 
 
 @product_bp.route('/', methods=['GET'])
@@ -225,31 +177,19 @@ def create():
         else:
             raw = request.form.to_dict()
             raw['sucursal_ids'] = request.form.getlist('sucursal_ids')
-        data, errors = _validate_product(raw)
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        existing = model.ejecutar("get_by_codigo", data['codigo'])
-        if existing:
-            if existing['estado'] == 1:
-                return jsonify({"status": "error", "message": "Este codigo ya esta registrado", "errors": {"codigo": "Este codigo ya esta registrado."}}), 400
-            else:
-                imagen_file = request.files.get('imagen')
-                if imagen_file and imagen_file.filename != '':
-                    filename, img_err = _save_image(imagen_file, data['codigo'])
-                    if img_err:
-                        return jsonify({"status": "error", "message": "Error al subir la imagen", "errors": {"imagen": img_err}}), 400
-                    data['imagen'] = filename
-                model.ejecutar("update_product", existing['codigo'], data)
-                model.ejecutar("reactivar", existing['codigo'])
-                return jsonify({"status": "success", "message": "Producto registrado correctamente", "codigo": existing['codigo']})
+        clean = model.ejecutar("validate", raw)
         imagen_file = request.files.get('imagen')
         if imagen_file and imagen_file.filename != '':
-            filename, img_err = _save_image(imagen_file, data['codigo'])
+            filename, img_err = _save_image(imagen_file, clean['codigo'])
             if img_err:
                 return jsonify({"status": "error", "message": "Error al subir la imagen", "errors": {"imagen": img_err}}), 400
-            data['imagen'] = filename
-        model.ejecutar("create", data)
-        return jsonify({"status": "success", "message": "Producto registrado correctamente", "codigo": data['codigo']})
+            raw['imagen'] = filename
+        elif str(raw.get('imagen_remove') or '').strip() == '1':
+            raw['imagen'] = 'default_product.png'
+        model.ejecutar("create", raw)
+        return jsonify({"status": "success", "message": "Producto registrado correctamente", "codigo": clean['codigo']})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar el producto"}), 500
 
@@ -265,19 +205,13 @@ def update():
             raw = request.form.to_dict()
             raw['sucursal_ids'] = request.form.getlist('sucursal_ids')
         old_codigo = raw.get('old_codigo', '')
-        data, errors = _validate_product(raw, old_codigo)
-        if not old_codigo:
-            errors['old_codigo'] = 'Identificador de producto requerido.'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        if data['codigo'] != old_codigo and model.ejecutar("codigo_exists", data['codigo']):
-            return jsonify({"status": "error", "message": "Este codigo ya esta registrado", "errors": {"codigo": "Este codigo ya esta registrado."}}), 400
+        clean = model.ejecutar("validate", raw, old_codigo)
         imagen_file = request.files.get('imagen')
         if imagen_file and imagen_file.filename != '':
-            filename, img_err = _save_image(imagen_file, data['codigo'])
+            filename, img_err = _save_image(imagen_file, clean['codigo'])
             if img_err:
                 return jsonify({"status": "error", "message": "Error al subir la imagen", "errors": {"imagen": img_err}}), 400
-            data['imagen'] = filename
+            raw['imagen'] = filename
             existing = model.ejecutar("get_by_codigo", old_codigo)
             if existing:
                 old_img = existing.get('imagen')
@@ -288,8 +222,22 @@ def update():
                             os.remove(old_path)
                         except OSError:
                             pass
-        model.ejecutar("update_product", old_codigo, data)
+        elif str(raw.get('imagen_remove') or '').strip() == '1':
+            raw['imagen'] = 'default_product.png'
+            existing = model.ejecutar("get_by_codigo", old_codigo)
+            if existing:
+                old_img = existing.get('imagen')
+                if old_img and old_img != 'default_product.png':
+                    old_path = os.path.join(UPLOAD_FOLDER, old_img)
+                    if os.path.exists(old_path):
+                        try:
+                            os.remove(old_path)
+                        except OSError:
+                            pass
+        model.ejecutar("update_product", old_codigo, raw)
         return jsonify({"status": "success", "message": "Producto modificado correctamente"})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el producto"}), 500
 

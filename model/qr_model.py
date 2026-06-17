@@ -1,5 +1,6 @@
 from model.connection import Connection
 from model.order_model import DETAIL_UNION
+from config.validation import SELECT_TAMPER_MESSAGE, ValidationError
 import json
 from datetime import datetime, timedelta
 
@@ -93,7 +94,23 @@ class QRModel(Connection):
         })
         return json.dumps(payload, ensure_ascii=False)
 
+    def _validate(self, data):
+        errors = {}
+        tipo = (data.get('tipo') or '').strip().lower()
+        if not tipo:
+            errors['tipo'] = 'Seleccione un tipo de QR'
+        elif tipo not in QR_TIPO_INT:
+            errors['tipo'] = SELECT_TAMPER_MESSAGE
+        utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
+        if not utilidad_tipo:
+            errors['utilidad_tipo'] = 'La utilidad es obligatoria'
+        elif utilidad_tipo in ('promocion', 'mesa') and not str(data.get('referencia_id') or '').strip():
+            errors['referencia_id'] = 'Seleccione una referencia para esta utilidad'
+        if errors:
+            raise ValidationError(errors)
+
     def _create_qr(self, data):
+        self._validate(data)
         utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
         utilidad = utilidad_tipo or (data.get('utilidad') or '').strip()
         contenido = self._build_content(data)
@@ -128,6 +145,7 @@ class QRModel(Connection):
         return qr
 
     def _update_qr(self, qr_id, data):
+        self._validate(data)
         existing = self._get_by_id(qr_id)
         contenido = self._build_content(data, existing.get('contenido') if existing else None)
         utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
@@ -205,6 +223,7 @@ class QRModel(Connection):
 
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {
+            "validate": self._validate,
             "create_qr": self._create_qr,
             "get_user_qrs": self._get_user_qrs,
             "get_by_id": self._get_by_id,

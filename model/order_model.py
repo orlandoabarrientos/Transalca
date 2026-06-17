@@ -1,9 +1,12 @@
 import json
 import logging
 from model.connection import Connection
+from config.validation import ValidationError, normalize_int, validate_choice
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
+
+TIPOS_ITEM = ['producto', 'servicio']
 
 
 def caracas_now():
@@ -105,7 +108,16 @@ class OrderModel(Connection):
     def _is_valid_payment_method(self, value):
         return self._get_payment_method(value) is not None
 
-    def _add_to_cart(self, cliente_cedula, item_id, tipo='producto', cantidad=1):
+    def _add_to_cart(self, cliente_cedula, data):
+        errors = {}
+        tipo = validate_choice(errors, 'tipo', data.get('tipo') or 'producto', TIPOS_ITEM)
+        cantidad = normalize_int(errors, 'cantidad', data.get('cantidad') or 1, 'La cantidad', min_value=1, max_value=999)
+        item_id = data.get('item_id')
+        if not item_id:
+            errors['item_id'] = 'Debe seleccionar un producto o servicio.'
+        if errors:
+            raise ValidationError(errors)
+
         if not self._ensure_client_exists(cliente_cedula):
             raise Exception("Cliente no encontrado")
 
@@ -136,8 +148,10 @@ class OrderModel(Connection):
                 (cliente_cedula, None, item_id))
 
     def _update_cart_quantity(self, cart_id, cantidad):
-        if cantidad <= 0:
-            return self.delete("transalca", "DELETE FROM carrito_compra WHERE id_carrito_compra = %s", (cart_id,))
+        errors = {}
+        cantidad = normalize_int(errors, 'cantidad', cantidad, 'La cantidad', min_value=1, max_value=999)
+        if errors:
+            raise ValidationError(errors)
         return self.update("transalca",
             "UPDATE carrito_compra SET cantidad_carrito = %s WHERE id_carrito_compra = %s", (cantidad, cart_id))
 

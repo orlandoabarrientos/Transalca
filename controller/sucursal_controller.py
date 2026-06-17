@@ -1,30 +1,10 @@
-import re
-
 from flask import Blueprint, request, jsonify, session
 from model.sucursal_model import SucursalModel
 
-from config.validation import normalize_email, normalize_phone, optional_text, require_text
+from config.validation import ValidationError, normalize_email, require_text
 
 sucursal_bp = Blueprint('sucursales', __name__)
 model = SucursalModel()
-
-DIRECCION_RE = re.compile(r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,\-]+$")
-
-
-def _validate_sucursal(data):
-    errors = {}
-    direccion_raw = data.get('direccion')
-    if direccion_raw is not None and str(direccion_raw) != '' and not str(direccion_raw).strip():
-        errors['direccion'] = 'La direccion no puede contener solo espacios en blanco.'
-    clean = {
-        'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=200, allow_serial=False),
-        'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40),
-        'telefono': normalize_phone(errors, data.get('telefono'), required=False),
-        'email': normalize_email(errors, data.get('email'), required=False)
-    }
-    if clean['direccion'] and 'direccion' not in errors and not DIRECCION_RE.match(clean['direccion']):
-        errors['direccion'] = 'La direccion solo puede contener letras, numeros, espacios, puntos, comas y guiones.'
-    return clean, errors
 
 
 @sucursal_bp.route('/', methods=['GET'])
@@ -85,24 +65,10 @@ def create():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        data, errors = _validate_sucursal(request.get_json() or {})
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        existing = model.ejecutar("get_by_nombre", data['nombre'])
-        if existing:
-            if existing['estado'] == 1:
-                return jsonify({"status": "error", "message": "Ya existe una sucursal con ese nombre.", "errors": {"nombre": "Ya existe una sucursal con ese nombre."}}), 400
-            else:
-                model.ejecutar("update_sucursal", existing['id'], data)
-                model.ejecutar("reactivar", existing['id'])
-
-                return jsonify({"status": "success", "message": "Sucursal registrada correctamente.", "id": existing['id']})
-        if data.get('email') and model.ejecutar("email_exists_globally", data['email']):
-            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        sid = model.ejecutar("create", data)
-
-
+        sid = model.ejecutar("create", request.get_json() or {})
         return jsonify({"status": "success", "message": "Sucursal registrada correctamente.", "id": sid})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -112,17 +78,10 @@ def update(sid):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        data, errors = _validate_sucursal(request.get_json() or {})
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if model.ejecutar("nombre_exists", data['nombre'], sid):
-            return jsonify({"status": "error", "message": "Ya existe una sucursal con ese nombre.", "errors": {"nombre": "Ya existe una sucursal con ese nombre."}}), 400
-        if data.get('email') and model.ejecutar("email_exists_globally", data['email'], {"sucursal_id": sid}):
-            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        model.ejecutar("update_sucursal", sid, data)
-
-
+        model.ejecutar("update_sucursal", sid, request.get_json() or {})
         return jsonify({"status": "success", "message": "Sucursal modificada correctamente."})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 

@@ -16,6 +16,18 @@ RIF_PREFIXES = {"J", "G", "V", "E", "P"}
 SELECT_TAMPER_MESSAGE = "El valor seleccionado no es valido. Recargue la pagina e intentelo nuevamente."
 
 
+class ValidationError(Exception):
+    def __init__(self, errors=None, message="Revise los campos marcados, hay datos no validos."):
+        self.errors = errors or {}
+        self.message = message
+        super().__init__(message)
+
+
+def raise_if_errors(errors):
+    if errors:
+        raise ValidationError(errors)
+
+
 def clean_string(value):
     if value is None:
         return ""

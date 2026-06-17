@@ -1,10 +1,12 @@
 (function () {
     'use strict';
 
-    const ASSISTANT_API_URL = window.TRANSALCA_ASSISTANT_API_URL || '/api/asistente/mensaje';
+    const ASSISTANT_API_URL = window.TRANSALCA_ASSISTANT_API_URL || resolveAssistantApiUrl();
     const BOT_NAME = 'Asistente Transalca';
     const MAX_MESSAGE_LENGTH = Number(window.TRANSALCA_ASSISTANT_MAX_MESSAGE_LENGTH || 1000);
     const REQUEST_TIMEOUT_MS = Number(window.TRANSALCA_ASSISTANT_TIMEOUT_MS || 12000);
+    const SHOW_SUGGESTIONS = window.TRANSALCA_ASSISTANT_SHOW_SUGGESTIONS !== false
+        && String(window.TRANSALCA_ASSISTANT_SHOW_SUGGESTIONS ?? 'true').toLowerCase() !== 'false';
     const STORAGE_SESSION_KEY = 'transalca_chat_session_id';
     const STORAGE_MESSAGES_KEY = 'transalca_chat_messages';
     const WELCOME_MSG = 'Hola. Soy el asistente de Transalca C.A. Puedo ayudarte con productos, servicios, mantenimiento, compras y pedidos.';
@@ -21,6 +23,15 @@
     let isSending = false;
     let messages = [];
     let requestSeq = 0;
+
+    function resolveAssistantApiUrl() {
+        const devPorts = ['3000', '5173', '5500', '5501'];
+        const isDetachedFrontend = window.location.protocol === 'file:' || devPorts.includes(window.location.port);
+        if (isDetachedFrontend) {
+            return 'http://127.0.0.1:5000/api/asistente/mensaje';
+        }
+        return '/api/asistente/mensaje';
+    }
 
     function loadStoredState() {
         try {
@@ -139,6 +150,11 @@
         const container = document.getElementById('chatChips');
         if (!container) return;
         container.innerHTML = '';
+        if (!SHOW_SUGGESTIONS) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = '';
         SUGGESTIONS.forEach((text) => {
             const chip = document.createElement('span');
             chip.className = 'chat-chip';

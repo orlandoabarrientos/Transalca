@@ -21,3 +21,25 @@ def can_access_client(cedula):
 
 def deny():
     return jsonify({"status": "error", "message": "No autorizado"}), 403
+
+
+def is_admin():
+    return 'Administrador' in (session.get('roles') or [])
+
+
+def has_module_permission(modulo, accion='leer'):
+    if 'user_id' not in session:
+        return False
+    if is_admin():
+        return True
+    perms = (session.get('permisos') or {}).get(modulo) or {}
+    return bool(perms.get(accion))
+
+
+def require_module(modulo, accion='leer'):
+    login = require_login()
+    if login:
+        return login
+    if not has_module_permission(modulo, accion):
+        return deny()
+    return None

@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, session, Response
 from model.purchase_order_model import PurchaseOrderModel
 
 from controller._guards import require_login, is_employee, deny
-from decimal import Decimal
+from config.validation import ValidationError
 from datetime import datetime
 import logging
 import uuid
@@ -55,56 +55,13 @@ def create():
             return deny()
 
         data = request.get_json() or {}
-        errors = {}
-
-
-        proveedor_rif = (data.get('proveedor_rif') or '').strip()
-        if not proveedor_rif:
-            errors['proveedor_rif'] = "El proveedor es obligatorio."
-
-        sucursal_id = data.get('sucursal_id')
-        if not sucursal_id:
-            errors['sucursal_id'] = "La sucursal destino es obligatoria."
-
-        items = data.get('items') or []
-        if not items:
-            errors['items'] = "Debe agregar al menos un producto."
-        else:
-            for idx, item in enumerate(items):
-                p_code = (item.get('producto_codigo') or '').strip()
-                p_qty = item.get('cantidad')
-                p_price = item.get('precio_unitario')
-
-                if not p_code:
-                    errors[f'items_{idx}_code'] = "Codigo de producto obligatorio."
-                try:
-                    qty = int(p_qty)
-                    if qty <= 0:
-                        errors[f'items_{idx}_qty'] = "La cantidad debe ser mayor a cero."
-                except (ValueError, TypeError):
-                    errors[f'items_{idx}_qty'] = "La cantidad no es valida."
-
-                try:
-                    price = Decimal(str(p_price).replace(',', '.')).quantize(Decimal("0.01"))
-                    if price < 0:
-                        errors[f'items_{idx}_price'] = "El precio no puede ser negativo."
-                except Exception:
-                    errors[f'items_{idx}_price'] = "El precio no es valido."
-
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-
         result = model.ejecutar("create", data)
         if not result.get('ok'):
             return jsonify({"status": "error", "message": result.get('message')}), 400
 
-        if session.get('user_id'):
-
-
-
-            pass
-
         return jsonify({"status": "success", "message": result.get('message'), "data": {"id": result.get('id')}})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar la orden de compra."}), 500
 

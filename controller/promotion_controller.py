@@ -2,10 +2,8 @@ from flask import Blueprint, request, jsonify, session
 from controller._guards import can_access_client, deny, is_employee, require_login
 from model.promotion_model import PromotionModel
 
-from config.constants import TIPOS_PROMOCION
-from config.validation import normalize_int, optional_text, require_text, validate_choice
+from config.validation import ValidationError, optional_text
 import os
-import re
 from werkzeug.utils import secure_filename
 
 promotion_bp = Blueprint('promotions', __name__)
@@ -13,7 +11,6 @@ model = PromotionModel()
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'public', 'assets', 'images')
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _require_employee():
@@ -36,25 +33,6 @@ def _get_accessible_card(card_id):
     if not can_access_client(card.get('cliente_cedula')):
         return None, deny()
     return card, None
-
-
-def _validate_promo(data):
-    errors = {}
-    clean = {
-        'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=150, allow_serial=False),
-        'descripcion': optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=500, allow_serial=True),
-        'tipo': validate_choice(errors, 'tipo', data.get('tipo'), TIPOS_PROMOCION),
-        'puntos_requeridos': normalize_int(errors, 'puntos_requeridos', data.get('puntos_requeridos') or 1, 'Los puntos', min_value=1, max_value=999999),
-        'recompensa': optional_text(errors, 'recompensa', data.get('recompensa'), 'La recompensa', max_len=200, allow_serial=True),
-        'fecha_inicio': data.get('fecha_inicio') or None,
-        'fecha_fin': data.get('fecha_fin') or None
-    }
-    for field in ('fecha_inicio', 'fecha_fin'):
-        if clean[field] and not DATE_RE.match(clean[field]):
-            errors[field] = 'La fecha debe tener formato valido.'
-    if clean['fecha_inicio'] and clean['fecha_fin'] and clean['fecha_fin'] < clean['fecha_inicio']:
-        errors['fecha_fin'] = 'La fecha fin no puede ser menor que la fecha inicio.'
-    return clean, errors
 
 
 @promotion_bp.route('/check-unique', methods=['GET'])
@@ -103,21 +81,10 @@ def create():
         auth_error = _require_employee()
         if auth_error:
             return auth_error
-        data, errors = _validate_promo(request.get_json() or {})
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        existing = model.ejecutar("get_by_nombre", data['nombre'])
-        if existing:
-            if existing['estado'] == 1:
-                return jsonify({"status": "error", "message": "Ya existe una promocion con ese nombre.", "errors": {"nombre": "Ya existe una promocion con ese nombre."}}), 400
-            else:
-                model.ejecutar("update_promotion", existing['id'], data)
-                model.ejecutar("reactivar", existing['id'])
-
-                return jsonify({"status": "success", "message": "Promocion registrada correctamente.", "id": existing['id']})
-        promo_id = model.ejecutar("create", data)
-
+        promo_id = model.ejecutar("create", request.get_json() or {})
         return jsonify({"status": "success", "message": "Promocion registrada correctamente.", "id": promo_id})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar la promocion."}), 500
 
@@ -128,14 +95,10 @@ def update(promo_id):
         auth_error = _require_employee()
         if auth_error:
             return auth_error
-        data, errors = _validate_promo(request.get_json() or {})
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if model.ejecutar("nombre_exists", data['nombre'], promo_id):
-            return jsonify({"status": "error", "message": "Ya existe una promocion con ese nombre.", "errors": {"nombre": "Ya existe una promocion con ese nombre."}}), 400
-        model.ejecutar("update_promotion", promo_id, data)
-
+        model.ejecutar("update_promotion", promo_id, request.get_json() or {})
         return jsonify({"status": "success", "message": "Promocion modificada correctamente."})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar la promocion."}), 500
 

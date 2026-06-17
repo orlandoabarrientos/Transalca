@@ -1,6 +1,7 @@
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, date
 from model.connection import Connection
+from config.validation import ValidationError
 
 
 class PurchaseOrderModel(Connection):
@@ -79,8 +80,35 @@ class PurchaseOrderModel(Connection):
                 "WHERE doc.orden_compra_id = %s", (order_id,))
         return order
 
-    def _create(self, data):
+    def _validate(self, data):
+        errors = {}
+        proveedor_rif = (data.get('proveedor_rif') or '').strip()
+        if not proveedor_rif:
+            errors['proveedor_rif'] = "El proveedor es obligatorio."
+        if not data.get('sucursal_id'):
+            errors['sucursal_id'] = "La sucursal destino es obligatoria."
+        items = data.get('items') or []
+        if not items:
+            errors['items'] = "Debe agregar al menos un producto."
+        else:
+            for idx, item in enumerate(items):
+                if not (item.get('producto_codigo') or '').strip():
+                    errors[f'items_{idx}_code'] = "Codigo de producto obligatorio."
+                try:
+                    if int(item.get('cantidad')) <= 0:
+                        errors[f'items_{idx}_qty'] = "La cantidad debe ser mayor a cero."
+                except (ValueError, TypeError):
+                    errors[f'items_{idx}_qty'] = "La cantidad no es valida."
+                try:
+                    if Decimal(str(item.get('precio_unitario')).replace(',', '.')).quantize(Decimal("0.01")) < 0:
+                        errors[f'items_{idx}_price'] = "El precio no puede ser negativo."
+                except (InvalidOperation, ValueError, TypeError):
+                    errors[f'items_{idx}_price'] = "El precio no es valido."
+        if errors:
+            raise ValidationError(errors)
 
+    def _create(self, data):
+        self._validate(data)
         conn = self.con_transalca()
         try:
             conn.begin()
@@ -204,6 +232,7 @@ class PurchaseOrderModel(Connection):
             "get_all": self._get_all,
             "get_stats": self._get_stats,
             "get_by_id": self._get_by_id,
+            "validate": self._validate,
             "create": self._create,
             "mark_as_bought": self._mark_as_bought,
         }

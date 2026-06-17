@@ -1,5 +1,6 @@
 from model.connection import Connection
 from model.order_model import OrderModel, DETAIL_UNION
+from config.validation import ValidationError, optional_text
 
 
 class PaymentModel(Connection):
@@ -52,6 +53,12 @@ class PaymentModel(Connection):
         return True
 
     def _reject(self, comprobante_id, revisado_por_cedula=None, observaciones=''):
+        errors = {}
+        observaciones = optional_text(errors, 'observaciones', observaciones, 'El motivo', max_len=255, allow_serial=True)
+        if not observaciones:
+            errors['observaciones'] = 'El motivo es obligatorio.'
+        if errors:
+            raise ValidationError(errors)
         comp = self.fetch_one("transalca", "SELECT cp.*, cp.id_comprobante_pago AS id FROM comprobantes_pago cp WHERE cp.id_comprobante_pago = %s", (comprobante_id,))
         if not comp:
             return False

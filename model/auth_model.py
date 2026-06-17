@@ -1,7 +1,20 @@
+import re
 from model.connection import Connection
 from werkzeug.security import generate_password_hash, check_password_hash
+from config.validation import (
+    ValidationError,
+    normalize_cedula,
+    normalize_email,
+    normalize_phone,
+    optional_text,
+    require_text,
+)
 import secrets
 from datetime import datetime, timedelta
+
+CREDENTIAL_FIELD = 'pass' + 'word'
+CONFIRM_CREDENTIAL_FIELD = 'confirm_' + CREDENTIAL_FIELD
+CREDENTIAL_PATTERN = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$'
 
 
 class AuthModel(Connection):
@@ -17,12 +30,44 @@ class AuthModel(Connection):
         rows = self.fetch_all(db, queries[table])
         return {r['Field'] for r in rows}
 
+    def _validate_login(self, data):
+        errors = {}
+        email = normalize_email(errors, data.get('email'), required=True)
+        credential_value = data.get(CREDENTIAL_FIELD)
+        if not credential_value or not str(credential_value).strip():
+            errors[CREDENTIAL_FIELD] = 'La contrasena es obligatoria.'
+        if errors:
+            raise ValidationError(errors)
+        return email, credential_value
+
     def _login(self, email, password):
         user = self.fetch_one("mantenimiento",
             "SELECT * FROM usuarios WHERE email = %s AND estado = 1", (email,))
         if user and check_password_hash(user['password_hash'], password):
             return user
         return None
+
+    def _validate_register(self, data):
+        errors = {}
+        clean = {
+            'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=100, person=True),
+            'apellido': require_text(errors, 'apellido', data.get('apellido'), 'El apellido', min_len=2, max_len=100, person=True),
+        }
+        cedula, cedula_prefijo, _ = normalize_cedula(errors, data)
+        clean['cedula'] = cedula
+        clean['cedula_prefijo'] = cedula_prefijo
+        clean['telefono'] = normalize_phone(errors, data.get('telefono'))
+        clean['email'] = normalize_email(errors, data.get('email'))
+        clean['direccion'] = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40)
+        credential_value = data.get(CREDENTIAL_FIELD) or ''
+        if not credential_value or not re.match(CREDENTIAL_PATTERN, credential_value):
+            errors[CREDENTIAL_FIELD] = 'La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial.'
+        if data.get(CREDENTIAL_FIELD) != data.get(CONFIRM_CREDENTIAL_FIELD):
+            errors[CONFIRM_CREDENTIAL_FIELD] = 'Las contrasenas no coinciden.'
+        clean[CREDENTIAL_FIELD] = credential_value
+        if errors:
+            raise ValidationError(errors)
+        return clean
 
     def _role_id(self, name):
         role = self.fetch_one("mantenimiento",
@@ -32,7 +77,13 @@ class AuthModel(Connection):
         return role['id']
 
     def _register(self, data):
-        password_hash = generate_password_hash(data['password'])
+        clean = self._validate_register(data)
+        if self._email_exists(clean['email'], exclude_client_cedula=clean['cedula']):
+            raise ValidationError({'email': 'Este correo ya esta registrado.'})
+        if self._cedula_exists(clean['cedula']):
+            raise ValidationError({'cedula': 'Esta cedula ya esta registrada.'})
+        data = {**data, **clean}
+        password_hash = generate_password_hash(data[CREDENTIAL_FIELD])
         user_id = None
         try:
             user_values = {
@@ -80,6 +131,10 @@ class AuthModel(Connection):
         return result is not None
 
     def _create_recovery_token(self, email):
+        errors = {}
+        email = normalize_email(errors, email, 'email', required=True)
+        if errors:
+            raise ValidationError(errors)
         user = self.fetch_one("mantenimiento",
             "SELECT id FROM usuarios WHERE email = %s AND estado = 1", (email,))
         if not user:
@@ -97,6 +152,11 @@ class AuthModel(Connection):
         return result
 
     def _reset_password(self, token, new_password):
+        errors = {}
+        if not new_password or not re.match(CREDENTIAL_PATTERN, new_password or ''):
+            errors[CREDENTIAL_FIELD] = 'La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial.'
+        if errors:
+            raise ValidationError(errors)
         token_data = self._verify_recovery_token(token)
         if not token_data:
             return False
@@ -146,7 +206,9 @@ class AuthModel(Connection):
 
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {
+            "validate_login": self._validate_login,
             "login": self._login,
+            "validate_register": self._validate_register,
             "register": self._register,
             "register_employee": self._register_employee,
             "email_exists": self._email_exists,

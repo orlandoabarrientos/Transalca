@@ -1,89 +1,13 @@
-import re
-
 from flask import Blueprint, request, jsonify, session
 from model.service_mechanic_model import ServiceMechanicModel
 
 from model.commission_model import CommissionModel
-from config.constants import ESTADOS_SERVICIO_MECANICO
-from config.validation import SELECT_TAMPER_MESSAGE, normalize_int, optional_text, validate_choice
+from config.validation import ValidationError
 
 service_mechanic_bp = Blueprint('service_mechanics', __name__)
 model = ServiceMechanicModel()
 
 commission_model = CommissionModel()
-
-ESTADOS_REQUIEREN_DATOS = {'en_proceso', 'completado'}
-OBSERVACIONES_RE = re.compile(r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,\-]+$")
-
-
-def _missing_required_data(item, estado, mecanico_cedula=None):
-    """Valida datos obligatorios antes de permitir un cambio de estado."""
-    errors = {}
-    if estado not in ESTADOS_REQUIEREN_DATOS:
-        return errors
-    mecanico = mecanico_cedula if mecanico_cedula is not None else (item or {}).get('mecanico_cedula')
-    if not mecanico:
-        errors['mecanico_cedula'] = 'Debe asignar un mecanico antes de cambiar el estado.'
-    if not (item or {}).get('cliente_cedula'):
-        errors['cliente_cedula'] = 'Debe asignar un cliente antes de cambiar el estado.'
-    if not (item or {}).get('vehiculo_placa'):
-        errors['vehiculo_placa'] = 'Debe asignar un vehiculo antes de cambiar el estado.'
-    return errors
-
-
-def _validate_assignment(data, current_id=None):
-    errors = {}
-    servicio_id = normalize_int(errors, 'servicio_id', data.get('servicio_id'), 'El servicio')
-    orden_venta_id = None
-    if data.get('orden_venta_id') not in (None, ''):
-        orden_venta_id = normalize_int(errors, 'orden_venta_id', data.get('orden_venta_id'), 'La orden')
-    mecanico_cedula = (data.get('mecanico_cedula') or '').strip() or None
-    observaciones_raw = data.get('observaciones')
-    if observaciones_raw is not None and str(observaciones_raw) != '' and not str(observaciones_raw).strip():
-        errors['observaciones'] = 'Las observaciones no pueden contener solo espacios en blanco.'
-    observaciones = optional_text(errors, 'observaciones', data.get('observaciones'), 'Las observaciones', max_len=255, allow_serial=True)
-    if observaciones and 'observaciones' not in errors and not OBSERVACIONES_RE.match(observaciones):
-        errors['observaciones'] = 'Las observaciones solo pueden contener letras, numeros, espacios, puntos, comas y guiones.'
-    cliente_cedula = (data.get('cliente_cedula') or '').strip() or None
-    if not cliente_cedula:
-        errors['cliente_cedula'] = 'Debe seleccionar un cliente.'
-    vehiculo_placa = (data.get('vehiculo_placa') or '').strip().upper() or None
-    if not vehiculo_placa:
-        errors['vehiculo_placa'] = 'Debe seleccionar un vehiculo.'
-    estado_default = 'asignado' if mecanico_cedula else 'sin_asignar'
-    estado = validate_choice(errors, 'estado', data.get('estado') or estado_default, ESTADOS_SERVICIO_MECANICO)
-
-    current = model.ejecutar("get_by_id", current_id) if current_id else None
-
-    if servicio_id:
-        is_current_service = current and current.get('servicio_id') == servicio_id
-        if not is_current_service and not model.ejecutar("service_exists", servicio_id):
-            errors['servicio_id'] = SELECT_TAMPER_MESSAGE
-
-    if mecanico_cedula:
-        is_current_mechanic = current and current.get('mecanico_cedula') == mecanico_cedula
-        if not is_current_mechanic and not model.ejecutar("mechanic_exists", mecanico_cedula):
-            errors['mecanico_cedula'] = SELECT_TAMPER_MESSAGE
-
-    if orden_venta_id and not model.ejecutar("order_exists", orden_venta_id):
-        errors['orden_venta_id'] = 'La orden seleccionada no existe.'
-
-    if estado in ESTADOS_REQUIEREN_DATOS and not errors:
-        candidate = {
-            'mecanico_cedula': mecanico_cedula,
-            'cliente_cedula': cliente_cedula or (current or {}).get('cliente_cedula'),
-            'vehiculo_placa': vehiculo_placa or (current or {}).get('vehiculo_placa'),
-        }
-        errors.update(_missing_required_data(candidate, estado, mecanico_cedula))
-    return {
-        'servicio_id': servicio_id,
-        'mecanico_cedula': mecanico_cedula,
-        'orden_venta_id': orden_venta_id,
-        'observaciones': observaciones,
-        'cliente_cedula': cliente_cedula,
-        'vehiculo_placa': vehiculo_placa,
-        'estado': estado
-    }, errors
 
 
 @service_mechanic_bp.route('/', methods=['GET'])
@@ -111,19 +35,16 @@ def create():
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
         payload = request.get_json() or {}
-        data, errors = _validate_assignment(payload)
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        aid = model.ejecutar("assign", data)
+        aid = model.ejecutar("assign", payload)
         porcentaje = payload.get('porcentaje_comision')
-        if porcentaje not in (None, '') and data.get('mecanico_cedula'):
+        if porcentaje not in (None, '') and (payload.get('mecanico_cedula') or '').strip():
             try:
                 commission_model.ejecutar("set_percentage", aid, float(porcentaje))
             except (TypeError, ValueError):
                 pass
-        message = 'Servicio mecanico registrado correctamente'
-
-        return jsonify({"status": "success", "message": message, "id": aid})
+        return jsonify({"status": "success", "message": 'Servicio mecanico registrado correctamente', "id": aid})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar el servicio mecanico"}), 500
 
@@ -136,32 +57,15 @@ def update_mechanic(aid):
         if not model.ejecutar("get_by_id", aid):
             return jsonify({"status": "error", "message": "Asignacion no encontrada"}), 404
         data = request.get_json() or {}
-        errors = {}
-        mecanico_cedula = (data.get('mecanico_cedula') or '').strip()
-        if not mecanico_cedula:
-            errors['mecanico_cedula'] = 'Debe seleccionar un mecanico.'
-        elif not model.ejecutar("mechanic_exists", mecanico_cedula):
-            errors['mecanico_cedula'] = SELECT_TAMPER_MESSAGE
-        porcentaje_raw = data.get('porcentaje_comision')
-        porcentaje = None
-        if porcentaje_raw in (None, ''):
-            errors['porcentaje_comision'] = 'El porcentaje de comision es obligatorio.'
-        else:
-            try:
-                porcentaje = float(porcentaje_raw)
-            except (TypeError, ValueError):
-                errors['porcentaje_comision'] = 'El porcentaje de comision debe ser numerico.'
-            else:
-                if porcentaje <= 0 or porcentaje > 100:
-                    errors['porcentaje_comision'] = 'El porcentaje de comision debe ser mayor a 0 y maximo 100.'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
+        mecanico_cedula, porcentaje = model.ejecutar("validate_mechanic_update", data)
         if not data.get('confirmar') and model.ejecutar("mechanic_busy_elsewhere", mecanico_cedula, aid):
             return jsonify({"status": "confirm", "message": "Este mecanico ya se encuentra asignado a otro servicio. ¿Quieres volverlo a asignar?"})
         model.ejecutar("update_mechanic", aid, mecanico_cedula)
         commission_model.ejecutar("set_percentage", aid, porcentaje)
 
         return jsonify({"status": "success", "message": "Mecanico asignado correctamente"})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo asignar el mecanico"}), 500
 
@@ -171,19 +75,12 @@ def update_status(aid):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        item = model.ejecutar("get_by_id", aid)
-        if not item:
+        if not model.ejecutar("get_by_id", aid):
             return jsonify({"status": "error", "message": "Asignacion no encontrada"}), 404
         data = request.get_json() or {}
-        errors = {}
-        estado = validate_choice(errors, 'estado', data.get('estado'), ESTADOS_SERVICIO_MECANICO)
-        if not errors:
-            errors.update(_missing_required_data(item, estado))
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        model.ejecutar("update_status", aid, estado)
+        model.ejecutar("update_status", aid, data.get('estado'))
         commission_id = None
-        if estado == 'completado':
+        if (data.get('estado') or '').strip().lower() == 'completado':
             porcentaje = data.get('porcentaje_comision')
             try:
                 porcentaje = float(porcentaje) if porcentaje not in (None, '') else None
@@ -194,6 +91,8 @@ def update_status(aid):
         if commission_id:
             response["commission_id"] = commission_id
         return jsonify(response)
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el estado"}), 500
 
@@ -206,18 +105,17 @@ def update(aid):
         if not model.ejecutar("get_by_id", aid):
             return jsonify({"status": "error", "message": "Asignacion no encontrada"}), 404
         payload = request.get_json() or {}
-        data, errors = _validate_assignment(payload, aid)
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
-        model.ejecutar("update_assignment", aid, data)
+        model.ejecutar("update_assignment", aid, payload)
         porcentaje = payload.get('porcentaje_comision')
-        if porcentaje not in (None, '') and data.get('mecanico_cedula'):
+        if porcentaje not in (None, '') and (payload.get('mecanico_cedula') or '').strip():
             try:
                 commission_model.ejecutar("set_percentage", aid, float(porcentaje))
             except (TypeError, ValueError):
                 pass
 
         return jsonify({"status": "success", "message": "Servicio mecanico modificado correctamente"})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el servicio mecanico"}), 500
 

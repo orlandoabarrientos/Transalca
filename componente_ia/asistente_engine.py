@@ -3,12 +3,14 @@ import logging
 import math
 import os
 import time
+from datetime import datetime, timezone
 
 from componente_ia.automotive_entities import (
     AutomotiveEntities,
     BUSINESS_TERMS,
     SERVICE_TERMS,
     SERVICE_SYMPTOMS,
+    MODEL_MAKE,
     detect_intent_hint,
     extract_entities,
     extract_sizes,
@@ -30,6 +32,7 @@ from componente_ia.catalog_retriever import (
     serialize_match,
 )
 from componente_ia.session_memory import SessionMemory
+from componente_ia.source_quality import evaluate_source
 from componente_ia.web_search import WebSearchService, extract_tire_sizes_from_sources
 
 
@@ -141,21 +144,33 @@ class LightIntentClassifier:
                 self.bias[prediction] -= 0.5
 
 
+LOCAL_FITMENT_SOURCE = 'referencia local curada; validar manual o etiqueta de puerta antes de vender'
+LOCAL_FITMENT_UPDATED_AT = '2026-06-16'
+
 LOCAL_FITMENT = [
-    {'make': 'toyota', 'model': 'hilux', 'start': 2016, 'end': 2023, 'sizes': ['225/70R17', '265/65R17', '265/60R18'], 'certainty': 0.68, 'note': 'varia por version y rin'},
-    {'make': 'toyota', 'model': '4runner', 'start': 2010, 'end': 2024, 'sizes': ['265/70R17', '245/60R20'], 'certainty': 0.78, 'note': 'rin 17 comun; Limited suele usar rin 20'},
-    {'make': 'toyota', 'model': 'corolla', 'start': 2014, 'end': 2019, 'sizes': ['195/65R15', '205/55R16', '215/45R17'], 'certainty': 0.7, 'note': 'depende de version LE/S/XRS y rin instalado'},
-    {'make': 'toyota', 'model': 'fortuner', 'start': 2016, 'end': 2023, 'sizes': ['265/65R17', '265/60R18'], 'certainty': 0.68, 'note': 'varia por version'},
-    {'make': 'toyota', 'model': 'prado', 'start': 2010, 'end': 2023, 'sizes': ['265/65R17', '265/60R18'], 'certainty': 0.62, 'note': 'validar version'},
-    {'make': 'toyota', 'model': 'yaris', 'start': 2014, 'end': 2022, 'sizes': ['175/65R14', '185/60R15'], 'certainty': 0.62, 'note': 'validar carroceria y rin'},
-    {'make': 'chevrolet', 'model': 'aveo', 'start': 2005, 'end': 2018, 'sizes': ['185/60R14', '185/55R15'], 'certainty': 0.62, 'note': 'validar version'},
-    {'make': 'ford', 'model': 'explorer', 'start': 2011, 'end': 2019, 'sizes': ['245/60R18', '255/50R20'], 'certainty': 0.62, 'note': 'validar version'},
-    {'make': 'suzuki', 'model': 'grand vitara', 'start': 2006, 'end': 2015, 'sizes': ['225/65R17', '235/60R16'], 'certainty': 0.6, 'note': 'validar rin actual'},
+    {'make': 'toyota', 'model': 'hilux', 'start': 2016, 'end': 2023, 'version': 'varias', 'sizes': ['225/70R17', '265/65R17', '265/60R18'], 'certainty': 0.68, 'source': LOCAL_FITMENT_SOURCE, 'updated_at': LOCAL_FITMENT_UPDATED_AT, 'note': 'varia por version y rin'},
+    {'make': 'toyota', 'model': '4runner', 'start': 2010, 'end': 2024, 'version': 'varias', 'sizes': ['265/70R17', '245/60R20'], 'certainty': 0.78, 'source': LOCAL_FITMENT_SOURCE, 'updated_at': LOCAL_FITMENT_UPDATED_AT, 'note': 'rin 17 comun; Limited suele usar rin 20'},
+    {'make': 'toyota', 'model': 'corolla', 'start': 2014, 'end': 2019, 'version': 'LE/S/XRS segun mercado', 'sizes': ['195/65R15', '205/55R16', '215/45R17'], 'certainty': 0.7, 'source': LOCAL_FITMENT_SOURCE, 'updated_at': LOCAL_FITMENT_UPDATED_AT, 'note': 'depende de version LE/S/XRS y rin instalado'},
+    {'make': 'toyota', 'model': 'fortuner', 'start': 2016, 'end': 2023, 'version': 'varias', 'sizes': ['265/65R17', '265/60R18'], 'certainty': 0.68, 'source': LOCAL_FITMENT_SOURCE, 'updated_at': LOCAL_FITMENT_UPDATED_AT, 'note': 'varia por version'},
+    {'make': 'toyota', 'model': 'prado', 'start': 2010, 'end': 2023, 'version': 'varias', 'sizes': ['265/65R17', '265/60R18'], 'certainty': 0.62, 'source': LOCAL_FITMENT_SOURCE, 'updated_at': LOCAL_FITMENT_UPDATED_AT, 'note': 'validar version'},
+    {'make': 'toyota', 'model': 'yaris', 'start': 2014, 'end': 2022, 'version': 'varias', 'sizes': ['175/65R14', '185/60R15'], 'certainty': 0.62, 'source': LOCAL_FITMENT_SOURCE, 'updated_at': LOCAL_FITMENT_UPDATED_AT, 'note': 'validar carroceria y rin'},
+    {'make': 'chevrolet', 'model': 'aveo', 'start': 2005, 'end': 2018, 'version': 'varias', 'sizes': ['185/60R14', '185/55R15'], 'certainty': 0.62, 'source': LOCAL_FITMENT_SOURCE, 'updated_at': LOCAL_FITMENT_UPDATED_AT, 'note': 'validar version'},
+    {'make': 'ford', 'model': 'explorer', 'start': 2011, 'end': 2019, 'version': 'varias', 'sizes': ['245/60R18', '255/50R20'], 'certainty': 0.62, 'source': LOCAL_FITMENT_SOURCE, 'updated_at': LOCAL_FITMENT_UPDATED_AT, 'note': 'validar version'},
+    {'make': 'suzuki', 'model': 'grand vitara', 'start': 2006, 'end': 2015, 'version': 'varias', 'sizes': ['225/65R17', '235/60R16'], 'certainty': 0.6, 'source': LOCAL_FITMENT_SOURCE, 'updated_at': LOCAL_FITMENT_UPDATED_AT, 'note': 'validar rin actual'},
 ]
+
+TECHNICAL_TERMS = {
+    'presion', 'psi', 'dot', 'fecha', 'indice', 'velocidad', 'xl',
+    'offset', 'diametro', 'direccional', 'direccionales', 'asimetrico',
+    'asimetricos', 'aquaplaning', 'hidroplaneo', 'remolque', 'carga',
+    'remolcar', 'remolcando', 'hombro', 'reparado', 'reparacion',
+    'consumo', 'comfort', 'confort', 'load', 'range', 'rango',
+}
 
 
 class AssistantEngine:
     def __init__(self, catalog_provider=None, search_service=None, memory=None, classifier=None):
+        self.started_at = time.time()
         self.catalog_provider = catalog_provider or CatalogProvider()
         self.search_service = search_service or WebSearchService()
         self.memory = memory or SessionMemory()
@@ -183,6 +198,11 @@ class AssistantEngine:
         intent = self._choose_intent(entities, model_intent)
         stage_ms['intent'] = self._elapsed(t)
 
+        if original_entities.followup and original_entities.tire_type and state:
+            intent = 'inventario_cauchos'
+        if original_entities.followup and (original_entities.rim or original_entities.tire_size) and entities.has_vehicle():
+            intent = 'medida_caucho'
+
         if self._is_sensitive_request(raw, original_entities):
             return self._base_payload(
                 'Solo puedo ayudarte con productos, servicios, mantenimiento, cauchos, compras, pagos o pedidos de Transalca.',
@@ -200,10 +220,19 @@ class AssistantEngine:
                 request_id=request_id,
             ), 200
 
+        if intent == 'seguimiento' and self._has_actionable_entities(original_entities):
+            if entities.rim or entities.tire_size or entities.tire_type:
+                intent = 'medida_caucho' if entities.has_vehicle() and (entities.rim or entities.tire_size) else 'inventario_cauchos'
+            elif entities.has_vehicle():
+                intent = 'medida_caucho'
+
         if intent == 'seguimiento' and state and not state.get('last_candidates') and entities.has_vehicle():
             intent = 'medida_caucho'
 
-        if intent == 'seguimiento' and entities.followup and state:
+        if self._is_candidate_followup(original_entities, state):
+            return self._handle_followup(entities, state, model_intent, second_intent, model_confidence, stage_ms, started)
+
+        if intent == 'seguimiento' and entities.followup and state and not self._has_actionable_entities(original_entities):
             return self._handle_followup(entities, state, model_intent, second_intent, model_confidence, stage_ms, started)
 
         t = time.perf_counter()
@@ -214,7 +243,41 @@ class AssistantEngine:
             catalog = CatalogSnapshot(catalog_available=False, product_error='CatalogProviderError', service_error='CatalogProviderError')
         stage_ms['catalog'] = self._elapsed(t)
 
+        contextual = self._contextual_followup(raw, entities, state)
+        if contextual and not entities.has_vehicle() and any(marker in normalize_text(raw, autocorrect=False) for marker in ('sesion', 'contexto', 'separad', 'no mezcles', '4x2', '4x4')):
+            return self._base_payload(
+                contextual,
+                'seguimiento',
+                model_intent,
+                second_intent,
+                0.58,
+                [],
+                [],
+                catalog,
+                web_available=self._web_health(search_provider),
+                needs_clarification=True,
+                stage_ms=stage_ms,
+                started=started,
+                request_id=request_id,
+            ), 200
+
         if not is_business_related(entities) and not self._catalog_mentions(entities, catalog):
+            if contextual:
+                return self._base_payload(
+                    contextual,
+                    'seguimiento',
+                    model_intent,
+                    second_intent,
+                    0.58,
+                    [],
+                    [],
+                    catalog,
+                    web_available=self._web_health(search_provider),
+                    needs_clarification=True,
+                    stage_ms=stage_ms,
+                    started=started,
+                    request_id=request_id,
+                ), 200
             return self._base_payload(
                 'Solo puedo ayudarte con productos, servicios, mantenimiento, cauchos, compras, pagos o pedidos de Transalca.',
                 'fuera_de_negocio',
@@ -254,7 +317,7 @@ class AssistantEngine:
             model_intent,
             second_intent,
             max(confidence, model_confidence * 0.7),
-            [serialize_match(entry['item'], entry.get('compatibility'), entry.get('score')) for entry in matches],
+            [serialize_match(entry['item'], entry.get('compatibility'), entry.get('score')) for entry in self._actionable_matches(matches)],
             sources,
             catalog,
             web_available=web_available,
@@ -262,11 +325,31 @@ class AssistantEngine:
             stage_ms=stage_ms,
             started=started,
             request_id=request_id,
+            entities=entities,
+            original_entities=original_entities,
+            state=state,
+            inventory_query=self._inventory_query(entities),
+            context_replaced=self._context_replaced(original_entities, state),
+            web_reason=self._web_reason(entities, intent, bool(sources), 'web' in stage_ms),
         )
         return payload, 200
 
+    def answer_user_message(self, message, session_id=None, history=None):
+        return self.handle(message, session_id=session_id, client_history=history)
+
+    def _actionable_matches(self, matches):
+        visible = []
+        for entry in matches or []:
+            item = entry.get('item') or {}
+            if item.get('kind') == 'producto' and int_value(item.get('stock')) <= 0:
+                continue
+            visible.append(entry)
+        return visible
+
     def _choose_intent(self, entities, model_intent):
         hint = entities.intent_hint
+        if entities.tokens & TECHNICAL_TERMS:
+            return 'recomendacion_cauchos'
         if hint != 'consulta':
             return hint
         if self._category_from_tokens(entities.tokens) and not (entities.tokens & SERVICE_TERMS):
@@ -277,10 +360,54 @@ class AssistantEngine:
             return model_intent
         return hint
 
+    def _has_actionable_entities(self, entities):
+        return bool(
+            entities
+            and (
+                entities.tire_size
+                or entities.rim
+                or entities.tire_type
+                or entities.has_vehicle()
+            )
+        )
+
+    def _is_candidate_followup(self, entities, state):
+        if not state or not state.get('last_candidates') or not entities:
+            return False
+        if self._has_actionable_entities(entities):
+            return False
+        if entities.tokens & {'medida', 'talla'}:
+            return False
+        if (entities.tokens & {'precio', 'precios', 'stock', 'disponible', 'disponibles'}) and (
+            entities.tokens & {'viejo', 'vieja', 'actual', 'actualizado', 'actualizada', 'nuevo', 'nueva'}
+        ):
+            return False
+        followup_tokens = {
+            'stock', 'disponible', 'disponibles', 'hay', 'quedan',
+            'precio', 'precios', 'barato', 'economico', 'menos',
+            'primero', 'primera', 'ese', 'esa', 'sirve', 'lluvia',
+            'tierra', 'barro', 'carretera', 'autopista', 'cual',
+            'mejor', 'recomiendas', 'recomienda',
+        }
+        return bool(entities.followup or entities.tokens & followup_tokens)
+
     def _handle_tire(self, entities, intent, catalog, search_service, stage_ms):
         fitment = self._local_fitment(entities)
+        technical_note = self._technical_note(entities)
         sources = []
         web_sizes = []
+        expected_make = MODEL_MAKE.get(entities.model)
+        if entities.make and expected_make and expected_make != entities.make:
+            return (
+                self._limit(
+                    f"Veo datos contradictorios: la marca indicada es {entities.make}, pero el modelo {entities.model} suele asociarse a {expected_make}. "
+                    "No tengo una medida validada con esos datos; necesito confirmar marca, modelo, ano y rin antes de recomendar."
+                ),
+                [],
+                sources,
+                True,
+                0.4,
+            )
         should_search_web = self._should_search_web(entities, fitment)
         if should_search_web:
             t = time.perf_counter()
@@ -288,6 +415,7 @@ class AssistantEngine:
             extracted = extract_tire_sizes_from_sources(sources)
             web_sizes = [size for size, _, _ in extracted[:4]]
             stage_ms['web'] = self._elapsed(t)
+        web_note = self._web_reference_note(sources, should_search_web, search_service)
 
         compatible_sizes = self._compatible_sizes(entities, fitment, web_sizes)
         needs_clarification = self._needs_tire_clarification(entities, compatible_sizes)
@@ -296,6 +424,7 @@ class AssistantEngine:
         if entities.tire_size:
             matches = rank_tire_candidates(catalog.products, entities, compatible_sizes=[entities.tire_size.normalized], limit=5)
             answer = self._answer_exact_size(entities, matches, fitment, sources, catalog)
+            answer = self._append_note(self._append_note(answer, web_note), technical_note)
             return answer, matches, sources, False, 0.9 if matches else 0.72
 
         if compatible_sizes:
@@ -309,12 +438,23 @@ class AssistantEngine:
             if not matches and entities.rim:
                 matches = rank_tire_candidates(catalog.products, entities, compatible_sizes=None, allow_rim_possible=True, limit=5)
             answer = self._answer_fitment(entities, compatible_sizes, matches, fitment, sources, needs_clarification, catalog)
+            answer = self._append_note(self._append_note(answer, web_note), technical_note)
             return answer, matches, sources, needs_clarification, 0.82 if compatible_sizes else 0.55
 
         if entities.rim:
             matches = rank_tire_candidates(catalog.products, entities, compatible_sizes=None, allow_rim_possible=True, limit=5)
             answer = self._answer_rim_only(entities, matches, catalog)
+            answer = self._append_note(self._append_note(answer, web_note), technical_note)
             return answer, matches, sources, not bool(matches), 0.62 if matches else 0.45
+
+        if entities.make and not entities.model and not entities.tire_size and not entities.rim:
+            return (
+                self._answer_make_only(entities, catalog, web_note, technical_note),
+                [],
+                sources,
+                True,
+                0.52,
+            )
 
         if entities.has_vehicle() and not (fitment or web_sizes):
             vehicle = self._vehicle_label(entities)
@@ -326,7 +466,9 @@ class AssistantEngine:
             return (
                 self._limit(
                     f"No tengo una medida validada para {vehicle} con los datos disponibles. "
-                    f"Para validar la compatibilidad, revisa manual o etiqueta de puerta y dime el rin o la medida completa. {inventory_note}"
+                    f"Para validar la compatibilidad, revisa manual o etiqueta de puerta y necesito que me confirmes ano, version, rin o medida completa. "
+                    "Si sabes solo el rin actual, puedo filtrar cauchos por rin en inventario. "
+                    f"Inventario Transalca: {inventory_note} {web_note} {technical_note}"
                 ),
                 [],
                 sources,
@@ -334,21 +476,32 @@ class AssistantEngine:
                 0.42,
             )
 
+        if technical_note:
+            return (
+                self._limit(technical_note + f' Si quieres que cruce inventario, dime medida completa o rin confirmado. {web_note}'),
+                [],
+                sources,
+                True,
+                0.62,
+            )
+
         if entities.tokens & {'codigo', 'tir'}:
             matches = search_tire_text(catalog.products, entities.tokens, limit=5)
             if matches:
                 answer = self._answer_generic_tires(entities, matches)
+                answer = self._append_note(self._append_note(answer, web_note), technical_note)
                 return answer, matches, sources, False, 0.68
 
         matches = rank_tire_candidates(catalog.products, entities, compatible_sizes=None, allow_rim_possible=False, limit=5)
         if matches:
             answer = self._answer_generic_tires(entities, matches)
+            answer = self._append_note(self._append_note(answer, web_note), technical_note)
             return answer, matches, sources, False, 0.58
         catalog_note = ' No pude verificar el catalogo en este momento.' if not catalog.catalog_available else ''
         return (
             'Para recomendar cauchos con precision necesito al menos la medida completa, el rin o el vehiculo con ano. '
             'Si buscas uso mixto, normalmente conviene A/T; para carretera H/T; para barro fuerte M/T. '
-            f'Valida siempre la medida en manual o etiqueta de puerta antes de comprar.{catalog_note}',
+            f'Valida siempre la medida en manual o etiqueta de puerta antes de comprar.{catalog_note} {web_note}',
             [],
             sources,
             True,
@@ -360,23 +513,46 @@ class AssistantEngine:
         fit_sizes = sorted({size_item for entry in fitment for size_item in entry['sizes']}) if fitment else []
         requested_not_confirmed = bool(entities.has_vehicle() and fit_sizes and size not in fit_sizes)
         exact_stock = [entry for entry in matches if int_value(entry['item'].get('stock')) > 0]
+        if entities.tire_type:
+            typed_stock = [entry for entry in exact_stock if entry['item'].get('tire_type') == entities.tire_type]
+            if typed_stock:
+                exact_stock = typed_stock
+            elif exact_stock:
+                alternatives = '; '.join(product_line(entry['item']) for entry in exact_stock[:3])
+                return self._limit(
+                    f"Inventario Transalca: no veo stock positivo de {size} tipo {entities.tire_type}. "
+                    f"En esa misma medida aparecen alternativas que no son {entities.tire_type}: {alternatives}. "
+                    "No las trato como equivalentes si pediste ese tipo; valida uso, carga y velocidad antes de comprar."
+                )
         if exact_stock:
             lines = '; '.join(product_line(entry['item']) for entry in exact_stock[:3])
             reason = self._usage_reason(entities)
+            if entities.has_vehicle() and not fitment:
+                vehicle = self._vehicle_label(entities)
+                return self._limit(
+                    f"Inventario Transalca: la medida {size} aparece con precio/stock: {lines}. "
+                    f"No puedo confirmar compatibilidad para {vehicle} solo por inventario; valida manual, etiqueta de puerta, despeje, carga y velocidad. {reason}"
+                )
             if requested_not_confirmed:
                 vehicle = self._vehicle_label(entities)
                 return self._limit(
                     f"Para {vehicle} no tengo evidencia local de que {size} sea medida OEM o compatible confirmada. "
-                    f"Si tu vehiculo ya tiene esa medida instalada, encontre producto en inventario: {lines}. {reason} "
+                    f"Si tu vehiculo ya tiene esa medida instalada, Inventario Transalca tiene: {lines}. {reason} "
                     "Antes de comprar valida etiqueta de puerta, manual, despeje, carga y velocidad."
                 )
             return self._limit(
-                f"Si, para la medida {size} encontre disponibilidad exacta: {lines}. {reason}"
+                f"Inventario Transalca: para la medida {size} encontre disponibilidad exacta con precio/stock: {lines}. {reason}"
                 " No cambies a otra medida sin validar etiqueta de puerta, manual e indice de carga/velocidad."
             )
         exact_catalog = find_exact_size_products(catalog.products, size)
         if exact_catalog:
             lines = '; '.join(product_line(item) for item in exact_catalog[:3])
+            if entities.has_vehicle() and not fitment:
+                vehicle = self._vehicle_label(entities)
+                return self._limit(
+                    f"La medida {size} aparece en catalogo, pero no puedo confirmar compatibilidad para {vehicle}. "
+                    f"Ahora no veo stock positivo en esa consulta: {lines}. Valida manual, etiqueta de puerta, carga, velocidad y despeje."
+                )
             if requested_not_confirmed:
                 vehicle = self._vehicle_label(entities)
                 return self._limit(
@@ -407,24 +583,24 @@ class AssistantEngine:
         vehicle = self._vehicle_label(entities)
         size_text = ', '.join(sizes[:5])
         certainty = self._fitment_certainty_label(fitment, sources)
-        parts = [f"Para {vehicle}, encontre estas medidas probables: {size_text} ({certainty})."]
+        parts = [f"Referencia: para {vehicle}, encontre estas medidas probables: {size_text} ({certainty})."]
         if needs_clarification:
             rims = sorted({str(size[-2:]) for size in sizes if size[-2:].isdigit()})
             if rims:
-                parts.append(f"Confirma el rin actual ({', '.join(rims)}) o la version para cerrar la compatibilidad.")
+                parts.append(f"Confirma ano, version y rin actual ({', '.join(rims)}) para cerrar la compatibilidad.")
         if matches:
             with_stock = [entry for entry in matches if int_value(entry['item'].get('stock')) > 0]
             if with_stock:
                 lines = '; '.join(product_line(entry['item']) for entry in with_stock[:3])
-                parts.append(f"En inventario priorizaria: {lines}.")
+                parts.append(f"Inventario Transalca: priorizaria {lines}.")
                 parts.append(self._explain_candidate(with_stock[0], entities))
             else:
-                parts.append("Hay coincidencias de catalogo, pero sin stock positivo.")
+                parts.append("Inventario Transalca: hay coincidencias de catalogo, pero sin stock positivo.")
         else:
             if catalog.catalog_available:
-                parts.append("No veo una coincidencia exacta con stock positivo para esas medidas en el inventario activo.")
+                parts.append("Inventario Transalca: no veo una coincidencia exacta con stock positivo para esas medidas en el inventario activo.")
             else:
-                parts.append("No pude verificar inventario en base de datos; la recomendacion queda como referencia tecnica.")
+                parts.append("Inventario Transalca: no pude verificar inventario en base de datos; la recomendacion queda como referencia tecnica.")
         parts.append("No uses otra medida solo porque tenga el mismo rin; ancho, perfil e indices tambien importan.")
         if sources:
             parts.append(self._sources_text(sources))
@@ -437,11 +613,26 @@ class AssistantEngine:
             lines = '; '.join(product_line(entry['item']) for entry in selected[:4])
             qualifier = 'con stock' if with_stock else 'en catalogo sin stock positivo'
             return self._limit(
-                f"Para rin {entities.rim} encontre opciones {qualifier}: {lines}. "
-                "Esto es coincidencia por rin, no compatibilidad confirmada; falta la medida completa o el vehiculo/version."
+                f"Inventario Transalca: para rin {entities.rim} encontre opciones {qualifier}: {lines}. "
+                "Esto es coincidencia por rin, no compatibilidad confirmada; confirma la medida completa y valida manual o etiqueta de puerta."
             )
         suffix = ' No pude verificar inventario por falla de base de datos.' if not catalog.catalog_available else ''
-        return f"No veo cauchos rin {entities.rim} con stock positivo en el inventario activo.{suffix} Valida la medida completa antes de comprar."
+        return f"Inventario Transalca: no veo cauchos rin {entities.rim} con stock positivo en el inventario activo.{suffix} Confirma la medida completa y valida manual o etiqueta de puerta antes de comprar."
+
+    def _answer_make_only(self, entities, catalog, web_note='', technical_note=''):
+        make = entities.make or 'esa marca'
+        catalog_note = (
+            'Puedo buscar en inventario por rin si conoces el rin actual.'
+            if catalog.catalog_available
+            else 'Ahora no pude verificar inventario; igual necesito modelo, ano o rin para orientar.'
+        )
+        answer = (
+            f"{make.title()} es la marca; necesito modelo y ano para validar medida sin inventar. "
+            "Por ejemplo: Corolla 2016, Hilux 2020 o Fortuner 2017. "
+            "Con modelo y ano puedo buscar una referencia tecnica y compararla con Inventario Transalca. "
+            f"Si sabes el rin o la medida actual, tambien puedo filtrar cauchos por inventario. {catalog_note}"
+        )
+        return self._limit(self._append_note(self._append_note(answer, web_note), technical_note))
 
     def _answer_generic_tires(self, entities, matches):
         selected = [entry for entry in matches if int_value(entry['item'].get('stock')) > 0] or matches
@@ -483,6 +674,11 @@ class AssistantEngine:
         return 'Puedes revisar sucursales activas desde la seccion de contacto o catalogo. Si necesitas confirmar disponibilidad, dime el producto o servicio.', [], False, 0.72
 
     def _handle_catalog_general(self, entities, catalog):
+        if entities.tokens & {'codigo'}:
+            matches = search_tire_text(catalog.products, entities.tokens, limit=5)
+            if matches:
+                lines = '; '.join(f"{entry['item'].get('codigo')}: {product_line(entry['item'])}" for entry in matches[:4])
+                return self._limit(f"Por codigo o texto encontre estas coincidencias de catalogo: {lines}."), matches, False, 0.7
         category = self._category_from_tokens(entities.tokens)
         if category:
             matches = search_category(catalog.products, category, entities.tokens)
@@ -503,45 +699,74 @@ class AssistantEngine:
             ), [], False, 0.45
         return (
             "Puedo ayudarte con cauchos, repuestos, lubricantes, baterias, servicios, pedidos y pagos. "
-            "Dime el producto, medida, vehiculo o sintoma."
+            "Necesito que me digas el producto, medida, vehiculo o sintoma."
         ), [], True, 0.45
 
     def _handle_followup(self, entities, state, model_intent, second_intent, model_confidence, stage_ms, started):
         candidates = state.get('last_candidates') or []
         tokens = entities.tokens
-        if not candidates:
+
+        def follow_payload(answer, confidence=None, needs_clarification=False):
             return self._base_payload(
-                'Sigo con el contexto anterior, pero necesito medida, rin o uso para recomendar con precision.',
+                answer,
                 'seguimiento',
                 model_intent,
                 second_intent,
-                0.45,
+                model_confidence if confidence is None else confidence,
                 [],
                 [],
                 None,
                 True,
-                True,
+                needs_clarification,
                 stage_ms,
                 started,
+                entities=entities,
+                state=state,
+                inventory_query=self._inventory_query(entities),
             ), 200
+
+        if not candidates:
+            return follow_payload(
+                'Sigo con el contexto anterior, pero necesito medida, rin o uso para recomendar con precision.',
+                0.45,
+                True,
+            )
         if tokens & {'barato', 'economico', 'menos'}:
             available = [item for item in candidates if int_value(item.get('stock')) > 0]
-            selected = sorted(available or candidates, key=lambda item: (item.get('precio') or 0, -(item.get('stock') or 0)))
+            selected = sorted(available or candidates, key=lambda item: (item.get('precio') is None, item.get('precio') if item.get('precio') is not None else math.inf, -(item.get('stock') or 0)))
             if selected:
                 item = selected[0]
-                answer = f"La opcion mas economica de lo que vimos es {item.get('nombre')} - ${item.get('precio', 0):.2f}"
+                if item.get('precio') is None:
+                    answer = f"La opcion mas economica con precio confirmado no quedo clara; {item.get('nombre')} tiene precio por confirmar"
+                else:
+                    answer = f"La opcion mas economica de lo que vimos es {item.get('nombre')} - ${item.get('precio'):.2f}"
                 if item.get('stock') is not None:
                     answer += f" - stock {item.get('stock')}."
-                return self._base_payload(answer, 'seguimiento', model_intent, second_intent, model_confidence, [], [], None, True, False, stage_ms, started), 200
+                return follow_payload(answer)
         if tokens & {'stock', 'disponible', 'disponibles', 'hay', 'quedan'}:
             lines = [f"{item.get('nombre')} - stock {item.get('stock')}" for item in candidates if item.get('stock') is not None]
             if lines:
-                return self._base_payload('Disponibilidad de lo que vimos: ' + '; '.join(lines[:4]) + '.', 'seguimiento', model_intent, second_intent, model_confidence, [], [], None, True, False, stage_ms, started), 200
+                return follow_payload('Disponibilidad de lo que vimos: ' + '; '.join(lines[:4]) + '.')
+        if tokens & {'precio', 'precios', 'cuanto', 'cuesta'}:
+            lines = []
+            for item in candidates[:4]:
+                price = item.get('precio')
+                if price is None:
+                    lines.append(f"{item.get('nombre')} - precio por confirmar")
+                else:
+                    lines.append(f"{item.get('nombre')} - precio ${price:.2f}")
+            if lines:
+                return follow_payload('Precios de lo que vimos: ' + '; '.join(lines) + '.')
         if tokens & {'lluvia', 'tierra', 'barro', 'carretera'}:
             item = candidates[0]
             tire_type = item.get('tire_type')
             answer = self._followup_use_answer(item.get('nombre'), tire_type, tokens)
-            return self._base_payload(answer, 'seguimiento', model_intent, second_intent, model_confidence, [], [], None, True, False, stage_ms, started), 200
+            vehicle = state.get('vehicle') or {}
+            vehicle_bits = [vehicle.get('make'), vehicle.get('model'), vehicle.get('year')]
+            vehicle_text = ' '.join(str(bit) for bit in vehicle_bits if bit)
+            if vehicle_text:
+                answer = f"Para {vehicle_text}, {answer[0].lower() + answer[1:] if answer else answer}"
+            return follow_payload(answer)
         if tokens & {'primero', 'primera', 'el'}:
             item = candidates[0]
             answer = f"El primero fue {item.get('nombre')}. "
@@ -550,7 +775,7 @@ class AssistantEngine:
             if item.get('stock') is not None:
                 answer += f"Stock {item.get('stock')}. "
             answer += 'Valida la medida exacta antes de comprar.'
-            return self._base_payload(answer, 'seguimiento', model_intent, second_intent, model_confidence, [], [], None, True, False, stage_ms, started), 200
+            return follow_payload(answer)
         if tokens & {'cual', 'mejor', 'recomiendas', 'recomienda'}:
             item = candidates[0]
             vehicle = state.get('vehicle') or {}
@@ -566,8 +791,8 @@ class AssistantEngine:
                 answer += 'Es M/T, fuerte para barro, pero con mas ruido y menor comodidad en carretera.'
             else:
                 answer += 'Valida tipo, medida e indices antes de comprar.'
-            return self._base_payload(answer, 'seguimiento', model_intent, second_intent, model_confidence, [], [], None, True, False, stage_ms, started), 200
-        return self._base_payload('Sigo con el contexto anterior, pero necesito que me indiques si buscas precio, stock o compatibilidad.', 'seguimiento', model_intent, second_intent, 0.45, [], [], None, True, True, stage_ms, started), 200
+            return follow_payload(answer)
+        return follow_payload('Sigo con el contexto anterior, pero necesito que me indiques si buscas precio, stock o compatibilidad.', 0.45, True)
 
     def _followup_use_answer(self, name, tire_type, tokens):
         if tire_type == 'A/T':
@@ -638,9 +863,14 @@ class AssistantEngine:
             for source in found:
                 if source.url in seen:
                     continue
+                quality = evaluate_source(source, entities=entities, query=query)
+                if hasattr(source, 'quality'):
+                    source.quality = quality
+                if not quality.get('accepted'):
+                    continue
                 seen.add(source.url)
                 sources.append(source)
-            if len(sources) >= 4:
+            if sources:
                 break
         return sources[:4]
 
@@ -673,6 +903,65 @@ class AssistantEngine:
             return 'Para carretera y ciudad H/T suele ser mas silencioso y eficiente.'
         return 'La decision final depende de uso, presupuesto, carga e indice de velocidad.'
 
+    def _append_note(self, answer, note):
+        if not note:
+            return answer
+        if note in answer:
+            return answer
+        return self._limit(f"{answer} {note}")
+
+    def _technical_note(self, entities):
+        tokens = entities.tokens
+        notes = []
+        if len(entities.all_sizes) >= 2:
+            diameter_note = self._diameter_change_note(entities.all_sizes[0], entities.all_sizes[1])
+            if diameter_note:
+                notes.append(diameter_note)
+        if tokens & {'diametro', 'diferencia'} and not notes:
+            notes.append('Para cambio de medida valida diametro total, despeje, velocimetro, ancho de rin e indices antes de comprar.')
+        if tokens & {'presion', 'psi'}:
+            notes.append('No doy una presion fija sin datos: usa la etiqueta de puerta o manual y ajusta segun carga, medida y uso.')
+        if tokens & {'dot', 'fecha'}:
+            notes.append('El DOT indica semana y ano de fabricacion; revisa edad, grietas, deformaciones e historial, no solo dibujo.')
+        if tokens & {'offset'}:
+            notes.append('Con offset y ancho de rin hay que validar roce, despeje, centro de rueda, suspension y torque; no confirmo que quepa sin medir.')
+        if tokens & {'direccional', 'direccionales'}:
+            notes.append('En cauchos direccionales respeta el sentido de giro; no se cruzan en X salvo desmontaje y remonte correcto.')
+        if tokens & {'asimetrico', 'asimetricos'}:
+            notes.append('En cauchos asimetricos respeta las marcas OUTSIDE/INSIDE; el lado afuera no da igual.')
+        if tokens & {'indice', 'velocidad', 'xl', 'remolque', 'remolcar', 'remolcando', 'carga', 'load', 'range', 'rango'} or (entities.tire_size and entities.tire_size.prefix in {'LT', 'P'}):
+            xl_note = ' XL indica construccion reforzada, pero ' if 'xl' in tokens else ''
+            notes.append(f'{xl_note}Valida indice de carga y velocidad contra la etiqueta/manual; para remolque o carga no basta que la medida coincida.')
+        if tokens & {'lluvia', 'aquaplaning', 'hidroplaneo'}:
+            notes.append('Para lluvia ayuda un dibujo H/T o touring con buen drenaje y profundidad, pero no elimina el riesgo de aquaplaning si hay exceso de velocidad o agua.')
+        if (tokens & {'autopista', 'carretera'} and (tokens & {'tacos', 'barro'} or entities.tire_type == 'M/T')) or entities.uses & {'barro', 'tierra', 'grava'}:
+            notes.append('Para autopista diaria evita priorizar M/T salvo barro fuerte: A/T puede equilibrar finca y carretera, H/T sera mas silencioso.')
+        if tokens & {'a/t', 'at', 'r/t', 'rt', 'm/t', 'mt'}:
+            notes.append('H/T prioriza carretera, silencio y confort; A/T es mixto, R/T es mas agresivo y M/T prioriza barro con mas ruido; para autopista diaria no lo trataria como eleccion automatica.')
+        if tokens & {'hombro', 'reparado', 'reparacion'}:
+            notes.append('No recomiendo usar como definitivo un caucho reparado en hombro o costado; revisalo con un tecnico y evita venderlo como seguro sin inspeccion.')
+        if tokens & {'consumo', 'grandes', 'grande'}:
+            notes.append('Un caucho mas grande puede afectar consumo, frenado, velocimetro y despeje; valida diametro total e indices antes de cambiar.')
+        if tokens & {'comfort', 'confort'}:
+            notes.append('Para confort y bajo ruido suele convenir H/T o touring; A/T sacrifica algo de silencio por agarre mixto.')
+        return ' '.join(dict.fromkeys(notes))
+
+    def _diameter_change_note(self, first, second):
+        def diameter(size):
+            if not (size.width and size.profile and size.rim):
+                return None
+            return size.rim * 25.4 + 2 * size.width * (size.profile / 100)
+
+        first_diameter = diameter(first)
+        second_diameter = diameter(second)
+        if not first_diameter or not second_diameter:
+            return None
+        diff = ((second_diameter - first_diameter) / first_diameter) * 100
+        return (
+            f"El diametro total cambia aproximadamente {diff:.1f}% entre {first.normalized} y {second.normalized}; "
+            "valida despeje, velocimetro, ABS, carga y ancho de rin."
+        )
+
     def _explain_candidate(self, entry, entities):
         item = entry['item']
         reason = []
@@ -690,7 +979,32 @@ class AssistantEngine:
         selected = [source for source in sources if source.domain][:2]
         if not selected:
             return ''
-        return 'Fuentes usadas como referencia: ' + '; '.join(f"{source.title} ({source.domain})" for source in selected) + '.'
+        return (
+            'Fuentes externas usadas como referencia: '
+            + '; '.join(self._source_label(source) for source in selected)
+            + '. No son inventario de Transalca ni compatibilidad absoluta; valida manual o etiqueta.'
+        )
+
+    def _source_label(self, source):
+        quality = getattr(source, 'quality', {}) or {}
+        confidence = quality.get('confidence')
+        source_type = quality.get('source_type')
+        parts = [source.domain]
+        if source_type:
+            parts.append(source_type)
+        if confidence and not str(confidence).endswith('rechazado'):
+            parts.append(f'confianza {confidence}')
+        return f"{source.title} ({', '.join(parts)})"
+
+    def _web_reference_note(self, sources, attempted, search_service):
+        if sources:
+            return self._sources_text(sources)
+        if attempted and self._web_health(search_service):
+            return (
+                'Intente consultar fuentes externas, pero no obtuve una fuente util en este momento. '
+                'Puedo orientarte de forma general, pero necesito validar la medida en manual/etiqueta del vehiculo.'
+            )
+        return ''
 
     def _category_from_tokens(self, tokens):
         if tokens & {'aceite', 'aceites', 'lubricante', 'lubricantes', '5w30', '5w-30', '10w40', '10w-40', '15w40', '15w-40'}:
@@ -724,6 +1038,42 @@ class AssistantEngine:
         parts = [entities.make, entities.model, str(entities.year) if entities.year else None]
         return ' '.join(part for part in parts if part) or 'ese vehiculo'
 
+    def _contextual_followup(self, raw, entities, state):
+        if not state:
+            return ''
+        clean = normalize_text(raw, autocorrect=False)
+        vehicles = state.get('vehicles') or []
+        current = state.get('vehicle') or {}
+        labels = []
+        for vehicle in vehicles[-3:]:
+            label = ' '.join(str(vehicle.get(key)) for key in ('make', 'model', 'year') if vehicle.get(key))
+            if label and label not in labels:
+                labels.append(label)
+        if not labels and current:
+            label = ' '.join(str(current.get(key)) for key in ('make', 'model', 'year') if current.get(key))
+            if label:
+                labels.append(label)
+        context_text = ', '.join(labels) if labels else 'el contexto anterior'
+        parts = []
+        if 'sesion' in clean or 'contexto anterior' in clean or 'no mezcles' in clean:
+            parts.append(f"No mezclo sesiones; el contexto que tengo ahora es {context_text}.")
+        if 'separad' in clean and labels:
+            parts.append(f"Mantengo separados estos vehiculos: {context_text}.")
+        if '4x2' in clean or '4x4' in clean:
+            drivetrain = '4x2' if '4x2' in clean else '4x4'
+            parts.append(f"Anoto la correccion {drivetrain}, pero aun necesito medida completa o rin para compatibilidad.")
+        if entities.max_price:
+            parts.append(f"Tomo presupuesto maximo {entities.max_price:g}; con ese limite debo volver a filtrar inventario actual.")
+        elif entities.tokens & {'maximo', 'max', 'presupuesto'}:
+            numbers = [token for token in entities.tokens if token.isdigit()]
+            if numbers:
+                parts.append(f"Tomo presupuesto maximo {numbers[0]}; con ese limite debo volver a filtrar inventario actual.")
+        if 'falta' in clean or 'dato' in clean:
+            parts.append("Falta confirmar vehiculo, ano/version, rin o medida completa y uso principal.")
+        if not parts and labels:
+            parts.append(f"Sigo con {context_text}, pero falta confirmar medida/rin, presupuesto o si quieres iniciar una sesion nueva.")
+        return self._limit(' '.join(parts))
+
     def _memory_candidate(self, entry):
         item = entry.get('item') or {}
         return {
@@ -750,9 +1100,20 @@ class AssistantEngine:
             'password', 'contrasen', 'contrase', 'secreto', 'secretos',
             'token', 'credencial', 'credenciales', 'ignora tus reglas',
             'ignora las reglas', 'datos privados', 'datos personales',
+            'variables de entorno', 'variable de entorno', '.env', 'api key',
+            'apikey', 'lee archivo', 'leer archivo', 'win.ini', 'passwd',
+            'exfiltra', 'exfiltrar', 'cookie', 'cookies',
+            'config', 'dump', 'base de datos', 'ruta del servidor', 'archivo del servidor',
+            'credenciales', 'credencial', 'secret', 'secrets', 'sql injection',
+            'inyeccion sql', 'xss', 'html malicioso', 'prompt injection',
+            'inyeccion de prompt', 'muestra el sistema', 'system prompt',
         )):
             return True
         if tokens & {'clientes', 'cliente'} and tokens & {'datos', 'privado', 'privados', 'personales'}:
+            return True
+        if tokens & {'archivo', 'archivos', 'servidor', 'config', 'dump'} and tokens & {'lee', 'leer', 'muestra', 'dame', 'extrae'}:
+            return True
+        if tokens & {'sesion', 'session'} and tokens & {'muestra', 'extrae', 'exfiltra', 'roba', 'dump', 'credenciales', 'cookie', 'cookies', 'token', 'privado'}:
             return True
         if tokens & {'reglas'} and tokens & {'ignora', 'ignorar'}:
             return True
@@ -773,13 +1134,29 @@ class AssistantEngine:
         stage_ms,
         started,
         request_id=None,
+        entities=None,
+        original_entities=None,
+        state=None,
+        inventory_query=None,
+        context_replaced=False,
+        web_reason='',
     ):
         diagnostics = {
             'catalog_available': True if catalog is None else bool(catalog.catalog_available),
             'web_available': bool(web_available),
             'duration_ms': self._elapsed(started),
             'stage_ms': {key: round(value, 2) for key, value in (stage_ms or {}).items()},
+            'context_used': bool(state),
+            'context_replaced': bool(context_replaced),
+            'web_attempted': bool(stage_ms and 'web' in stage_ms),
+            'web_reason': web_reason or '',
+            'inventory_consulted': catalog is not None,
+            'inventory_query': inventory_query or {},
         }
+        if entities is not None:
+            diagnostics['entities'] = entities.to_public_dict() if hasattr(entities, 'to_public_dict') else {}
+        if original_entities is not None:
+            diagnostics['original_entities'] = original_entities.to_public_dict() if hasattr(original_entities, 'to_public_dict') else {}
         payload = {
             'status': 'success',
             'respuesta': self._limit(answer),
@@ -796,19 +1173,81 @@ class AssistantEngine:
             payload['request_id'] = request_id
         return payload
 
+    def _inventory_query(self, entities):
+        if not entities:
+            return {}
+        return {
+            'size': entities.tire_size.normalized if entities.tire_size else None,
+            'rim': entities.rim,
+            'tire_type': entities.tire_type,
+            'make': entities.make,
+            'model': entities.model,
+            'year': entities.year,
+            'uses': sorted(entities.uses),
+            'budget': entities.budget,
+        }
+
+    def _context_replaced(self, original_entities, state):
+        if not state or not original_entities:
+            return False
+        vehicle = state.get('vehicle') or {}
+        tire = state.get('tire') or {}
+        if original_entities.model and vehicle.get('model') and original_entities.model != vehicle.get('model'):
+            return True
+        if original_entities.make and vehicle.get('make') and original_entities.make != vehicle.get('make'):
+            return True
+        if original_entities.rim and tire.get('rim') and original_entities.rim != tire.get('rim'):
+            return True
+        if original_entities.tire_size and tire.get('size') and original_entities.tire_size.normalized != tire.get('size'):
+            return True
+        return False
+
+    def _web_reason(self, entities, intent, has_sources, attempted):
+        if has_sources:
+            return 'fuente_externa_relevante'
+        if attempted:
+            return 'modelo_ano_sin_fitment_local_o_verificacion_web'
+        if not entities:
+            return ''
+        if entities.make and not entities.model:
+            return 'faltan_modelo_y_ano'
+        if intent in {'inventario_cauchos', 'producto'} and (entities.rim or entities.tire_size):
+            return 'inventario_local_suficiente'
+        if entities.model and not (entities.year or entities.rim):
+            return 'faltan_ano_o_rin'
+        return 'no_requerida'
+
     def health(self):
         engine_ok = True
         catalog_health = self.catalog_provider.health()
         web_health = self.search_service.health()
+        circuit = web_health.get('circuit') or {}
+        memory_stats = self.memory.stats() if hasattr(self.memory, 'stats') else {'sessions': 0, 'max_sessions': 0}
+        degraded = bool(circuit.get('open')) or not catalog_health.get('available', False)
+        status = 'ok' if engine_ok and not degraded else 'degraded' if engine_ok else 'down'
         return {
-            'status': 'success' if engine_ok else 'error',
+            'status': status,
+            'version': os.getenv('ASSISTANT_VERSION', 'local'),
+            'uptime_seconds': round(time.time() - self.started_at, 3),
             'engine': {
                 'available': engine_ok,
                 'classifier_labels': len(self.classifier.labels),
                 'max_message_length': MAX_MESSAGE_LENGTH,
             },
-            'catalog': catalog_health,
-            'web': web_health,
+            'catalog': {
+                **catalog_health,
+                'last_success_at': catalog_health.get('last_success_at'),
+                'last_error_at': catalog_health.get('last_error_at'),
+                'cached_items': catalog_health.get('cached_items', 0),
+            },
+            'web': {
+                **web_health,
+                'enabled': web_health.get('enabled', True),
+                'circuit_open': bool(circuit.get('open')),
+                'last_success_at': _health_iso(web_health.get('last_success_at')),
+                'last_error_at': _health_iso(web_health.get('last_error_at')),
+            },
+            'memory': memory_stats,
         }
 
     def _limit(self, text):
@@ -832,9 +1271,38 @@ def build_response(question, session_id=None, client_history=None, request_id=No
     )
 
 
+def answer_user_message(message, session_id=None, history=None):
+    return _default_engine.answer_user_message(message, session_id=session_id, history=history)
+
+
 def assistant_health():
     return _default_engine.health()
 
 
+def assistant_runtime_stats():
+    health = _default_engine.health()
+    return {
+        'status': health.get('status'),
+        'catalog': {
+            'available': health.get('catalog', {}).get('available'),
+            'cached_items': health.get('catalog', {}).get('cached_items'),
+        },
+        'web': {
+            'enabled': health.get('web', {}).get('enabled'),
+            'circuit_open': health.get('web', {}).get('circuit_open'),
+            'cache': health.get('web', {}).get('cache'),
+        },
+        'memory': health.get('memory', {}),
+    }
+
+
 def clear_memory():
     _default_engine.memory.clear()
+
+
+def _health_iso(value):
+    if not value:
+        return None
+    if isinstance(value, str):
+        return value
+    return datetime.fromtimestamp(float(value), timezone.utc).isoformat().replace('+00:00', 'Z')

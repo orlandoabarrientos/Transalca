@@ -1,4 +1,5 @@
 from model.connection import Connection
+from config.validation import ValidationError, optional_text, require_text
 
 MARCA_ALIAS = "m.*, m.nombre_marca AS nombre, m.descripcion_marca AS descripcion"
 
@@ -42,16 +43,40 @@ class BrandModel(Connection):
         return self.fetch_one("transalca",
             "SELECT " + MARCA_ALIAS + " FROM marcas m WHERE m.nombre_marca = %s", (nombre,))
 
+    def _validate(self, data):
+        errors = {}
+        clean = {}
+        clean['nombre'] = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=30, allow_serial=True)
+        clean['descripcion'] = optional_text(errors, 'descripcion', data.get('descripcion'), 'La descripcion', max_len=150)
+        if errors:
+            raise ValidationError(errors)
+        return clean
+
     def _create(self, data):
-        self.nombre = data['nombre']
-        self.descripcion = data.get('descripcion', '')
-        return self.insert("transalca",
+        clean = self._validate(data)
+        self.nombre = clean['nombre']
+        self.descripcion = clean.get('descripcion', '')
+        existing = self._get_by_nombre(self._nombre)
+        if existing:
+            if existing['estado'] == 1:
+                raise ValidationError({'nombre': 'La marca ya existe'})
+            self.update("transalca", "UPDATE marcas SET descripcion_marca = %s, estado = 1 WHERE nombre_marca = %s",
+                        (self._descripcion, existing['nombre']))
+            return existing['nombre']
+        self.insert("transalca",
             "INSERT INTO marcas (nombre_marca, descripcion_marca) VALUES (%s, %s)",
             (self._nombre, self._descripcion))
+        return self._nombre
 
     def _update_brand(self, old_nombre, data):
-        self.nombre = data['nombre']
-        self.descripcion = data.get('descripcion', '')
+        clean = self._validate(data)
+        old_nombre = (old_nombre or '').strip()
+        if not old_nombre:
+            raise ValidationError({'old_nombre': 'Identificador de marca requerido'})
+        if clean['nombre'] != old_nombre and self._nombre_exists(clean['nombre']):
+            raise ValidationError({'nombre': 'La marca ya existe'})
+        self.nombre = clean['nombre']
+        self.descripcion = clean.get('descripcion', '')
         return self.update("transalca",
             "UPDATE marcas SET nombre_marca = %s, descripcion_marca = %s WHERE nombre_marca = %s",
             (self._nombre, self._descripcion, old_nombre))

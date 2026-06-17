@@ -1,4 +1,7 @@
+import re
+
 from model.connection import Connection
+from config.validation import ValidationError
 from datetime import date
 
 
@@ -55,19 +58,46 @@ class TasaCambioModel(Connection):
     def _exists_today(self):
         return self._get_today() is not None
 
+    def _validate(self, data, require_fecha=True):
+        errors = {}
+        clean = {}
+        fecha = (str(data.get('fecha')).strip() if data.get('fecha') is not None else '')
+        if require_fecha or 'fecha' in data:
+            if not fecha:
+                errors['fecha'] = 'Fecha requerida'
+            elif not re.fullmatch(r'\d{4}-\d{2}-\d{2}', fecha):
+                errors['fecha'] = 'Fecha invalida'
+        clean['fecha'] = fecha
+        try:
+            monto = float(data.get('monto', 0))
+            if monto <= 0:
+                errors['monto'] = 'El monto debe ser mayor a 0'
+            clean['monto'] = monto
+        except (ValueError, TypeError):
+            errors['monto'] = 'Monto invalido'
+        fuente = (str(data.get('fuente') or '').strip())
+        if len(fuente) < 2:
+            errors['fuente'] = 'Fuente requerida'
+        clean['fuente'] = fuente
+        if errors:
+            raise ValidationError(errors)
+        return clean
+
     def _create(self, data):
-        self.fecha = data['fecha']
-        self.monto = data['monto']
-        self.fuente = data['fuente']
+        clean = self._validate(data, require_fecha=True)
+        self.fecha = clean['fecha']
+        self.monto = clean['monto']
+        self.fuente = clean['fuente']
         return self.insert("transalca",
             "INSERT INTO tasas_cambio (fecha_tasa_cambio, tipo_tasa_cambio, monto, fuente) VALUES (%s, %s, %s, %s)",
             (self._fecha, 'bcv', self._monto, self._fuente))
 
     def _update_tasa(self, tasa_id, data):
-        self.monto = data['monto']
-        self.fuente = data['fuente']
-        if 'fecha' in data:
-            self.fecha = data['fecha']
+        clean = self._validate(data, require_fecha=False)
+        self.monto = clean['monto']
+        self.fuente = clean['fuente']
+        if 'fecha' in data and data.get('fecha'):
+            self.fecha = clean['fecha']
             return self.update("transalca",
                 "UPDATE tasas_cambio SET monto = %s, fuente = %s, fecha_tasa_cambio = %s WHERE id_tasa_cambio = %s AND tipo_tasa_cambio='bcv'",
                 (self._monto, self._fuente, self._fecha, tasa_id))

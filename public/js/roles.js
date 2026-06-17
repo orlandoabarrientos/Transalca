@@ -80,12 +80,23 @@ function loadData() {
     });
 }
 
+const MODULE_TITLES = {};
+
 async function loadModules() {
     try {
         const res = await apiCall('/api/roles/modules');
         MODULES.length = 0;
-        (res.data || []).forEach(m => MODULES.push(m));
+        (res.data || []).forEach(m => {
+            const slug = typeof m === 'string' ? m : m.modulo;
+            if (!slug) return;
+            MODULES.push(slug);
+            if (m && m.titulo) MODULE_TITLES[slug] = m.titulo;
+        });
     } catch(e) {}
+}
+
+function moduleLabel(mod) {
+    return MODULE_TITLES[mod] || MODULE_LABELS[mod] || mod;
 }
 
 let permissionsState = {};
@@ -122,7 +133,7 @@ function renderPermissionsPage(page = 1) {
     pageModules.forEach(mod => {
         const p = permissionsState[mod] || { crear: 0, leer: 0, actualizar: 0, eliminar: 0 };
         tbody.innerHTML += `<tr>
-            <td class="fw-bold">${escapeHtml(MODULE_LABELS[mod] || mod)}</td>
+            <td class="fw-bold">${escapeHtml(moduleLabel(mod))}</td>
             <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="crear" ${p.crear ? 'checked' : ''} onchange="updatePermissionState('${escapeHtml(mod)}', 'crear', this.checked)"></td>
             <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="leer" ${p.leer ? 'checked' : ''} onchange="updatePermissionState('${escapeHtml(mod)}', 'leer', this.checked)"></td>
             <td><input type="checkbox" class="form-check-input perm-check" data-mod="${escapeHtml(mod)}" data-perm="actualizar" ${p.actualizar ? 'checked' : ''} onchange="updatePermissionState('${escapeHtml(mod)}', 'actualizar', this.checked)"></td>

@@ -1,4 +1,5 @@
 from model.connection import Connection
+from config.validation import ValidationError, normalize_email, normalize_phone, normalize_rif, optional_text, require_text
 
 PROVEEDOR_ALIAS = (
     "p.*, p.rif_proveedor AS rif, p.nombre_proveedor AS nombre, p.telefono_proveedor AS telefono, "
@@ -79,28 +80,69 @@ class SupplierModel(Connection):
         return self.fetch_one("transalca",
             "SELECT " + PROVEEDOR_ALIAS + " FROM proveedores p WHERE p.rif_proveedor = %s", (rif,))
 
+    def _validate(self, data):
+        errors = {}
+        rif, rif_prefijo, _ = normalize_rif(errors, data)
+        direccion_raw = data.get('direccion')
+        if direccion_raw is not None and str(direccion_raw) != '' and not str(direccion_raw).strip():
+            errors['direccion'] = 'La direccion no puede contener solo espacios en blanco.'
+        clean = {
+            'rif': rif,
+            'rif_prefijo': rif_prefijo,
+            'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=150, allow_serial=False),
+            'telefono': normalize_phone(errors, data.get('telefono'), required=False),
+            'email': normalize_email(errors, data.get('email'), required=False),
+            'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40),
+        }
+        if errors:
+            raise ValidationError(errors)
+        return clean
+
     def _create(self, data):
-        self.rif = data['rif']
-        self.nombre = data['nombre']
-        self.telefono = data.get('telefono', '')
-        self.email = data.get('email', '')
-        self.direccion = data.get('direccion', '')
-        return self.insert("transalca",
+        clean = self._validate(data)
+        data = {**data, **clean}
+        self.rif = clean['rif']
+        self.nombre = clean['nombre']
+        self.telefono = clean.get('telefono', '') or ''
+        self.email = clean.get('email', '') or ''
+        self.direccion = clean.get('direccion', '') or ''
+        existing = self._get_by_rif(self._rif)
+        if existing:
+            if existing['estado'] == 1:
+                raise ValidationError({'rif': 'Este rif ya esta registrado.'})
+            if clean.get('email') and self.email_exists_globally(clean['email'], {"proveedor_rif": existing['rif']}):
+                raise ValidationError({'email': 'Este correo ya esta registrado.'})
+            self.update("transalca",
+                "UPDATE proveedores SET rif_prefijo=%s, nombre_proveedor=%s, telefono_proveedor=%s, email_proveedor=%s, direccion_proveedor=%s, estado=1 WHERE rif_proveedor=%s",
+                (clean.get('rif_prefijo'), self._nombre, self._telefono, self._email, self._direccion, existing['rif']))
+            return existing['rif']
+        if clean.get('email') and self.email_exists_globally(clean['email'], {"proveedor_rif": self._rif}):
+            raise ValidationError({'email': 'Este correo ya esta registrado.'})
+        self.insert("transalca",
             "INSERT INTO proveedores (rif_proveedor, rif_prefijo, nombre_proveedor, telefono_proveedor, email_proveedor, direccion_proveedor) "
             "VALUES (%s, %s, %s, %s, %s, %s)",
-            (self._rif, data.get('rif_prefijo'), self._nombre,
+            (self._rif, clean.get('rif_prefijo'), self._nombre,
              self._telefono, self._email, self._direccion))
+        return self._rif
 
     def _update_supplier(self, old_rif, data):
-        self.rif = data['rif']
-        self.nombre = data['nombre']
-        self.telefono = data.get('telefono', '')
-        self.email = data.get('email', '')
-        self.direccion = data.get('direccion', '')
+        clean = self._validate(data)
+        old_rif = (old_rif or '').strip()
+        if not old_rif:
+            raise ValidationError({'old_rif': 'Identificador de proveedor requerido.'})
+        if clean['rif'] != old_rif and self._rif_exists(clean['rif']):
+            raise ValidationError({'rif': 'Este rif ya esta registrado.'})
+        if clean.get('email') and self.email_exists_globally(clean['email'], {"proveedor_rif": old_rif}):
+            raise ValidationError({'email': 'Este correo ya esta registrado.'})
+        self.rif = clean['rif']
+        self.nombre = clean['nombre']
+        self.telefono = clean.get('telefono', '') or ''
+        self.email = clean.get('email', '') or ''
+        self.direccion = clean.get('direccion', '') or ''
         return self.update("transalca",
             "UPDATE proveedores SET rif_proveedor = %s, rif_prefijo = %s, nombre_proveedor = %s, "
             "telefono_proveedor = %s, email_proveedor = %s, direccion_proveedor = %s WHERE rif_proveedor = %s",
-            (self._rif, data.get('rif_prefijo'), self._nombre,
+            (self._rif, clean.get('rif_prefijo'), self._nombre,
              self._telefono, self._email, self._direccion, old_rif))
 
     def _soft_delete(self, rif):
@@ -120,7 +162,7 @@ class SupplierModel(Connection):
         return result is not None
 
     def _reactivar(self, rif):
-        return self.update("transalca", "UPDATE proveedores SET estado = 1 WHERE rif = %s", (rif,))
+        return self.update("transalca", "UPDATE proveedores SET estado = 1 WHERE rif_proveedor = %s", (rif,))
 
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {

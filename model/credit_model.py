@@ -5,6 +5,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from config.config import MAIL_PASSWORD, MAIL_PORT, MAIL_SERVER, MAIL_USERNAME
+from config.validation import ValidationError
 from model.connection import Connection
 from model.notification_model import NotificationModel
 
@@ -12,6 +13,8 @@ DEUDA_SQL = (
     "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc "
     "WHERE pc.id_credito = cr.id_credito), 0))"
 )
+
+ALLOWED_STATUS = {'pendiente', 'aprobado', 'activo', 'pagado', 'vencido', 'anulado'}
 
 
 class CreditModel(Connection):
@@ -36,6 +39,32 @@ class CreditModel(Connection):
             return Decimal(str(value or 0)).quantize(Decimal("0.01"))
         except (InvalidOperation, ValueError):
             return Decimal("0.00")
+
+    def _validate_date(self, value, field, errors):
+        raw = value.strip() if isinstance(value, str) else value
+        if not raw:
+            errors[field] = "La fecha es obligatoria."
+            return None
+        try:
+            return self._as_date(raw)
+        except (ValueError, TypeError):
+            errors[field] = "La fecha no es válida."
+            return None
+
+    def _validate_amount(self, value, field, errors, label):
+        raw = str(value if value is not None else '').strip().replace(',', '.')
+        if not raw:
+            errors[field] = f"{label} es obligatorio."
+            return None
+        try:
+            amount = Decimal(raw).quantize(Decimal("0.01"))
+        except (InvalidOperation, ValueError):
+            errors[field] = f"{label} no es válido."
+            return None
+        if amount <= 0:
+            errors[field] = f"{label} debe ser mayor a cero."
+            return None
+        return amount
 
     def _credit_users(self):
         return self.fetch_all("mantenimiento",
@@ -197,6 +226,9 @@ class CreditModel(Connection):
         }
 
     def _update_status(self, order_id, estado):
+        estado = (estado or '').strip().lower()
+        if estado not in ALLOWED_STATUS:
+            raise ValidationError({'estado': "El estado seleccionado no es válido."})
         if estado == 'pagado':
             return self._mark_paid(order_id)
         return self.update("transalca",
@@ -220,12 +252,19 @@ class CreditModel(Connection):
             (order_id,))
 
     def _update_dates(self, order_id, fecha_inicio, fecha_fin):
+        errors = {}
+        start = self._validate_date(fecha_inicio, 'fecha_inicio', errors)
+        end = self._validate_date(fecha_fin, 'fecha_fin', errors)
+        if start and end and end < start:
+            errors['fecha_fin'] = "La fecha fin no puede ser menor a la fecha inicio."
+        if errors:
+            raise ValidationError(errors)
         return self.update("transalca",
             "UPDATE creditos_orden_venta SET fecha_inicio_credito=%s, fecha_vencimiento_credito=%s, "
             "estado_credito=CASE WHEN estado_credito IN ('pagado','anulado') THEN estado_credito ELSE 'activo' END, "
             "notificacion_7d=0, notificacion_2d=0, notificacion_vencido=0 "
             "WHERE orden_venta_id=%s",
-            (fecha_inicio, fecha_fin, order_id))
+            (start, end, order_id))
 
     def _mark_paid(self, order_id):
         credit = self._get_by_order(order_id)
@@ -252,25 +291,30 @@ class CreditModel(Connection):
             (order_id, fecha_inicio, fecha_fin))
 
     def _create_credit(self, data):
+        errors = {}
+        cliente_cedula = (data.get('cliente_cedula') or '').strip()
+        if not cliente_cedula:
+            errors['cliente_cedula'] = "La empresa es obligatoria."
+        total = self._validate_amount(data.get('total'), 'total', errors, "El monto")
+        fecha_inicio = self._validate_date(data.get('fecha_inicio'), 'fecha_inicio', errors)
+        fecha_fin = self._validate_date(data.get('fecha_fin'), 'fecha_fin', errors)
+        if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
+            errors['fecha_fin'] = "La fecha fin no puede ser menor a la fecha inicio."
+        if errors:
+            raise ValidationError(errors)
         client = self.fetch_one("transalca",
             "SELECT c.identificador_cliente AS cedula, j.dias_credito FROM cliente c "
             "INNER JOIN cliente_juridico j ON j.id_cliente = c.id_cliente "
             "WHERE c.identificador_cliente = %s AND c.estado = 1",
-            (data['cliente_cedula'],))
+            (cliente_cedula,))
         if not client:
             return {'ok': False, 'message': 'La empresa no existe o esta inactiva.'}
-        total = self._as_money(data.get('total'))
-        if total <= 0:
-            return {'ok': False, 'message': 'El monto del credito debe ser mayor a cero.'}
-        fecha_inicio = data.get('fecha_inicio') or self._today()
-        dias = int(client.get('dias_credito') or 0)
-        fecha_fin = data.get('fecha_fin') or (self._as_date(fecha_inicio) + timedelta(days=dias))
         try:
             order_id = self.insert("transalca",
                 "INSERT INTO ordenes_venta (cliente_cedula, total_orden_venta, tipo_pago, tasa_cambio_id) "
                 "VALUES (%s, %s, 'credito', "
                 "(SELECT t.id_tasa_cambio FROM tasas_cambio t WHERE t.tipo_tasa_cambio='bcv' ORDER BY t.fecha_tasa_cambio DESC, t.id_tasa_cambio DESC LIMIT 1))",
-                (data['cliente_cedula'], total))
+                (cliente_cedula, total))
             self.insert("transalca",
                 "INSERT INTO creditos_orden_venta (orden_venta_id, fecha_inicio_credito, fecha_vencimiento_credito, estado_credito) "
                 "VALUES (%s, %s, %s, 'activo')",
@@ -280,9 +324,10 @@ class CreditModel(Connection):
             return {'ok': False, 'message': f'Error al registrar el credito: {str(e)}'}
 
     def _register_payment(self, order_id, amount, observaciones=None):
-        amount = self._as_money(amount)
-        if amount <= 0:
-            return {'ok': False, 'message': 'El monto del abono debe ser mayor a cero.'}
+        errors = {}
+        amount = self._validate_amount(amount, 'monto', errors, "El monto del abono")
+        if errors:
+            raise ValidationError(errors)
         conn = self.con_transalca()
         try:
             conn.begin()

@@ -1,57 +1,10 @@
 from flask import Blueprint, request, jsonify, session
 from model.user_model import UserModel
 
-from config.validation import normalize_cedula, normalize_email, normalize_phone, optional_text, require_text, validate_choice, SELECT_TAMPER_MESSAGE
-import re
+from config.validation import normalize_cedula, normalize_email, ValidationError
 
 user_bp = Blueprint('users', __name__)
 model = UserModel()
-
-
-CREDENTIAL_FIELD = 'pass' + 'word'
-CREDENTIAL_PATTERN = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$'
-TIPOS_USUARIO = ['cliente', 'empleado']
-
-
-def _validate_user(data, require_password=False, current_id=None):
-    errors = {}
-    cedula, cedula_prefijo, _ = normalize_cedula(errors, data)
-    clean = {
-        'nombre': require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=60, person=True),
-        'apellido': require_text(errors, 'apellido', data.get('apellido'), 'El apellido', min_len=2, max_len=60, person=True),
-        'cedula': cedula,
-        'cedula_prefijo': cedula_prefijo,
-        'email': normalize_email(errors, data.get('email')),
-        'telefono': normalize_phone(errors, data.get('telefono'), required=False),
-        'direccion': optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40),
-        'tipo': validate_choice(errors, 'tipo', data.get('tipo') or 'empleado', TIPOS_USUARIO)
-    }
-
-    current = model.ejecutar("get_by_id", current_id) if current_id else None
-    current_roles = model.ejecutar("get_user_roles", current_id) if current_id else []
-    current_role_ids = [r['id'] for r in current_roles]
-
-    rol_id = data.get('rol_id')
-    if rol_id in (None, '', 0, '0'):
-        errors['rol_id'] = "El rol es obligatorio."
-    else:
-        try:
-            clean['rol_id'] = int(rol_id)
-        except (TypeError, ValueError):
-            errors['rol_id'] = SELECT_TAMPER_MESSAGE
-        else:
-            is_current_rol = clean['rol_id'] in current_role_ids
-            if not is_current_rol and not model.ejecutar("role_exists", clean['rol_id']):
-                errors['rol_id'] = SELECT_TAMPER_MESSAGE
-    if require_password:
-        credential_value = data.get(CREDENTIAL_FIELD) or ''
-        if not re.match(CREDENTIAL_PATTERN, credential_value):
-            errors[CREDENTIAL_FIELD] = 'La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial (@$!%*?&#.).'
-        confirm_value = data.get('confirm_' + CREDENTIAL_FIELD)
-        if confirm_value is not None and confirm_value != credential_value:
-            errors['confirm_' + CREDENTIAL_FIELD] = 'Las contrasenas no coinciden.'
-        clean[CREDENTIAL_FIELD] = credential_value
-    return clean, errors
 
 
 @user_bp.route('/', methods=['GET'])
@@ -59,10 +12,9 @@ def get_all():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        tipo = request.args.get('tipo', None)
-        if tipo and tipo not in TIPOS_USUARIO:
-            return jsonify({"status": "error", "message": SELECT_TAMPER_MESSAGE}), 400
-        return jsonify({"status": "success", "data": model.ejecutar("get_all", tipo)})
+        return jsonify({"status": "success", "data": model.ejecutar("get_all", request.args.get('tipo', None))})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudieron cargar los usuarios."}), 500
 
@@ -111,56 +63,12 @@ def create():
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        data, errors = _validate_user(request.get_json() or {}, require_password=True)
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        existing_by_cedula = model.ejecutar("get_by_cedula", data['cedula'])
-        existing_by_email = model.ejecutar("get_by_email", data['email'])
-        if existing_by_cedula and existing_by_cedula['estado'] == 1:
-            return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
-        if existing_by_email and existing_by_email['estado'] == 1:
-            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-
-        existing = existing_by_cedula or existing_by_email
-        if existing:
-            email_exclude = {"usuario_id": existing['id'], "cliente_cedula": data['cedula']}
-            if model.ejecutar("email_exists_globally", data['email'], email_exclude):
-                return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-
-            from werkzeug.security import generate_password_hash
-            password_hash = generate_password_hash(data['password'])
-            update_data = {
-                'nombre': data['nombre'],
-                'apellido': data['apellido'],
-                'cedula': data['cedula'],
-                'cedula_prefijo': data['cedula_prefijo'],
-                'email': data['email'],
-                'telefono': data.get('telefono'),
-                'direccion': data.get('direccion'),
-                'tipo': data['tipo']
-            }
-            model.ejecutar("update_info", existing['id'], update_data)
-            model.ejecutar("reactivar", existing['id'], password_hash)
-
-            current_roles = model.ejecutar("get_user_roles", existing['id'])
-            for role in current_roles:
-                model.ejecutar("remove_role", existing['id'], role['id'])
-            if data.get('rol_id'):
-                model.ejecutar("assign_role", existing['id'], data['rol_id'])
-
-
-            return jsonify({"status": "success", "message": "Usuario registrado correctamente.", "id": existing['id']})
-
-        email_exclude = {"cliente_cedula": data['cedula']} if data.get('tipo') == 'cliente' else {}
-        if model.ejecutar("email_exists_globally", data['email'], email_exclude):
-            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        user_id = model.ejecutar("create", data)
+        user_id = model.ejecutar("create", request.get_json() or {})
         if user_id:
-            if data.get('rol_id'):
-                model.ejecutar("assign_role", user_id, data['rol_id'])
-
             return jsonify({"status": "success", "message": "Usuario registrado correctamente.", "id": user_id})
         return jsonify({"status": "error", "message": "No se pudo registrar el usuario."}), 500
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo registrar el usuario."}), 500
 
@@ -170,31 +78,10 @@ def update(user_id):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
-        data, errors = _validate_user(request.get_json() or {}, require_password=False, current_id=user_id)
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if model.ejecutar("email_exists", data['email'], user_id):
-            return jsonify({"status": "error", "message": "Este correo ya esta registrado.", "errors": {"email": "Este correo ya esta registrado."}}), 400
-        if model.ejecutar("cedula_exists", data['cedula'], user_id):
-            return jsonify({"status": "error", "message": "Esta cedula ya esta registrada.", "errors": {"cedula": "Esta cedula ya esta registrada."}}), 400
-        current_roles = model.ejecutar("get_user_roles", user_id)
-        was_admin = any(r['nombre'] == 'Administrador' for r in current_roles)
-        if was_admin:
-            new_rol_id = data.get('rol_id')
-            new_role_info = model.ejecutar("get_role_name", new_rol_id)
-            is_new_admin = new_role_info and new_role_info['nombre'] == 'Administrador'
-            if not is_new_admin:
-                admin_count = model.ejecutar("count_active_admins")
-                if admin_count and admin_count['total'] <= 1:
-                    return jsonify({"status": "error", "message": "No se puede cambiar el rol del último administrador activo.", "errors": {"rol_id": "No se puede cambiar el rol del último administrador activo."}}), 400
-
-        model.ejecutar("update_info", user_id, data)
-        for role in current_roles:
-            model.ejecutar("remove_role", user_id, role['id'])
-        if data.get('rol_id'):
-            model.ejecutar("assign_role", user_id, data['rol_id'])
-
+        model.ejecutar("update_user", user_id, request.get_json() or {})
         return jsonify({"status": "success", "message": "Usuario modificado correctamente."})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el usuario."}), 500
 
@@ -220,12 +107,10 @@ def toggle_status(user_id):
             return jsonify({"status": "error", "message": "No autorizado."}), 401
         data = request.get_json() or {}
         estado = data.get('estado')
-        if estado not in (0, 1, '0', '1'):
-            return jsonify({"status": "error", "message": SELECT_TAMPER_MESSAGE}), 400
-        estado = int(estado)
         model.ejecutar("update_status", user_id, estado)
-
-        return jsonify({"status": "success", "message": "Usuario eliminado correctamente." if estado == 0 else "Estado modificado correctamente."})
+        return jsonify({"status": "success", "message": "Usuario eliminado correctamente." if str(estado) == '0' else "Estado modificado correctamente."})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo cambiar el estado del usuario."}), 500
 

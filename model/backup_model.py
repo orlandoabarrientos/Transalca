@@ -4,6 +4,9 @@ import re
 import threading
 from datetime import datetime
 
+import pymysql
+from pymysql.constants import CLIENT
+
 from config.config import BACKUP_FOLDER, DB_CONFIG_MANTENIMIENTO, DB_CONFIG_TRANSALCA
 from model.connection import Connection
 
@@ -11,6 +14,9 @@ from model.connection import Connection
 logger = logging.getLogger(__name__)
 BACKUP_FILENAME_RE = re.compile(r'^[A-Za-z0-9_.-]+\.sql$')
 SQL_IDENTIFIER_RE = re.compile(r'^[A-Za-z0-9_]+$')
+BACKUP_HEADER = "-- Transalca backup"
+MAX_BACKUP_BYTES = 50 * 1024 * 1024
+BACKUP_MAX_AGE_DAYS = 60
 
 
 class BackupModel(Connection):
@@ -46,8 +52,8 @@ class BackupModel(Connection):
         with open(filepath, 'w', encoding='utf-8') as dump:
             dump.write(f"-- Transalca backup\n-- Database: {db_name}\n-- Created: {datetime.now().isoformat(timespec='seconds')}\n\n")
             dump.write("SET FOREIGN_KEY_CHECKS=0;\n\n")
-            cursor.execute("SHOW TABLES")
-            tables = [next(iter(row.values())) for row in cursor.fetchall()]
+            cursor.execute("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'")
+            tables = [list(row.values())[0] for row in cursor.fetchall()]
             safe_tables = [table for table in tables if self._is_safe_identifier(table)]
             for table in safe_tables:
                 quoted_table = self._quote_identifier(table)
@@ -115,6 +121,87 @@ class BackupModel(Connection):
             return filepath
         return None
 
+    def _db_config_for_file(self, filename):
+        base = os.path.basename(filename)
+        for db_config in (DB_CONFIG_MANTENIMIENTO, DB_CONFIG_TRANSALCA):
+            db_name = db_config["database"]
+            if self._is_safe_identifier(db_name) and base.startswith(db_name + "_"):
+                return db_config
+        return None
+
+    def _read_validated_backup(self, filepath):
+        if not os.path.exists(filepath):
+            raise ValueError("El respaldo no existe.")
+        size = os.path.getsize(filepath)
+        if size == 0 or size > MAX_BACKUP_BYTES:
+            raise ValueError("El archivo de respaldo no tiene un tamaño valido.")
+        with open(filepath, 'r', encoding='utf-8') as handle:
+            script = handle.read()
+        if not script.lstrip().startswith(BACKUP_HEADER):
+            raise ValueError("El archivo no es un respaldo valido del sistema.")
+        return script
+
+    def _restore_backup(self, filename):
+        filepath = self._safe_backup_path(filename)
+        db_config = self._db_config_for_file(filename)
+        if not db_config:
+            raise ValueError("El respaldo no corresponde a una base de datos del sistema.")
+        script = self._read_validated_backup(filepath)
+        safety = self._create_backup()
+        conn = pymysql.connect(
+            host=db_config["host"], port=db_config["port"], user=db_config["user"],
+            password=db_config["password"], database=db_config["database"],
+            charset=db_config["charset"], autocommit=True,
+            client_flag=CLIENT.MULTI_STATEMENTS)
+        try:
+            cursor = conn.cursor()
+            cursor.execute(script)
+            while cursor.nextset():
+                pass
+        finally:
+            conn.close()
+        return {
+            "database": db_config["database"],
+            "safety_backup": [item["filename"] for item in safety],
+        }
+
+    def _save_uploaded_backup(self, filename, content):
+        if not content or len(content) > MAX_BACKUP_BYTES:
+            raise ValueError("El archivo de respaldo no tiene un tamaño valido.")
+        base = os.path.basename(str(filename or ''))
+        if not BACKUP_FILENAME_RE.fullmatch(base):
+            raise ValueError("Nombre de respaldo invalido. Debe terminar en .sql")
+        if self._db_config_for_file(base) is None:
+            raise ValueError("El respaldo no corresponde a una base de datos del sistema.")
+        try:
+            text = content.decode('utf-8')
+        except (UnicodeDecodeError, AttributeError):
+            raise ValueError("El archivo no es un respaldo valido del sistema.")
+        if not text.lstrip().startswith(BACKUP_HEADER):
+            raise ValueError("El archivo no es un respaldo valido del sistema.")
+        filepath = self._safe_backup_path(base)
+        os.makedirs(self.backup_folder, exist_ok=True)
+        with open(filepath, 'w', encoding='utf-8') as handle:
+            handle.write(text)
+        return base
+
+    def _cleanup_old_backups(self, max_age_days=BACKUP_MAX_AGE_DAYS):
+        removed = []
+        if not os.path.exists(self.backup_folder):
+            return removed
+        cutoff = datetime.now().timestamp() - max_age_days * 86400
+        for filename in os.listdir(self.backup_folder):
+            if not BACKUP_FILENAME_RE.fullmatch(filename):
+                continue
+            try:
+                filepath = self._safe_backup_path(filename)
+                if os.path.getmtime(filepath) < cutoff:
+                    os.remove(filepath)
+                    removed.append(filename)
+            except (OSError, ValueError):
+                continue
+        return removed
+
     def _log_event(self, usuario_id, accion, modulo, descripcion, ip, respaldo=0):
         return self.insert("mantenimiento",
             "INSERT INTO bitacora (usuario_id, accion, modulo, descripcion, ip, respaldo) VALUES (%s, %s, %s, %s, %s, %s)",
@@ -131,6 +218,9 @@ class BackupModel(Connection):
             "list_backups": self._list_backups,
             "delete_backup": self._delete_backup,
             "get_backup_path": self._get_backup_path,
+            "restore_backup": self._restore_backup,
+            "save_uploaded_backup": self._save_uploaded_backup,
+            "cleanup_old_backups": self._cleanup_old_backups,
             "log_event": self._log_event,
             "has_backup_this_week": self._has_backup_this_week,
         }
@@ -164,6 +254,14 @@ class WeeklyBackupScheduler:
             self._run_once()
 
     def _run_once(self):
+        try:
+            removed = self._model.ejecutar("cleanup_old_backups")
+            if removed:
+                self._model.ejecutar("log_event", 1, 'ELIMINAR', 'RESPALDOS',
+                    f"Respaldos antiguos eliminados: {', '.join(removed)}", '127.0.0.1', 0)
+                logger.info("Respaldos antiguos eliminados automaticamente: %s", ', '.join(removed))
+        except Exception:
+            logger.exception("Error limpiando respaldos antiguos.")
         try:
             if self._model.ejecutar("has_backup_this_week"):
                 return

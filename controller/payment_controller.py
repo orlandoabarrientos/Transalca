@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, session
 from model.payment_model import PaymentModel
 from model.notification_model import NotificationModel
 
-from config.validation import optional_text
+from config.validation import ValidationError
 
 payment_bp = Blueprint('payments', __name__)
 model = PaymentModel()
@@ -67,20 +67,15 @@ def reject(comp_id):
         if not model.ejecutar("get_by_id", comp_id):
             return jsonify({"status": "error", "message": "Comprobante no encontrado"}), 404
         data = request.get_json() or {}
-        errors = {}
-        observaciones = optional_text(errors, 'observaciones', data.get('observaciones'), 'El motivo', max_len=255, allow_serial=True)
-        if not observaciones:
-            errors['observaciones'] = 'El motivo es obligatorio.'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion", "errors": errors}), 400
+        observaciones = data.get('observaciones')
         result = model.ejecutar("reject", comp_id, session['user_cedula'], observaciones)
         if result:
-
-
             comp = model.ejecutar("get_by_id", comp_id)
             if comp:
                 notification_model.ejecutar("notify_payment_status", comp.get('cliente_cedula'), comp.get('orden_venta_id'), False, observaciones)
             return jsonify({"status": "success", "message": "Pago rechazado correctamente"})
         return jsonify({"status": "error", "message": "No se pudo rechazar el pago"}), 500
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo rechazar el pago"}), 500

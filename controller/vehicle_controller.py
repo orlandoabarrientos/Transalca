@@ -2,8 +2,7 @@ from flask import Blueprint, request, jsonify, session
 from model.vehicle_model import VehicleModel
 from controller._guards import can_access_client, deny, is_employee, require_login
 from model.vehicle_title_ocr_model import OCRError, parse_vehicle_title_image
-from config.constants import TIPOS_COMBUSTIBLE
-from config.validation import normalize_int, optional_text, require_text, validate_choice
+from config.validation import ValidationError
 import os
 import time
 from werkzeug.utils import secure_filename
@@ -70,21 +69,6 @@ def load_owned_vehicle(vid):
     return vehicle, None
 
 
-def _validate_vehicle(data):
-    errors = {}
-    clean = {}
-    clean['cliente_cedula'] = (data.get('cliente_cedula') or '').strip()
-    clean['marca'] = require_text(errors, 'marca', data.get('marca'), 'La marca', min_len=2, max_len=100, allow_serial=False)
-    clean['modelo'] = require_text(errors, 'modelo', data.get('modelo'), 'El modelo', min_len=1, max_len=100, allow_serial=False)
-    clean['anio'] = normalize_int(errors, 'anio', data.get('anio'), 'El ano', min_value=1900, max_value=2100) if data.get('anio') not in (None, '') else None
-    clean['placa'] = require_text(errors, 'placa', data.get('placa'), 'La placa', min_len=5, max_len=20, allow_serial=True).upper()
-    clean['color'] = optional_text(errors, 'color', data.get('color'), 'El color', max_len=50, allow_serial=False)
-    clean['tipo_vehiculo'] = optional_text(errors, 'tipo_vehiculo', data.get('tipo_vehiculo'), 'El tipo de vehiculo', max_len=50, allow_serial=False)
-    clean['tipo_combustible'] = validate_choice(errors, 'tipo_combustible', data.get('tipo_combustible') or 'gasolina', TIPOS_COMBUSTIBLE)
-    clean['kilometraje_actual'] = normalize_int(errors, 'kilometraje_actual', data.get('kilometraje_actual') or 0, 'El kilometraje', min_value=0, max_value=9999999)
-    return clean, errors
-
-
 @vehicle_bp.route('/', methods=['GET'])
 def get_all():
     try:
@@ -126,24 +110,23 @@ def create():
         if auth:
             return auth
         data = request.get_json() or {}
-        clean, errors = _validate_vehicle(data)
-        if not clean.get('cliente_cedula'):
-            errors['cliente_cedula'] = 'No se pudo identificar el cliente.'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        if not can_access_client(clean.get('cliente_cedula')):
+        clean = model.ejecutar("validate", data)
+        cliente_cedula = (data.get('cliente_cedula') or '').strip()
+        if not cliente_cedula:
+            raise ValidationError({'cliente_cedula': 'No se pudo identificar el cliente.'})
+        if not can_access_client(cliente_cedula):
             return deny()
-        placa = clean.get('placa')
-        existing = model.ejecutar("get_by_placa", placa)
+        existing = model.ejecutar("get_by_placa", clean['placa'])
         if existing:
             if existing['estado'] == 1:
-                return jsonify({"status": "error", "message": "Esta placa ya esta registrada.", "errors": {"placa": "Esta placa ya esta registrada."}}), 400
-            else:
-                model.ejecutar("update_vehicle", existing['placa'], clean)
-                model.ejecutar("reactivar", existing['placa'])
-                return jsonify({"status": "success", "message": "Vehiculo registrado correctamente.", "id": existing['placa']}), 201
-        vid = model.ejecutar("create", clean)
+                raise ValidationError({'placa': 'Esta placa ya esta registrada.'})
+            model.ejecutar("update_vehicle", existing['placa'], data)
+            model.ejecutar("reactivar", existing['placa'])
+            return jsonify({"status": "success", "message": "Vehiculo registrado correctamente.", "id": existing['placa']}), 201
+        vid = model.ejecutar("create", {**data, 'cliente_cedula': cliente_cedula})
         return jsonify({"status": "success", "message": "Vehiculo registrado correctamente.", "id": vid}), 201
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
@@ -157,14 +140,10 @@ def update(vid):
         if error:
             return error
         data = request.get_json() or {}
-        clean, errors = _validate_vehicle(data)
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        placa = clean.get('placa')
-        if placa and model.ejecutar("placa_exists", placa, exclude_id=vid):
-            return jsonify({"status": "error", "message": "Esta placa ya esta registrada.", "errors": {"placa": "Esta placa ya esta registrada."}}), 400
-        model.ejecutar("update_vehicle", vid, clean)
+        model.ejecutar("update_vehicle", vid, data)
         return jsonify({"status": "success", "message": "Vehiculo modificado correctamente."})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:

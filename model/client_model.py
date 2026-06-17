@@ -1,4 +1,12 @@
 from model.connection import Connection
+from config.validation import (
+    ValidationError,
+    normalize_cedula,
+    normalize_email,
+    normalize_phone,
+    optional_text,
+    require_text,
+)
 
 
 CLIENTE_BASE = (
@@ -101,10 +109,32 @@ class ClientModel(Connection):
             "SELECT id_cliente FROM cliente WHERE identificador_cliente = %s", (cedula,))
         return row['id_cliente'] if row else None
 
+    def _validate(self, data, require_cedula=True):
+        errors = {}
+        clean = {}
+        clean['nombre'] = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=100, person=True)
+        clean['apellido'] = optional_text(errors, 'apellido', data.get('apellido'), 'El apellido', max_len=100, person=True)
+        clean['telefono'] = normalize_phone(errors, data.get('telefono'))
+        clean['email'] = normalize_email(errors, data.get('email'), required=False)
+        clean['direccion'] = optional_text(errors, 'direccion', data.get('direccion'), 'La direccion', max_len=40)
+        if require_cedula:
+            cedula, prefijo, _ = normalize_cedula(errors, data)
+            clean['cedula'] = cedula
+            clean['cedula_prefijo'] = prefijo
+        if errors:
+            raise ValidationError(errors)
+        return clean
+
     def _create(self, data):
+        clean = self._validate(data, require_cedula=True)
+        data = {**data, **clean}
         self.cedula = data['cedula']
         cedula = self._cedula
         existing_client = self._get_by_cedula(cedula)
+        if existing_client and existing_client.get('estado'):
+            raise ValidationError({'cedula': 'Esta cedula ya esta registrada.'})
+        if clean.get('email') and self.email_exists_globally(clean['email'], {"cliente_cedula": cedula, "usuario_cedula": cedula}):
+            raise ValidationError({'email': 'Este correo ya esta registrado.'})
         user = self._user_by_cedula(cedula)
         if user and user.get('tipo') != 'cliente':
             raise ValueError('La cedula pertenece a un usuario interno')
@@ -145,6 +175,10 @@ class ClientModel(Connection):
         return {'cedula': cedula, 'reactivated': bool(existing_client and not existing_client.get('estado'))}
 
     def _update_client(self, cedula, data):
+        clean = self._validate({**data, 'cedula': cedula}, require_cedula=True)
+        if clean.get('email') and self.email_exists_globally(clean['email'], {"cliente_cedula": cedula, "usuario_cedula": cedula}):
+            raise ValidationError({'email': 'Este correo ya esta registrado.'})
+        data = {**data, **clean}
         self.email = data.get('email') or ''
         self.telefono = data.get('telefono') or ''
         self.direccion = data.get('direccion') or ''

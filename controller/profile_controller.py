@@ -1,9 +1,8 @@
 from flask import Blueprint, request, jsonify, session
 from model.profile_model import ProfileModel
 
-from config.validation import normalize_email, normalize_phone, optional_text, require_text
+from config.validation import ValidationError
 import os
-import re
 import time
 
 profile_bp = Blueprint('profile', __name__)
@@ -14,7 +13,6 @@ CREDENTIAL_FIELD = 'pass' + 'word'
 CURRENT_CREDENTIAL_FIELD = 'old_' + CREDENTIAL_FIELD
 NEW_CREDENTIAL_FIELD = 'new_' + CREDENTIAL_FIELD
 CONFIRM_CREDENTIAL_FIELD = 'confirm_' + CREDENTIAL_FIELD
-CREDENTIAL_PATTERN = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#.])[A-Za-z\d@$!%*?&#.]{8,}$'
 
 
 @profile_bp.route('/', methods=['GET'])
@@ -36,23 +34,12 @@ def update_profile():
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
         data = request.get_json() or {}
-        errors = {}
-        clean = {
-            'nombre': require_text(errors, 'fNombre', data.get('nombre'), 'El nombre', min_len=2, max_len=60, person=True),
-            'apellido': require_text(errors, 'fApellido', data.get('apellido'), 'El apellido', min_len=2, max_len=60, person=True),
-            'direccion': optional_text(errors, 'fDireccion', data.get('direccion'), 'La direccion', max_len=40)
-        }
-        current = model.ejecutar("get_profile", session['user_id'])
-        if current and current.get('tipo') == 'cliente':
-            clean['telefono'] = normalize_phone(errors, data.get('telefono'), 'fTelefono', required=True)
-        else:
-            clean['telefono'] = normalize_phone(errors, data.get('telefono'), 'fTelefono', required=False)
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        model.ejecutar("update_profile", session['user_id'], clean)
+        clean = model.ejecutar("update_profile", session['user_id'], data)
         session['user_nombre'] = clean['nombre']
         session['user_apellido'] = clean['apellido']
         return jsonify({"status": "success", "message": "Perfil modificado correctamente."})
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el perfil."}), 500
 
@@ -63,15 +50,13 @@ def update_email():
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
         data = request.get_json() or {}
-        errors = {}
-        email = normalize_email(errors, data.get('email'), 'email', required=True)
-        if errors:
-            return jsonify({"status": "error", "message": "Correo invalido.", "errors": {"email": "Ingrese un correo valido."}}), 400
-        result = model.ejecutar("update_email", session['user_id'], email)
+        result = model.ejecutar("update_email", session['user_id'], data.get('email'))
         if result:
-            session['user_email'] = email
+            session['user_email'] = result
             return jsonify({"status": "success", "message": "Correo modificado correctamente."})
         return jsonify({"status": "error", "message": "El correo ya esta en uso", "errors": {"email": "El correo ya esta en uso"}}), 400
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar el correo."}), 500
 
@@ -82,20 +67,13 @@ def change_password():
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
         data = request.get_json() or {}
-        errors = {}
-        if not data.get(CURRENT_CREDENTIAL_FIELD):
-            errors[CURRENT_CREDENTIAL_FIELD] = 'Ingrese su contrasena actual'
-        if not data.get(NEW_CREDENTIAL_FIELD) or not re.match(CREDENTIAL_PATTERN, data.get(NEW_CREDENTIAL_FIELD, '')):
-            errors[NEW_CREDENTIAL_FIELD] = 'Min 8 caracteres, 1 mayuscula, 1 minuscula, 1 numero, 1 especial (@$!%*?&#.)'
-        if data.get(NEW_CREDENTIAL_FIELD) != data.get(CONFIRM_CREDENTIAL_FIELD):
-            errors[CONFIRM_CREDENTIAL_FIELD] = 'Las contrasenas no coinciden'
-        if errors:
-            return jsonify({"status": "error", "message": "Errores de validacion.", "errors": errors}), 400
-        result = model.ejecutar("change_password", session['user_id'], data[CURRENT_CREDENTIAL_FIELD], data[NEW_CREDENTIAL_FIELD])
+        result = model.ejecutar("change_password", session['user_id'], data.get(CURRENT_CREDENTIAL_FIELD),
+                                data.get(NEW_CREDENTIAL_FIELD), data.get(CONFIRM_CREDENTIAL_FIELD))
         if result:
-
             return jsonify({"status": "success", "message": "Contrasena modificada correctamente."})
         return jsonify({"status": "error", "message": "Contrasena actual incorrecta.", "errors": {CURRENT_CREDENTIAL_FIELD: "Contrasena actual incorrecta."}}), 400
+    except ValidationError as e:
+        return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo modificar la contrasena."}), 500
 
