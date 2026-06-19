@@ -82,7 +82,8 @@ $(document).ready(function () {
 
             var formatVal = function (usdVal) {
                 if (paymentCurrency === 'bs' && bcv && usdt) {
-                    var bsVal = (usdVal * usdt) / bcv;
+                    var precioDolar = (usdVal * usdt) / bcv;
+                    var bsVal = precioDolar * bcv;
                     return 'Bs. ' + parseFloat(bsVal || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 } else {
                     return '$' + parseFloat(usdVal || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

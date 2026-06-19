@@ -48,6 +48,7 @@ $(document).ready(function () {
                 <p class="text-muted mb-1" style="font-size:0.75rem;">${s.descripcion?.substring(0, 60) || ''}</p>
                 <span class="service-price" data-usd-price="${s.precio}">${formatUsdBs(s.precio)}</span>
                 ${s.sucursal_nombre ? `<small class="d-block text-muted mt-1"><i class="bi bi-geo-alt"></i> ${s.sucursal_nombre}</small>` : ''}
+                <button type="button" class="btn btn-orange btn-sm w-100 mt-2" style="grid-column:1 / -1;" onclick="event.stopPropagation(); addToCart(${s.id},'servicio')"><i class="bi bi-cart-plus me-1"></i>Solicitar</button>
             </div></div>`;
                 });
             } catch (e) { }

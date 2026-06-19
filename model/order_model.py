@@ -201,17 +201,22 @@ class OrderModel(Connection):
             tasa_cambio_id = current_rate['id'] if current_rate else None
             tasa_factor = 1.0
             if moneda == 'bs':
+                bcv_rate = 0.0
                 try:
                     from model.bcv_rate_model import get_bcv_rates
                     from model.binance_rate_model import get_usdt_rate_ves
                     bcv_rate = float(get_bcv_rates(verify=False).get('usd', 0))
                     usdt_rate = float(get_usdt_rate_ves())
                     if bcv_rate > 0 and usdt_rate > 0:
-                        tasa_factor = usdt_rate / bcv_rate
+                        factor_dolar = usdt_rate / bcv_rate
                     else:
-                        tasa_factor = 1.3200
+                        factor_dolar = 1.3200
                 except Exception:
-                    tasa_factor = 1.3200
+                    bcv_rate = 0.0
+                    factor_dolar = 1.3200
+                if bcv_rate <= 0 and current_rate:
+                    bcv_rate = float(current_rate.get('monto') or 0)
+                tasa_factor = factor_dolar * bcv_rate if bcv_rate > 0 else factor_dolar
 
             total = 0
             for item in cart_items:

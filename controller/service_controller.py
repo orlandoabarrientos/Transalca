@@ -74,6 +74,8 @@ def update(sid):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
+        if not model.ejecutar("get_by_id", sid):
+            return jsonify({"status": "error", "message": "Servicio no encontrado."}), 404
         data = request.get_json() or {}
         model.ejecutar("update_service", sid, data)
         return jsonify({"status": "success", "message": "Servicio modificado correctamente."})
@@ -88,6 +90,8 @@ def delete(sid):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
+        if not model.ejecutar("get_by_id", sid):
+            return jsonify({"status": "error", "message": "Servicio no encontrado."}), 404
         model.ejecutar("soft_delete", sid)
 
 
@@ -101,6 +105,8 @@ def toggle(sid):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado."}), 401
+        if not model.ejecutar("get_by_id", sid):
+            return jsonify({"status": "error", "message": "Servicio no encontrado."}), 404
         model.ejecutar("toggle_estado", sid)
 
 

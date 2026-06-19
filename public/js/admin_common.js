@@ -1346,6 +1346,7 @@ function runDomEnhancements(root = document) {
         installListSearches(root);
         hydrateDualPrices(root);
         normalizeActionButtons(root);
+        snapshotActionButtons(root);
         applyAdminDocumentTitle();
         initAdminNavbar();
 
@@ -1414,7 +1415,8 @@ function convertUsdToBs(amount) {
     const bcv = parseFloat(rates.bcv || 0);
     const usdt = parseFloat(rates.usdt || 0);
     if (!bcv || !usdt) return 0;
-    return (parseFloat(amount || 0) * usdt) / bcv;
+    const precioDolar = (parseFloat(amount || 0) * usdt) / bcv;
+    return precioDolar * bcv;
 }
 
 async function loadExchangeRatesCached(force = false) {
@@ -1556,6 +1558,34 @@ function normalizeActionButtons(root = document) {
         }
     });
 }
+
+const RECORD_TAMPER_MESSAGE = 'El registro seleccionado no es válido. Recargue la página e intente nuevamente.';
+const _actionButtonOriginalOnclick = new WeakMap();
+
+function snapshotActionButtons(root = document) {
+    const scope = root instanceof Element ? root : document;
+    const seal = el => {
+        if (el && el.nodeType === 1 && el.hasAttribute('onclick') && !_actionButtonOriginalOnclick.has(el)) {
+            _actionButtonOriginalOnclick.set(el, el.getAttribute('onclick'));
+        }
+    };
+    seal(scope);
+    scope.querySelectorAll('[onclick]').forEach(seal);
+}
+
+function isActionButtonTampered(el) {
+    if (!el || !_actionButtonOriginalOnclick.has(el)) return false;
+    return el.getAttribute('onclick') !== _actionButtonOriginalOnclick.get(el);
+}
+
+document.addEventListener('click', e => {
+    const el = e.target.closest('[onclick]');
+    if (el && isActionButtonTampered(el)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        showToast(RECORD_TAMPER_MESSAGE, 'error');
+    }
+}, true);
 
 document.addEventListener('DOMContentLoaded', () => {
     installSweetAlertDefaults();

@@ -312,6 +312,34 @@ function bindClientSelectGuards() {
     });
 }
 
+const CLIENT_RECORD_TAMPER_MESSAGE = 'El registro seleccionado no es válido. Recargue la página e intente nuevamente.';
+const _clientActionOriginalOnclick = new WeakMap();
+
+function snapshotActionButtons(root = document) {
+    const scope = root instanceof Element ? root : document;
+    const seal = el => {
+        if (el && el.nodeType === 1 && el.hasAttribute('onclick') && !_clientActionOriginalOnclick.has(el)) {
+            _clientActionOriginalOnclick.set(el, el.getAttribute('onclick'));
+        }
+    };
+    seal(scope);
+    scope.querySelectorAll('[onclick]').forEach(seal);
+}
+
+function isActionButtonTampered(el) {
+    if (!el || !_clientActionOriginalOnclick.has(el)) return false;
+    return el.getAttribute('onclick') !== _clientActionOriginalOnclick.get(el);
+}
+
+document.addEventListener('click', e => {
+    const el = e.target.closest('[onclick]');
+    if (el && isActionButtonTampered(el)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        showToast(CLIENT_RECORD_TAMPER_MESSAGE, 'error');
+    }
+}, true);
+
 document.addEventListener('DOMContentLoaded', () => {
     document.title = 'Transalca Group | La mejor calidad';
     checkSession().then(loggedIn => {
@@ -320,6 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadExchangeRatesCached().then(() => hydrateDualPrices());
     installClientListSearches();
     normalizeActionButtons();
+    snapshotActionButtons();
     bindClientSelectGuards();
     updateCurrencyMenuLabel();
     const observer = new MutationObserver((mutations) => {
@@ -334,6 +363,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (mutations.some(m => Array.from(m.addedNodes).some(n => n.nodeType === 1 && (n.matches?.('button.btn, a.btn') || n.querySelector?.('button.btn, a.btn'))))) {
             normalizeActionButtons();
+        }
+        if (mutations.some(m => Array.from(m.addedNodes).some(n => n.nodeType === 1 && (n.hasAttribute?.('onclick') || n.querySelector?.('[onclick]'))))) {
+            snapshotActionButtons();
         }
     });
     observer.observe(document.body, { childList: true, subtree: true });
@@ -492,7 +524,8 @@ function convertUsdToBs(amount) {
     const bcv = parseFloat(rates.bcv || 0);
     const usdt = parseFloat(rates.usdt || 0);
     if (!bcv || !usdt) return 0;
-    return (parseFloat(amount || 0) * usdt) / bcv;
+    const precioDolar = (parseFloat(amount || 0) * usdt) / bcv;
+    return precioDolar * bcv;
 }
 
 async function loadExchangeRatesCached(force = false) {
