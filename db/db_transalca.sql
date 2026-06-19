@@ -612,7 +612,8 @@ CREATE TABLE `representante` (
   `id_empresa_representante` int(11) NOT NULL AUTO_INCREMENT,
   `empresa_rif` varchar(20) NOT NULL,
   `representante_cedula` varchar(20) NOT NULL,
-  `nombre_representante` varchar(150) NOT NULL,
+  `nombre_representante` varchar(100) NOT NULL,
+  `apellido_representante` varchar(100) NOT NULL DEFAULT '',
   `telefono_representante` varchar(20) DEFAULT NULL,
   `email_representante` varchar(150) DEFAULT NULL,
   `cargo` varchar(50) NOT NULL DEFAULT 'Otro',
@@ -628,7 +629,7 @@ CREATE TABLE `representante` (
 
 LOCK TABLES `representante` WRITE;
 /*!40000 ALTER TABLE `representante` DISABLE KEYS */;
-INSERT INTO `representante` VALUES (2,'J-55656666-5','V-00000000','Admin Sistema','0424-0000000','admin@transalca.com','Encargado de flota',1,'2026-06-07 14:58:45','2026-06-07 14:58:45'),(5,'J-55656666-5','V-31423434','dede dede','04122397209','business@tanqueteodigital.com','Representante legal',1,'2026-06-07 16:54:48','2026-06-07 16:54:48'),(9,'J-55656666-5','V-3131333','dede dede','04122222222','fderf@gmail.com','Encargado de flota',1,'2026-06-07 17:04:20','2026-06-07 17:04:20');
+INSERT INTO `representante` VALUES (2,'J-55656666-5','V-00000000','Admin','Sistema','0424-0000000','admin@transalca.com','Encargado de flota',1,'2026-06-07 14:58:45','2026-06-07 14:58:45'),(5,'J-55656666-5','V-31423434','dede','dede','04122397209','business@tanqueteodigital.com','Representante legal',1,'2026-06-07 16:54:48','2026-06-07 16:54:48'),(9,'J-55656666-5','V-3131333','dede','dede','04122222222','fderf@gmail.com','Encargado de flota',1,'2026-06-07 17:04:20','2026-06-07 17:04:20');
 /*!40000 ALTER TABLE `representante` ENABLE KEYS */;
 UNLOCK TABLES;
 

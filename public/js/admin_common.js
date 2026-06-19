@@ -822,6 +822,10 @@ function draftHasContent(form, data) {
 
 function saveModalDraft(form) {
     if (!form || !form.id) return;
+    if (form._initialState !== undefined && serializeForm(form) === form._initialState) {
+        clearModalDraft(form);
+        return;
+    }
     const data = serializeDraft(form);
     if (!draftHasContent(form, data)) {
         clearModalDraft(form);
@@ -837,8 +841,9 @@ function clearModalDraft(form) {
 function restoreModalDrafts(modal) {
     modal.querySelectorAll('form').forEach(form => {
         if (!form.id) return;
+        if (form._initialState === undefined) form._initialState = serializeForm(form);
         const data = formDrafts[modalRecordKey(form)];
-        if (!data) return;
+        if (!data) { updateFormSubmitState(form.id); return; }
         Object.entries(data).forEach(([key, value]) => {
             const el = document.getElementById(key) || form.querySelector(`[name="${cssEscapeValue(key)}"]`);
             if (!el || el.type === 'file') return;
@@ -857,8 +862,6 @@ function restoreModalDrafts(modal) {
                 if (window.jQuery(sel).hasClass('select2-hidden-accessible')) window.jQuery(sel).trigger('change.select2');
             });
         }
-        delete form._initialState;
-        form._isDirty = true;
         updateFormSubmitState(form.id);
     });
 }

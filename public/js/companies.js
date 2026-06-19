@@ -48,8 +48,8 @@ $(document).ready(function () {
     });
     Validator.setRules('representativeForm', {
         repCedulaNumero: { required: true, pattern: /^\d{7,8}$/, maxLength: 8, requiredMsg: 'Cedula requerida', patternMsg: 'Debe tener 7 o 8 digitos', maxLengthMsg: 'La cedula no puede superar los 8 caracteres.' },
-        repNombre: { required: true, minLength: 2, maxLength: 50, requiredMsg: 'Nombre requerido', maxLengthMsg: 'El nombre no puede superar los 50 caracteres.' },
-        repApellido: { maxLength: 50, maxLengthMsg: 'El apellido no puede superar los 50 caracteres.' },
+        repNombre: { required: true, minLength: 2, maxLength: 50, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'Nombre requerido', patternMsg: 'El nombre solo puede contener letras', maxLengthMsg: 'El nombre no puede superar los 50 caracteres.' },
+        repApellido: { required: true, minLength: 2, maxLength: 50, pattern: /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/, requiredMsg: 'Apellido requerido', patternMsg: 'El apellido solo puede contener letras', maxLengthMsg: 'El apellido no puede superar los 50 caracteres.' },
         repTelefono: { required: true, pattern: /^04\d{9}$/, maxLength: 11, requiredMsg: 'Telefono requerido', patternMsg: 'Debe comenzar por 04 con 11 digitos', maxLengthMsg: 'El telefono no puede superar los 11 caracteres.' },
         repEmail: { email: true, maxLength: 50, maxLengthMsg: 'El correo no puede superar los 50 caracteres.' }
     });

@@ -264,7 +264,7 @@ class CompanyModel(Connection):
     def _get_representatives(self, rif):
         return self.fetch_all("transalca",
             "SELECT id_empresa_representante AS id, cargo, estado, representante_cedula AS cedula, NULL AS cedula_prefijo, "
-            "nombre_representante AS nombre, '' AS apellido, telefono_representante AS telefono, email_representante AS email "
+            "nombre_representante AS nombre, apellido_representante AS apellido, telefono_representante AS telefono, email_representante AS email "
             "FROM representante "
             "WHERE empresa_rif = %s ORDER BY created_at DESC", (rif,))
 
@@ -272,7 +272,7 @@ class CompanyModel(Connection):
         errors = {}
         cedula, _, _ = normalize_cedula(errors, data, field='cedula', required=True)
         nombre_in = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=2, max_len=100, person=True)
-        apellido_in = optional_text(errors, 'apellido', data.get('apellido'), 'El apellido', max_len=100, person=True)
+        apellido_in = require_text(errors, 'apellido', data.get('apellido'), 'El apellido', min_len=2, max_len=100, person=True)
         telefono_in = normalize_phone(errors, data.get('telefono'))
         email_in = normalize_email(errors, data.get('email'), required=False)
         cargo_in = validate_choice(errors, 'cargo', data.get('cargo'), CARGOS_REPRESENTANTE)
@@ -287,7 +287,8 @@ class CompanyModel(Connection):
         except (TypeError, ValueError):
             estado = 1
         rep_cedula = cedula
-        nombre = (nombre_in + ' ' + (apellido_in or '')).strip()
+        nombre = nombre_in
+        apellido = apellido_in
         telefono = telefono_in
         email = email_in or ''
         cargo = cargo_in
@@ -296,12 +297,12 @@ class CompanyModel(Connection):
             (company_rif, rep_cedula))
         if not existing_rel:
             return self.insert("transalca",
-                "INSERT INTO representante (empresa_rif, representante_cedula, nombre_representante, telefono_representante, email_representante, cargo, estado) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                (company_rif, rep_cedula, nombre, telefono, email, cargo, estado))
+                "INSERT INTO representante (empresa_rif, representante_cedula, nombre_representante, apellido_representante, telefono_representante, email_representante, cargo, estado) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                (company_rif, rep_cedula, nombre, apellido, telefono, email, cargo, estado))
         return self.update("transalca",
-            "UPDATE representante SET nombre_representante = %s, telefono_representante = %s, email_representante = %s, cargo = %s, estado = %s WHERE id_empresa_representante = %s",
-            (nombre, telefono, email, cargo, estado, existing_rel['id']))
+            "UPDATE representante SET nombre_representante = %s, apellido_representante = %s, telefono_representante = %s, email_representante = %s, cargo = %s, estado = %s WHERE id_empresa_representante = %s",
+            (nombre, apellido, telefono, email, cargo, estado, existing_rel['id']))
 
     def _toggle_representative_relation(self, relation_id, estado):
         return self.update("transalca",
