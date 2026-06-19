@@ -8,9 +8,38 @@ from config.validation import (
     require_text,
 )
 
-SERVICIO_ALIAS = (
-    "s.*, s.id_servicio AS id, s.nombre_servicio AS nombre, s.descripcion_servicio AS descripcion, "
-    "s.precio_servicio AS precio, s.tipo_servicio AS tipo"
+SERVICIO_LIST_SQL = (
+    "SELECT s.*, s.id_servicio AS id, s.nombre_servicio AS nombre, s.descripcion_servicio AS descripcion, "
+    "s.precio_servicio AS precio, s.tipo_servicio AS tipo, "
+    "GROUP_CONCAT(ss.sucursal_id ORDER BY ss.sucursal_id) as sucursal_ids, "
+    "GROUP_CONCAT(su.nombre_sucursal ORDER BY su.nombre_sucursal SEPARATOR ', ') as sucursal_nombre "
+    "FROM servicios s "
+    "LEFT JOIN servicio_sucursal ss ON s.id_servicio = ss.servicio_id AND ss.estado = 1 "
+    "LEFT JOIN sucursales su ON ss.sucursal_id = su.id_sucursal "
+    "WHERE s.estado = 1 GROUP BY s.id_servicio ORDER BY s.nombre_servicio"
+)
+SERVICIO_BY_ID_SQL = (
+    "SELECT s.*, s.id_servicio AS id, s.nombre_servicio AS nombre, s.descripcion_servicio AS descripcion, "
+    "s.precio_servicio AS precio, s.tipo_servicio AS tipo, "
+    "GROUP_CONCAT(ss.sucursal_id ORDER BY ss.sucursal_id) as sucursal_ids, "
+    "GROUP_CONCAT(su.nombre_sucursal ORDER BY su.nombre_sucursal SEPARATOR ', ') as sucursal_nombre "
+    "FROM servicios s "
+    "LEFT JOIN servicio_sucursal ss ON s.id_servicio = ss.servicio_id AND ss.estado = 1 "
+    "LEFT JOIN sucursales su ON ss.sucursal_id = su.id_sucursal "
+    "WHERE s.id_servicio = %s GROUP BY s.id_servicio"
+)
+SERVICIO_BY_SUCURSAL_SQL = (
+    "SELECT s.*, s.id_servicio AS id, s.nombre_servicio AS nombre, s.descripcion_servicio AS descripcion, "
+    "s.precio_servicio AS precio, s.tipo_servicio AS tipo, su.nombre_sucursal as sucursal_nombre "
+    "FROM servicios s "
+    "INNER JOIN servicio_sucursal ss ON s.id_servicio = ss.servicio_id "
+    "INNER JOIN sucursales su ON ss.sucursal_id = su.id_sucursal "
+    "WHERE ss.sucursal_id = %s AND ss.estado = 1 AND s.estado = 1 ORDER BY s.nombre_servicio"
+)
+SERVICIO_BY_NAME_SQL = (
+    "SELECT s.*, s.id_servicio AS id, s.nombre_servicio AS nombre, s.descripcion_servicio AS descripcion, "
+    "s.precio_servicio AS precio, s.tipo_servicio AS tipo "
+    "FROM servicios s WHERE s.nombre_servicio = %s"
 )
 
 
@@ -61,32 +90,16 @@ class ServiceModel(Connection):
         self._precio = float(valor)
 
     def _get_all(self):
-        return self.fetch_all("transalca",
-            "SELECT " + SERVICIO_ALIAS + ", GROUP_CONCAT(ss.sucursal_id ORDER BY ss.sucursal_id) as sucursal_ids, "
-            "GROUP_CONCAT(su.nombre_sucursal ORDER BY su.nombre_sucursal SEPARATOR ', ') as sucursal_nombre "
-            "FROM servicios s "
-            "LEFT JOIN servicio_sucursal ss ON s.id_servicio = ss.servicio_id AND ss.estado = 1 "
-            "LEFT JOIN sucursales su ON ss.sucursal_id = su.id_sucursal "
-            "WHERE s.estado = 1 GROUP BY s.id_servicio ORDER BY s.nombre_servicio")
+        return self.fetch_all("transalca", SERVICIO_LIST_SQL)
 
     def _get_active(self):
         return self._get_all()
 
     def _get_by_id(self, sid):
-        return self.fetch_one("transalca",
-            "SELECT " + SERVICIO_ALIAS + ", GROUP_CONCAT(ss.sucursal_id ORDER BY ss.sucursal_id) as sucursal_ids, "
-            "GROUP_CONCAT(su.nombre_sucursal ORDER BY su.nombre_sucursal SEPARATOR ', ') as sucursal_nombre "
-            "FROM servicios s "
-            "LEFT JOIN servicio_sucursal ss ON s.id_servicio = ss.servicio_id AND ss.estado = 1 "
-            "LEFT JOIN sucursales su ON ss.sucursal_id = su.id_sucursal "
-            "WHERE s.id_servicio = %s GROUP BY s.id_servicio", (sid,))
+        return self.fetch_one("transalca", SERVICIO_BY_ID_SQL, (sid,))
 
     def _get_by_sucursal(self, suc_id):
-        return self.fetch_all("transalca",
-            "SELECT " + SERVICIO_ALIAS + ", su.nombre_sucursal as sucursal_nombre FROM servicios s "
-            "INNER JOIN servicio_sucursal ss ON s.id_servicio = ss.servicio_id "
-            "INNER JOIN sucursales su ON ss.sucursal_id = su.id_sucursal "
-            "WHERE ss.sucursal_id = %s AND ss.estado = 1 AND s.estado = 1 ORDER BY s.nombre_servicio", (suc_id,))
+        return self.fetch_all("transalca", SERVICIO_BY_SUCURSAL_SQL, (suc_id,))
 
     def _sucursal_exists(self, sucursal_id):
         return self.fetch_one("transalca", "SELECT id_sucursal FROM sucursales WHERE id_sucursal = %s AND estado = 1", (sucursal_id,)) is not None
@@ -196,8 +209,7 @@ class ServiceModel(Connection):
         return result is not None
 
     def _get_by_nombre(self, nombre):
-        return self.fetch_one("transalca",
-            "SELECT " + SERVICIO_ALIAS + " FROM servicios s WHERE s.nombre_servicio = %s", (nombre,))
+        return self.fetch_one("transalca", SERVICIO_BY_NAME_SQL, (nombre,))
 
     def _reactivar(self, sid):
         return self.update("transalca", "UPDATE servicios SET estado = 1 WHERE id_servicio = %s", (sid,))

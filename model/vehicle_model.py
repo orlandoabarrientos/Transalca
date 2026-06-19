@@ -10,15 +10,74 @@ from config.validation import (
 import json
 import re
 
-VEHICULO_ALIAS = (
-    "v.*, v.placa_vehiculo as id, v.placa_vehiculo as placa, v.marca_vehiculo as marca, "
+VEHICLE_LIST_SQL = (
+    "SELECT v.*, v.placa_vehiculo as id, v.placa_vehiculo as placa, v.marca_vehiculo as marca, "
     "v.modelo_vehiculo as modelo, v.anio_vehiculo as anio, v.color_vehiculo as color, "
-    "v.observaciones_vehiculo as observaciones, v.cauchos_vehiculo as cauchos_json"
+    "v.observaciones_vehiculo as observaciones, v.cauchos_vehiculo as cauchos_json, "
+    "COALESCE(GROUP_CONCAT(DISTINCT c.nombre_cliente SEPARATOR ', '), '-') as cliente_nombre, "
+    "'' as cliente_apellido "
+    "FROM vehiculos v "
+    "LEFT JOIN cliente_vehiculo cv ON v.placa_vehiculo = cv.vehiculo_placa AND cv.estado = 1 "
+    "LEFT JOIN cliente c ON cv.cliente_cedula = c.identificador_cliente "
+    "WHERE v.estado = 1 "
+    "GROUP BY v.placa_vehiculo "
+    "ORDER BY v.created_at DESC"
 )
-
-BITACORA_ALIAS = (
-    "bv.*, bv.id_bitacora_vehiculo AS id, bv.fecha_bitacora as fecha, bv.descripcion_bitacora as descripcion, "
-    "bv.observaciones_bitacora as observaciones, bv.cauchos_usados as cauchos_info"
+VEHICLE_BY_ID_SQL = (
+    "SELECT v.*, v.placa_vehiculo as id, v.placa_vehiculo as placa, v.marca_vehiculo as marca, "
+    "v.modelo_vehiculo as modelo, v.anio_vehiculo as anio, v.color_vehiculo as color, "
+    "v.observaciones_vehiculo as observaciones, v.cauchos_vehiculo as cauchos_json, "
+    "COALESCE(GROUP_CONCAT(DISTINCT c.nombre_cliente SEPARATOR ', '), '-') as cliente_nombre, "
+    "'' as cliente_apellido, "
+    "COALESCE(GROUP_CONCAT(DISTINCT c.telefono_cliente SEPARATOR ', '), '') as cliente_telefono, "
+    "COALESCE(GROUP_CONCAT(DISTINCT c.correo_cliente SEPARATOR ', '), '') as cliente_email, "
+    "COALESCE(GROUP_CONCAT(DISTINCT c.identificador_cliente SEPARATOR ','), '') as cliente_cedula "
+    "FROM vehiculos v "
+    "LEFT JOIN cliente_vehiculo cv ON v.placa_vehiculo = cv.vehiculo_placa AND cv.estado = 1 "
+    "LEFT JOIN cliente c ON cv.cliente_cedula = c.identificador_cliente "
+    "WHERE v.placa_vehiculo = %s "
+    "GROUP BY v.placa_vehiculo"
+)
+VEHICLE_BY_CLIENT_SQL = (
+    "SELECT v.*, v.placa_vehiculo as id, v.placa_vehiculo as placa, v.marca_vehiculo as marca, "
+    "v.modelo_vehiculo as modelo, v.anio_vehiculo as anio, v.color_vehiculo as color, "
+    "v.observaciones_vehiculo as observaciones, v.cauchos_vehiculo as cauchos_json "
+    "FROM vehiculos v "
+    "INNER JOIN cliente_vehiculo cv ON v.placa_vehiculo = cv.vehiculo_placa "
+    "WHERE cv.cliente_cedula = %s AND cv.estado = 1 AND v.estado = 1 "
+    "ORDER BY cv.created_at DESC"
+)
+VEHICLE_BY_PLATE_SQL = (
+    "SELECT v.*, v.placa_vehiculo as id, v.placa_vehiculo as placa, v.marca_vehiculo as marca, "
+    "v.modelo_vehiculo as modelo, v.anio_vehiculo as anio, v.color_vehiculo as color, "
+    "v.observaciones_vehiculo as observaciones, v.cauchos_vehiculo as cauchos_json "
+    "FROM vehiculos v WHERE v.placa_vehiculo = %s"
+)
+VEHICLE_KM_HISTORY_SQL = (
+    "SELECT bv.*, bv.id_bitacora_vehiculo AS id, bv.fecha_bitacora as fecha, bv.descripcion_bitacora as descripcion, "
+    "bv.observaciones_bitacora as observaciones, bv.cauchos_usados as cauchos_info "
+    "FROM bitacora_vehiculo bv WHERE bv.vehiculo_placa = %s "
+    "AND bv.kilometraje IS NOT NULL ORDER BY bv.fecha_bitacora DESC, bv.id_bitacora_vehiculo DESC LIMIT 50"
+)
+VEHICLE_SEARCH_SQL = (
+    "SELECT v.*, v.placa_vehiculo as id, v.placa_vehiculo as placa, v.marca_vehiculo as marca, "
+    "v.modelo_vehiculo as modelo, v.anio_vehiculo as anio, v.color_vehiculo as color, "
+    "v.observaciones_vehiculo as observaciones, v.cauchos_vehiculo as cauchos_json, "
+    "COALESCE(GROUP_CONCAT(DISTINCT c.nombre_cliente SEPARATOR ', '), '-') as cliente_nombre, "
+    "'' as cliente_apellido "
+    "FROM vehiculos v "
+    "LEFT JOIN cliente_vehiculo cv ON v.placa_vehiculo = cv.vehiculo_placa AND cv.estado = 1 "
+    "LEFT JOIN cliente c ON cv.cliente_cedula = c.identificador_cliente "
+    "WHERE v.estado = 1 AND (v.placa_vehiculo LIKE %s OR v.marca_vehiculo LIKE %s OR v.modelo_vehiculo LIKE %s "
+    "OR c.nombre_cliente LIKE %s) "
+    "GROUP BY v.placa_vehiculo "
+    "ORDER BY v.created_at DESC"
+)
+VEHICLE_HISTORY_SQL = (
+    "SELECT bv.*, bv.id_bitacora_vehiculo AS id, bv.fecha_bitacora as fecha, bv.descripcion_bitacora as descripcion, "
+    "bv.observaciones_bitacora as observaciones, bv.cauchos_usados as cauchos_info "
+    "FROM bitacora_vehiculo bv WHERE bv.vehiculo_placa = %s "
+    "ORDER BY bv.fecha_bitacora DESC, bv.id_bitacora_vehiculo DESC LIMIT %s"
 )
 
 
@@ -61,43 +120,17 @@ class VehicleModel(Connection):
         return (str(value or '').strip().upper())
 
     def _get_all(self):
-        return self.fetch_all("transalca",
-            "SELECT " + VEHICULO_ALIAS + ", "
-            "COALESCE(GROUP_CONCAT(DISTINCT c.nombre_cliente SEPARATOR ', '), '-') as cliente_nombre, "
-            "'' as cliente_apellido "
-            "FROM vehiculos v "
-            "LEFT JOIN cliente_vehiculo cv ON v.placa_vehiculo = cv.vehiculo_placa AND cv.estado = 1 "
-            "LEFT JOIN cliente c ON cv.cliente_cedula = c.identificador_cliente "
-            "WHERE v.estado = 1 "
-            "GROUP BY v.placa_vehiculo "
-            "ORDER BY v.created_at DESC")
+        return self.fetch_all("transalca", VEHICLE_LIST_SQL)
 
     def _get_by_id(self, vid):
         placa = self._plate(vid)
-        return self.fetch_one("transalca",
-            "SELECT " + VEHICULO_ALIAS + ", "
-            "COALESCE(GROUP_CONCAT(DISTINCT c.nombre_cliente SEPARATOR ', '), '-') as cliente_nombre, "
-            "'' as cliente_apellido, "
-            "COALESCE(GROUP_CONCAT(DISTINCT c.telefono_cliente SEPARATOR ', '), '') as cliente_telefono, "
-            "COALESCE(GROUP_CONCAT(DISTINCT c.correo_cliente SEPARATOR ', '), '') as cliente_email, "
-            "COALESCE(GROUP_CONCAT(DISTINCT c.identificador_cliente SEPARATOR ','), '') as cliente_cedula "
-            "FROM vehiculos v "
-            "LEFT JOIN cliente_vehiculo cv ON v.placa_vehiculo = cv.vehiculo_placa AND cv.estado = 1 "
-            "LEFT JOIN cliente c ON cv.cliente_cedula = c.identificador_cliente "
-            "WHERE v.placa_vehiculo = %s "
-            "GROUP BY v.placa_vehiculo", (placa,))
+        return self.fetch_one("transalca", VEHICLE_BY_ID_SQL, (placa,))
 
     def _get_by_cliente(self, cliente_cedula):
-        return self.fetch_all("transalca",
-            "SELECT " + VEHICULO_ALIAS + " "
-            "FROM vehiculos v "
-            "INNER JOIN cliente_vehiculo cv ON v.placa_vehiculo = cv.vehiculo_placa "
-            "WHERE cv.cliente_cedula = %s AND cv.estado = 1 AND v.estado = 1 "
-            "ORDER BY cv.created_at DESC", (cliente_cedula,))
+        return self.fetch_all("transalca", VEHICLE_BY_CLIENT_SQL, (cliente_cedula,))
 
     def _get_by_placa(self, placa):
-        return self.fetch_one("transalca",
-            "SELECT " + VEHICULO_ALIAS + " FROM vehiculos v WHERE v.placa_vehiculo = %s", (self._plate(placa),))
+        return self.fetch_one("transalca", VEHICLE_BY_PLATE_SQL, (self._plate(placa),))
 
     def _validate(self, data):
         errors = {}
@@ -264,23 +297,11 @@ class VehicleModel(Connection):
             "SELECT placa_vehiculo FROM vehiculos WHERE placa_vehiculo = %s AND estado = 1", (placa,)) is not None
 
     def _get_km_history(self, vid):
-        return self.fetch_all("transalca",
-            "SELECT " + BITACORA_ALIAS + " FROM bitacora_vehiculo bv WHERE bv.vehiculo_placa = %s "
-            "AND bv.kilometraje IS NOT NULL ORDER BY bv.fecha_bitacora DESC, bv.id_bitacora_vehiculo DESC LIMIT 50", (self._plate(vid),))
+        return self.fetch_all("transalca", VEHICLE_KM_HISTORY_SQL, (self._plate(vid),))
 
     def _search(self, query):
         q = f"%{query}%"
-        return self.fetch_all("transalca",
-            "SELECT " + VEHICULO_ALIAS + ", "
-            "COALESCE(GROUP_CONCAT(DISTINCT c.nombre_cliente SEPARATOR ', '), '-') as cliente_nombre, "
-            "'' as cliente_apellido "
-            "FROM vehiculos v "
-            "LEFT JOIN cliente_vehiculo cv ON v.placa_vehiculo = cv.vehiculo_placa AND cv.estado = 1 "
-            "LEFT JOIN cliente c ON cv.cliente_cedula = c.identificador_cliente "
-            "WHERE v.estado = 1 AND (v.placa_vehiculo LIKE %s OR v.marca_vehiculo LIKE %s OR v.modelo_vehiculo LIKE %s "
-            "OR c.nombre_cliente LIKE %s) "
-            "GROUP BY v.placa_vehiculo "
-            "ORDER BY v.created_at DESC", (q, q, q, q))
+        return self.fetch_all("transalca", VEHICLE_SEARCH_SQL, (q, q, q, q))
 
     def _get_cauchos(self, vid):
         v = self.fetch_one("transalca",
@@ -345,9 +366,7 @@ class VehicleModel(Connection):
         return self._save_cauchos(vehicle['placa_vehiculo'], items)
 
     def _get_history(self, vid, limit=50):
-        return self.fetch_all("transalca",
-            "SELECT " + BITACORA_ALIAS + " FROM bitacora_vehiculo bv WHERE bv.vehiculo_placa = %s "
-            "ORDER BY bv.fecha_bitacora DESC, bv.id_bitacora_vehiculo DESC LIMIT %s", (self._plate(vid), limit))
+        return self.fetch_all("transalca", VEHICLE_HISTORY_SQL, (self._plate(vid), limit))
 
     def _add_history_entry(self, vid, data):
         vehicle = self.fetch_one("transalca",

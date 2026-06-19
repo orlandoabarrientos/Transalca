@@ -1,8 +1,31 @@
 from model.connection import Connection
 
-NOTIF_ALIAS = (
-    "n.*, n.id_notificacion AS id, n.tipo_notificacion AS tipo, n.titulo_notificacion AS titulo, "
-    "n.mensaje_notificacion AS mensaje, n.prioridad_notificacion AS prioridad"
+NOTIF_BY_USER_AND_CLIENT_SQL = (
+    "SELECT n.*, n.id_notificacion AS id, n.tipo_notificacion AS tipo, n.titulo_notificacion AS titulo, "
+    "n.mensaje_notificacion AS mensaje, n.prioridad_notificacion AS prioridad "
+    "FROM notificaciones n WHERE n.usuario_id = %s OR n.cliente_cedula = %s "
+    "ORDER BY n.created_at DESC LIMIT %s"
+)
+NOTIF_BY_USER_SQL = (
+    "SELECT n.*, n.id_notificacion AS id, n.tipo_notificacion AS tipo, n.titulo_notificacion AS titulo, "
+    "n.mensaje_notificacion AS mensaje, n.prioridad_notificacion AS prioridad "
+    "FROM notificaciones n WHERE n.usuario_id = %s ORDER BY n.created_at DESC LIMIT %s"
+)
+NOTIF_BY_CLIENT_SQL = (
+    "SELECT n.*, n.id_notificacion AS id, n.tipo_notificacion AS tipo, n.titulo_notificacion AS titulo, "
+    "n.mensaje_notificacion AS mensaje, n.prioridad_notificacion AS prioridad "
+    "FROM notificaciones n WHERE n.cliente_cedula = %s ORDER BY n.created_at DESC LIMIT %s"
+)
+NOTIF_UNREAD_BY_USER_AND_CLIENT_SQL = (
+    "SELECT n.*, n.id_notificacion AS id, n.tipo_notificacion AS tipo, n.titulo_notificacion AS titulo, "
+    "n.mensaje_notificacion AS mensaje, n.prioridad_notificacion AS prioridad "
+    "FROM notificaciones n WHERE (n.usuario_id = %s OR n.cliente_cedula = %s) AND n.leida = 0 "
+    "ORDER BY n.created_at DESC"
+)
+NOTIF_UNREAD_BY_USER_SQL = (
+    "SELECT n.*, n.id_notificacion AS id, n.tipo_notificacion AS tipo, n.titulo_notificacion AS titulo, "
+    "n.mensaje_notificacion AS mensaje, n.prioridad_notificacion AS prioridad "
+    "FROM notificaciones n WHERE n.usuario_id = %s AND n.leida = 0 ORDER BY n.created_at DESC"
 )
 
 
@@ -12,26 +35,16 @@ class NotificationModel(Connection):
 
     def _get_by_user(self, usuario_id, cedula=None, limit=50):
         if cedula:
-            return self.fetch_all("transalca",
-                "SELECT " + NOTIF_ALIAS + " FROM notificaciones n WHERE n.usuario_id = %s OR n.cliente_cedula = %s "
-                "ORDER BY n.created_at DESC LIMIT %s", (usuario_id, cedula, limit))
-        return self.fetch_all("transalca",
-            "SELECT " + NOTIF_ALIAS + " FROM notificaciones n WHERE n.usuario_id = %s "
-            "ORDER BY n.created_at DESC LIMIT %s", (usuario_id, limit))
+            return self.fetch_all("transalca", NOTIF_BY_USER_AND_CLIENT_SQL, (usuario_id, cedula, limit))
+        return self.fetch_all("transalca", NOTIF_BY_USER_SQL, (usuario_id, limit))
 
     def _get_by_cliente(self, cedula, limit=50):
-        return self.fetch_all("transalca",
-            "SELECT " + NOTIF_ALIAS + " FROM notificaciones n WHERE n.cliente_cedula = %s "
-            "ORDER BY n.created_at DESC LIMIT %s", (cedula, limit))
+        return self.fetch_all("transalca", NOTIF_BY_CLIENT_SQL, (cedula, limit))
 
     def _get_unread(self, usuario_id, cedula=None):
         if cedula:
-            return self.fetch_all("transalca",
-                "SELECT " + NOTIF_ALIAS + " FROM notificaciones n WHERE (n.usuario_id = %s OR n.cliente_cedula = %s) AND n.leida = 0 "
-                "ORDER BY n.created_at DESC", (usuario_id, cedula))
-        return self.fetch_all("transalca",
-            "SELECT " + NOTIF_ALIAS + " FROM notificaciones n WHERE n.usuario_id = %s AND n.leida = 0 "
-            "ORDER BY n.created_at DESC", (usuario_id,))
+            return self.fetch_all("transalca", NOTIF_UNREAD_BY_USER_AND_CLIENT_SQL, (usuario_id, cedula))
+        return self.fetch_all("transalca", NOTIF_UNREAD_BY_USER_SQL, (usuario_id,))
 
     def _count_unread(self, usuario_id, cedula=None):
         if cedula:

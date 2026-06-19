@@ -1,9 +1,33 @@
+import logging
+
 from model.connection import Connection
 from model.notification_model import NotificationModel
-from model.order_model import DETAIL_UNION
 from config.validation import ValidationError
 
-INV_SELECT = "SELECT * FROM vw_stock_detalle"
+logger = logging.getLogger(__name__)
+
+INV_LIST_SQL = "SELECT * FROM vw_stock_detalle ORDER BY producto_nombre"
+INV_BY_SUCURSAL_SQL = "SELECT * FROM vw_stock_detalle WHERE sucursal_id = %s ORDER BY producto_nombre"
+LOW_STOCK_SQL = (
+    "SELECT * FROM vw_stock_detalle WHERE i.stock <= GREATEST(COALESCE(i.stock_minimo, 0), %s) "
+    "ORDER BY i.stock ASC"
+)
+LOW_STOCK_BY_PRODUCT_SQL = (
+    "SELECT * FROM vw_stock_detalle WHERE i.stock <= GREATEST(COALESCE(i.stock_minimo, 0), %s) "
+    "AND i.producto_codigo = %s ORDER BY i.stock ASC"
+)
+SALES_ORDER_DETAIL_ITEMS_SQL = (
+    "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre_producto ELSE sv.nombre_servicio END as item_nombre "
+    "FROM ((SELECT id_detalle_orden_venta_producto AS id, orden_id, producto_codigo, 0 AS servicio_id, 'producto' AS tipo, "
+    "cantidad_detalle_orden_venta_producto AS cantidad, precio_unitario_producto AS precio_unitario, "
+    "cantidad_detalle_orden_venta_producto * precio_unitario_producto AS subtotal FROM detalle_orden_venta_productos) "
+    "UNION ALL "
+    "(SELECT id_detalle_orden_venta_servicio AS id, orden_id, 'SIN_PRODUCTO' AS producto_codigo, servicio_id, 'servicio' AS tipo, "
+    "cantidad_detalle_orden_venta_servicio AS cantidad, precio_unitario_servicio AS precio_unitario, "
+    "cantidad_detalle_orden_venta_servicio * precio_unitario_servicio AS subtotal FROM detalle_orden_venta_servicios)) d "
+    "LEFT JOIN productos p ON d.producto_codigo = p.codigo "
+    "LEFT JOIN servicios sv ON d.servicio_id = sv.id_servicio WHERE d.orden_id = %s"
+)
 
 
 class InventoryModel(Connection):
@@ -11,11 +35,10 @@ class InventoryModel(Connection):
         super().__init__()
 
     def _get_all(self):
-        return self.fetch_all("transalca", INV_SELECT + " ORDER BY producto_nombre")
+        return self.fetch_all("transalca", INV_LIST_SQL)
 
     def _get_by_sucursal(self, sucursal_id):
-        return self.fetch_all("transalca",
-            INV_SELECT + " WHERE sucursal_id = %s ORDER BY producto_nombre", (sucursal_id,))
+        return self.fetch_all("transalca", INV_BY_SUCURSAL_SQL, (sucursal_id,))
 
     def _get_paginated(self, page, per_page, sucursal_id=None, q=None):
         where = []
@@ -28,17 +51,20 @@ class InventoryModel(Connection):
             where.append("(producto_nombre LIKE %s OR codigo LIKE %s OR categoria_nombre LIKE %s OR sucursal_nombre LIKE %s)")
             params.extend([like, like, like, like])
 
-        from_sql = "FROM vw_stock_detalle"
-        where_sql = f" WHERE {' AND '.join(where)}" if where else ""
-        total_row = self.fetch_one("transalca", f"SELECT COUNT(*) as total {from_sql}{where_sql}", tuple(params))
+        if where:
+            where_sql = " AND ".join(where)
+            total_sql = " ".join(("SELECT COUNT(*) as total FROM vw_stock_detalle WHERE", where_sql))
+            data_sql = " ".join(("SELECT * FROM vw_stock_detalle WHERE", where_sql, "ORDER BY producto_nombre LIMIT %s OFFSET %s"))
+        else:
+            total_sql = "SELECT COUNT(*) as total FROM vw_stock_detalle"
+            data_sql = "SELECT * FROM vw_stock_detalle ORDER BY producto_nombre LIMIT %s OFFSET %s"
+        total_row = self.fetch_one("transalca", total_sql, tuple(params))
         total = total_row['total'] if total_row else 0
         pages = (total + per_page - 1) // per_page if total else 0
         if pages and page > pages:
             page = pages
         offset = (page - 1) * per_page
-        data = self.fetch_all("transalca",
-            f"SELECT * {from_sql}{where_sql} ORDER BY producto_nombre LIMIT %s OFFSET %s",
-            tuple(params + [per_page, offset]))
+        data = self.fetch_all("transalca", data_sql, tuple(params + [per_page, offset]))
         return {
             "data": data,
             "total": total,
@@ -56,12 +82,9 @@ class InventoryModel(Connection):
 
     def _get_low_stock(self, producto_codigo=None):
         umbral = self._get_low_stock_threshold()
-        sql = INV_SELECT + " WHERE i.stock <= GREATEST(COALESCE(i.stock_minimo, 0), %s)"
-        params = [umbral]
         if producto_codigo:
-            sql += " AND i.producto_codigo = %s"
-            params.append(producto_codigo)
-        return self.fetch_all("transalca", sql + " ORDER BY i.stock ASC", tuple(params))
+            return self.fetch_all("transalca", LOW_STOCK_BY_PRODUCT_SQL, (umbral, producto_codigo))
+        return self.fetch_all("transalca", LOW_STOCK_SQL, (umbral,))
 
     def _check_low_stock_and_notify(self, producto_codigo=None):
         """Genera notificaciones de stock bajo (umbral configurable, sin duplicados en 24h)."""
@@ -106,7 +129,7 @@ class InventoryModel(Connection):
         try:
             self._check_low_stock_and_notify(producto_codigo)
         except Exception:
-            pass
+            logger.exception("No se pudo generar la notificacion de stock bajo para %s.", producto_codigo)
         return result
 
     def _update_min_stock(self, producto_codigo, stock_minimo, sucursal_id=None):
@@ -144,12 +167,7 @@ class InventoryModel(Connection):
             "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
             "LEFT JOIN sucursales s ON ov.sucursal_id = s.id_sucursal WHERE ov.id_orden_venta = %s", (order_id,))
         if order:
-            order['detalles'] = self.fetch_all("transalca",
-                "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre_producto ELSE sv.nombre_servicio END as item_nombre "
-                "FROM " + DETAIL_UNION + " "
-                "LEFT JOIN productos p ON d.producto_codigo = p.codigo "
-                "LEFT JOIN servicios sv ON d.servicio_id = sv.id_servicio WHERE d.orden_id = %s",
-                (order_id,))
+            order['detalles'] = self.fetch_all("transalca", SALES_ORDER_DETAIL_ITEMS_SQL, (order_id,))
             client = self.fetch_one("mantenimiento",
                 "SELECT nombre, apellido, email, telefono FROM usuarios WHERE cedula = %s", (order['cliente_cedula'],))
             if client:

@@ -1,6 +1,40 @@
 from model.connection import Connection
 
-TICKET_ALIAS = "t.*, t.id_ticket_soporte AS id, t.prioridad_ticket AS prioridad, t.descripcion_ticket_soporte as descripcion"
+TICKET_BASE_LIST_SQL = (
+    "SELECT t.*, t.id_ticket_soporte AS id, t.prioridad_ticket AS prioridad, t.descripcion_ticket_soporte as descripcion, "
+    "c.nombre_cliente as cliente_nombre, '' as cliente_apellido, "
+    "v.placa_vehiculo as vehiculo_placa, v.marca_vehiculo as vehiculo_marca, v.modelo_vehiculo as vehiculo_modelo, "
+    "p.nombre_producto as producto_nombre, s.nombre_servicio as servicio_nombre "
+    "FROM tickets_soporte t "
+    "INNER JOIN cliente c ON t.cliente_cedula = c.identificador_cliente "
+    "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa_vehiculo "
+    "LEFT JOIN productos p ON t.referencia_tipo = 'producto' AND t.referencia_id = p.codigo "
+    "LEFT JOIN servicios s ON t.referencia_tipo = 'servicio' AND t.referencia_id = CAST(s.id_servicio AS CHAR) "
+    "WHERE 1=1"
+)
+TICKET_BY_ID_SQL = (
+    "SELECT t.*, t.id_ticket_soporte AS id, t.prioridad_ticket AS prioridad, t.descripcion_ticket_soporte as descripcion, "
+    "c.nombre_cliente as cliente_nombre, '' as cliente_apellido, "
+    "c.telefono_cliente as cliente_telefono, c.correo_cliente as cliente_email, "
+    "v.placa_vehiculo as vehiculo_placa, v.marca_vehiculo as vehiculo_marca, v.modelo_vehiculo as vehiculo_modelo, "
+    "p.nombre_producto as producto_nombre, s.nombre_servicio as servicio_nombre "
+    "FROM tickets_soporte t "
+    "INNER JOIN cliente c ON t.cliente_cedula = c.identificador_cliente "
+    "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa_vehiculo "
+    "LEFT JOIN productos p ON t.referencia_tipo = 'producto' AND t.referencia_id = p.codigo "
+    "LEFT JOIN servicios s ON t.referencia_tipo = 'servicio' AND t.referencia_id = CAST(s.id_servicio AS CHAR) "
+    "WHERE t.id_ticket_soporte = %s"
+)
+TICKET_BY_CLIENT_SQL = (
+    "SELECT t.*, t.id_ticket_soporte AS id, t.prioridad_ticket AS prioridad, t.descripcion_ticket_soporte as descripcion, "
+    "v.placa_vehiculo as vehiculo_placa, v.marca_vehiculo as vehiculo_marca, "
+    "p.nombre_producto as producto_nombre, s.nombre_servicio as servicio_nombre "
+    "FROM tickets_soporte t "
+    "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa_vehiculo "
+    "LEFT JOIN productos p ON t.referencia_tipo = 'producto' AND t.referencia_id = p.codigo "
+    "LEFT JOIN servicios s ON t.referencia_tipo = 'servicio' AND t.referencia_id = CAST(s.id_servicio AS CHAR) "
+    "WHERE t.cliente_cedula = %s ORDER BY t.created_at DESC"
+)
 
 
 class TicketModel(Connection):
@@ -52,15 +86,7 @@ class TicketModel(Connection):
         self._prioridad = valor
 
     def _get_all(self, estado=None, prioridad=None):
-        sql = ("SELECT " + TICKET_ALIAS + ", c.nombre_cliente as cliente_nombre, '' as cliente_apellido, "
-               "v.placa_vehiculo as vehiculo_placa, v.marca_vehiculo as vehiculo_marca, v.modelo_vehiculo as vehiculo_modelo, "
-               "p.nombre_producto as producto_nombre, s.nombre_servicio as servicio_nombre "
-               "FROM tickets_soporte t "
-               "INNER JOIN cliente c ON t.cliente_cedula = c.identificador_cliente "
-               "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa_vehiculo "
-               "LEFT JOIN productos p ON t.referencia_tipo = 'producto' AND t.referencia_id = p.codigo "
-               "LEFT JOIN servicios s ON t.referencia_tipo = 'servicio' AND t.referencia_id = CAST(s.id_servicio AS CHAR) "
-               "WHERE 1=1")
+        sql = TICKET_BASE_LIST_SQL
         params = []
         if estado:
             sql += " AND t.estado = %s"
@@ -72,31 +98,13 @@ class TicketModel(Connection):
         return self.fetch_all("transalca", sql, tuple(params) if params else None)
 
     def _get_by_id(self, ticket_id):
-        ticket = self.fetch_one("transalca",
-            "SELECT " + TICKET_ALIAS + ", c.nombre_cliente as cliente_nombre, '' as cliente_apellido, "
-            "c.telefono_cliente as cliente_telefono, c.correo_cliente as cliente_email, "
-            "v.placa_vehiculo as vehiculo_placa, v.marca_vehiculo as vehiculo_marca, v.modelo_vehiculo as vehiculo_modelo, "
-            "p.nombre_producto as producto_nombre, s.nombre_servicio as servicio_nombre "
-            "FROM tickets_soporte t "
-            "INNER JOIN cliente c ON t.cliente_cedula = c.identificador_cliente "
-            "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa_vehiculo "
-            "LEFT JOIN productos p ON t.referencia_tipo = 'producto' AND t.referencia_id = p.codigo "
-            "LEFT JOIN servicios s ON t.referencia_tipo = 'servicio' AND t.referencia_id = CAST(s.id_servicio AS CHAR) "
-            "WHERE t.id_ticket_soporte = %s", (ticket_id,))
+        ticket = self.fetch_one("transalca", TICKET_BY_ID_SQL, (ticket_id,))
         if ticket:
             ticket['respuestas'] = self._get_responses(ticket_id)
         return ticket
 
     def _get_by_cliente(self, cliente_cedula):
-        return self.fetch_all("transalca",
-            "SELECT " + TICKET_ALIAS + ", v.placa_vehiculo as vehiculo_placa, v.marca_vehiculo as vehiculo_marca, "
-            "p.nombre_producto as producto_nombre, s.nombre_servicio as servicio_nombre "
-            "FROM tickets_soporte t "
-            "LEFT JOIN vehiculos v ON t.referencia_tipo = 'vehiculo' AND t.referencia_id = v.placa_vehiculo "
-            "LEFT JOIN productos p ON t.referencia_tipo = 'producto' AND t.referencia_id = p.codigo "
-            "LEFT JOIN servicios s ON t.referencia_tipo = 'servicio' AND t.referencia_id = CAST(s.id_servicio AS CHAR) "
-            "WHERE t.cliente_cedula = %s ORDER BY t.created_at DESC",
-            (cliente_cedula,))
+        return self.fetch_all("transalca", TICKET_BY_CLIENT_SQL, (cliente_cedula,))
 
     def _create(self, data):
         self.cliente_cedula = data['cliente_cedula']

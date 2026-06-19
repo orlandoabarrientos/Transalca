@@ -1,7 +1,18 @@
 from model.connection import Connection
 from config.validation import ValidationError, require_text
 
-METODO_PAGO_ALIAS = "mp.*, mp.id_metodo_pago AS id, mp.nombre_metodo_pago AS nombre, mp.datos_metodo_pago AS datos_pago"
+METODO_PAGO_LIST_SQL = (
+    "SELECT mp.*, mp.id_metodo_pago AS id, mp.nombre_metodo_pago AS nombre, mp.datos_metodo_pago AS datos_pago "
+    "FROM metodos_pago mp WHERE mp.estado = 1 ORDER BY mp.created_at DESC"
+)
+METODO_PAGO_BY_ID_SQL = (
+    "SELECT mp.*, mp.id_metodo_pago AS id, mp.nombre_metodo_pago AS nombre, mp.datos_metodo_pago AS datos_pago "
+    "FROM metodos_pago mp WHERE mp.id_metodo_pago = %s"
+)
+METODO_PAGO_BY_NAME_SQL = (
+    "SELECT mp.*, mp.id_metodo_pago AS id, mp.nombre_metodo_pago AS nombre, mp.datos_metodo_pago AS datos_pago "
+    "FROM metodos_pago mp WHERE LOWER(mp.nombre_metodo_pago) = LOWER(%s)"
+)
 
 
 class PaymentMethodModel(Connection):
@@ -51,10 +62,7 @@ class PaymentMethodModel(Connection):
         self._datos_pago = valor
 
     def _get_all(self):
-        return self.fetch_all("transalca",
-            "SELECT " + METODO_PAGO_ALIAS + " "
-            "FROM metodos_pago mp "
-            "WHERE mp.estado = 1 ORDER BY mp.created_at DESC")
+        return self.fetch_all("transalca", METODO_PAGO_LIST_SQL)
 
     def _get_active(self):
         return self.fetch_all("transalca",
@@ -62,8 +70,7 @@ class PaymentMethodModel(Connection):
             "FROM metodos_pago WHERE estado = 1 ORDER BY nombre_metodo_pago")
 
     def _get_by_id(self, method_id):
-        return self.fetch_one("transalca",
-            "SELECT " + METODO_PAGO_ALIAS + " FROM metodos_pago mp WHERE mp.id_metodo_pago = %s", (method_id,))
+        return self.fetch_one("transalca", METODO_PAGO_BY_ID_SQL, (method_id,))
 
     def _name_exists(self, nombre, exclude_id=None):
         value = (nombre or '').strip()
@@ -81,8 +88,7 @@ class PaymentMethodModel(Connection):
         value = (name or '').strip()
         if not value:
             return None
-        return self.fetch_one("transalca",
-            "SELECT " + METODO_PAGO_ALIAS + " FROM metodos_pago mp WHERE LOWER(mp.nombre_metodo_pago) = LOWER(%s)", (value,))
+        return self.fetch_one("transalca", METODO_PAGO_BY_NAME_SQL, (value,))
 
     def _validate(self, data):
         errors = {}

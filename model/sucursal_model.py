@@ -3,9 +3,20 @@ import re
 from model.connection import Connection
 from config.validation import ValidationError, normalize_email, normalize_phone, optional_text, require_text
 
-SUCURSAL_ALIAS = (
-    "s.*, s.id_sucursal AS id, s.nombre_sucursal AS nombre, s.direccion_sucursal AS direccion, "
-    "s.telefono_sucursal AS telefono, s.email_sucursal AS email"
+SUCURSAL_LIST_SQL = (
+    "SELECT s.*, s.id_sucursal AS id, s.nombre_sucursal AS nombre, s.direccion_sucursal AS direccion, "
+    "s.telefono_sucursal AS telefono, s.email_sucursal AS email "
+    "FROM sucursales s WHERE s.estado = 1 ORDER BY s.nombre_sucursal"
+)
+SUCURSAL_BY_ID_SQL = (
+    "SELECT s.*, s.id_sucursal AS id, s.nombre_sucursal AS nombre, s.direccion_sucursal AS direccion, "
+    "s.telefono_sucursal AS telefono, s.email_sucursal AS email "
+    "FROM sucursales s WHERE s.id_sucursal = %s"
+)
+SUCURSAL_BY_NAME_SQL = (
+    "SELECT s.*, s.id_sucursal AS id, s.nombre_sucursal AS nombre, s.direccion_sucursal AS direccion, "
+    "s.telefono_sucursal AS telefono, s.email_sucursal AS email "
+    "FROM sucursales s WHERE s.nombre_sucursal = %s"
 )
 
 DIRECCION_RE = re.compile(r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,\-]+$")
@@ -60,15 +71,13 @@ class SucursalModel(Connection):
         self._email = valor
 
     def _get_all(self):
-        return self.fetch_all("transalca",
-            "SELECT " + SUCURSAL_ALIAS + " FROM sucursales s WHERE s.estado = 1 ORDER BY s.nombre_sucursal")
+        return self.fetch_all("transalca", SUCURSAL_LIST_SQL)
 
     def _get_active(self):
         return self._get_all()
 
     def _get_by_id(self, sucursal_id):
-        return self.fetch_one("transalca",
-            "SELECT " + SUCURSAL_ALIAS + " FROM sucursales s WHERE s.id_sucursal = %s", (sucursal_id,))
+        return self.fetch_one("transalca", SUCURSAL_BY_ID_SQL, (sucursal_id,))
 
     def _validate(self, data):
         errors = {}
@@ -140,8 +149,7 @@ class SucursalModel(Connection):
         return result is not None
 
     def _get_by_nombre(self, nombre):
-        return self.fetch_one("transalca",
-            "SELECT " + SUCURSAL_ALIAS + " FROM sucursales s WHERE s.nombre_sucursal = %s", (nombre,))
+        return self.fetch_one("transalca", SUCURSAL_BY_NAME_SQL, (nombre,))
 
     def _reactivar(self, sucursal_id):
         return self.update("transalca", "UPDATE sucursales SET estado = 1 WHERE id_sucursal = %s", (sucursal_id,))

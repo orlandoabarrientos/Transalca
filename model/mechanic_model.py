@@ -2,17 +2,33 @@ from model.connection import Connection
 from config.validation import ValidationError, normalize_cedula, normalize_phone, optional_text, require_text
 
 
-OCUPADO_SQL = (
-    "CASE WHEN EXISTS (SELECT 1 FROM servicio_mecanico sm WHERE sm.mecanico_cedula = m.cedula_mecanico "
-    "AND sm.estado_servicio IN ('asignado', 'en_proceso')) THEN 'Ocupado' ELSE 'Disponible' END"
-)
-
-MECANICO_SELECT = (
+MECANICO_LIST_SQL = (
     "SELECT m.cedula_mecanico AS cedula, m.cedula_prefijo, m.nombre_mecanico AS nombre, "
     "m.apellido_mecanico AS apellido, m.telefono_mecanico AS telefono, "
     "m.especialidad_mecanico AS especialidad, m.foto_perfil_mecanico AS foto_perfil, "
-    "m.usuario_id, m.estado, m.created_at, " + OCUPADO_SQL + " AS estado_operativo "
-    "FROM mecanicos m"
+    "m.usuario_id, m.estado, m.created_at, "
+    "CASE WHEN EXISTS (SELECT 1 FROM servicio_mecanico sm WHERE sm.mecanico_cedula = m.cedula_mecanico "
+    "AND sm.estado_servicio IN ('asignado', 'en_proceso')) THEN 'Ocupado' ELSE 'Disponible' END AS estado_operativo, "
+    "(SELECT COUNT(*) FROM servicio_mecanico WHERE mecanico_cedula = m.cedula_mecanico) as total_servicios "
+    "FROM mecanicos m WHERE m.estado = 1 ORDER BY m.nombre_mecanico, m.apellido_mecanico"
+)
+MECANICO_BY_CEDULA_SQL = (
+    "SELECT m.cedula_mecanico AS cedula, m.cedula_prefijo, m.nombre_mecanico AS nombre, "
+    "m.apellido_mecanico AS apellido, m.telefono_mecanico AS telefono, "
+    "m.especialidad_mecanico AS especialidad, m.foto_perfil_mecanico AS foto_perfil, "
+    "m.usuario_id, m.estado, m.created_at, "
+    "CASE WHEN EXISTS (SELECT 1 FROM servicio_mecanico sm WHERE sm.mecanico_cedula = m.cedula_mecanico "
+    "AND sm.estado_servicio IN ('asignado', 'en_proceso')) THEN 'Ocupado' ELSE 'Disponible' END AS estado_operativo "
+    "FROM mecanicos m WHERE m.cedula_mecanico = %s"
+)
+MECANICO_ACTIVE_SQL = (
+    "SELECT m.cedula_mecanico AS cedula, m.cedula_prefijo, m.nombre_mecanico AS nombre, "
+    "m.apellido_mecanico AS apellido, m.telefono_mecanico AS telefono, "
+    "m.especialidad_mecanico AS especialidad, m.foto_perfil_mecanico AS foto_perfil, "
+    "m.usuario_id, m.estado, m.created_at, "
+    "CASE WHEN EXISTS (SELECT 1 FROM servicio_mecanico sm WHERE sm.mecanico_cedula = m.cedula_mecanico "
+    "AND sm.estado_servicio IN ('asignado', 'en_proceso')) THEN 'Ocupado' ELSE 'Disponible' END AS estado_operativo "
+    "FROM mecanicos m WHERE m.estado = 1 ORDER BY m.nombre_mecanico, m.apellido_mecanico"
 )
 
 
@@ -85,20 +101,13 @@ class MechanicModel(Connection):
         self._especialidad = valor
 
     def _get_all(self):
-        return self.fetch_all("transalca",
-            MECANICO_SELECT.replace(
-                "FROM mecanicos m",
-                ", (SELECT COUNT(*) FROM servicio_mecanico WHERE mecanico_cedula = m.cedula_mecanico) as total_servicios "
-                "FROM mecanicos m")
-            + " WHERE m.estado = 1 ORDER BY m.nombre_mecanico, m.apellido_mecanico")
+        return self.fetch_all("transalca", MECANICO_LIST_SQL)
 
     def _get_by_cedula(self, cedula):
-        return self.fetch_one("transalca",
-            MECANICO_SELECT + " WHERE m.cedula_mecanico = %s", (cedula,))
+        return self.fetch_one("transalca", MECANICO_BY_CEDULA_SQL, (cedula,))
 
     def _get_active(self):
-        return self.fetch_all("transalca",
-            MECANICO_SELECT + " WHERE m.estado = 1 ORDER BY m.nombre_mecanico, m.apellido_mecanico")
+        return self.fetch_all("transalca", MECANICO_ACTIVE_SQL)
 
     def _validate(self, data):
         errors = {}
@@ -127,14 +136,14 @@ class MechanicModel(Connection):
         if existing:
             if existing['estado'] == 1:
                 raise ValidationError({'cedula': 'Esta cedula ya esta registrada.'})
-            sets = ["cedula_prefijo=%s", "nombre_mecanico=%s", "apellido_mecanico=%s", "telefono_mecanico=%s", "especialidad_mecanico=%s"]
-            params = [clean.get('cedula_prefijo'), self._nombre, self._apellido, self._telefono, self._especialidad]
             if data.get('foto_perfil'):
-                sets.append("foto_perfil_mecanico=%s")
-                params.append(data['foto_perfil'])
-            sets.append("estado=1")
-            params.append(existing['cedula'])
-            self.update("transalca", "UPDATE mecanicos SET " + ", ".join(sets) + " WHERE cedula_mecanico=%s", tuple(params))
+                self.update("transalca",
+                    "UPDATE mecanicos SET cedula_prefijo=%s, nombre_mecanico=%s, apellido_mecanico=%s, telefono_mecanico=%s, especialidad_mecanico=%s, foto_perfil_mecanico=%s, estado=1 WHERE cedula_mecanico=%s",
+                    (clean.get('cedula_prefijo'), self._nombre, self._apellido, self._telefono, self._especialidad, data['foto_perfil'], existing['cedula']))
+            else:
+                self.update("transalca",
+                    "UPDATE mecanicos SET cedula_prefijo=%s, nombre_mecanico=%s, apellido_mecanico=%s, telefono_mecanico=%s, especialidad_mecanico=%s, estado=1 WHERE cedula_mecanico=%s",
+                    (clean.get('cedula_prefijo'), self._nombre, self._apellido, self._telefono, self._especialidad, existing['cedula']))
             return existing['cedula']
         self.insert("transalca",
             "INSERT INTO mecanicos (cedula_mecanico, cedula_prefijo, nombre_mecanico, apellido_mecanico, "
@@ -157,17 +166,13 @@ class MechanicModel(Connection):
         self.telefono = clean.get('telefono', '') or ''
         self.especialidad = clean.get('especialidad', '') or ''
         data = {**data, **clean}
-        sets = ["cedula_mecanico=%s", "cedula_prefijo=%s", "nombre_mecanico=%s", "apellido_mecanico=%s",
-                "telefono_mecanico=%s", "especialidad_mecanico=%s"]
-        params = [self._cedula, data.get('cedula_prefijo'), self._nombre,
-                  self._apellido, self._telefono, self._especialidad]
         if 'foto_perfil' in data and data['foto_perfil'] is not None:
-            sets.append("foto_perfil_mecanico=%s")
-            params.append(data['foto_perfil'])
-        params.append(old_cedula)
+            return self.update("transalca",
+                "UPDATE mecanicos SET cedula_mecanico=%s, cedula_prefijo=%s, nombre_mecanico=%s, apellido_mecanico=%s, telefono_mecanico=%s, especialidad_mecanico=%s, foto_perfil_mecanico=%s WHERE cedula_mecanico=%s",
+                (self._cedula, data.get('cedula_prefijo'), self._nombre, self._apellido, self._telefono, self._especialidad, data['foto_perfil'], old_cedula))
         return self.update("transalca",
-            "UPDATE mecanicos SET " + ", ".join(sets) + " WHERE cedula_mecanico=%s",
-            tuple(params))
+            "UPDATE mecanicos SET cedula_mecanico=%s, cedula_prefijo=%s, nombre_mecanico=%s, apellido_mecanico=%s, telefono_mecanico=%s, especialidad_mecanico=%s WHERE cedula_mecanico=%s",
+            (self._cedula, data.get('cedula_prefijo'), self._nombre, self._apellido, self._telefono, self._especialidad, old_cedula))
 
     def _soft_delete(self, cedula):
         return self.update("transalca", "UPDATE mecanicos SET estado = 0 WHERE cedula_mecanico = %s", (cedula,))

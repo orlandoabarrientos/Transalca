@@ -1,8 +1,18 @@
 from model.connection import Connection
 from config.validation import ValidationError, optional_text, require_text
 
-CATEGORIA_ALIAS = (
-    "c.*, c.nombre_categoria AS nombre, c.descripcion_categoria AS descripcion, c.imagen_categoria AS imagen"
+CATEGORIA_LIST_SQL = (
+    "SELECT c.*, c.nombre_categoria AS nombre, c.descripcion_categoria AS descripcion, c.imagen_categoria AS imagen, "
+    "(SELECT COUNT(*) FROM productos WHERE categoria = c.nombre_categoria AND estado = 1) as total_productos "
+    "FROM categorias c WHERE c.estado = 1 ORDER BY c.nombre_categoria"
+)
+CATEGORIA_ACTIVE_SQL = (
+    "SELECT c.*, c.nombre_categoria AS nombre, c.descripcion_categoria AS descripcion, c.imagen_categoria AS imagen "
+    "FROM categorias c WHERE c.estado = 1 ORDER BY c.nombre_categoria"
+)
+CATEGORIA_BY_NAME_SQL = (
+    "SELECT c.*, c.nombre_categoria AS nombre, c.descripcion_categoria AS descripcion, c.imagen_categoria AS imagen "
+    "FROM categorias c WHERE c.nombre_categoria = %s"
 )
 
 
@@ -33,17 +43,13 @@ class CategoryModel(Connection):
         self._descripcion = valor
 
     def _get_all(self):
-        return self.fetch_all("transalca",
-            "SELECT " + CATEGORIA_ALIAS + ", (SELECT COUNT(*) FROM productos WHERE categoria = c.nombre_categoria AND estado = 1) as total_productos "
-            "FROM categorias c WHERE c.estado = 1 ORDER BY c.nombre_categoria")
+        return self.fetch_all("transalca", CATEGORIA_LIST_SQL)
 
     def _get_active(self):
-        return self.fetch_all("transalca",
-            "SELECT " + CATEGORIA_ALIAS + " FROM categorias c WHERE c.estado = 1 ORDER BY c.nombre_categoria")
+        return self.fetch_all("transalca", CATEGORIA_ACTIVE_SQL)
 
     def _get_by_nombre(self, nombre):
-        return self.fetch_one("transalca",
-            "SELECT " + CATEGORIA_ALIAS + " FROM categorias c WHERE c.nombre_categoria = %s", (nombre,))
+        return self.fetch_one("transalca", CATEGORIA_BY_NAME_SQL, (nombre,))
 
     def _validate(self, data):
         errors = {}

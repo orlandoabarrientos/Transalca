@@ -13,17 +13,32 @@ def caracas_now():
     return datetime.utcnow() - timedelta(hours=4)
 
 
-DETAIL_UNION = (
-    "((SELECT id_detalle_orden_venta_producto AS id, orden_id, producto_codigo, 0 AS servicio_id, 'producto' AS tipo, "
+ORDER_CLIENT_LIST_SQL = (
+    "SELECT ov.*, ov.id_orden_venta AS id, ov.fecha_orden_venta AS fecha, ov.total_orden_venta AS total, "
+    "mp.nombre_metodo_pago AS metodo_pago, mp.nombre_metodo_pago AS metodo_pago_nombre, mp.moneda "
+    "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
+    "WHERE ov.cliente_cedula = %s ORDER BY ov.fecha_orden_venta DESC"
+)
+ORDER_DETAIL_SQL = (
+    "SELECT ov.*, ov.id_orden_venta AS id, ov.fecha_orden_venta AS fecha, ov.total_orden_venta AS total, "
+    "mp.nombre_metodo_pago AS metodo_pago, mp.nombre_metodo_pago AS metodo_pago_nombre, mp.moneda, "
+    "t.monto AS tasa_monto, t.fecha_tasa_cambio AS tasa_fecha, t.tipo_tasa_cambio AS tasa_tipo "
+    "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
+    "LEFT JOIN tasas_cambio t ON t.id_tasa_cambio = ov.tasa_cambio_id "
+    "WHERE ov.id_orden_venta = %s"
+)
+ORDER_DETAIL_ITEMS_SQL = (
+    "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre_producto ELSE s.nombre_servicio END as item_nombre "
+    "FROM ((SELECT id_detalle_orden_venta_producto AS id, orden_id, producto_codigo, 0 AS servicio_id, 'producto' AS tipo, "
     "cantidad_detalle_orden_venta_producto AS cantidad, precio_unitario_producto AS precio_unitario, "
     "cantidad_detalle_orden_venta_producto * precio_unitario_producto AS subtotal FROM detalle_orden_venta_productos) "
     "UNION ALL "
     "(SELECT id_detalle_orden_venta_servicio AS id, orden_id, 'SIN_PRODUCTO' AS producto_codigo, servicio_id, 'servicio' AS tipo, "
     "cantidad_detalle_orden_venta_servicio AS cantidad, precio_unitario_servicio AS precio_unitario, "
-    "cantidad_detalle_orden_venta_servicio * precio_unitario_servicio AS subtotal FROM detalle_orden_venta_servicios)) d"
+    "cantidad_detalle_orden_venta_servicio * precio_unitario_servicio AS subtotal FROM detalle_orden_venta_servicios)) d "
+    "LEFT JOIN productos p ON d.producto_codigo = p.codigo "
+    "LEFT JOIN servicios s ON d.servicio_id = s.id_servicio WHERE d.orden_id = %s"
 )
-
-ORDEN_ALIAS = "ov.*, ov.id_orden_venta AS id, ov.fecha_orden_venta AS fecha, ov.total_orden_venta AS total"
 
 
 class OrderModel(Connection):
@@ -303,25 +318,12 @@ class OrderModel(Connection):
             return 0
 
     def _get_client_orders(self, cliente_cedula):
-        return self.fetch_all("transalca",
-            "SELECT " + ORDEN_ALIAS + ", mp.nombre_metodo_pago AS metodo_pago, mp.nombre_metodo_pago AS metodo_pago_nombre, mp.moneda "
-            "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
-            "WHERE ov.cliente_cedula = %s ORDER BY ov.fecha_orden_venta DESC", (cliente_cedula,))
+        return self.fetch_all("transalca", ORDER_CLIENT_LIST_SQL, (cliente_cedula,))
 
     def _get_order_detail(self, order_id):
-        order = self.fetch_one("transalca",
-            "SELECT " + ORDEN_ALIAS + ", mp.nombre_metodo_pago AS metodo_pago, mp.nombre_metodo_pago AS metodo_pago_nombre, mp.moneda, "
-            "t.monto AS tasa_monto, t.fecha_tasa_cambio AS tasa_fecha, t.tipo_tasa_cambio AS tasa_tipo "
-            "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
-            "LEFT JOIN tasas_cambio t ON t.id_tasa_cambio = ov.tasa_cambio_id "
-            "WHERE ov.id_orden_venta = %s", (order_id,))
+        order = self.fetch_one("transalca", ORDER_DETAIL_SQL, (order_id,))
         if order:
-            order['detalles'] = self.fetch_all("transalca",
-                "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre_producto ELSE s.nombre_servicio END as item_nombre "
-                "FROM " + DETAIL_UNION + " "
-                "LEFT JOIN productos p ON d.producto_codigo = p.codigo "
-                "LEFT JOIN servicios s ON d.servicio_id = s.id_servicio WHERE d.orden_id = %s",
-                (order_id,))
+            order['detalles'] = self.fetch_all("transalca", ORDER_DETAIL_ITEMS_SQL, (order_id,))
             client = self.fetch_one("mantenimiento",
                 "SELECT nombre, apellido, email, telefono, cedula FROM usuarios WHERE cedula = %s", (order['cliente_cedula'],))
             if not client:

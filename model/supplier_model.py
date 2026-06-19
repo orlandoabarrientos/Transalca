@@ -1,9 +1,21 @@
 from model.connection import Connection
 from config.validation import ValidationError, normalize_email, normalize_phone, normalize_rif, optional_text, require_text
 
-PROVEEDOR_ALIAS = (
-    "p.*, p.rif_proveedor AS rif, p.nombre_proveedor AS nombre, p.telefono_proveedor AS telefono, "
-    "p.email_proveedor AS email, p.direccion_proveedor AS direccion"
+PROVEEDOR_LIST_SQL = (
+    "SELECT p.*, p.rif_proveedor AS rif, p.nombre_proveedor AS nombre, p.telefono_proveedor AS telefono, "
+    "p.email_proveedor AS email, p.direccion_proveedor AS direccion, "
+    "(SELECT COUNT(*) FROM ordenes_compra WHERE proveedor_rif = p.rif_proveedor) as total_ordenes "
+    "FROM proveedores p WHERE p.estado = 1 ORDER BY p.nombre_proveedor"
+)
+PROVEEDOR_ACTIVE_SQL = (
+    "SELECT p.*, p.rif_proveedor AS rif, p.nombre_proveedor AS nombre, p.telefono_proveedor AS telefono, "
+    "p.email_proveedor AS email, p.direccion_proveedor AS direccion "
+    "FROM proveedores p WHERE p.estado = 1 ORDER BY p.nombre_proveedor"
+)
+PROVEEDOR_BY_RIF_SQL = (
+    "SELECT p.*, p.rif_proveedor AS rif, p.nombre_proveedor AS nombre, p.telefono_proveedor AS telefono, "
+    "p.email_proveedor AS email, p.direccion_proveedor AS direccion "
+    "FROM proveedores p WHERE p.rif_proveedor = %s"
 )
 
 
@@ -67,18 +79,13 @@ class SupplierModel(Connection):
         self._direccion = valor
 
     def _get_all(self):
-        return self.fetch_all("transalca",
-            "SELECT " + PROVEEDOR_ALIAS + ", "
-            "(SELECT COUNT(*) FROM ordenes_compra WHERE proveedor_rif = p.rif_proveedor) as total_ordenes "
-            "FROM proveedores p WHERE p.estado = 1 ORDER BY p.nombre_proveedor")
+        return self.fetch_all("transalca", PROVEEDOR_LIST_SQL)
 
     def _get_active(self):
-        return self.fetch_all("transalca",
-            "SELECT " + PROVEEDOR_ALIAS + " FROM proveedores p WHERE p.estado = 1 ORDER BY p.nombre_proveedor")
+        return self.fetch_all("transalca", PROVEEDOR_ACTIVE_SQL)
 
     def _get_by_rif(self, rif):
-        return self.fetch_one("transalca",
-            "SELECT " + PROVEEDOR_ALIAS + " FROM proveedores p WHERE p.rif_proveedor = %s", (rif,))
+        return self.fetch_one("transalca", PROVEEDOR_BY_RIF_SQL, (rif,))
 
     def _validate(self, data):
         errors = {}

@@ -1,20 +1,39 @@
 from model.connection import Connection
-from model.order_model import DETAIL_UNION
 from config.validation import SELECT_TAMPER_MESSAGE, ValidationError
 import json
 from datetime import datetime, timedelta
 
 QR_TIPO_INT = {'info': 0, 'pago': 1, 'promocion': 2, 'servicio': 3}
-TIPO_QR_LABEL_SQL = "CASE q.tipo_qr_code WHEN 1 THEN 'pago' WHEN 2 THEN 'promocion' WHEN 3 THEN 'servicio' ELSE 'info' END"
+QR_USER_LIST_SQL = (
+    "SELECT q.*, q.id_qr_code AS id, CASE q.tipo_qr_code WHEN 1 THEN 'pago' WHEN 2 THEN 'promocion' WHEN 3 THEN 'servicio' ELSE 'info' END AS tipo, q.referencia_qr_code AS referencia_id "
+    "FROM qr_codes q WHERE q.usuario_cedula = %s AND q.estado = 1 ORDER BY q.created_at DESC"
+)
+QR_BY_ID_SQL = (
+    "SELECT q.*, q.id_qr_code AS id, CASE q.tipo_qr_code WHEN 1 THEN 'pago' WHEN 2 THEN 'promocion' WHEN 3 THEN 'servicio' ELSE 'info' END AS tipo, q.referencia_qr_code AS referencia_id "
+    "FROM qr_codes q WHERE q.id_qr_code = %s"
+)
+QR_ALL_SQL = (
+    "SELECT q.*, q.id_qr_code AS id, CASE q.tipo_qr_code WHEN 1 THEN 'pago' WHEN 2 THEN 'promocion' WHEN 3 THEN 'servicio' ELSE 'info' END AS tipo, q.referencia_qr_code AS referencia_id "
+    "FROM qr_codes q WHERE q.estado = 1 ORDER BY q.created_at DESC"
+)
+QR_ORDER_DETAILS_SQL = (
+    "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre_producto ELSE s.nombre_servicio END as item_nombre "
+    "FROM ((SELECT id_detalle_orden_venta_producto AS id, orden_id, producto_codigo, 0 AS servicio_id, 'producto' AS tipo, "
+    "cantidad_detalle_orden_venta_producto AS cantidad, precio_unitario_producto AS precio_unitario, "
+    "cantidad_detalle_orden_venta_producto * precio_unitario_producto AS subtotal FROM detalle_orden_venta_productos) "
+    "UNION ALL "
+    "(SELECT id_detalle_orden_venta_servicio AS id, orden_id, 'SIN_PRODUCTO' AS producto_codigo, servicio_id, 'servicio' AS tipo, "
+    "cantidad_detalle_orden_venta_servicio AS cantidad, precio_unitario_servicio AS precio_unitario, "
+    "cantidad_detalle_orden_venta_servicio * precio_unitario_servicio AS subtotal FROM detalle_orden_venta_servicios)) d "
+    "LEFT JOIN productos p ON d.producto_codigo = p.codigo "
+    "LEFT JOIN servicios s ON d.servicio_id = s.id_servicio WHERE d.orden_id = %s"
+)
 
 
 def qr_tipo_to_int(value):
     if isinstance(value, int):
         return value
     return QR_TIPO_INT.get((value or 'info').strip().lower(), 0)
-
-
-QR_ALIAS = "q.*, q.id_qr_code AS id, " + TIPO_QR_LABEL_SQL + " AS tipo, q.referencia_qr_code AS referencia_id"
 
 
 class QRModel(Connection):
@@ -126,12 +145,10 @@ class QRModel(Connection):
             tuple(values))
 
     def _get_user_qrs(self, usuario_cedula):
-        return self.fetch_all("transalca",
-            "SELECT " + QR_ALIAS + " FROM qr_codes q WHERE q.usuario_cedula = %s AND q.estado = 1 ORDER BY q.created_at DESC",
-            (usuario_cedula,))
+        return self.fetch_all("transalca", QR_USER_LIST_SQL, (usuario_cedula,))
 
     def _get_by_id(self, qr_id):
-        qr = self.fetch_one("transalca", "SELECT " + QR_ALIAS + " FROM qr_codes q WHERE q.id_qr_code = %s", (qr_id,))
+        qr = self.fetch_one("transalca", QR_BY_ID_SQL, (qr_id,))
         if qr:
             content = self._parse_content(qr.get('contenido'))
             qr['utilidad_estado'] = content.get('estado') or ('activa' if qr.get('utilidad') else 'sin_utilidad')
@@ -193,19 +210,14 @@ class QRModel(Connection):
                     "FROM ordenes_venta ov LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
                     "WHERE ov.id_orden_venta = %s", (content.get('orden_id'),))
                 if order:
-                    order['detalles'] = self.fetch_all("transalca",
-                        "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre_producto ELSE s.nombre_servicio END as item_nombre "
-                        "FROM " + DETAIL_UNION + " "
-                        "LEFT JOIN productos p ON d.producto_codigo = p.codigo "
-                        "LEFT JOIN servicios s ON d.servicio_id = s.id_servicio WHERE d.orden_id = %s",
-                        (order['id'],))
+                    order['detalles'] = self.fetch_all("transalca", QR_ORDER_DETAILS_SQL, (order['id'],))
                 result['orden'] = order
             except (json.JSONDecodeError, TypeError):
                 pass
         return result
 
     def _get_all_qrs(self):
-        qrs = self.fetch_all("transalca", "SELECT " + QR_ALIAS + " FROM qr_codes q WHERE q.estado = 1 ORDER BY q.created_at DESC")
+        qrs = self.fetch_all("transalca", QR_ALL_SQL)
         for qr in qrs:
             content = self._parse_content(qr.get('contenido'))
             user = self.fetch_one("mantenimiento",

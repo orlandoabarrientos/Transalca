@@ -17,12 +17,6 @@ from config.validation import (
 
 CARGOS_REPRESENTANTE = ['Representante legal', 'Encargado de flota', 'Persona autorizada', 'Otro']
 
-DEUDA_SQL = (
-    "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc "
-    "WHERE pc.id_credito = cr.id_credito), 0))"
-)
-
-
 class CompanyModel(Connection):
     def __init__(self):
         super().__init__()
@@ -105,12 +99,14 @@ class CompanyModel(Connection):
             "CASE "
             "WHEN EXISTS (SELECT 1 FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id "
             "WHERE ov.cliente_cedula = c.identificador_cliente "
-            "AND cr.estado_credito NOT IN ('pagado','anulado') AND " + DEUDA_SQL + " > 0 "
+            "AND cr.estado_credito NOT IN ('pagado','anulado') AND "
+            "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) > 0 "
             "AND (cr.estado_credito = 'vencido' OR (cr.fecha_vencimiento_credito IS NOT NULL AND cr.fecha_vencimiento_credito <= CURDATE()))) "
             "THEN 'deudora' "
             "WHEN EXISTS (SELECT 1 FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id "
             "WHERE ov.cliente_cedula = c.identificador_cliente "
-            "AND cr.estado_credito IN ('pendiente','aprobado','activo') AND " + DEUDA_SQL + " > 0 "
+            "AND cr.estado_credito IN ('pendiente','aprobado','activo') AND "
+            "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) > 0 "
             "AND (cr.fecha_vencimiento_credito IS NULL OR cr.fecha_vencimiento_credito > CURDATE())) "
             "THEN 'credito_activo' "
             "ELSE 'al_dia' END"
@@ -126,7 +122,8 @@ class CompanyModel(Connection):
             self._credit_status_sql(), " AS estado_credito, ",
             "(SELECT MIN(cr.fecha_vencimiento_credito) FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id ",
             "WHERE ov.cliente_cedula = c.identificador_cliente ",
-            "AND cr.estado_credito NOT IN ('pagado','anulado') AND " + DEUDA_SQL + " > 0) AS credito_vencimiento, ",
+            "AND cr.estado_credito NOT IN ('pagado','anulado') AND ",
+            "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) > 0) AS credito_vencimiento, ",
             "(SELECT COUNT(*) FROM cliente_vehiculo cv INNER JOIN vehiculos v ON cv.vehiculo_placa = v.placa_vehiculo ",
             "WHERE cv.cliente_cedula = c.identificador_cliente AND cv.estado = 1 AND v.estado = 1) as flota_count ",
             "FROM cliente c INNER JOIN cliente_juridico j ON j.id_cliente = c.id_cliente ",

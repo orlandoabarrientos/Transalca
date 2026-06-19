@@ -1,6 +1,37 @@
 from model.connection import Connection
-from model.order_model import OrderModel, DETAIL_UNION
+from model.order_model import OrderModel
 from config.validation import ValidationError, optional_text
+
+PAYMENT_PENDING_SQL = (
+    "SELECT cp.*, cp.id_comprobante_pago AS id, DATE_FORMAT(cp.fecha_comprobante, '%%Y-%%m-%%dT%%H:%%i:%%s') AS fecha, ov.total_orden_venta AS total, ov.fecha_orden_venta as orden_fecha, mp.nombre_metodo_pago AS metodo_pago "
+    "FROM comprobantes_pago cp INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id_orden_venta "
+    "LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
+    "WHERE cp.estado = 'pendiente' ORDER BY cp.fecha_comprobante DESC"
+)
+PAYMENT_ALL_SQL = (
+    "SELECT cp.*, cp.id_comprobante_pago AS id, DATE_FORMAT(cp.fecha_comprobante, '%%Y-%%m-%%dT%%H:%%i:%%s') AS fecha, ov.total_orden_venta AS total, ov.fecha_orden_venta as orden_fecha, mp.nombre_metodo_pago AS metodo_pago "
+    "FROM comprobantes_pago cp INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id_orden_venta "
+    "LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
+    "ORDER BY cp.fecha_comprobante DESC"
+)
+PAYMENT_BY_STATUS_SQL = (
+    "SELECT cp.*, cp.id_comprobante_pago AS id, DATE_FORMAT(cp.fecha_comprobante, '%%Y-%%m-%%dT%%H:%%i:%%s') AS fecha, ov.total_orden_venta AS total, ov.fecha_orden_venta as orden_fecha, mp.nombre_metodo_pago AS metodo_pago "
+    "FROM comprobantes_pago cp INNER JOIN ordenes_venta ov ON cp.orden_venta_id = ov.id_orden_venta "
+    "LEFT JOIN metodos_pago mp ON mp.id_metodo_pago = ov.metodo_pago_id "
+    "WHERE cp.estado = %s ORDER BY cp.fecha_comprobante DESC"
+)
+PAYMENT_DETAIL_ITEMS_SQL = (
+    "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre_producto ELSE s.nombre_servicio END as item_nombre "
+    "FROM ((SELECT id_detalle_orden_venta_producto AS id, orden_id, producto_codigo, 0 AS servicio_id, 'producto' AS tipo, "
+    "cantidad_detalle_orden_venta_producto AS cantidad, precio_unitario_producto AS precio_unitario, "
+    "cantidad_detalle_orden_venta_producto * precio_unitario_producto AS subtotal FROM detalle_orden_venta_productos) "
+    "UNION ALL "
+    "(SELECT id_detalle_orden_venta_servicio AS id, orden_id, 'SIN_PRODUCTO' AS producto_codigo, servicio_id, 'servicio' AS tipo, "
+    "cantidad_detalle_orden_venta_servicio AS cantidad, precio_unitario_servicio AS precio_unitario, "
+    "cantidad_detalle_orden_venta_servicio * precio_unitario_servicio AS subtotal FROM detalle_orden_venta_servicios)) d "
+    "LEFT JOIN productos p ON d.producto_codigo = p.codigo "
+    "LEFT JOIN servicios s ON d.servicio_id = s.id_servicio WHERE d.orden_id = %s"
+)
 
 
 class PaymentModel(Connection):
@@ -30,18 +61,14 @@ class PaymentModel(Connection):
         return comprobantes
 
     def _get_pending(self):
-        comprobantes = self.fetch_all("transalca",
-            self._base_select() + "WHERE cp.estado = 'pendiente' ORDER BY cp.fecha_comprobante DESC")
+        comprobantes = self.fetch_all("transalca", PAYMENT_PENDING_SQL)
         return self._attach_client(comprobantes)
 
     def _get_all(self, estado=None):
         if estado:
-            comprobantes = self.fetch_all("transalca",
-                self._base_select() + "WHERE cp.estado = %s ORDER BY cp.fecha_comprobante DESC",
-                (estado,))
+            comprobantes = self.fetch_all("transalca", PAYMENT_BY_STATUS_SQL, (estado,))
         else:
-            comprobantes = self.fetch_all("transalca",
-                self._base_select() + "ORDER BY cp.fecha_comprobante DESC")
+            comprobantes = self.fetch_all("transalca", PAYMENT_ALL_SQL)
         return self._attach_client(comprobantes)
 
     def _approve(self, comprobante_id, revisado_por_cedula=None):
@@ -76,12 +103,7 @@ class PaymentModel(Connection):
                 "SELECT nombre, apellido, email, telefono, cedula FROM usuarios WHERE cedula = %s", (comp['cliente_cedula'],))
             if client:
                 comp.update(client)
-            comp['detalles'] = self.fetch_all("transalca",
-                "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre_producto ELSE s.nombre_servicio END as item_nombre "
-                "FROM " + DETAIL_UNION + " "
-                "LEFT JOIN productos p ON d.producto_codigo = p.codigo "
-                "LEFT JOIN servicios s ON d.servicio_id = s.id_servicio WHERE d.orden_id = %s",
-                (comp['orden_venta_id'],))
+            comp['detalles'] = self.fetch_all("transalca", PAYMENT_DETAIL_ITEMS_SQL, (comp['orden_venta_id'],))
         return comp
 
     def _get_order_info_for_email(self, orden_venta_id):
@@ -92,12 +114,7 @@ class PaymentModel(Connection):
         if order:
             client = self.fetch_one("mantenimiento",
                 "SELECT * FROM usuarios WHERE cedula = %s", (order['cliente_cedula'],))
-            details = self.fetch_all("transalca",
-                "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre_producto ELSE s.nombre_servicio END as item_nombre "
-                "FROM " + DETAIL_UNION + " "
-                "LEFT JOIN productos p ON d.producto_codigo = p.codigo "
-                "LEFT JOIN servicios s ON d.servicio_id = s.id_servicio WHERE d.orden_id = %s",
-                (orden_venta_id,))
+            details = self.fetch_all("transalca", PAYMENT_DETAIL_ITEMS_SQL, (orden_venta_id,))
             return {"order": order, "client": client, "details": details}
         return None
 

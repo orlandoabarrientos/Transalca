@@ -8,9 +8,61 @@ from model.notification_model import NotificationModel
 
 logger = logging.getLogger(__name__)
 
-BITACORA_SELECT = (
-    "bv.*, bv.id_bitacora_vehiculo AS id, bv.fecha_bitacora AS fecha, bv.descripcion_bitacora AS descripcion, "
-    "bv.observaciones_bitacora AS observaciones, bv.cauchos_usados AS cauchos_info"
+LOG_BY_VEHICLE_SQL = (
+    "SELECT bv.*, bv.id_bitacora_vehiculo AS id, bv.fecha_bitacora AS fecha, bv.descripcion_bitacora AS descripcion, "
+    "bv.observaciones_bitacora AS observaciones, bv.cauchos_usados AS cauchos_info, "
+    "m.nombre_mecanico as mecanico_nombre, m.apellido_mecanico as mecanico_apellido, "
+    "s.nombre_servicio as servicio_nombre "
+    "FROM bitacora_vehiculo bv "
+    "LEFT JOIN servicio_mecanico sm ON bv.servicio_mecanico_id = sm.id_servicio_mecanico "
+    "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula_mecanico "
+    "LEFT JOIN servicios s ON sm.servicio_id = s.id_servicio "
+    "WHERE bv.vehiculo_placa=%s "
+    "ORDER BY bv.fecha_bitacora DESC LIMIT %s"
+)
+LOG_BY_CLIENT_SQL = (
+    "SELECT bv.*, bv.id_bitacora_vehiculo AS id, bv.fecha_bitacora AS fecha, bv.descripcion_bitacora AS descripcion, "
+    "bv.observaciones_bitacora AS observaciones, bv.cauchos_usados AS cauchos_info, "
+    "v.placa_vehiculo AS placa, v.marca_vehiculo AS marca, v.modelo_vehiculo AS modelo, "
+    "m.nombre_mecanico as mecanico_nombre, m.apellido_mecanico as mecanico_apellido "
+    "FROM bitacora_vehiculo bv "
+    "INNER JOIN vehiculos v ON bv.vehiculo_placa = v.placa_vehiculo "
+    "INNER JOIN cliente_vehiculo cv ON cv.vehiculo_placa = v.placa_vehiculo AND cv.estado = 1 "
+    "LEFT JOIN servicio_mecanico sm ON bv.servicio_mecanico_id = sm.id_servicio_mecanico "
+    "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula_mecanico "
+    "WHERE cv.cliente_cedula=%s ORDER BY bv.fecha_bitacora DESC LIMIT %s"
+)
+LOG_BY_ID_SQL = (
+    "SELECT bv.*, bv.id_bitacora_vehiculo AS id, bv.fecha_bitacora AS fecha, bv.descripcion_bitacora AS descripcion, "
+    "bv.observaciones_bitacora AS observaciones, bv.cauchos_usados AS cauchos_info, "
+    "v.placa_vehiculo AS placa, v.marca_vehiculo AS marca, v.modelo_vehiculo AS modelo, "
+    "m.nombre_mecanico as mecanico_nombre, m.apellido_mecanico as mecanico_apellido, "
+    "s.nombre_servicio as servicio_nombre, c.identificador_cliente as cliente_cedula, "
+    "c.nombre_cliente as cliente_nombre, '' as cliente_apellido "
+    "FROM bitacora_vehiculo bv "
+    "INNER JOIN vehiculos v ON bv.vehiculo_placa = v.placa_vehiculo "
+    "LEFT JOIN cliente_vehiculo cv ON cv.vehiculo_placa = v.placa_vehiculo AND cv.estado = 1 "
+    "LEFT JOIN cliente c ON cv.cliente_cedula = c.identificador_cliente "
+    "LEFT JOIN servicio_mecanico sm ON bv.servicio_mecanico_id = sm.id_servicio_mecanico "
+    "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula_mecanico "
+    "LEFT JOIN servicios s ON sm.servicio_id = s.id_servicio "
+    "WHERE bv.id_bitacora_vehiculo=%s"
+)
+ADMIN_LOG_BASE_SQL = (
+    "SELECT bv.*, bv.id_bitacora_vehiculo AS id, bv.fecha_bitacora AS fecha, bv.descripcion_bitacora AS descripcion, "
+    "bv.observaciones_bitacora AS observaciones, bv.cauchos_usados AS cauchos_info, "
+    "v.placa_vehiculo AS placa, v.marca_vehiculo AS marca, "
+    "v.modelo_vehiculo AS modelo, v.kilometraje_actual, "
+    "COALESCE(GROUP_CONCAT(DISTINCT c.nombre_cliente SEPARATOR ', '), '-') AS cliente_nombre, "
+    "COALESCE(GROUP_CONCAT(DISTINCT c.identificador_cliente SEPARATOR ','), '') AS cliente_cedula, "
+    "s.nombre_servicio AS servicio_nombre "
+    "FROM bitacora_vehiculo bv "
+    "INNER JOIN vehiculos v ON bv.vehiculo_placa = v.placa_vehiculo "
+    "LEFT JOIN cliente_vehiculo cv ON cv.vehiculo_placa = v.placa_vehiculo AND cv.estado = 1 "
+    "LEFT JOIN cliente c ON cv.cliente_cedula = c.identificador_cliente "
+    "LEFT JOIN servicio_mecanico sm ON bv.servicio_mecanico_id = sm.id_servicio_mecanico "
+    "LEFT JOIN servicios s ON sm.servicio_id = s.id_servicio "
+    "WHERE 1=1"
 )
 
 CATEGORIA_PREDICCION = {
@@ -86,56 +138,16 @@ class VehicleLogModel(Connection):
 
 
     def _get_by_vehicle(self, vid, limit=50):
-        return self.fetch_all("transalca",
-            "SELECT " + BITACORA_SELECT + ", m.nombre_mecanico as mecanico_nombre, m.apellido_mecanico as mecanico_apellido, "
-            "s.nombre_servicio as servicio_nombre "
-            "FROM bitacora_vehiculo bv "
-            "LEFT JOIN servicio_mecanico sm ON bv.servicio_mecanico_id = sm.id_servicio_mecanico "
-            "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula_mecanico "
-            "LEFT JOIN servicios s ON sm.servicio_id = s.id_servicio "
-            "WHERE bv.vehiculo_placa=%s "
-            "ORDER BY bv.fecha_bitacora DESC LIMIT %s", (self._vehicle_plate(vid), limit))
+        return self.fetch_all("transalca", LOG_BY_VEHICLE_SQL, (self._vehicle_plate(vid), limit))
 
     def _get_by_cliente(self, cliente_cedula, limit=100):
-        return self.fetch_all("transalca",
-            "SELECT " + BITACORA_SELECT + ", v.placa_vehiculo AS placa, v.marca_vehiculo AS marca, v.modelo_vehiculo AS modelo, "
-            "m.nombre_mecanico as mecanico_nombre, m.apellido_mecanico as mecanico_apellido "
-            "FROM bitacora_vehiculo bv "
-            "INNER JOIN vehiculos v ON bv.vehiculo_placa = v.placa_vehiculo "
-            "INNER JOIN cliente_vehiculo cv ON cv.vehiculo_placa = v.placa_vehiculo AND cv.estado = 1 "
-            "LEFT JOIN servicio_mecanico sm ON bv.servicio_mecanico_id = sm.id_servicio_mecanico "
-            "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula_mecanico "
-            "WHERE cv.cliente_cedula=%s ORDER BY bv.fecha_bitacora DESC LIMIT %s",
-            (cliente_cedula, limit))
+        return self.fetch_all("transalca", LOG_BY_CLIENT_SQL, (cliente_cedula, limit))
 
     def _get_by_id(self, lid):
-        return self.fetch_one("transalca",
-            "SELECT " + BITACORA_SELECT + ", v.placa_vehiculo AS placa, v.marca_vehiculo AS marca, v.modelo_vehiculo AS modelo, "
-            "m.nombre_mecanico as mecanico_nombre, m.apellido_mecanico as mecanico_apellido, "
-            "s.nombre_servicio as servicio_nombre, c.identificador_cliente as cliente_cedula, "
-            "c.nombre_cliente as cliente_nombre, '' as cliente_apellido "
-            "FROM bitacora_vehiculo bv "
-            "INNER JOIN vehiculos v ON bv.vehiculo_placa = v.placa_vehiculo "
-            "LEFT JOIN cliente_vehiculo cv ON cv.vehiculo_placa = v.placa_vehiculo AND cv.estado = 1 "
-            "LEFT JOIN cliente c ON cv.cliente_cedula = c.identificador_cliente "
-            "LEFT JOIN servicio_mecanico sm ON bv.servicio_mecanico_id = sm.id_servicio_mecanico "
-            "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula_mecanico "
-            "LEFT JOIN servicios s ON sm.servicio_id = s.id_servicio "
-            "WHERE bv.id_bitacora_vehiculo=%s", (lid,))
+        return self.fetch_one("transalca", LOG_BY_ID_SQL, (lid,))
 
     def _get_admin_listing(self, cliente=None, vehiculo=None, fecha_desde=None, fecha_hasta=None):
-        sql = ("SELECT " + BITACORA_SELECT + ", v.placa_vehiculo AS placa, v.marca_vehiculo AS marca, "
-               "v.modelo_vehiculo AS modelo, v.kilometraje_actual, "
-               "COALESCE(GROUP_CONCAT(DISTINCT c.nombre_cliente SEPARATOR ', '), '-') AS cliente_nombre, "
-               "COALESCE(GROUP_CONCAT(DISTINCT c.identificador_cliente SEPARATOR ','), '') AS cliente_cedula, "
-               "s.nombre_servicio AS servicio_nombre "
-               "FROM bitacora_vehiculo bv "
-               "INNER JOIN vehiculos v ON bv.vehiculo_placa = v.placa_vehiculo "
-               "LEFT JOIN cliente_vehiculo cv ON cv.vehiculo_placa = v.placa_vehiculo AND cv.estado = 1 "
-               "LEFT JOIN cliente c ON cv.cliente_cedula = c.identificador_cliente "
-               "LEFT JOIN servicio_mecanico sm ON bv.servicio_mecanico_id = sm.id_servicio_mecanico "
-               "LEFT JOIN servicios s ON sm.servicio_id = s.id_servicio "
-               "WHERE 1=1")
+        sql = ADMIN_LOG_BASE_SQL
         params = []
         if vehiculo:
             sql += " AND bv.vehiculo_placa LIKE %s"

@@ -1,7 +1,34 @@
 from config.constants import PORCENTAJE_COMISION_DEFAULT
 from model.connection import Connection
 
-MONTO_SQL = "ROUND(cm.precio_servicio_comision * (cm.porcentaje_comision / 100), 2) AS monto_comision"
+COMMISSION_LIST_SQL = (
+    "SELECT cm.*, ROUND(cm.precio_servicio_comision * (cm.porcentaje_comision / 100), 2) AS monto_comision, "
+    "sm.mecanico_cedula, sm.orden_venta_id, sm.fecha_servicio AS fecha, sm.estado_servicio, "
+    "m.nombre_mecanico as mecanico_nombre, m.apellido_mecanico as mecanico_apellido, "
+    "s.nombre_servicio as servicio_nombre "
+    "FROM comisiones_mecanico cm "
+    "INNER JOIN servicio_mecanico sm ON cm.servicio_mecanico_id = sm.id_servicio_mecanico "
+    "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula_mecanico "
+    "INNER JOIN servicios s ON sm.servicio_id = s.id_servicio "
+    "ORDER BY sm.fecha_servicio DESC"
+)
+COMMISSION_BY_MECHANIC_SQL = (
+    "SELECT cm.*, ROUND(cm.precio_servicio_comision * (cm.porcentaje_comision / 100), 2) AS monto_comision, "
+    "sm.mecanico_cedula, sm.orden_venta_id, sm.fecha_servicio AS fecha, s.nombre_servicio as servicio_nombre "
+    "FROM comisiones_mecanico cm "
+    "INNER JOIN servicio_mecanico sm ON cm.servicio_mecanico_id = sm.id_servicio_mecanico "
+    "INNER JOIN servicios s ON sm.servicio_id = s.id_servicio "
+    "WHERE sm.mecanico_cedula = %s ORDER BY sm.fecha_servicio DESC"
+)
+COMMISSION_BY_ID_SQL = (
+    "SELECT cm.*, ROUND(cm.precio_servicio_comision * (cm.porcentaje_comision / 100), 2) AS monto_comision, "
+    "sm.mecanico_cedula, sm.orden_venta_id, sm.fecha_servicio AS fecha, "
+    "m.nombre_mecanico as mecanico_nombre, m.apellido_mecanico as mecanico_apellido, "
+    "s.nombre_servicio as servicio_nombre FROM comisiones_mecanico cm "
+    "INNER JOIN servicio_mecanico sm ON cm.servicio_mecanico_id = sm.id_servicio_mecanico "
+    "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula_mecanico "
+    "INNER JOIN servicios s ON sm.servicio_id = s.id_servicio WHERE cm.servicio_mecanico_id = %s"
+)
 
 
 class CommissionModel(Connection):
@@ -9,35 +36,13 @@ class CommissionModel(Connection):
         super().__init__()
 
     def _get_all(self):
-        sql = ("SELECT cm.*, " + MONTO_SQL + ", sm.mecanico_cedula, sm.orden_venta_id, "
-               "sm.fecha_servicio AS fecha, sm.estado_servicio, "
-               "m.nombre_mecanico as mecanico_nombre, m.apellido_mecanico as mecanico_apellido, "
-               "s.nombre_servicio as servicio_nombre "
-               "FROM comisiones_mecanico cm "
-               "INNER JOIN servicio_mecanico sm ON cm.servicio_mecanico_id = sm.id_servicio_mecanico "
-               "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula_mecanico "
-               "INNER JOIN servicios s ON sm.servicio_id = s.id_servicio "
-               "ORDER BY sm.fecha_servicio DESC")
-        return self.fetch_all("transalca", sql)
+        return self.fetch_all("transalca", COMMISSION_LIST_SQL)
 
     def _get_by_mecanico(self, mecanico_cedula):
-        sql = ("SELECT cm.*, " + MONTO_SQL + ", sm.mecanico_cedula, sm.orden_venta_id, "
-               "sm.fecha_servicio AS fecha, s.nombre_servicio as servicio_nombre "
-               "FROM comisiones_mecanico cm "
-               "INNER JOIN servicio_mecanico sm ON cm.servicio_mecanico_id = sm.id_servicio_mecanico "
-               "INNER JOIN servicios s ON sm.servicio_id = s.id_servicio "
-               "WHERE sm.mecanico_cedula = %s ORDER BY sm.fecha_servicio DESC")
-        return self.fetch_all("transalca", sql, (mecanico_cedula,))
+        return self.fetch_all("transalca", COMMISSION_BY_MECHANIC_SQL, (mecanico_cedula,))
 
     def _get_by_id(self, cid):
-        return self.fetch_one("transalca",
-            "SELECT cm.*, " + MONTO_SQL + ", sm.mecanico_cedula, sm.orden_venta_id, "
-            "sm.fecha_servicio AS fecha, "
-            "m.nombre_mecanico as mecanico_nombre, m.apellido_mecanico as mecanico_apellido, "
-            "s.nombre_servicio as servicio_nombre FROM comisiones_mecanico cm "
-            "INNER JOIN servicio_mecanico sm ON cm.servicio_mecanico_id = sm.id_servicio_mecanico "
-            "LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula_mecanico "
-            "INNER JOIN servicios s ON sm.servicio_id = s.id_servicio WHERE cm.servicio_mecanico_id = %s", (cid,))
+        return self.fetch_one("transalca", COMMISSION_BY_ID_SQL, (cid,))
 
     def _create(self, data):
         precio = float(data.get('precio_servicio_comision', data.get('precio_servicio')))

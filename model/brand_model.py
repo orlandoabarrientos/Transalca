@@ -1,7 +1,20 @@
 from model.connection import Connection
 from config.validation import ValidationError, optional_text, require_text
 
-MARCA_ALIAS = "m.*, m.nombre_marca AS nombre, m.descripcion_marca AS descripcion"
+MARCA_SELECT = "m.*, m.nombre_marca AS nombre, m.descripcion_marca AS descripcion"
+MARCA_LIST_SQL = (
+    "SELECT m.*, m.nombre_marca AS nombre, m.descripcion_marca AS descripcion, "
+    "(SELECT COUNT(*) FROM productos WHERE marca = m.nombre_marca AND estado = 1) as total_productos "
+    "FROM marcas m WHERE m.estado = 1 ORDER BY m.nombre_marca"
+)
+MARCA_ACTIVE_SQL = (
+    "SELECT m.*, m.nombre_marca AS nombre, m.descripcion_marca AS descripcion "
+    "FROM marcas m WHERE m.estado = 1 ORDER BY m.nombre_marca"
+)
+MARCA_BY_NAME_SQL = (
+    "SELECT m.*, m.nombre_marca AS nombre, m.descripcion_marca AS descripcion "
+    "FROM marcas m WHERE m.nombre_marca = %s"
+)
 
 
 class BrandModel(Connection):
@@ -31,17 +44,13 @@ class BrandModel(Connection):
         self._descripcion = valor
 
     def _get_all(self):
-        return self.fetch_all("transalca",
-            "SELECT " + MARCA_ALIAS + ", (SELECT COUNT(*) FROM productos WHERE marca = m.nombre_marca AND estado = 1) as total_productos "
-            "FROM marcas m WHERE m.estado = 1 ORDER BY m.nombre_marca")
+        return self.fetch_all("transalca", MARCA_LIST_SQL)
 
     def _get_active(self):
-        return self.fetch_all("transalca",
-            "SELECT " + MARCA_ALIAS + " FROM marcas m WHERE m.estado = 1 ORDER BY m.nombre_marca")
+        return self.fetch_all("transalca", MARCA_ACTIVE_SQL)
 
     def _get_by_nombre(self, nombre):
-        return self.fetch_one("transalca",
-            "SELECT " + MARCA_ALIAS + " FROM marcas m WHERE m.nombre_marca = %s", (nombre,))
+        return self.fetch_one("transalca", MARCA_BY_NAME_SQL, (nombre,))
 
     def _validate(self, data):
         errors = {}

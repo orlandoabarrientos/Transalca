@@ -9,11 +9,6 @@ from config.validation import ValidationError
 from model.connection import Connection
 from model.notification_model import NotificationModel
 
-DEUDA_SQL = (
-    "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc "
-    "WHERE pc.id_credito = cr.id_credito), 0))"
-)
-
 ALLOWED_STATUS = {'pendiente', 'aprobado', 'activo', 'pagado', 'vencido', 'anulado'}
 
 
@@ -120,7 +115,7 @@ class CreditModel(Connection):
     def _sync_credit_statuses(self):
         rows = self.fetch_all("transalca",
             "SELECT cr.id_credito, cr.orden_venta_id AS id, cr.estado_credito, cr.fecha_vencimiento_credito, "
-            + DEUDA_SQL + " AS monto_deuda, "
+            "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) AS monto_deuda, "
             "COALESCE(cr.notificacion_7d, 0) AS notificacion_7d, "
             "COALESCE(cr.notificacion_2d, 0) AS notificacion_2d, "
             "COALESCE(cr.notificacion_vencido, 0) AS notificacion_vencido, "
@@ -180,7 +175,7 @@ class CreditModel(Connection):
             "ov.tipo_pago, mp.moneda, "
             "cr.id_credito, cr.estado_credito AS credito_estado, cr.fecha_inicio_credito, "
             "cr.fecha_vencimiento_credito, cr.fecha_pago_credito, "
-            + DEUDA_SQL + " AS monto_deuda, "
+            "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) AS monto_deuda, "
             "c.nombre_cliente AS nombre, c.correo_cliente AS email, c.telefono_cliente AS telefono, "
             "c.identificador_cliente AS rif, c.nombre_cliente AS razon_social, "
             "j.limite_credito, j.dias_credito, mp.nombre_metodo_pago AS metodo_pago_nombre "
@@ -213,7 +208,7 @@ class CreditModel(Connection):
             "SUM(CASE WHEN cr.estado_credito='pagado' THEN 1 ELSE 0 END) pagados, "
             "SUM(CASE WHEN cr.estado_credito='vencido' THEN 1 ELSE 0 END) vencidos, "
             "COALESCE(SUM(CASE WHEN cr.estado_credito NOT IN ('pagado','anulado') "
-            "THEN " + DEUDA_SQL + " ELSE 0 END),0) saldo "
+            "THEN (ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) ELSE 0 END),0) saldo "
             "FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id")
         if not row:
             return {'total': 0, 'pendientes': 0, 'pagados': 0, 'vencidos': 0, 'saldo': 0}
@@ -238,7 +233,7 @@ class CreditModel(Connection):
     def _get_by_order(self, order_id):
         return self.fetch_one("transalca",
             "SELECT ov.id_orden_venta AS id, ov.total_orden_venta AS total, cr.id_credito, "
-            + DEUDA_SQL + " AS monto_deuda, cr.estado_credito AS credito_estado, "
+            "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) AS monto_deuda, cr.estado_credito AS credito_estado, "
             "cr.fecha_inicio_credito, cr.fecha_vencimiento_credito, cr.fecha_pago_credito "
             "FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id "
             "WHERE ov.id_orden_venta=%s",
@@ -334,7 +329,7 @@ class CreditModel(Connection):
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT cr.id_credito, ov.total_orden_venta AS total, cr.estado_credito, "
-                + DEUDA_SQL + " AS monto_deuda "
+                "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) AS monto_deuda "
                 "FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id "
                 "WHERE ov.id_orden_venta=%s FOR UPDATE",
                 (order_id,)

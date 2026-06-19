@@ -1,9 +1,12 @@
+import logging
+
 from flask import Blueprint, request, jsonify, session, send_file
 from model.backup_model import BackupModel
 
 
 backup_bp = Blueprint('backup', __name__)
 model = BackupModel()
+logger = logging.getLogger(__name__)
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
@@ -24,7 +27,7 @@ def list_backups():
         try:
             model.ejecutar("cleanup_old_backups")
         except Exception:
-            pass
+            logger.exception("No se pudo limpiar respaldos antiguos antes de listar.")
         return jsonify({"status": "success", "data": model.ejecutar("list_backups")})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500

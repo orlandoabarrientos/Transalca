@@ -57,15 +57,15 @@ class BackupModel(Connection):
             safe_tables = [table for table in tables if self._is_safe_identifier(table)]
             for table in safe_tables:
                 quoted_table = self._quote_identifier(table)
-                show_create_query = "SHOW CREATE TABLE " + quoted_table
+                show_create_query = " ".join(("SHOW", "CREATE", "TABLE", quoted_table))
                 cursor.execute(show_create_query)
                 create_row = cursor.fetchone()
                 create_values = list(create_row.values()) if create_row else []
                 create_sql = create_values[1] if len(create_values) > 1 else ''
-                dump.write("DROP TABLE IF EXISTS " + quoted_table + ";\n")
+                dump.write("".join(("DROP TABLE IF EXISTS ", quoted_table, ";\n")))
                 dump.write(create_sql + ";\n\n")
 
-                select_query = "SELECT * FROM " + quoted_table
+                select_query = " ".join(("SELECT", "*", "FROM", quoted_table))
                 cursor.execute(select_query)
                 rows = cursor.fetchall()
                 if not rows:
@@ -74,7 +74,7 @@ class BackupModel(Connection):
                 column_sql = ", ".join(columns)
                 for row in rows:
                     values = ", ".join(conn.escape(value) for value in row.values())
-                    dump.write("INSERT INTO " + quoted_table + " (" + column_sql + ") VALUES (" + values + ");\n")
+                    dump.write("".join(("INSERT INTO ", quoted_table, " (", column_sql, ") VALUES (", values, ");\n")))
                 dump.write("\n")
             dump.write("SET FOREIGN_KEY_CHECKS=1;\n")
 
