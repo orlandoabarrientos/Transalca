@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 INV_LIST_SQL = "SELECT * FROM vw_stock_detalle ORDER BY producto_nombre"
 INV_BY_SUCURSAL_SQL = "SELECT * FROM vw_stock_detalle WHERE sucursal_id = %s ORDER BY producto_nombre"
 LOW_STOCK_SQL = (
-    "SELECT * FROM vw_stock_detalle WHERE i.stock <= GREATEST(COALESCE(i.stock_minimo, 0), %s) "
-    "ORDER BY i.stock ASC"
+    "SELECT * FROM vw_stock_detalle WHERE stock <= GREATEST(COALESCE(stock_minimo, 0), %s) "
+    "ORDER BY stock ASC"
 )
 LOW_STOCK_BY_PRODUCT_SQL = (
-    "SELECT * FROM vw_stock_detalle WHERE i.stock <= GREATEST(COALESCE(i.stock_minimo, 0), %s) "
-    "AND i.producto_codigo = %s ORDER BY i.stock ASC"
+    "SELECT * FROM vw_stock_detalle WHERE stock <= GREATEST(COALESCE(stock_minimo, 0), %s) "
+    "AND producto_codigo = %s ORDER BY stock ASC"
 )
 SALES_ORDER_DETAIL_ITEMS_SQL = (
     "SELECT d.*, CASE WHEN d.tipo = 'producto' THEN p.nombre_producto ELSE sv.nombre_servicio END as item_nombre "
