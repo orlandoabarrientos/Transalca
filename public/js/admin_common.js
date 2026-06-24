@@ -1052,6 +1052,9 @@ class TablePaginator {
     
     initDom() {
         const card = this.element.closest('.card') || this.element.parentElement;
+        if (card && !card.classList.contains('mb-3') && !card.classList.contains('mb-4')) {
+            card.classList.add('mb-3');
+        }
         let pInfo = card.nextElementSibling && card.nextElementSibling.classList.contains('pagination-info-wrap') 
             ? card.nextElementSibling 
             : null;
@@ -1060,10 +1063,10 @@ class TablePaginator {
             pInfo.className = 'd-flex justify-content-between align-items-center px-2 mb-4 pagination-info-wrap';
             pInfo.innerHTML = `
                 <div class="d-flex align-items-center gap-3">
-                    <div class="text-muted small paginator-info">Mostrando 0 a 0 de 0 registros</div>
-                    <div class="d-flex align-items-center gap-1">
-                        <span class="text-muted small" style="white-space: nowrap; font-size: 0.8rem;">Mostrar:</span>
-                        <select class="form-select form-select-sm paginator-limit-select" style="width: auto; font-size: 0.75rem; padding: 0.2rem 1.6rem 0.2rem 0.4rem; height: 1.8rem; border-color: rgba(233, 93, 15, 0.2); border-radius: 4px;">
+                    <div class="text-muted paginator-info" style="font-size: 1.05rem;">Mostrando 0 a 0 de 0 registros</div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-muted" style="white-space: nowrap; font-size: 1.05rem;">Mostrar:</span>
+                        <select class="form-select paginator-limit-select" data-no-select2="true" style="min-width: 100px; height: 42px; font-size: 1.05rem; border-radius: 8px; cursor: pointer; padding: 0.4rem 2.5rem 0.4rem 1.2rem;">
                             <option value="10">10</option>
                             <option value="20">20</option>
                             <option value="30">30</option>
@@ -1112,11 +1115,15 @@ class TablePaginator {
 
         if (this.limitSelect) {
             this.limitSelect.value = this.perPage;
-            this.limitSelect.addEventListener('change', () => {
+            const handleChange = () => {
                 this.perPage = parseInt(this.limitSelect.value) || 30;
                 this.currentPage = 1;
                 this.apply();
-            });
+            };
+            this.limitSelect.addEventListener('change', handleChange);
+            if (window.jQuery) {
+                window.jQuery(this.limitSelect).on('change', handleChange);
+            }
         }
     }
     
