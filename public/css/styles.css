@@ -274,6 +274,7 @@ a:hover {
 .main-content {
     margin-left: var(--sidebar-width);
     flex: 1;
+    min-width: 0;
     min-height: 100vh;
 }
 
@@ -947,6 +948,382 @@ a:hover {
     }
 
     .credit-table-card + .pagination-info-wrap {
+        align-items: flex-start !important;
+        flex-direction: column;
+    }
+}
+
+.service-mechanics-table-card {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.service-mechanics-table {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+    font-size: .84rem;
+}
+
+.service-mechanics-table thead th,
+.service-mechanics-table tbody td {
+    padding: 10px 8px;
+    vertical-align: middle;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    line-height: 1.25;
+}
+
+.service-mechanics-table thead th {
+    line-height: 1.15;
+    font-size: .68rem;
+    letter-spacing: .45px;
+    white-space: normal;
+}
+
+.service-mechanics-table tbody tr {
+    height: auto;
+}
+
+.service-mechanics-table th:nth-child(1),
+.service-mechanics-table td:nth-child(1) {
+    display: none;
+}
+
+.service-mechanics-table th:nth-child(2),
+.service-mechanics-table td:nth-child(2) {
+    width: 18%;
+}
+
+.service-mechanics-table th:nth-child(3),
+.service-mechanics-table td:nth-child(3) {
+    width: 5%;
+}
+
+.service-mechanics-table th:nth-child(4),
+.service-mechanics-table td:nth-child(4) {
+    width: 13%;
+}
+
+.service-mechanics-table th:nth-child(5),
+.service-mechanics-table td:nth-child(5) {
+    width: 12%;
+}
+
+.service-mechanics-table th:nth-child(6),
+.service-mechanics-table td:nth-child(6) {
+    width: 14%;
+}
+
+.service-mechanics-table th:nth-child(7),
+.service-mechanics-table td:nth-child(7) {
+    width: 11%;
+}
+
+.service-mechanics-table th:nth-child(8),
+.service-mechanics-table td:nth-child(8) {
+    width: 15%;
+}
+
+.service-mechanics-table th:nth-child(9),
+.service-mechanics-table td:nth-child(9) {
+    width: 12%;
+}
+
+.service-mechanics-table .sm-service strong,
+.service-mechanics-table .sm-mechanic strong,
+.service-mechanics-table .sm-mechanic small,
+.service-mechanics-table .sm-gain small {
+    display: block;
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.service-mechanics-table .sm-mechanic,
+.service-mechanics-table .sm-gain {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.service-mechanics-table .sm-gain strong {
+    color: var(--success);
+    font-weight: 800;
+    line-height: 1.15;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.service-mechanics-table .sm-gain small {
+    color: var(--text-secondary);
+    font-size: .68rem;
+    line-height: 1.15;
+}
+
+.service-mechanics-table .sm-status-select {
+    width: 100%;
+    min-width: 0;
+    max-width: 180px;
+    padding-left: 10px;
+    padding-right: 24px;
+    line-height: 1.25;
+}
+
+.service-mechanics-table .sm-actions-cell {
+    overflow: visible;
+    text-overflow: clip;
+}
+
+.service-mechanics-table .sm-actions {
+    gap: .25rem;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    max-width: 100%;
+}
+
+.service-mechanics-table .sm-actions .btn {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    justify-content: center;
+    padding: 0;
+    border-radius: var(--radius-sm);
+}
+
+.service-mechanics-table .sm-actions .btn i {
+    margin: 0;
+    font-size: .9rem;
+}
+
+.service-mechanics-table .badge-status {
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+}
+
+.service-mechanics-table-card + .pagination-info-wrap {
+    gap: .75rem;
+    flex-wrap: wrap;
+}
+
+.service-mechanics-table-card + .pagination-info-wrap > .d-flex {
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.service-mechanics-table-card + .pagination-info-wrap .paginator-info {
+    font-size: .9rem !important;
+}
+
+@media (max-width: 1200px) {
+    .service-mechanics-table th:nth-child(8),
+    .service-mechanics-table td:nth-child(8) {
+        display: none;
+    }
+
+    .service-mechanics-table th:nth-child(2),
+    .service-mechanics-table td:nth-child(2) {
+        width: 22%;
+    }
+
+    .service-mechanics-table th:nth-child(3),
+    .service-mechanics-table td:nth-child(3) {
+        width: 6%;
+    }
+
+    .service-mechanics-table th:nth-child(4),
+    .service-mechanics-table td:nth-child(4) {
+        width: 15%;
+    }
+
+    .service-mechanics-table th:nth-child(5),
+    .service-mechanics-table td:nth-child(5),
+    .service-mechanics-table th:nth-child(6),
+    .service-mechanics-table td:nth-child(6) {
+        width: 14%;
+    }
+
+    .service-mechanics-table th:nth-child(7),
+    .service-mechanics-table td:nth-child(7) {
+        width: 13%;
+    }
+
+    .service-mechanics-table th:nth-child(9),
+    .service-mechanics-table td:nth-child(9) {
+        width: 16%;
+    }
+}
+
+@media (max-width: 992px) {
+    .service-mechanics-table th:nth-child(7),
+    .service-mechanics-table td:nth-child(7) {
+        display: none;
+    }
+
+    .service-mechanics-table th:nth-child(2),
+    .service-mechanics-table td:nth-child(2) {
+        width: 26%;
+    }
+
+    .service-mechanics-table th:nth-child(3),
+    .service-mechanics-table td:nth-child(3) {
+        width: 8%;
+    }
+
+    .service-mechanics-table th:nth-child(4),
+    .service-mechanics-table td:nth-child(4) {
+        width: 17%;
+    }
+
+    .service-mechanics-table th:nth-child(5),
+    .service-mechanics-table td:nth-child(5),
+    .service-mechanics-table th:nth-child(6),
+    .service-mechanics-table td:nth-child(6) {
+        width: 16%;
+    }
+
+    .service-mechanics-table th:nth-child(9),
+    .service-mechanics-table td:nth-child(9) {
+        width: 17%;
+    }
+}
+
+@media (max-width: 768px) {
+    .service-mechanics-table {
+        font-size: .78rem;
+    }
+
+    .service-mechanics-table th:nth-child(4),
+    .service-mechanics-table td:nth-child(4),
+    .service-mechanics-table th:nth-child(6),
+    .service-mechanics-table td:nth-child(6) {
+        display: none;
+    }
+
+    .service-mechanics-table thead th,
+    .service-mechanics-table tbody td {
+        padding: 8px 5px;
+    }
+
+    .service-mechanics-table th:nth-child(2),
+    .service-mechanics-table td:nth-child(2) {
+        width: 38%;
+    }
+
+    .service-mechanics-table th:nth-child(3),
+    .service-mechanics-table td:nth-child(3) {
+        width: 10%;
+    }
+
+    .service-mechanics-table th:nth-child(5),
+    .service-mechanics-table td:nth-child(5) {
+        width: 22%;
+    }
+
+    .service-mechanics-table th:nth-child(9),
+    .service-mechanics-table td:nth-child(9) {
+        width: 30%;
+    }
+}
+
+@media (max-width: 576px) {
+    .top-navbar {
+        gap: 8px;
+        min-width: 0;
+        padding: 0 14px;
+    }
+
+    .top-navbar > .d-flex {
+        min-width: 0;
+        gap: .5rem !important;
+    }
+
+    .top-navbar .page-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .top-navbar a[href="/client/home"] {
+        display: none !important;
+    }
+
+    .top-navbar .user-info {
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .top-navbar .user-info img {
+        width: 32px;
+        height: 32px;
+    }
+
+    .top-navbar .user-info .dropdown .btn {
+        width: 34px;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .service-mechanics-table thead {
+        display: none;
+    }
+
+    .service-mechanics-table thead th,
+    .service-mechanics-table tbody td {
+        padding: 7px 3px;
+    }
+
+    .service-mechanics-table th:nth-child(3),
+    .service-mechanics-table td:nth-child(3) {
+        display: none;
+    }
+
+    .service-mechanics-table th:nth-child(2),
+    .service-mechanics-table td:nth-child(2) {
+        width: 40%;
+    }
+
+    .service-mechanics-table th:nth-child(5),
+    .service-mechanics-table td:nth-child(5) {
+        width: 24%;
+    }
+
+    .service-mechanics-table th:nth-child(9),
+    .service-mechanics-table td:nth-child(9) {
+        width: 36%;
+    }
+
+    .service-mechanics-table tbody tr {
+        height: auto;
+    }
+
+    .service-mechanics-table .sm-service strong {
+        display: block;
+        white-space: normal;
+    }
+
+    .service-mechanics-table .sm-gain small {
+        display: block;
+    }
+
+    .service-mechanics-table .sm-actions .btn {
+        width: 28px;
+        height: 28px;
+        flex-basis: 28px;
+        font-size: .76rem;
+    }
+
+    .service-mechanics-table-card + .pagination-info-wrap {
         align-items: flex-start !important;
         flex-direction: column;
     }

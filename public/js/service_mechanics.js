@@ -157,26 +157,31 @@ async function loadAssignments() {
                 itemName: 'servicios mecánicos',
                 renderRow: (a) => {
                     const hasMechanic = !!(a.mecanico_cedula || '').trim();
+                    const serviceName = escapeHtml(a.servicio_nombre || '-');
+                    const observations = escapeHtml(a.observaciones || '-');
                     const mechanicHtml = hasMechanic
-                        ? `<div><strong>${escapeHtml(a.mecanico_nombre || a.mecanico_cedula)}</strong><br><small class="text-muted">${escapeHtml(a.mecanico_cedula)}</small></div>`
+                        ? `<div class="sm-mechanic"><strong>${escapeHtml(a.mecanico_nombre || a.mecanico_cedula)}</strong><small class="text-muted">${escapeHtml(a.mecanico_cedula)}</small></div>`
                         : '<span class="badge-status badge-pending">Sin asignar</span>';
 
                     return `<tr class="fade-in-up">
                         <td class="col-id">${a.id}</td>
-                        <td><strong>${escapeHtml(a.servicio_nombre || '-')}</strong></td>
-                        <td>${a.orden_venta_id || '-'}</td>
-                        <td>${mechanicHtml}</td>
-                        <td>${statusSelect(a.id, a.estado)}</td>
-                        <td>${formatDate(a.fecha)}</td>
-                        <td>${escapeHtml(a.observaciones || '-')}</td>
-                        <td>
+                        <td class="sm-service" title="${serviceName}"><strong>${serviceName}</strong></td>
+                        <td class="sm-order">${a.orden_venta_id || '-'}</td>
+                        <td class="sm-mechanic-cell">${mechanicHtml}</td>
+                        <td class="sm-gain-cell">${renderMechanicGain(a, hasMechanic)}</td>
+                        <td class="sm-status-cell">${statusSelect(a.id, a.estado)}</td>
+                        <td class="sm-date-cell">${formatServiceMechanicDate(a.fecha)}</td>
+                        <td class="sm-observations" title="${observations}">${observations}</td>
+                        <td class="sm-actions-cell">
+                            <div class="table-actions sm-actions">
                             ${!hasMechanic ? `<button class="btn btn-icon btn-outline-orange btn-sm" title="Asignar Mecánico" onclick="openMechanicModal(${a.id})"><i class="bi bi-person-plus"></i></button>` : ''}
                             <button class="btn btn-icon btn-outline-orange btn-sm" onclick="editAssignment(${a.id})" title="Modificar"><i class="bi bi-pencil"></i></button>
                             <button class="btn btn-icon btn-sm btn-warning" onclick="deleteAssignment(${a.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                            </div>
                         </td>
                     </tr>`;
                 },
-                onEmpty: () => '<tr><td colspan="8" class="text-center py-4"><div class="empty-state"><i class="bi bi-tools"></i><p>No hay registros de servicio mecánico</p></div></td></tr>'
+                onEmpty: () => '<tr><td colspan="9" class="text-center py-4"><div class="empty-state"><i class="bi bi-tools"></i><p>No hay registros de servicio mecanico</p></div></td></tr>'
             });
         } else {
             paginator.updateData(assignments);
@@ -198,7 +203,54 @@ function statusSelect(id, current) {
     ];
 
     const html = options.map(([value, label]) => `<option value="${value}" ${value === current ? 'selected' : ''}>${label}</option>`).join('');
-    return `<select class="form-select form-select-sm" onchange="updateAssignmentStatus(${id}, this.value)">${html}</select>`;
+    return `<select class="form-select form-select-sm sm-status-select" data-no-select2="true" onchange="updateAssignmentStatus(${id}, this.value)">${html}</select>`;
+}
+
+function formatServiceMechanicMoney(amount) {
+    return `$${formatCurrency(Number(amount || 0))}`;
+}
+
+function formatMechanicPercent(value) {
+    const percent = Number(value || 0);
+    return `${percent.toLocaleString('es-VE', { maximumFractionDigits: 2 })}%`;
+}
+
+function renderMechanicGain(assignment, hasMechanic) {
+    const percent = Number(assignment.porcentaje_comision || 0);
+    const price = Number(assignment.precio || 0);
+
+    if (!hasMechanic || !percent || !price) {
+        return '<span class="text-muted">-</span>';
+    }
+
+    const gain = price * (percent / 100);
+    const detail = `${formatMechanicPercent(percent)} de ${formatServiceMechanicMoney(price)}`;
+
+    return `<div class="sm-gain" title="${escapeHtml(detail)}"><strong>${formatServiceMechanicMoney(gain)}</strong><small>${escapeHtml(detail)}</small></div>`;
+}
+
+function formatServiceMechanicDate(value) {
+    if (!value) {
+        return '-';
+    }
+
+    const raw = String(value || '');
+    const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2}))?/);
+
+    if (isoMatch) {
+        const [, year, month, day, hour, minute] = isoMatch;
+        return `${day}/${month}/${year}${hour && minute ? ` ${hour}:${minute}` : ''}`;
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+        return '-';
+    }
+
+    const datePart = parsed.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timePart = parsed.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+    return `${datePart} ${timePart}`;
 }
 
 function openAssignmentModal() {
