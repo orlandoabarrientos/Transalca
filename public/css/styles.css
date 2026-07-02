@@ -585,6 +585,22 @@ a:hover {
     transform: translateY(0);
 }
 
+.table-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: .375rem;
+    white-space: nowrap;
+}
+
+.table-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
 .btn-outline-orange {
     border: 2px solid var(--primary);
     color: var(--primary);
@@ -672,6 +688,268 @@ a:hover {
 
 .table .col-id {
     display: none;
+}
+
+.credit-filter-group {
+    flex: 1 1 420px;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.credit-filter-input {
+    flex: 1 1 240px;
+    min-width: 0;
+    width: auto !important;
+}
+
+.credit-filter-select {
+    flex: 0 1 190px;
+    min-width: 140px;
+    width: auto !important;
+}
+
+.credit-filter-group .select2-container {
+    flex: 0 1 190px !important;
+    width: 190px !important;
+    min-width: 140px;
+    max-width: 190px;
+}
+
+.credit-table-card,
+.credit-table-responsive {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.credit-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+}
+
+.credit-table thead th,
+.credit-table tbody td {
+    padding: 10px 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+.credit-table thead th {
+    line-height: 1.15;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.credit-table tbody tr {
+    height: 64px;
+}
+
+.credit-table th:nth-child(1),
+.credit-table td:nth-child(1) {
+    width: 6%;
+}
+
+.credit-table th:nth-child(2),
+.credit-table td:nth-child(2) {
+    width: 10%;
+}
+
+.credit-table th:nth-child(3),
+.credit-table td:nth-child(3) {
+    width: 12%;
+}
+
+.credit-table th:nth-child(4),
+.credit-table td:nth-child(4),
+.credit-table th:nth-child(5),
+.credit-table td:nth-child(5) {
+    width: 8%;
+}
+
+.credit-table th:nth-child(6),
+.credit-table td:nth-child(6) {
+    width: 7%;
+}
+
+.credit-table th:nth-child(7),
+.credit-table td:nth-child(7),
+.credit-table th:nth-child(8),
+.credit-table td:nth-child(8) {
+    width: 7%;
+}
+
+.credit-table th:nth-child(9),
+.credit-table td:nth-child(9) {
+    width: 7%;
+}
+
+.credit-table th:nth-child(10),
+.credit-table td:nth-child(10) {
+    width: 11%;
+}
+
+.credit-table th:nth-child(11),
+.credit-table td:nth-child(11) {
+    width: 16%;
+}
+
+.credit-table .badge-status {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.15;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.credit-actions-cell {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap;
+}
+
+.credit-actions {
+    gap: .25rem;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+}
+
+.credit-actions .btn {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    justify-content: center;
+    padding: 0;
+    border-radius: var(--radius-sm);
+}
+
+.credit-actions .btn i {
+    margin: 0;
+    font-size: .9rem;
+}
+
+.credit-actions .btn:hover {
+    transform: scale(1.08);
+}
+
+.credit-table-card + .pagination-info-wrap {
+    gap: .75rem;
+    flex-wrap: wrap;
+}
+
+.credit-table-card + .pagination-info-wrap > .d-flex {
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.credit-table-card + .pagination-info-wrap .paginator-info {
+    font-size: .9rem !important;
+}
+
+@media (max-width: 1200px) {
+    .credit-table th:nth-child(6),
+    .credit-table td:nth-child(6) {
+        display: none;
+    }
+
+    .credit-table th:nth-child(11),
+    .credit-table td:nth-child(11) {
+        width: 18%;
+    }
+}
+
+@media (max-width: 992px) {
+    .credit-table th:nth-child(3),
+    .credit-table td:nth-child(3),
+    .credit-table th:nth-child(7),
+    .credit-table td:nth-child(7) {
+        display: none;
+    }
+
+    .credit-table thead th,
+    .credit-table tbody td {
+        padding: 9px 6px;
+    }
+}
+
+@media (max-width: 768px) {
+    .credit-filter-group,
+    .credit-filter-input,
+    .credit-filter-select,
+    .credit-filter-group .select2-container {
+        flex: 1 1 100% !important;
+        flex-basis: 100%;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    .credit-table th:nth-child(4),
+    .credit-table td:nth-child(4),
+    .credit-table th:nth-child(8),
+    .credit-table td:nth-child(8),
+    .credit-table th:nth-child(9),
+    .credit-table td:nth-child(9),
+    .credit-table th:nth-child(10),
+    .credit-table td:nth-child(10) {
+        display: none;
+    }
+
+    .credit-table {
+        font-size: .78rem;
+    }
+
+    .credit-table th:nth-child(1),
+    .credit-table td:nth-child(1) {
+        width: 12%;
+    }
+
+    .credit-table th:nth-child(2),
+    .credit-table td:nth-child(2) {
+        width: 28%;
+    }
+
+    .credit-table th:nth-child(5),
+    .credit-table td:nth-child(5) {
+        width: 24%;
+    }
+
+    .credit-table th:nth-child(11),
+    .credit-table td:nth-child(11) {
+        width: 36%;
+    }
+}
+
+@media (max-width: 576px) {
+    .credit-table thead {
+        display: none;
+    }
+
+    .credit-table thead th,
+    .credit-table tbody td {
+        padding: 8px 4px;
+    }
+
+    .credit-actions {
+        flex-wrap: nowrap;
+        max-width: none;
+    }
+
+    .credit-actions .btn {
+        width: 30px;
+        height: 30px;
+        flex-basis: 30px;
+        font-size: .76rem;
+    }
+
+    .credit-table-card + .pagination-info-wrap {
+        align-items: flex-start !important;
+        flex-direction: column;
+    }
 }
 
 

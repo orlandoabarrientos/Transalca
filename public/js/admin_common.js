@@ -792,7 +792,11 @@ function bindInputGuards() {
 const formDrafts = {};
 
 function modalRecordKey(form) {
-    const idField = form.querySelector('input[name^="old_"], input[id^="old_"], input[name="id"], input[id="id"], input[name*="codigo"], input[name*="cedula"], input[name*="rif"], input[name*="placa"]');
+    const editField = form.querySelector('input[id^="edit"], input[name^="old_"], input[id^="old_"], input[name="id"], input[id="id"]');
+    if (editField) {
+        return `${form.id || 'form'}:${(editField.value || '').trim() || 'new'}`;
+    }
+    const idField = form.querySelector('input[name*="codigo"], input[name*="cedula"], input[name*="rif"], input[name*="placa"]');
     const val = idField ? (idField.value || '').trim() : '';
     return `${form.id || 'form'}:${val || 'new'}`;
 }
@@ -838,30 +842,49 @@ function clearModalDraft(form) {
     if (form) delete formDrafts[modalRecordKey(form)];
 }
 
+function draftFieldValue(el) {
+    if (el.type === 'checkbox' || el.type === 'radio') return el.checked;
+    if (el.multiple) return Array.from(el.selectedOptions).map(opt => opt.value);
+    return el.value;
+}
+
 function restoreModalDrafts(modal) {
     modal.querySelectorAll('form').forEach(form => {
         if (!form.id) return;
         if (form._initialState === undefined) form._initialState = serializeForm(form);
         const data = formDrafts[modalRecordKey(form)];
         if (!data) { updateFormSubmitState(form.id); return; }
+        const changedSelects = [];
         Object.entries(data).forEach(([key, value]) => {
             const el = document.getElementById(key) || form.querySelector(`[name="${cssEscapeValue(key)}"]`);
             if (!el || el.type === 'file') return;
+            const original = draftFieldValue(el);
+            let changed = false;
             if (el.type === 'checkbox' || el.type === 'radio') {
-                el.checked = !!value;
-            } else if (el.multiple && Array.isArray(value)) {
-                Array.from(el.options).forEach(opt => { opt.selected = value.includes(opt.value); });
+                changed = !!original !== !!value;
+                if (changed) el.checked = !!value;
+            } else if (el.multiple) {
+                const arr = Array.isArray(value) ? value : [];
+                changed = JSON.stringify(original) !== JSON.stringify(arr);
+                if (changed) {
+                    Array.from(el.options).forEach(opt => { opt.selected = arr.includes(opt.value); });
+                    changedSelects.push(el);
+                }
             } else {
-                el.value = value;
+                changed = String(original ?? '') !== String(value ?? '');
+                if (changed) {
+                    el.value = value;
+                    if (el.tagName === 'SELECT') changedSelects.push(el);
+                }
             }
-            el.dispatchEvent(new Event('input', { bubbles: true }));
-            el.dispatchEvent(new Event('change', { bubbles: true }));
+            if (changed && el.id) Validator.validateField(form.id, el.id);
         });
         if (window.jQuery && window.jQuery.fn?.select2) {
-            form.querySelectorAll('select').forEach(sel => {
+            changedSelects.forEach(sel => {
                 if (window.jQuery(sel).hasClass('select2-hidden-accessible')) window.jQuery(sel).trigger('change.select2');
             });
         }
+        form._isDirty = form._initialState ? (serializeForm(form) !== form._initialState) : true;
         updateFormSubmitState(form.id);
     });
 }

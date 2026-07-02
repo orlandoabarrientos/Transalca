@@ -1077,6 +1077,8 @@ CREATE TABLE `pagos_credito` (
   `monto_pago` decimal(12,2) NOT NULL,
   `fecha_pago` timestamp NOT NULL DEFAULT current_timestamp(),
   `observaciones_pago` varchar(500) DEFAULT NULL,
+  `revertido` tinyint(1) NOT NULL DEFAULT 0,
+  `fecha_reversion` datetime DEFAULT NULL,
   PRIMARY KEY (`id_pago_credito`),
   KEY `fk_pago_credito` (`id_credito`),
   CONSTRAINT `fk_pago_credito` FOREIGN KEY (`id_credito`) REFERENCES `creditos_orden_venta` (`id_credito`) ON DELETE CASCADE ON UPDATE CASCADE
@@ -1086,7 +1088,7 @@ CREATE TABLE `pagos_credito` (
 
 LOCK TABLES `pagos_credito` WRITE;
 /*!40000 ALTER TABLE `pagos_credito` DISABLE KEYS */;
-INSERT INTO `pagos_credito` VALUES (1,1,555755.00,'2026-06-11 01:06:33','Migracion: abonos previos consolidados');
+INSERT INTO `pagos_credito` VALUES (1,1,555755.00,'2026-06-11 01:06:33','Migracion: abonos previos consolidados',0,NULL);
 /*!40000 ALTER TABLE `pagos_credito` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;

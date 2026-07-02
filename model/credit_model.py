@@ -61,6 +61,20 @@ class CreditModel(Connection):
             return None
         return amount
 
+    def _paid_amount(self, id_credito):
+        row = self.fetch_one("transalca",
+            "SELECT COALESCE(SUM(monto_pago), 0) AS pagado FROM pagos_credito "
+            "WHERE id_credito=%s AND revertido=0", (id_credito,))
+        return self._as_money(row.get('pagado') if row else 0)
+
+    def _estado_por_saldo(self, saldo, fecha_fin):
+        if self._as_money(saldo) <= 0:
+            return 'pagado'
+        end = self._as_date(fecha_fin)
+        if end and end < self._today():
+            return 'vencido'
+        return 'activo'
+
     def _credit_users(self):
         return self.fetch_all("mantenimiento",
             "SELECT DISTINCT u.id FROM usuarios u "
@@ -115,7 +129,7 @@ class CreditModel(Connection):
     def _sync_credit_statuses(self):
         rows = self.fetch_all("transalca",
             "SELECT cr.id_credito, cr.orden_venta_id AS id, cr.estado_credito, cr.fecha_vencimiento_credito, "
-            "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) AS monto_deuda, "
+            "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito AND pc.revertido = 0), 0)) AS monto_deuda, "
             "COALESCE(cr.notificacion_7d, 0) AS notificacion_7d, "
             "COALESCE(cr.notificacion_2d, 0) AS notificacion_2d, "
             "COALESCE(cr.notificacion_vencido, 0) AS notificacion_vencido, "
@@ -171,11 +185,11 @@ class CreditModel(Connection):
     def _get_all(self, search=None, estado=None):
         self._sync_credit_statuses()
         sql = (
-            "SELECT ov.id_orden_venta AS id, ov.cliente_cedula, ov.fecha_orden_venta AS fecha, ov.total_orden_venta AS total, ov.estado AS estado_orden, "
+            "SELECT ov.id_orden_venta AS id, ov.cliente_cedula, DATE_FORMAT(ov.fecha_orden_venta, '%%Y-%%m-%%d') AS fecha, ov.total_orden_venta AS total, ov.estado AS estado_orden, "
             "ov.tipo_pago, mp.moneda, "
-            "cr.id_credito, cr.estado_credito AS credito_estado, cr.fecha_inicio_credito, "
-            "cr.fecha_vencimiento_credito, cr.fecha_pago_credito, "
-            "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) AS monto_deuda, "
+            "cr.id_credito, cr.estado_credito AS credito_estado, DATE_FORMAT(cr.fecha_inicio_credito, '%%Y-%%m-%%d') AS fecha_inicio_credito, "
+            "DATE_FORMAT(cr.fecha_vencimiento_credito, '%%Y-%%m-%%d') AS fecha_vencimiento_credito, DATE_FORMAT(cr.fecha_pago_credito, '%%Y-%%m-%%dT%%H:%%i:%%s') AS fecha_pago_credito, "
+            "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito AND pc.revertido = 0), 0)) AS monto_deuda, "
             "c.nombre_cliente AS nombre, c.correo_cliente AS email, c.telefono_cliente AS telefono, "
             "c.identificador_cliente AS rif, c.nombre_cliente AS razon_social, "
             "j.limite_credito, j.dias_credito, mp.nombre_metodo_pago AS metodo_pago_nombre "
@@ -208,7 +222,7 @@ class CreditModel(Connection):
             "SUM(CASE WHEN cr.estado_credito='pagado' THEN 1 ELSE 0 END) pagados, "
             "SUM(CASE WHEN cr.estado_credito='vencido' THEN 1 ELSE 0 END) vencidos, "
             "COALESCE(SUM(CASE WHEN cr.estado_credito NOT IN ('pagado','anulado') "
-            "THEN (ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) ELSE 0 END),0) saldo "
+            "THEN (ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito AND pc.revertido = 0), 0)) ELSE 0 END),0) saldo "
             "FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id")
         if not row:
             return {'total': 0, 'pendientes': 0, 'pagados': 0, 'vencidos': 0, 'saldo': 0}
@@ -233,7 +247,7 @@ class CreditModel(Connection):
     def _get_by_order(self, order_id):
         return self.fetch_one("transalca",
             "SELECT ov.id_orden_venta AS id, ov.total_orden_venta AS total, cr.id_credito, "
-            "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) AS monto_deuda, cr.estado_credito AS credito_estado, "
+            "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito AND pc.revertido = 0), 0)) AS monto_deuda, cr.estado_credito AS credito_estado, "
             "cr.fecha_inicio_credito, cr.fecha_vencimiento_credito, cr.fecha_pago_credito "
             "FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id "
             "WHERE ov.id_orden_venta=%s",
@@ -241,39 +255,152 @@ class CreditModel(Connection):
 
     def _get_payments(self, order_id):
         return self.fetch_all("transalca",
-            "SELECT pc.id_pago_credito, pc.monto_pago, pc.fecha_pago, pc.observaciones_pago "
+            "SELECT pc.id_pago_credito, pc.monto_pago, DATE_FORMAT(pc.fecha_pago, '%%Y-%%m-%%d') AS fecha_pago, "
+            "pc.observaciones_pago, pc.revertido, pc.fecha_reversion "
             "FROM pagos_credito pc INNER JOIN creditos_orden_venta cr ON cr.id_credito = pc.id_credito "
             "WHERE cr.orden_venta_id = %s ORDER BY pc.fecha_pago DESC",
             (order_id,))
 
-    def _update_dates(self, order_id, fecha_inicio, fecha_fin):
+    def _update_credit(self, order_id, fecha_inicio, fecha_fin, total):
+        credit = self._get_by_order(order_id)
+        if not credit:
+            return {'ok': False, 'status_code': 404, 'message': 'Crédito no encontrado.'}
+        if credit.get('credito_estado') == 'anulado':
+            return {'ok': False, 'message': 'El crédito está anulado y no permite nuevas operaciones.'}
         errors = {}
         start = self._validate_date(fecha_inicio, 'fecha_inicio', errors)
         end = self._validate_date(fecha_fin, 'fecha_fin', errors)
         if start and end and end < start:
             errors['fecha_fin'] = "La fecha fin no puede ser menor a la fecha inicio."
+        amount = self._validate_amount(total, 'total', errors, "El monto")
         if errors:
             raise ValidationError(errors)
-        return self.update("transalca",
-            "UPDATE creditos_orden_venta SET fecha_inicio_credito=%s, fecha_vencimiento_credito=%s, "
-            "estado_credito=CASE WHEN estado_credito IN ('pagado','anulado') THEN estado_credito ELSE 'activo' END, "
-            "notificacion_7d=0, notificacion_2d=0, notificacion_vencido=0 "
-            "WHERE orden_venta_id=%s",
-            (start, end, order_id))
+        pagado = self._paid_amount(credit['id_credito'])
+        if amount < pagado:
+            raise ValidationError({'total': "El monto no puede ser menor a los abonos registrados."})
+        saldo = (amount - pagado).quantize(Decimal("0.01"))
+        estado = self._estado_por_saldo(saldo, end)
+        conn = self.con_transalca()
+        try:
+            conn.begin()
+            cursor = conn.cursor()
+            self._set_session_variables(cursor)
+            cursor.execute(
+                "UPDATE ordenes_venta SET total_orden_venta=%s WHERE id_orden_venta=%s",
+                (amount, order_id))
+            if estado == 'pagado':
+                cursor.execute(
+                    "UPDATE creditos_orden_venta SET fecha_inicio_credito=%s, fecha_vencimiento_credito=%s, "
+                    "estado_credito='pagado', fecha_pago_credito=COALESCE(fecha_pago_credito, NOW()), "
+                    "notificacion_7d=0, notificacion_2d=0, notificacion_vencido=0 WHERE orden_venta_id=%s",
+                    (start, end, order_id))
+            else:
+                cursor.execute(
+                    "UPDATE creditos_orden_venta SET fecha_inicio_credito=%s, fecha_vencimiento_credito=%s, "
+                    "estado_credito=%s, fecha_pago_credito=NULL, "
+                    "notificacion_7d=0, notificacion_2d=0, notificacion_vencido=0 WHERE orden_venta_id=%s",
+                    (start, end, estado, order_id))
+            conn.commit()
+            return {'ok': True, 'message': 'Crédito modificado correctamente.'}
+        except Exception:
+            conn.rollback()
+            raise
 
     def _mark_paid(self, order_id):
         credit = self._get_by_order(order_id)
         if not credit:
-            return 0
+            return {'ok': False, 'status_code': 404, 'message': 'Crédito no encontrado.'}
+        if credit.get('credito_estado') == 'anulado':
+            return {'ok': False, 'message': 'El crédito está anulado y no permite nuevas operaciones.'}
         remaining = self._as_money(credit.get('monto_deuda'))
         if remaining > 0:
             self.insert("transalca",
                 "INSERT INTO pagos_credito (id_credito, monto_pago, observaciones_pago) VALUES (%s, %s, %s)",
                 (credit['id_credito'], remaining, 'Pago total del credito'))
-        return self.update("transalca",
+        self.update("transalca",
             "UPDATE creditos_orden_venta SET estado_credito='pagado', fecha_pago_credito=NOW() "
             "WHERE orden_venta_id=%s",
             (order_id,))
+        return {'ok': True, 'message': 'Crédito pagado correctamente.'}
+
+    def _revert_last_payment(self, order_id):
+        credit = self._get_by_order(order_id)
+        if not credit:
+            return {'ok': False, 'status_code': 404, 'message': 'Crédito no encontrado.'}
+        if credit.get('credito_estado') == 'anulado':
+            return {'ok': False, 'message': 'El crédito está anulado y no permite nuevas operaciones.'}
+        conn = self.con_transalca()
+        try:
+            conn.begin()
+            cursor = conn.cursor()
+            self._set_session_variables(cursor)
+            cursor.execute(
+                "SELECT pc.id_pago_credito, pc.monto_pago, pc.fecha_pago FROM pagos_credito pc "
+                "INNER JOIN creditos_orden_venta cr ON cr.id_credito = pc.id_credito "
+                "INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id "
+                "WHERE ov.id_orden_venta=%s AND pc.revertido=0 "
+                "ORDER BY pc.fecha_pago DESC, pc.id_pago_credito DESC LIMIT 1 FOR UPDATE",
+                (order_id,))
+            pago = cursor.fetchone()
+            if not pago:
+                conn.rollback()
+                return {'ok': False, 'message': 'No hay abonos para revertir.'}
+            cursor.execute(
+                "UPDATE pagos_credito SET revertido=1, fecha_reversion=NOW() WHERE id_pago_credito=%s",
+                (pago['id_pago_credito'],))
+            cursor.execute(
+                "SELECT ov.total_orden_venta AS total, cr.id_credito, cr.fecha_vencimiento_credito, "
+                "COALESCE((SELECT SUM(p.monto_pago) FROM pagos_credito p WHERE p.id_credito = cr.id_credito AND p.revertido=0), 0) AS pagado "
+                "FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id "
+                "WHERE ov.id_orden_venta=%s", (order_id,))
+            row = cursor.fetchone()
+            saldo = (self._as_money(row['total']) - self._as_money(row['pagado'])).quantize(Decimal("0.01"))
+            estado = self._estado_por_saldo(saldo, row.get('fecha_vencimiento_credito'))
+            cursor.execute(
+                "UPDATE creditos_orden_venta SET estado_credito=%s, fecha_pago_credito=NULL, "
+                "notificacion_7d=0, notificacion_2d=0, notificacion_vencido=0 WHERE orden_venta_id=%s",
+                (estado, order_id))
+            conn.commit()
+            self._log_credito('MODIFICAR',
+                f"Ultimo abono revertido orden: {order_id} por ${self._as_money(pago['monto_pago'])}")
+            return {'ok': True, 'message': 'Último abono revertido correctamente.'}
+        except Exception:
+            conn.rollback()
+            raise
+
+    def _anular_credit(self, order_id):
+        credit = self._get_by_order(order_id)
+        if not credit:
+            return {'ok': False, 'status_code': 404, 'message': 'Crédito no encontrado.'}
+        estado = credit.get('credito_estado')
+        if estado == 'anulado':
+            return {'ok': False, 'message': 'El crédito ya está anulado.'}
+        if estado == 'pagado':
+            return {'ok': False, 'message': 'No se puede anular un crédito pagado. Primero debe revertir el último pago.'}
+        conn = self.con_transalca()
+        try:
+            conn.begin()
+            cursor = conn.cursor()
+            self._set_session_variables(cursor)
+            cursor.execute(
+                "UPDATE creditos_orden_venta SET estado_credito='anulado', "
+                "notificacion_7d=0, notificacion_2d=0, notificacion_vencido=0 WHERE orden_venta_id=%s",
+                (order_id,))
+            conn.commit()
+            self._log_credito('ANULAR', f"Credito anulado orden: {order_id}")
+            return {'ok': True, 'message': 'Crédito anulado correctamente.'}
+        except Exception:
+            conn.rollback()
+            raise
+
+    def _log_credito(self, accion, descripcion):
+        try:
+            self.insert("mantenimiento",
+                "INSERT INTO bitacora (usuario_id, accion, modulo, descripcion, ip) "
+                "VALUES (COALESCE(@current_usuario_id, 1), %s, 'CREDITO', %s, COALESCE(@current_ip, '127.0.0.1'))",
+                (accion, descripcion))
+        except Exception:
+            pass
 
     def _create_credit_for_order(self, order_id, fecha_inicio=None, dias_credito=0):
         fecha_inicio = self._as_date(fecha_inicio) or self._today()
@@ -314,7 +441,7 @@ class CreditModel(Connection):
                 "INSERT INTO creditos_orden_venta (orden_venta_id, fecha_inicio_credito, fecha_vencimiento_credito, estado_credito) "
                 "VALUES (%s, %s, %s, 'activo')",
                 (order_id, fecha_inicio, fecha_fin))
-            return {'ok': True, 'id': order_id, 'message': 'Credito registrado correctamente.'}
+            return {'ok': True, 'id': order_id, 'message': 'Crédito registrado correctamente.'}
         except Exception as e:
             return {'ok': False, 'message': f'Error al registrar el credito: {str(e)}'}
 
@@ -329,7 +456,7 @@ class CreditModel(Connection):
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT cr.id_credito, ov.total_orden_venta AS total, cr.estado_credito, "
-                "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) AS monto_deuda "
+                "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito AND pc.revertido = 0), 0)) AS monto_deuda "
                 "FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id "
                 "WHERE ov.id_orden_venta=%s FOR UPDATE",
                 (order_id,)
@@ -338,6 +465,9 @@ class CreditModel(Connection):
             if not row:
                 conn.rollback()
                 return {'ok': False, 'status_code': 404, 'message': 'Crédito no encontrado.'}
+            if row.get('estado_credito') == 'anulado':
+                conn.rollback()
+                return {'ok': False, 'message': 'El crédito está anulado y no permite nuevas operaciones.'}
             if row.get('estado_credito') == 'pagado':
                 conn.rollback()
                 return {'ok': False, 'message': 'Este crédito ya está pagado.'}
@@ -376,8 +506,10 @@ class CreditModel(Connection):
             "update_status": self._update_status,
             "get_by_order": self._get_by_order,
             "get_payments": self._get_payments,
-            "update_dates": self._update_dates,
+            "update_credit": self._update_credit,
             "mark_paid": self._mark_paid,
+            "revert_last_payment": self._revert_last_payment,
+            "anular_credit": self._anular_credit,
             "create_credit_for_order": self._create_credit_for_order,
             "create_credit": self._create_credit,
             "register_payment": self._register_payment,

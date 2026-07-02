@@ -230,6 +230,7 @@ function hideDetail() {
 function showCreateModal() {
     $('#clientModalTitle').text('Registrar Cliente');
     Validator.clearForm('clientForm');
+    delete document.getElementById('fEmail').dataset.originalEmail;
     $('#editCedula').val('');
     $('#fCedulaPrefijo').val('V').prop('disabled', false);
     $('#fCedula').prop('disabled', false);
@@ -250,6 +251,7 @@ function editClient(cedula) {
         $('#fApellido').val(c.apellido);
         $('#fTelefono').val(c.telefono);
         $('#fEmail').val(c.email);
+        document.getElementById('fEmail').dataset.originalEmail = (c.email || '').trim().toLowerCase();
         $('#fDireccion').val(c.direccion);
         new bootstrap.Modal('#clientModal').show();
         Validator.initTracking('clientForm');
@@ -463,6 +465,14 @@ async function validateUniqueClientEmail() {
         delete input.dataset.externalError;
         updateFormSubmitState('clientForm');
         return false;
+    }
+    const originalEmail = input.dataset.originalEmail || '';
+    if (originalEmail && value.trim().toLowerCase() === originalEmail) {
+        delete input.dataset.externalError;
+        input.classList.remove('is-invalid', 'is-valid');
+        clearFieldError(input);
+        updateFormSubmitState('clientForm');
+        return true;
     }
     try {
         const exclude = document.getElementById('editCedula')?.value || buildDocumentValue('fCedulaPrefijo', 'fCedula');

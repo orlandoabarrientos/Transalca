@@ -5,6 +5,12 @@ $(document).ready(function () {
     $('#navbarContainer').load('/components/admin_navbar.html', () => loadNavSession());
     $('#filterEstado').on('change', loadCredits);
     Validator.setRules('creditDatesForm', {
+        creditTotalEdit: {
+            required: true,
+            requiredMsg: 'El monto es obligatorio',
+            min: 0.01,
+            minMsg: 'El monto debe ser mayor a cero'
+        },
         creditStartDate: { required: true, requiredMsg: 'Fecha de inicio requerida' },
         creditEndDate: { required: true, requiredMsg: 'Fecha de fin requerida' }
     });
@@ -122,7 +128,7 @@ function loadCreditStats() {
         $('#pendingCredits').text(r.data.pendientes || 0);
         $('#paidCredits').text(r.data.pagados || 0);
         $('#expiredCredits').text(r.data.vencidos || 0);
-        $('#creditBalance').attr('data-usd-price', r.data.saldo || 0).text(formatUsdBs(r.data.saldo || 0));
+        $('#creditBalance').removeAttr('data-usd-price').text(formatCreditUsd(r.data.saldo));
     });
 }
 
@@ -141,7 +147,7 @@ function loadCredits() {
                 renderRow: (o) => {
                     const startDate = dateOnly(o.fecha_inicio_credito || o.fecha);
                     const endDate = dateOnly(o.fecha_vencimiento_credito || '');
-                    const days = daysUntil(endDate);
+                    const termDays = creditTermDays(startDate, endDate);
                     const debt = Number(o.monto_deuda ?? o.total ?? 0);
                     const paid = String(o.credito_estado || '').toLowerCase() === 'pagado' || debt <= 0;
                     return `
@@ -149,18 +155,14 @@ function loadCredits() {
                             <td>#${o.id}</td>
                             <td>${escapeHtml(o.razon_social || o.nombre || '')}</td>
                             <td>${escapeHtml(o.rif || '')}</td>
-                            <td data-usd-price="${o.total || 0}">${formatUsdBs(o.total || 0)}</td>
-                            <td data-usd-price="${debt}">${formatUsdBs(debt)}</td>
+                            <td>${formatCreditUsd(o.total)}</td>
+                            <td>${formatCreditUsd(debt)}</td>
                             <td>${escapeHtml(o.metodo_pago_nombre || o.metodo_pago || '')}</td>
                             <td>${startDate ? formatCreditDate(startDate) : 'N/A'}</td>
                             <td>${endDate ? formatCreditDate(endDate) : 'N/A'}</td>
-                            <td>${renderDaysLeft(days)}</td>
+                            <td>${renderCreditTerm(termDays)}</td>
                             <td>${creditStatusBadge(o.credito_estado || 'activo')}</td>
-                            <td>
-                                <button class="btn btn-sm btn-warning me-1" title="Modificar crédito" onclick="showCreditDatesModal(${o.id}, '${startDate || ''}', '${endDate || ''}')"><i class="bi bi-pencil-square"></i></button>
-                                <button class="btn btn-sm btn-success me-1" title="Registrar abono" onclick="showCreditPaymentModal(${o.id}, ${debt})" ${paid ? 'disabled' : ''}><i class="bi bi-cash-coin"></i> Abonar</button>
-                                <button class="btn btn-sm btn-success" title="Pagado" onclick="markCreditPaid(${o.id})" ${paid ? 'disabled' : ''}><i class="bi bi-check2-circle"></i> Pagado</button>
-                            </td>
+                            <td class="credit-actions-cell">${renderCreditActions(o, debt, paid, startDate, endDate)}</td>
                         </tr>
                     `;
                 },
@@ -171,6 +173,10 @@ function loadCredits() {
         }
         enhanceSearchableSelects();
     });
+}
+
+function formatCreditUsd(amount) {
+    return `$${formatCurrency(amount || 0)}`;
 }
 
 function dateOnly(value) {
@@ -197,6 +203,80 @@ function renderDaysLeft(days) {
     if (days <= 0) return '<span class="badge-status badge-inactive">Vencido</span>';
     if (days <= 2) return `<span class="badge-status badge-pending">${days} días</span>`;
     return `<span class="badge-status badge-info">${days} días</span>`;
+}
+
+function creditTermDays(start, end) {
+    if (!start || !end) return null;
+    const a = new Date(`${start}T00:00:00`);
+    const b = new Date(`${end}T00:00:00`);
+    if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
+    return Math.max(0, Math.round((b - a) / 86400000));
+}
+
+function renderCreditTerm(days) {
+    if (days === null) return '<span class="text-muted">N/A</span>';
+    return `<span class="badge-status badge-info">${days} días</span>`;
+}
+
+function renderCreditActions(o, debt, paid, startDate, endDate) {
+    const estado = String(o.credito_estado || 'activo').toLowerCase();
+    if (estado === 'anulado') {
+        return '<span class="text-muted small">Sin acciones</span>';
+    }
+    const total = Number(o.total || 0);
+    const btns = [
+        `<button class="btn btn-sm btn-warning" title="Modificar crédito" onclick="showCreditDatesModal(${o.id}, '${startDate || ''}', '${endDate || ''}', ${total})"><i class="bi bi-pencil-square"></i></button>`
+    ];
+    if (paid) {
+        btns.push(`<button class="btn btn-sm btn-info" title="Revertir último abono" onclick="revertLastPayment(${o.id})"><i class="bi bi-arrow-counterclockwise"></i></button>`);
+    } else {
+        btns.push(`<button class="btn btn-sm btn-success" title="Registrar abono" onclick="showCreditPaymentModal(${o.id}, ${debt})"><i class="bi bi-cash-coin"></i></button>`);
+        btns.push(`<button class="btn btn-sm btn-success" title="Marcar como pagado" onclick="markCreditPaid(${o.id})"><i class="bi bi-check2-circle"></i></button>`);
+    }
+    btns.push(`<button class="btn btn-sm btn-danger" title="Anular crédito" onclick="anularCredit(${o.id}, ${total}, ${debt})"><i class="bi bi-x-octagon"></i></button>`);
+    return `<div class="table-actions credit-actions">${btns.join('')}</div>`;
+}
+
+function revertLastPayment(id) {
+    $.get(`/api/credit/${id}/payments`, function (r) {
+        const pagos = (r.data || []).filter(p => Number(p.revertido) === 0);
+        if (!pagos.length) {
+            showToast('No hay abonos para revertir.', 'error');
+            return;
+        }
+        const last = pagos[0];
+        const monto = formatCreditUsd(last.monto_pago);
+        const fecha = formatCreditDate(dateOnly(last.fecha_pago));
+        confirmAction(`¿Estás seguro de revertir el último abono de ${monto} del ${fecha}?`, () => {
+            apiCall(`/api/credit/${id}/revert`, 'PUT').then(res => {
+                if (res.status === 'success') {
+                    showToast(res.message, 'success');
+                    loadCreditStats();
+                    loadCredits();
+                    return;
+                }
+                showToast(res.message || 'No se pudo revertir el abono', 'error');
+            });
+        }, { type: 'warning', confirmText: 'Revertir' });
+    });
+}
+
+function anularCredit(id, total, debt) {
+    const tieneAbonos = (Number(total || 0) - Number(debt || 0)) > 0;
+    const message = tieneAbonos
+        ? 'Este crédito tiene abonos registrados. Al anularlo se conservará el historial, pero no se permitirán nuevas operaciones. ¿Deseas continuar?'
+        : '¿Estás seguro de que deseas anular este crédito?';
+    confirmAction(message, () => {
+        apiCall(`/api/credit/${id}/anular`, 'PUT').then(res => {
+            if (res.status === 'success') {
+                showToast(res.message, 'success');
+                loadCreditStats();
+                loadCredits();
+                return;
+            }
+            showToast(res.message || 'No se pudo anular el crédito', 'error');
+        });
+    }, { type: 'warning', confirmText: 'Anular', confirmColor: '#e95d0f' });
 }
 
 function creditStatusBadge(status) {
@@ -229,9 +309,10 @@ function updateCreditStatus(id, estado) {
     });
 }
 
-function showCreditDatesModal(id, startDate, endDate) {
+function showCreditDatesModal(id, startDate, endDate, total) {
     Validator.clearForm('creditDatesForm');
     $('#creditOrderId').val(id);
+    $('#creditTotalEdit').val(Number(total || 0).toFixed(2));
     $('#creditStartDate').val(startDate || new Date().toISOString().slice(0, 10));
     $('#creditEndDate').val(endDate || '');
     new bootstrap.Modal('#creditDatesModal').show();
@@ -250,9 +331,10 @@ function saveCreditDates() {
         return;
     }
     const id = $('#creditOrderId').val();
+    const total = $('#creditTotalEdit').val();
     const btn = document.querySelector('#creditDatesModal .btn-orange') || document.querySelector('#creditDatesModal .btn-warning');
     setButtonLoading(btn, true, 'Modificando...');
-    apiCall(`/api/credit/${id}/dates`, 'PUT', { fecha_inicio: start, fecha_fin: end }).then(r => {
+    apiCall(`/api/credit/${id}/dates`, 'PUT', { fecha_inicio: start, fecha_fin: end, total }).then(r => {
         if (r.status === 'success') {
             showToast(r.message, 'success');
             bootstrap.Modal.getInstance(document.getElementById('creditDatesModal'))?.hide();
@@ -283,11 +365,10 @@ function showCreditPaymentModal(id, debt) {
     Validator.clearForm('creditPaymentForm');
     $('#creditPaymentOrderId').val(id);
     $('#creditPaymentDebt').val(Number(debt || 0).toFixed(2));
-    $('#creditPaymentDebtLabel').attr('data-usd-price', debt || 0).text(formatUsdBs(debt || 0));
+    $('#creditPaymentDebtLabel').removeAttr('data-usd-price').text(formatCreditUsd(debt));
     $('#creditPaymentAmount').val('').attr('max', Number(debt || 0).toFixed(2));
     new bootstrap.Modal('#creditPaymentModal').show();
     Validator.initTracking('creditPaymentForm');
-    hydrateDualPrices();
 }
 
 function saveCreditPayment() {
