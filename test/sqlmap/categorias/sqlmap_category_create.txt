@@ -1,0 +1,8 @@
+POST /api/categories/ HTTP/1.1
+Host: 127.0.0.1:5000
+Cookie: session=.eJyllsFuFDEMht8l51LtQCVgTvAMSFyqauR1vFurSRxszyK16rujWXZKBQVtzZwcJd8f-5cdzUPqpJVNLI0PacsOKApLDOgzFL4HTePmIqHSKaLCldtpUYg0jcPjxRM7HeiWcS7yu8jwJDI8FxmeiyA47UUZLEQXpuYUY6WysbQgrZTZJcRmsNutgOaI61S7ksXsIkNoy-L16I6La6zc_cyh_qqgGKuzEkJjjKVbySWLTR32oY6ukucSu7qJ844RMNyWopnahFL7nzN9Nh-7evErBpLuuEQ6pKvkGYNT2FWqxJ3uKgeiLBrDv4WmUKmLvvDenWPWyk5kDpnNXxqQ84SsQ8n_goe_w1JihhnpgZFlWof7f0RiGbjgXQiccVaDYOEOBjbBAdo95Nh76Ix35CF0thk0aNj6X2Cvh391ynX6nCs3NlfIoulmyYl0gk6lcJY0pi9sThXSaQcpzwXSmL6-2Zy-dYsqLC9NgkXykys0g4JwiVLXIzvxRfMYD9Pw_sPm6t3H4e3V5Xfa9vUQ52O2x7hJ3Sql8Wee6wnnvshQ7YUgS3r8AYDQGKo.ak7mig.Ph0qT2GCwIr4osfWId-YwSVIZzg
+Content-Type: application/json
+User-Agent: Mozilla/5.0
+Referer: http://127.0.0.1:5000/
+
+{"nombre":"Categoria Prueba","descripcion":"Descripcion categoria de prueba"}

@@ -1,0 +1,3 @@
+http://127.0.0.1:5000/api/orders/cart/1/update (POST)  # D:\Programacion\Sistemas\Transalca\.venv\Scripts\sqlmap -r test/sqlmap/ordenes/sqlmap_order_cart_update.txt --batch --level=2 --risk=2 --ignore-code=401,429,404,405 --dbms=mysql --output-dir=d:/Programacion/Sistemas/Transalca/test/sqlmap/resultados --flush-session
+
+{"cantidad":2}

@@ -1,0 +1,8 @@
+PUT /api/companies/J-55656666-5 HTTP/1.1
+Host: 127.0.0.1:5000
+Cookie: session=.eJyllsFq5DAMht_F51Imx-mpe--l7NJLKUFja6aituXKysC29N2rwGQ6bNtlVgsh2CifYv_5Jec1NJRCnXu4eg0bUogsMI8h6gSZXkDC1eoiRMHDCDMVqodJRrTB8HZxZMc9PlKcMv-ZZDgmGU6TDKdJIijuWAi6i86EVdHHsqlAXJ20YCJlF5ugP24YJHlUx9IEu08u7BHqPPl3dEtZxbfd3UQufxWQ6NtnQdsnRd9yCyon7mODncvRhZPVguvVlZW2FCG6bcmSsI5m7fa5ps_mfa-e9fKBKOYuj0OamNbRWYUGF_YrbfgeMbH48GdXFQo2li_63TliLeyIXSFR168K5LxEvUFOf4OH72HOPsE6yp7sc41Lcf9PEt8KlOOTC5ziJB2cG1ewbj_CHuoLJF8_tE_9hOpCpz6BOAVb_gsc8IdT7sOPZHHzq4BVW3iY14QyQsOcKZkNwi9ztGGHQETrv9b8wt16tV7ZtV4iWGDuM8GKQH9fz_dL65RLdMs6J0u4hSnrZau7JUJ2UA-rw6Ry2Qjagz9vbwq05RmlNtN2Ome0dYa3d4HEFLU.ak9VwQ.Y3zdNW83JREOCEvQP1WVoSKP2fw
+
+Referer: http://127.0.0.1:5000/
+Content-Type: application/json
+
+{"nombre":"Empresa Modificada C.A","email":"nuevo@empresa.com","telefono":"04141234567","direccion":"Caracas"}
