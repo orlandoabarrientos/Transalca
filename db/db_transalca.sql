@@ -110,7 +110,7 @@ CREATE TABLE `carrito_compra` (
   KEY `fk_carrito_servicio` (`servicio_id`),
   CONSTRAINT `carrito_ibfk_1` FOREIGN KEY (`cliente_cedula`) REFERENCES `cliente` (`identificador_cliente`) ON UPDATE CASCADE,
   CONSTRAINT `fk_carrito_producto` FOREIGN KEY (`producto_codigo`) REFERENCES `productos` (`codigo`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_carrito_servicio` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id_servicio`) ON DELETE SET NULL
+  CONSTRAINT `fk_carrito_servicio` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id_servicio`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -355,7 +355,7 @@ CREATE TABLE `comisiones_mecanico` (
   `precio_servicio_comision` decimal(10,2) NOT NULL,
   `porcentaje_comision` decimal(5,2) DEFAULT 30.00,
   PRIMARY KEY (`servicio_mecanico_id`),
-  CONSTRAINT `comisiones_mecanico_ibfk_2` FOREIGN KEY (`servicio_mecanico_id`) REFERENCES `servicio_mecanico` (`id_servicio_mecanico`)
+  CONSTRAINT `comisiones_mecanico_ibfk_2` FOREIGN KEY (`servicio_mecanico_id`) REFERENCES `servicio_mecanico` (`id_servicio_mecanico`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -411,7 +411,7 @@ CREATE TABLE `comprobantes_pago` (
   KEY `orden_venta_id` (`orden_venta_id`),
   KEY `estado` (`estado`),
   KEY `idx_comprobante_estado_fecha` (`estado`,`fecha_comprobante`),
-  CONSTRAINT `comprobantes_pago_ibfk_1` FOREIGN KEY (`orden_venta_id`) REFERENCES `ordenes_venta` (`id_orden_venta`) ON DELETE CASCADE
+  CONSTRAINT `comprobantes_pago_ibfk_1` FOREIGN KEY (`orden_venta_id`) REFERENCES `ordenes_venta` (`id_orden_venta`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -542,7 +542,7 @@ CREATE TABLE `detalle_orden_compra` (
   PRIMARY KEY (`id_detalle_orden_compra`),
   KEY `orden_compra_id` (`orden_compra_id`),
   KEY `producto_codigo` (`producto_codigo`),
-  CONSTRAINT `detalle_orden_compra_ibfk_1` FOREIGN KEY (`orden_compra_id`) REFERENCES `ordenes_compra` (`id_orden_compra`) ON DELETE CASCADE,
+  CONSTRAINT `detalle_orden_compra_ibfk_1` FOREIGN KEY (`orden_compra_id`) REFERENCES `ordenes_compra` (`id_orden_compra`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `detalle_orden_compra_ibfk_2` FOREIGN KEY (`producto_codigo`) REFERENCES `productos` (`codigo`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -567,7 +567,7 @@ CREATE TABLE `detalle_orden_venta_productos` (
   PRIMARY KEY (`id_detalle_orden_venta_producto`),
   KEY `orden_id` (`orden_id`),
   KEY `producto_codigo` (`producto_codigo`),
-  CONSTRAINT `detalle_orden_venta_productos_ibfk_1` FOREIGN KEY (`orden_id`) REFERENCES `ordenes_venta` (`id_orden_venta`) ON DELETE CASCADE,
+  CONSTRAINT `detalle_orden_venta_productos_ibfk_1` FOREIGN KEY (`orden_id`) REFERENCES `ordenes_venta` (`id_orden_venta`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `detalle_orden_venta_productos_ibfk_2` FOREIGN KEY (`producto_codigo`) REFERENCES `productos` (`codigo`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -592,8 +592,8 @@ CREATE TABLE `detalle_orden_venta_servicios` (
   PRIMARY KEY (`id_detalle_orden_venta_servicio`),
   KEY `orden_id` (`orden_id`),
   KEY `servicio_id` (`servicio_id`),
-  CONSTRAINT `detalle_orden_venta_servicios_ibfk_1` FOREIGN KEY (`orden_id`) REFERENCES `ordenes_venta` (`id_orden_venta`) ON DELETE CASCADE,
-  CONSTRAINT `detalle_orden_venta_servicios_ibfk_2` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id_servicio`)
+  CONSTRAINT `detalle_orden_venta_servicios_ibfk_1` FOREIGN KEY (`orden_id`) REFERENCES `ordenes_venta` (`id_orden_venta`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `detalle_orden_venta_servicios_ibfk_2` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id_servicio`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -673,7 +673,7 @@ CREATE TABLE `historial_puntos` (
   PRIMARY KEY (`id_historial_punto`),
   KEY `tarjeta_id` (`tarjeta_id`),
   KEY `tipo` (`tipo_historial_punto`),
-  CONSTRAINT `historial_puntos_ibfk_1` FOREIGN KEY (`tarjeta_id`) REFERENCES `tarjeta_fidelidad` (`id_tarjeta_fidelidad`) ON DELETE CASCADE
+  CONSTRAINT `historial_puntos_ibfk_1` FOREIGN KEY (`tarjeta_id`) REFERENCES `tarjeta_fidelidad` (`id_tarjeta_fidelidad`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -925,7 +925,7 @@ CREATE TABLE `ordenes_compra` (
   KEY `proveedor_rif` (`proveedor_rif`),
   KEY `sucursal_id` (`sucursal_id`),
   CONSTRAINT `ordenes_compra_ibfk_1` FOREIGN KEY (`proveedor_rif`) REFERENCES `proveedores` (`rif_proveedor`) ON UPDATE CASCADE,
-  CONSTRAINT `ordenes_compra_ibfk_2` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursales` (`id_sucursal`)
+  CONSTRAINT `ordenes_compra_ibfk_2` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursales` (`id_sucursal`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -993,10 +993,10 @@ CREATE TABLE `ordenes_venta` (
   KEY `fk_ordenes_venta_metodo_pago` (`metodo_pago_id`),
   KEY `fk_ordenes_venta_tasa_cambio` (`tasa_cambio_id`),
   KEY `idx_orden_estado_fecha` (`estado`,`fecha_orden_venta`),
-  CONSTRAINT `fk_ordenes_venta_metodo_pago` FOREIGN KEY (`metodo_pago_id`) REFERENCES `metodos_pago` (`id_metodo_pago`) ON DELETE SET NULL,
+  CONSTRAINT `fk_ordenes_venta_metodo_pago` FOREIGN KEY (`metodo_pago_id`) REFERENCES `metodos_pago` (`id_metodo_pago`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_ordenes_venta_tasa_cambio` FOREIGN KEY (`tasa_cambio_id`) REFERENCES `tasas_cambio` (`id_tasa_cambio`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `ordenes_venta_ibfk_1` FOREIGN KEY (`cliente_cedula`) REFERENCES `cliente` (`identificador_cliente`) ON UPDATE CASCADE,
-  CONSTRAINT `ordenes_venta_ibfk_2` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursales` (`id_sucursal`) ON DELETE SET NULL
+  CONSTRAINT `ordenes_venta_ibfk_2` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursales` (`id_sucursal`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1411,9 +1411,9 @@ CREATE TABLE `servicio_mecanico` (
   KEY `vehiculo_placa` (`vehiculo_placa`),
   CONSTRAINT `fk_servicio_mecanico_cliente` FOREIGN KEY (`cliente_cedula`) REFERENCES `cliente` (`identificador_cliente`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_servicio_mecanico_vehiculo` FOREIGN KEY (`vehiculo_placa`) REFERENCES `vehiculos` (`placa_vehiculo`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `servicio_mecanico_ibfk_1` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id_servicio`),
+  CONSTRAINT `servicio_mecanico_ibfk_1` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id_servicio`) ON UPDATE CASCADE,
   CONSTRAINT `servicio_mecanico_ibfk_2` FOREIGN KEY (`mecanico_cedula`) REFERENCES `mecanicos` (`cedula_mecanico`) ON UPDATE CASCADE,
-  CONSTRAINT `servicio_mecanico_ibfk_3` FOREIGN KEY (`orden_venta_id`) REFERENCES `ordenes_venta` (`id_orden_venta`)
+  CONSTRAINT `servicio_mecanico_ibfk_3` FOREIGN KEY (`orden_venta_id`) REFERENCES `ordenes_venta` (`id_orden_venta`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1435,8 +1435,8 @@ CREATE TABLE `servicio_sucursal` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`servicio_id`,`sucursal_id`),
   KEY `sucursal_id` (`sucursal_id`),
-  CONSTRAINT `servicio_sucursal_ibfk_1` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id_servicio`) ON DELETE CASCADE,
-  CONSTRAINT `servicio_sucursal_ibfk_2` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursales` (`id_sucursal`) ON DELETE CASCADE
+  CONSTRAINT `servicio_sucursal_ibfk_1` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id_servicio`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `servicio_sucursal_ibfk_2` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursales` (`id_sucursal`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1566,7 +1566,7 @@ CREATE TABLE `stock` (
   PRIMARY KEY (`producto_codigo`,`sucursal_id`),
   KEY `sucursal_id` (`sucursal_id`),
   CONSTRAINT `stock_ibfk_1` FOREIGN KEY (`producto_codigo`) REFERENCES `productos` (`codigo`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `stock_ibfk_2` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursales` (`id_sucursal`)
+  CONSTRAINT `stock_ibfk_2` FOREIGN KEY (`sucursal_id`) REFERENCES `sucursales` (`id_sucursal`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1674,7 +1674,7 @@ CREATE TABLE `tarjeta_fidelidad` (
   KEY `cliente_cedula` (`cliente_cedula`),
   KEY `promocion_id` (`promocion_id`),
   CONSTRAINT `tarjeta_fidelidad_ibfk_1` FOREIGN KEY (`cliente_cedula`) REFERENCES `cliente` (`identificador_cliente`) ON UPDATE CASCADE,
-  CONSTRAINT `tarjeta_fidelidad_ibfk_2` FOREIGN KEY (`promocion_id`) REFERENCES `promociones` (`id_promocion`)
+  CONSTRAINT `tarjeta_fidelidad_ibfk_2` FOREIGN KEY (`promocion_id`) REFERENCES `promociones` (`id_promocion`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1799,7 +1799,7 @@ CREATE TABLE `ticket_respuestas` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id_ticket_respuesta`),
   KEY `ticket_id` (`ticket_id`),
-  CONSTRAINT `ticket_respuestas_ibfk_1` FOREIGN KEY (`ticket_id`) REFERENCES `tickets_soporte` (`id_ticket_soporte`) ON DELETE CASCADE
+  CONSTRAINT `ticket_respuestas_ibfk_1` FOREIGN KEY (`ticket_id`) REFERENCES `tickets_soporte` (`id_ticket_soporte`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

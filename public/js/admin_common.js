@@ -88,7 +88,7 @@ function setFieldError(el, message) {
         feedback.textContent = message || '';
         feedback.style.display = 'block';
         const msg = (message || '').toLowerCase();
-        if (msg.includes('ya existe') || msg.includes('ya registrado') || msg.includes('ya esta registrado') || msg.includes('ya está registrado') || msg.includes('ya registrada') || msg.includes('ya se encuentra')) {
+        if (msg.includes('ya existe') || msg.includes('ya registrado') || msg.includes('ya esta registrado') || msg.includes('ya está registrado') || msg.includes('ya registrada') || msg.includes('ya esta registrada') || msg.includes('ya está registrada') || msg.includes('ya se encuentra')) {
             feedback.style.color = '#dc3545';
         } else {
             feedback.style.color = '#b0b0b0';

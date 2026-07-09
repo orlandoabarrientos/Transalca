@@ -46,6 +46,10 @@ def update_status(order_id):
             return deny()
         data = request.get_json() or {}
         updated = model.ejecutar("update_status", order_id, data.get('estado'))
+        if isinstance(updated, dict):
+            if not updated.get('ok'):
+                return jsonify({"status": "error", "message": updated.get('message', 'No se pudo completar la solicitud.')}), updated.get('status_code', 400)
+            return jsonify({"status": "success", "message": "Crédito modificado correctamente."})
         if not updated:
             return jsonify({"status": "error", "message": "Crédito no encontrado."}), 404
         return jsonify({"status": "success", "message": "Crédito modificado correctamente."})

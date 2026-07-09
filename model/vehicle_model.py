@@ -162,11 +162,14 @@ class VehicleModel(Connection):
             raise ValidationError({'placa': 'Esta placa ya esta registrada para este cliente.'})
 
         conn = self.con_transalca()
-        conn.begin()
         try:
-            existing_vehicle = self.fetch_one("transalca", "SELECT placa_vehiculo, estado FROM vehiculos WHERE placa_vehiculo = %s", (placa,))
+            conn.begin()
+            cursor = conn.cursor()
+            self._set_session_variables(cursor)
+            cursor.execute("SELECT placa_vehiculo, estado FROM vehiculos WHERE placa_vehiculo = %s", (placa,))
+            existing_vehicle = cursor.fetchone()
             if not existing_vehicle:
-                self.insert("transalca",
+                cursor.execute(
                     "INSERT INTO vehiculos (marca_vehiculo, modelo_vehiculo, anio_vehiculo, placa_vehiculo, color_vehiculo, "
                     "tipo_vehiculo, tipo_combustible, kilometraje_actual, aceite_info, "
                     "filtros_info, refrigerante_info, observaciones_vehiculo, titulo_vehiculo, estado) "
@@ -183,26 +186,28 @@ class VehicleModel(Connection):
                      (data.get('observaciones') or '').strip(),
                      data.get('titulo_vehiculo') or None))
             elif existing_vehicle['estado'] == 0:
-                self.update("transalca", "UPDATE vehiculos SET estado = 1 WHERE placa_vehiculo = %s", (placa,))
+                cursor.execute("UPDATE vehiculos SET estado = 1 WHERE placa_vehiculo = %s", (placa,))
 
             if cliente_cedula:
-                existing_rel = self.fetch_one("transalca",
+                cursor.execute(
                     "SELECT id_cliente_vehiculo AS id, estado FROM cliente_vehiculo WHERE cliente_cedula = %s AND vehiculo_placa = %s",
                     (cliente_cedula, placa))
+                existing_rel = cursor.fetchone()
                 if not existing_rel:
-                    self.insert("transalca",
+                    cursor.execute(
                         "INSERT INTO cliente_vehiculo (cliente_cedula, vehiculo_placa, estado) VALUES (%s, %s, 1)",
                         (cliente_cedula, placa))
                 elif existing_rel['estado'] == 0:
-                    self.update("transalca", "UPDATE cliente_vehiculo SET estado = 1 WHERE id_cliente_vehiculo = %s", (existing_rel['id'],))
+                    cursor.execute("UPDATE cliente_vehiculo SET estado = 1 WHERE id_cliente_vehiculo = %s", (existing_rel['id'],))
 
                 representante_cedula = data.get('representante_cedula', '').strip()
                 if representante_cedula:
-                    rep_rel = self.fetch_one("transalca",
+                    cursor.execute(
                         "SELECT id_empresa_representante AS id FROM representante WHERE empresa_rif = %s AND representante_cedula = %s",
                         (cliente_cedula, representante_cedula))
+                    rep_rel = cursor.fetchone()
                     if rep_rel:
-                        self.insert("transalca",
+                        cursor.execute(
                             "INSERT INTO empresa_vehiculo_representante (empresa_representante_id, vehiculo_placa, tipo_operacion) "
                             "VALUES (%s, %s, 'registro')",
                             (rep_rel['id'], placa))

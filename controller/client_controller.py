@@ -140,6 +140,8 @@ def update(cedula):
         return jsonify({"status": "success", "message": "Cliente modificado correctamente."})
     except ValidationError as e:
         return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
+    except LookupError:
+        return jsonify({"status": "error", "message": "Cliente no encontrado"}), 404
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -152,7 +154,7 @@ def toggle(cedula):
             return auth
         if not is_employee() or cedula == 'V-00000000':
             return deny()
-        estado = model.ejecutar("toggle_estado", cedula)
+        estado = model.ejecutar("soft_delete", cedula)
 
         return jsonify({"status": "success", "message": "Cliente eliminado correctamente.", "estado": estado})
     except Exception as e:

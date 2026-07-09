@@ -1,3 +1,4 @@
+import logging
 import smtplib
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -9,6 +10,7 @@ from config.validation import ValidationError
 from model.connection import Connection
 from model.notification_model import NotificationModel
 
+logger = logging.getLogger(__name__)
 ALLOWED_STATUS = {'pendiente', 'aprobado', 'activo', 'pagado', 'vencido', 'anulado'}
 
 
@@ -182,8 +184,14 @@ class CreditModel(Connection):
                     "UPDATE creditos_orden_venta SET notificacion_7d = 1 WHERE id_credito = %s",
                     (row['id_credito'],))
 
+    def _safe_sync_credit_statuses(self):
+        try:
+            self._sync_credit_statuses()
+        except Exception:
+            logger.warning("No se pudo sincronizar los estados de credito.", exc_info=True)
+
     def _get_all(self, search=None, estado=None):
-        self._sync_credit_statuses()
+        self._safe_sync_credit_statuses()
         sql = (
             "SELECT ov.id_orden_venta AS id, ov.cliente_cedula, DATE_FORMAT(ov.fecha_orden_venta, '%%Y-%%m-%%d') AS fecha, ov.total_orden_venta AS total, ov.estado AS estado_orden, "
             "ov.tipo_pago, mp.moneda, "
@@ -215,7 +223,7 @@ class CreditModel(Connection):
         return self.fetch_all("transalca", sql, tuple(params))
 
     def _get_stats(self):
-        self._sync_credit_statuses()
+        self._safe_sync_credit_statuses()
         row = self.fetch_one("transalca",
             "SELECT COUNT(*) total, "
             "SUM(CASE WHEN cr.estado_credito IN ('pendiente','aprobado','activo') THEN 1 ELSE 0 END) pendientes, "
@@ -240,6 +248,8 @@ class CreditModel(Connection):
             raise ValidationError({'estado': "El estado seleccionado no es válido."})
         if estado == 'pagado':
             return self._mark_paid(order_id)
+        if estado == 'anulado':
+            return self._anular_credit(order_id)
         return self.update("transalca",
             "UPDATE creditos_orden_venta SET estado_credito=%s WHERE orden_venta_id=%s",
             (estado, order_id))
@@ -307,21 +317,38 @@ class CreditModel(Connection):
             raise
 
     def _mark_paid(self, order_id):
-        credit = self._get_by_order(order_id)
-        if not credit:
-            return {'ok': False, 'status_code': 404, 'message': 'Crédito no encontrado.'}
-        if credit.get('credito_estado') == 'anulado':
-            return {'ok': False, 'message': 'El crédito está anulado y no permite nuevas operaciones.'}
-        remaining = self._as_money(credit.get('monto_deuda'))
-        if remaining > 0:
-            self.insert("transalca",
-                "INSERT INTO pagos_credito (id_credito, monto_pago, observaciones_pago) VALUES (%s, %s, %s)",
-                (credit['id_credito'], remaining, 'Pago total del credito'))
-        self.update("transalca",
-            "UPDATE creditos_orden_venta SET estado_credito='pagado', fecha_pago_credito=NOW() "
-            "WHERE orden_venta_id=%s",
-            (order_id,))
-        return {'ok': True, 'message': 'Crédito pagado correctamente.'}
+        conn = self.con_transalca()
+        try:
+            conn.begin()
+            cursor = conn.cursor()
+            self._set_session_variables(cursor)
+            cursor.execute(
+                "SELECT cr.id_credito, cr.estado_credito, "
+                "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito AND pc.revertido = 0), 0)) AS monto_deuda "
+                "FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id "
+                "WHERE ov.id_orden_venta=%s FOR UPDATE",
+                (order_id,))
+            credit = cursor.fetchone()
+            if not credit:
+                conn.rollback()
+                return {'ok': False, 'status_code': 404, 'message': 'Crédito no encontrado.'}
+            if credit.get('estado_credito') == 'anulado':
+                conn.rollback()
+                return {'ok': False, 'message': 'El crédito está anulado y no permite nuevas operaciones.'}
+            remaining = self._as_money(credit.get('monto_deuda'))
+            if remaining > 0:
+                cursor.execute(
+                    "INSERT INTO pagos_credito (id_credito, monto_pago, observaciones_pago) VALUES (%s, %s, %s)",
+                    (credit['id_credito'], remaining, 'Pago total del credito'))
+            cursor.execute(
+                "UPDATE creditos_orden_venta SET estado_credito='pagado', fecha_pago_credito=NOW() "
+                "WHERE orden_venta_id=%s",
+                (order_id,))
+            conn.commit()
+            return {'ok': True, 'message': 'Crédito pagado correctamente.'}
+        except Exception:
+            conn.rollback()
+            raise
 
     def _revert_last_payment(self, order_id):
         credit = self._get_by_order(order_id)
@@ -400,7 +427,7 @@ class CreditModel(Connection):
                 "VALUES (COALESCE(@current_usuario_id, 1), %s, 'CREDITO', %s, COALESCE(@current_ip, '127.0.0.1'))",
                 (accion, descripcion))
         except Exception:
-            pass
+            logger.warning("No se pudo registrar la accion de credito en bitacora.", exc_info=True)
 
     def _create_credit_for_order(self, order_id, fecha_inicio=None, dias_credito=0):
         fecha_inicio = self._as_date(fecha_inicio) or self._today()
@@ -430,20 +457,28 @@ class CreditModel(Connection):
             "WHERE c.identificador_cliente = %s AND c.estado = 1",
             (cliente_cedula,))
         if not client:
-            return {'ok': False, 'message': 'La empresa no existe o esta inactiva.'}
+            return {'ok': False, 'message': 'La empresa no existe o está inactiva.'}
+        conn = self.con_transalca()
         try:
-            order_id = self.insert("transalca",
+            conn.begin()
+            cursor = conn.cursor()
+            self._set_session_variables(cursor)
+            cursor.execute(
                 "INSERT INTO ordenes_venta (cliente_cedula, total_orden_venta, tipo_pago, tasa_cambio_id) "
                 "VALUES (%s, %s, 'credito', "
                 "(SELECT t.id_tasa_cambio FROM tasas_cambio t WHERE t.tipo_tasa_cambio='bcv' ORDER BY t.fecha_tasa_cambio DESC, t.id_tasa_cambio DESC LIMIT 1))",
                 (cliente_cedula, total))
-            self.insert("transalca",
+            order_id = cursor.lastrowid
+            cursor.execute(
                 "INSERT INTO creditos_orden_venta (orden_venta_id, fecha_inicio_credito, fecha_vencimiento_credito, estado_credito) "
                 "VALUES (%s, %s, %s, 'activo')",
                 (order_id, fecha_inicio, fecha_fin))
+            conn.commit()
             return {'ok': True, 'id': order_id, 'message': 'Crédito registrado correctamente.'}
-        except Exception as e:
-            return {'ok': False, 'message': f'Error al registrar el credito: {str(e)}'}
+        except Exception:
+            conn.rollback()
+            logger.warning("No se pudo registrar el credito.", exc_info=True)
+            return {'ok': False, 'message': 'No se pudo registrar el crédito.'}
 
     def _register_payment(self, order_id, amount, observaciones=None):
         errors = {}
@@ -454,6 +489,7 @@ class CreditModel(Connection):
         try:
             conn.begin()
             cursor = conn.cursor()
+            self._set_session_variables(cursor)
             cursor.execute(
                 "SELECT cr.id_credito, ov.total_orden_venta AS total, cr.estado_credito, "
                 "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito AND pc.revertido = 0), 0)) AS monto_deuda "

@@ -96,18 +96,17 @@ class ClientModel(Connection):
             q = f"%{search}%"
             params.extend([q, q, q, q])
         sql += " AND c.estado = %s"
-        params.append(int(estado) if estado is not None else 1)
+        try:
+            estado_val = int(estado) if estado is not None else 1
+        except (TypeError, ValueError):
+            estado_val = 1
+        params.append(estado_val)
         sql += " ORDER BY c.created_at DESC"
         return self.fetch_all("transalca", sql, tuple(params) if params else None)
 
     def _get_by_cedula(self, cedula):
         return self.fetch_one("transalca",
             CLIENTE_BASE + " WHERE c.identificador_cliente = %s", (cedula,))
-
-    def _get_cliente_id(self, cedula):
-        row = self.fetch_one("transalca",
-            "SELECT id_cliente FROM cliente WHERE identificador_cliente = %s", (cedula,))
-        return row['id_cliente'] if row else None
 
     def _validate(self, data, require_cedula=True):
         errors = {}
@@ -146,27 +145,37 @@ class ClientModel(Connection):
         email = self._email
         telefono = self._telefono
         direccion = self._direccion
-        if existing_client:
-            self.update("transalca",
-                "UPDATE cliente SET nombre_cliente=%s, correo_cliente=%s, telefono_cliente=%s, direccion_cliente=%s, tipo_cliente=%s, estado=1 "
-                "WHERE identificador_cliente=%s",
-                (nombre_cliente, email, telefono, direccion, tipo, cedula))
-            cliente_id = existing_client['id_cliente']
-        else:
-            cliente_id = self.insert("transalca",
-                "INSERT INTO cliente (nombre_cliente, correo_cliente, identificador_cliente, telefono_cliente, direccion_cliente, tipo_cliente, estado) "
-                "VALUES (%s, %s, %s, %s, %s, %s, 1)",
-                (nombre_cliente, email, cedula, telefono, direccion, tipo))
-        if tipo == 'natural':
-            self.insert("transalca",
-                "INSERT INTO cliente_natural (id_cliente, usuario_id, origen_registro) VALUES (%s, %s, %s) "
-                "ON DUPLICATE KEY UPDATE usuario_id = COALESCE(VALUES(usuario_id), usuario_id)",
-                (cliente_id, user['id'] if user else None, data.get('origen_registro', 'admin')))
-        else:
-            self.insert("transalca",
-                "INSERT INTO cliente_juridico (id_cliente, sector, limite_credito, dias_credito) VALUES (%s, %s, %s, %s) "
-                "ON DUPLICATE KEY UPDATE sector = VALUES(sector)",
-                (cliente_id, data.get('sector'), data.get('limite_credito', 0), data.get('dias_credito', 0)))
+        conn = self.con_transalca()
+        try:
+            conn.begin()
+            cursor = conn.cursor()
+            self._set_session_variables(cursor)
+            if existing_client:
+                cursor.execute(
+                    "UPDATE cliente SET nombre_cliente=%s, correo_cliente=%s, telefono_cliente=%s, direccion_cliente=%s, tipo_cliente=%s, estado=1 "
+                    "WHERE identificador_cliente=%s",
+                    (nombre_cliente, email, telefono, direccion, tipo, cedula))
+                cliente_id = existing_client['id_cliente']
+            else:
+                cursor.execute(
+                    "INSERT INTO cliente (nombre_cliente, correo_cliente, identificador_cliente, telefono_cliente, direccion_cliente, tipo_cliente, estado) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, 1)",
+                    (nombre_cliente, email, cedula, telefono, direccion, tipo))
+                cliente_id = cursor.lastrowid
+            if tipo == 'natural':
+                cursor.execute(
+                    "INSERT INTO cliente_natural (id_cliente, usuario_id, origen_registro) VALUES (%s, %s, %s) "
+                    "ON DUPLICATE KEY UPDATE usuario_id = COALESCE(VALUES(usuario_id), usuario_id)",
+                    (cliente_id, user['id'] if user else None, data.get('origen_registro', 'admin')))
+            else:
+                cursor.execute(
+                    "INSERT INTO cliente_juridico (id_cliente, sector, limite_credito, dias_credito) VALUES (%s, %s, %s, %s) "
+                    "ON DUPLICATE KEY UPDATE sector = VALUES(sector)",
+                    (cliente_id, data.get('sector'), data.get('limite_credito', 0), data.get('dias_credito', 0)))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
         if user:
             self.update("mantenimiento",
                 "UPDATE usuarios SET nombre=%s, apellido=%s, telefono=%s, email=%s, direccion=%s WHERE id=%s AND tipo='cliente'",
@@ -175,6 +184,9 @@ class ClientModel(Connection):
         return {'cedula': cedula, 'reactivated': bool(existing_client and not existing_client.get('estado'))}
 
     def _update_client(self, cedula, data):
+        client = self._get_by_cedula(cedula)
+        if not client:
+            raise LookupError('Cliente no encontrado')
         clean = self._validate({**data, 'cedula': cedula}, require_cedula=True)
         if clean.get('email') and self.email_exists_globally(clean['email'], {"cliente_cedula": cedula, "usuario_cedula": cedula}):
             raise ValidationError({'email': 'Este correo ya esta registrado.'})
@@ -187,19 +199,21 @@ class ClientModel(Connection):
             "UPDATE cliente SET nombre_cliente=%s, correo_cliente=%s, telefono_cliente=%s, direccion_cliente=%s "
             "WHERE identificador_cliente=%s",
             (nombre_cliente, self._email, self._telefono, self._direccion, cedula))
-        client = self._get_by_cedula(cedula)
-        if client and client.get('usuario_id'):
+        if client.get('usuario_id'):
             self.update("mantenimiento",
                 "UPDATE usuarios SET nombre=%s, apellido=%s, telefono=%s, email=%s, direccion=%s WHERE id=%s AND tipo='cliente'",
                 ((data.get('nombre') or nombre_cliente).strip(), (data.get('apellido') or '').strip(),
                  self._telefono, self._email, self._direccion, client['usuario_id']))
         return result
 
-    def _toggle_estado(self, cedula):
+    def _soft_delete(self, cedula):
         self.update("transalca",
             "UPDATE cliente SET estado = 0 WHERE identificador_cliente=%s", (cedula,))
         client = self._get_by_cedula(cedula)
         return int(client.get('estado') or 0) if client else 0
+
+    def _toggle_estado(self, cedula):
+        return self._soft_delete(cedula)
 
     def _get_stats(self, tipo_cliente='persona'):
         if tipo_cliente:
@@ -224,7 +238,7 @@ class ClientModel(Connection):
             "WHERE cv.cliente_cedula=%s AND cv.estado=1 AND v.estado=1 ORDER BY cv.created_at DESC",
             (cedula,))
 
-    def _get_services(self, cedula):
+    def _get_vehicle_history(self, cedula, limit):
         return self.fetch_all("transalca",
             "SELECT bv.*, bv.id_bitacora_vehiculo AS id, bv.fecha_bitacora as fecha, bv.descripcion_bitacora as descripcion, "
             "bv.observaciones_bitacora as observaciones, bv.cauchos_usados as cauchos_info, "
@@ -232,8 +246,11 @@ class ClientModel(Connection):
             "FROM bitacora_vehiculo bv "
             "INNER JOIN vehiculos v ON bv.vehiculo_placa = v.placa_vehiculo "
             "INNER JOIN cliente_vehiculo cv ON v.placa_vehiculo = cv.vehiculo_placa "
-            "WHERE cv.cliente_cedula=%s AND cv.estado=1 AND v.estado=1 ORDER BY bv.fecha_bitacora DESC LIMIT 50",
-            (cedula,))
+            "WHERE cv.cliente_cedula=%s AND cv.estado=1 AND v.estado=1 ORDER BY bv.fecha_bitacora DESC LIMIT %s",
+            (cedula, int(limit)))
+
+    def _get_services(self, cedula):
+        return self._get_vehicle_history(cedula, 50)
 
     def _get_tickets(self, cedula):
         return self.fetch_all("transalca",
@@ -249,33 +266,31 @@ class ClientModel(Connection):
             (cedula,))
 
     def _get_notifications(self, cedula):
-        return self.fetch_all("transalca",
+        users = self.fetch_all("mantenimiento",
+            "SELECT id FROM usuarios WHERE cedula = %s", (cedula,))
+        user_ids = [u['id'] for u in users]
+        sql = (
             "SELECT nf.*, nf.id_notificacion AS id, nf.tipo_notificacion as tipo, nf.titulo_notificacion as titulo, "
             "nf.mensaje_notificacion as mensaje, nf.prioridad_notificacion as prioridad "
-            "FROM notificaciones nf WHERE nf.cliente_cedula=%s OR nf.usuario_id IN "
-            "(SELECT id FROM db_mantenimiento.usuarios WHERE cedula=%s) "
-            "ORDER BY nf.created_at DESC LIMIT 50",
-            (cedula, cedula))
+            "FROM notificaciones nf WHERE nf.cliente_cedula=%s"
+        )
+        params = [cedula]
+        if user_ids:
+            sql += " OR nf.usuario_id IN (" + self.sql_placeholders(len(user_ids)) + ")"
+            params.extend(user_ids)
+        sql += " ORDER BY nf.created_at DESC LIMIT 50"
+        return self.fetch_all("transalca", sql, tuple(params))
 
     def _get_bitacora(self, cedula):
-        return self.fetch_all("transalca",
-            "SELECT bv.*, bv.id_bitacora_vehiculo AS id, bv.fecha_bitacora as fecha, bv.descripcion_bitacora as descripcion, "
-            "bv.observaciones_bitacora as observaciones, bv.cauchos_usados as cauchos_info, "
-            "v.placa_vehiculo as placa, v.marca_vehiculo as marca, v.modelo_vehiculo as modelo "
-            "FROM bitacora_vehiculo bv "
-            "INNER JOIN vehiculos v ON bv.vehiculo_placa = v.placa_vehiculo "
-            "INNER JOIN cliente_vehiculo cv ON v.placa_vehiculo = cv.vehiculo_placa "
-            "WHERE cv.cliente_cedula=%s AND cv.estado=1 AND v.estado=1 ORDER BY bv.fecha_bitacora DESC LIMIT 100",
-            (cedula,))
+        return self._get_vehicle_history(cedula, 100)
 
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {
-            "full_name": self._full_name,
             "get_all": self._get_all,
             "get_by_cedula": self._get_by_cedula,
-            "get_cliente_id": self._get_cliente_id,
             "create": self._create,
             "update_client": self._update_client,
+            "soft_delete": self._soft_delete,
             "toggle_estado": self._toggle_estado,
             "get_stats": self._get_stats,
             "get_vehicles": self._get_vehicles,
