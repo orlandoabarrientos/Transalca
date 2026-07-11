@@ -1,0 +1,61 @@
+{
+  "version": "2026.07.1",
+  "source": "curated_general_automotive_knowledge",
+  "disclaimer": "La explicación del código no confirma fitment. La medida, capacidad y homologación deben verificarse en etiqueta, manual o documentación del fabricante.",
+  "entries": [
+    {
+      "id": "terrain_types",
+      "title": "H/T, A/T, R/T y M/T",
+      "keywords": ["h/t", "a/t", "r/t", "m/t", "all terrain", "barro", "autopista", "silencioso"],
+      "content": "H/T prioriza carretera, confort y menor ruido; A/T equilibra carretera y terreno ligero; R/T es más agresivo para uso mixto; M/T prioriza tracción en barro y normalmente genera más ruido y compromiso en asfalto. La elección también depende de lluvia, carga, velocidad e índices exigidos por el vehículo."
+    },
+    {
+      "id": "metric_size",
+      "title": "Lectura de una medida métrica",
+      "keywords": ["265/65r17", "medida", "ancho", "perfil", "rin"],
+      "content": "En 265/65R17, 265 es el ancho nominal en milímetros, 65 es la relación de aspecto del costado y 17 es el diámetro del rin en pulgadas. La R identifica construcción radial; compartir rin no vuelve equivalentes dos medidas."
+    },
+    {
+      "id": "lt_p_prefix",
+      "title": "Prefijos LT y P",
+      "keywords": ["lt265", "p265", "lt", "p-metric", "carga"],
+      "content": "LT identifica una medida destinada a aplicaciones light truck y P una aplicación passenger según el sistema de marcado. No deben intercambiarse solo por dimensiones: hay que validar carga, presión, rin y especificación del fabricante."
+    },
+    {
+      "id": "dual_load_index",
+      "title": "Índice de carga simple/dual",
+      "keywords": ["121/118s", "121/118", "indice dual", "montaje dual", "gemelado"],
+      "content": "Un marcado como 121/118S usa el primer índice para montaje simple y el segundo para montaje dual; S es el símbolo de velocidad. La capacidad exacta en kilogramos debe consultarse en la tabla técnica del fabricante y nunca inferirse del número sin esa tabla."
+    },
+    {
+      "id": "load_speed",
+      "title": "Índice de carga y símbolo de velocidad",
+      "keywords": ["indice de carga", "índice de carga", "velocidad", "speed rating", "load index"],
+      "content": "El índice de carga es un código que remite a una capacidad máxima por caucho bajo condiciones definidas; la letra de velocidad remite a una categoría de velocidad. Ambos deben ser iguales o superiores a lo exigido por el vehículo y verificarse en una tabla técnica confiable."
+    },
+    {
+      "id": "commercial_sizes",
+      "title": "Medidas comerciales de camión",
+      "keywords": ["11r22.5", "12r22.5", "295/80r22.5", "315/80r22.5", "7.50r16", "900r20", "1200r24", "gandola", "camion"],
+      "content": "Las medidas comerciales pueden expresarse como 11R22.5, 295/80R22.5 o formatos convencionales. Para un camión también se debe conocer eje, montaje simple o dual, carga real, ruta, rin y recomendación del fabricante; la medida por sí sola no confirma la aplicación."
+    },
+    {
+      "id": "trailer_application",
+      "title": "Cauchos para remolque y ejes",
+      "keywords": ["remolque", "trailer", "eje", "direccional", "traccion", "arrastre"],
+      "content": "Un caucho para remolque debe validarse por posición de eje, carga por eje, montaje, velocidad y servicio de ruta. Un diseño apropiado para dirección o tracción no se trata automáticamente como equivalente para arrastre."
+    },
+    {
+      "id": "diameter_change",
+      "title": "Cambio de diámetro",
+      "keywords": ["cambia el diametro", "diferencia de diametro", "paso de", "velocimetro", "compatibilidad"],
+      "content": "Comparar diámetro permite estimar variación geométrica y efecto aproximado en velocímetro, pero no demuestra compatibilidad. También deben revisarse ancho de rin, despeje, offset, carga, velocidad, frenos y medidas homologadas."
+    },
+    {
+      "id": "dot_age",
+      "title": "Código DOT y fecha",
+      "keywords": ["dot", "fecha", "semana", "fabricacion", "fabricación"],
+      "content": "Los últimos cuatro dígitos del código de fecha DOT identifican semana y año de fabricación. La edad no sustituye una inspección de condición, almacenamiento, daños y política del fabricante."
+    }
+  ]
+}

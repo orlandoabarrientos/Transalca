@@ -1,0 +1,37 @@
+{
+  "captured_at": "2026-07-10T16:10:00Z",
+  "dataset": {
+    "cases": 5000,
+    "sha256": "43af6f239602d9a040c2c8fad0280e3432037fd545ea3e5e86d36056c51a7a34",
+    "splits": {
+      "train": 3500,
+      "validation": 750,
+      "holdout": 750
+    },
+    "family_isolation": false
+  },
+  "model": {
+    "version": "intent-43af6f239602-s20260710",
+    "algorithm": "hashed_multiclass_perceptron",
+    "validation_accuracy": 0.998667,
+    "holdout_accuracy": 0.996,
+    "holdout_macro_f1": 0.9977
+  },
+  "entity_benchmark": {
+    "messages": 41,
+    "annotated_facts": 87,
+    "f1": 1.0
+  },
+  "production": {
+    "local_p95_ms": 15.778,
+    "catalog_10000_p95_ms": 125.2,
+    "memory_growth_bytes": 4228358
+  },
+  "limitations": [
+    "No existía aislamiento de split por familia semántica.",
+    "No existía holdout real independiente de 1000 casos.",
+    "El benchmark de entidades no alcanzaba 1000 mensajes ni 3000 hechos.",
+    "No existía un registro de modelos con estados active/candidate/archived/rejected.",
+    "No había feedback real aprobado disponible para incorporar."
+  ]
+}

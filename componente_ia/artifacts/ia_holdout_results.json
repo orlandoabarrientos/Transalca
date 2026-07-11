@@ -1,0 +1,201 @@
+{
+  "dataset_sha256": "43af6f239602d9a040c2c8fad0280e3432037fd545ea3e5e86d36056c51a7a34",
+  "generated_at": "2026-07-10T16:04:46.644642Z",
+  "holdout_policy": "reserved; not used for epoch or parameter selection",
+  "metrics": {
+    "accuracy": 0.996,
+    "correct": 747,
+    "critical_accuracy": 0.992188,
+    "critical_total": 128,
+    "macro_f1": 0.9977,
+    "out_of_scope_accuracy": 1.0,
+    "out_of_scope_total": 5,
+    "per_label": {
+      "branch": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 13
+      },
+      "business_customer": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 9
+      },
+      "business_hours": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 7
+      },
+      "clarification": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 22
+      },
+      "credit": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 9
+      },
+      "fleet_service": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 17
+      },
+      "followup": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 75
+      },
+      "order_status": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 7
+      },
+      "out_of_scope": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 5
+      },
+      "payment": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 9
+      },
+      "product_inventory": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 8
+      },
+      "product_price": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 41
+      },
+      "product_recommendation": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 27
+      },
+      "promotion": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 24
+      },
+      "sensitive_request": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 33
+      },
+      "service_booking": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 11
+      },
+      "service_duration": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 10
+      },
+      "service_explanation": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 23
+      },
+      "service_list": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 17
+      },
+      "service_price": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 7
+      },
+      "service_recommendation": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 42
+      },
+      "tire_change_compatibility": {
+        "f1": 0.970588,
+        "precision": 0.942857,
+        "recall": 1.0,
+        "support": 33
+      },
+      "tire_comparison": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 42
+      },
+      "tire_inventory": {
+        "f1": 0.993377,
+        "precision": 0.986842,
+        "recall": 1.0,
+        "support": 75
+      },
+      "tire_recommendation": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 62
+      },
+      "tire_size_lookup": {
+        "f1": 0.967033,
+        "precision": 1.0,
+        "recall": 0.93617,
+        "support": 47
+      },
+      "tire_technical_explanation": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 18
+      },
+      "truck_tire_advice": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 34
+      },
+      "upload_receipt": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 13
+      },
+      "warranty": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 10
+      }
+    },
+    "security_scope_accuracy": 1.0,
+    "security_scope_total": 38,
+    "total": 750
+  },
+  "model_version": "intent-43af6f239602-s20260710",
+  "passed": true
+}

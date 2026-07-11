@@ -1,0 +1,79 @@
+{
+  "catalog_10000": {
+    "count": 12,
+    "max_ms": 132.394,
+    "mean_ms": 104.886,
+    "p50_ms": 100.45,
+    "p95_ms": 125.2,
+    "p99_ms": 130.955
+  },
+  "concurrent_100": {
+    "count": 100,
+    "max_ms": 384.776,
+    "mean_ms": 54.234,
+    "p50_ms": 22.702,
+    "p95_ms": 188.107,
+    "p99_ms": 342.252
+  },
+  "configuration": {
+    "catalog_products": 10000,
+    "concurrent_requests": 100,
+    "sequential_requests": 1000,
+    "soak_iterations": 2000
+  },
+  "cpu_process_seconds": 141.203,
+  "database_intermittent": {
+    "count": 30,
+    "degraded_responses": 10,
+    "max_ms": 8.338,
+    "mean_ms": 5.107,
+    "p50_ms": 5.015,
+    "p95_ms": 7.746,
+    "p99_ms": 8.249,
+    "success_responses": 20
+  },
+  "errors": [],
+  "gates": {
+    "catalog_10000_p95_under_700_ms": true,
+    "concurrency_completed_without_errors": true,
+    "db_intermittent_degraded_without_exceptions": true,
+    "live_web_under_1500_ms": true,
+    "local_p95_under_150_ms": true,
+    "memory_growth_under_32_mb": true,
+    "memory_sessions_bounded": true,
+    "no_runtime_errors": true,
+    "web_p95_under_1500_ms": true
+  },
+  "generated_at": "2026-07-10T15:58:41.753358Z",
+  "local": {
+    "count": 1000,
+    "max_ms": 17.831,
+    "mean_ms": 8.201,
+    "p50_ms": 8.468,
+    "p95_ms": 15.778,
+    "p99_ms": 16.284
+  },
+  "memory": {
+    "current_growth_bytes": 4228358,
+    "max_sessions": 200,
+    "peak_traced_bytes": 4265016,
+    "sessions": 200,
+    "ttl_seconds": 1800
+  },
+  "passed": true,
+  "web_live": {
+    "executed": true,
+    "latency_ms": 1306.271,
+    "passed": true,
+    "provider": "auto",
+    "results": 0
+  },
+  "web_simulated": {
+    "count": 40,
+    "max_ms": 21.14,
+    "mean_ms": 20.42,
+    "p50_ms": 20.387,
+    "p95_ms": 20.869,
+    "p99_ms": 21.072
+  }
+}

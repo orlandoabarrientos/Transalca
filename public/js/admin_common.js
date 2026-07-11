@@ -162,6 +162,36 @@ function validateSelectIntegrity(formId, select) {
 }
 
 let sidebarRenderInFlight = false;
+let adminSessionCache = null;
+
+async function getAdminSessionForPermissions() {
+    if (adminSessionCache) return adminSessionCache;
+    const res = await apiCall('/auth/session');
+    adminSessionCache = res && res.status === 'success' ? res.user : null;
+    return adminSessionCache;
+}
+
+function hasBackupPermission(user, action) {
+    if (!user) return false;
+    if ((user.roles || []).includes('Administrador')) return true;
+    return Boolean((user.permisos || {}).respaldos?.[action]);
+}
+
+function maintenanceSidebarHtml(user) {
+    const canCreateBackup = hasBackupPermission(user, 'crear');
+    const canRestoreBackup = hasBackupPermission(user, 'actualizar');
+    if (!canCreateBackup && !canRestoreBackup) return '';
+    let html = '<a href="#" class="nav-link" data-bs-toggle="collapse" data-bs-target="#mantSubmenu" aria-expanded="true"><i class="bi bi-tools"></i> Mantenimiento<i class="bi bi-chevron-down mant-chevron"></i></a>';
+    html += '<div class="collapse show" id="mantSubmenu">';
+    if (canCreateBackup) {
+        html += '<a href="#" class="nav-link mant-sub" onclick="sidebarCrearRespaldo(event)"><i class="bi bi-database-fill-add"></i> Crear respaldo</a>';
+    }
+    if (canRestoreBackup) {
+        html += '<a href="#" class="nav-link mant-sub" onclick="sidebarRestaurarUltimoRespaldo(event)"><i class="bi bi-database-fill-up"></i> Restaurar último respaldo</a>';
+    }
+    html += '</div>';
+    return html;
+}
 const SIDEBAR_GROUP_ORDER = ['Principal', 'Gestión', 'Servicios', 'Ventas', 'Sistema', 'Análisis'];
 
 async function renderDynamicSidebar() {
@@ -169,9 +199,13 @@ async function renderDynamicSidebar() {
     if (!sidebar || sidebar.dataset.dynamicReady === '1' || sidebarRenderInFlight) return;
     sidebarRenderInFlight = true;
     try {
-        const res = await apiCall('/api/modulos/sidebar');
+        const [res, user] = await Promise.all([
+            apiCall('/api/modulos/sidebar'),
+            getAdminSessionForPermissions()
+        ]);
         const mods = (res && res.data) || [];
-        if (!mods.length) { sidebarRenderInFlight = false; return; }
+        const maintenanceHtml = maintenanceSidebarHtml(user);
+        if (!mods.length && !maintenanceHtml) { sidebarRenderInFlight = false; return; }
         const groups = {};
         mods.forEach(m => { (groups[m.grupo] = groups[m.grupo] || []).push(m); });
         const orderedGroups = Object.keys(groups).sort((a, b) => {
@@ -179,13 +213,21 @@ async function renderDynamicSidebar() {
             return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
         });
         let html = '';
+        let maintenanceInserted = false;
         orderedGroups.forEach(group => {
             html += `<div class="nav-section">${escapeHtml(group)}</div>`;
             groups[group].sort((a, b) => (a.orden || 0) - (b.orden || 0)).forEach(m => {
                 const page = (m.ruta || '').split('/').pop();
                 html += `<a href="${escapeHtml(m.ruta)}" class="nav-link" data-page="${escapeHtml(page)}"><i class="${escapeHtml(m.icono || 'bi bi-app')}"></i> ${escapeHtml(m.titulo)}</a>`;
+                if (m.nombre === 'respaldos') {
+                    html += maintenanceHtml;
+                    maintenanceInserted = true;
+                }
             });
         });
+        if (maintenanceHtml && !maintenanceInserted) {
+            html += maintenanceHtml;
+        }
         html += '<hr style="border-color:rgba(255,255,255,0.1);margin:8px 16px;">';
         html += '<a href="/client/home" class="nav-link" style="color:#22c55e;"><i class="bi bi-shop"></i> Ver Tienda</a>';
         html += '<a href="#" class="nav-link" id="btnLogout"><i class="bi bi-box-arrow-left"></i> Cerrar Sesión</a>';
@@ -492,7 +534,7 @@ const Validator = {
         if (!form) return;
         if (form.dataset.validatorRealtimeBound === '1') return;
         form.dataset.validatorRealtimeBound = '1';
-        
+
         const rules = this.rules[formId];
         if (rules) {
             for (const [field, fieldRules] of Object.entries(rules)) {
@@ -1060,26 +1102,26 @@ class TablePaginator {
         this.currentPage = 1;
         this.renderRow = options.renderRow;
         this.onEmpty = options.onEmpty || (() => {
-            return this.isTable 
+            return this.isTable
                 ? '<tr><td colspan="20" class="text-center py-4 text-muted">No se encontraron registros</td></tr>'
                 : '<div class="p-3 text-muted text-center">No se encontraron registros</div>';
         });
         this.searchSelector = options.searchSelector;
         this.filterSelectors = options.filterSelectors || [];
         this.itemName = options.itemName || 'registros';
-        
+
         this.initDom();
         this.initEvents();
         this.apply();
     }
-    
+
     initDom() {
         const card = this.element.closest('.card') || this.element.parentElement;
         if (card && !card.classList.contains('mb-3') && !card.classList.contains('mb-4')) {
             card.classList.add('mb-3');
         }
-        let pInfo = card.nextElementSibling && card.nextElementSibling.classList.contains('pagination-info-wrap') 
-            ? card.nextElementSibling 
+        let pInfo = card.nextElementSibling && card.nextElementSibling.classList.contains('pagination-info-wrap')
+            ? card.nextElementSibling
             : null;
         if (!pInfo) {
             pInfo = document.createElement('div');
@@ -1107,17 +1149,17 @@ class TablePaginator {
         this.controlsEl = pInfo.querySelector('.paginator-controls');
         this.limitSelect = pInfo.querySelector('.paginator-limit-select');
     }
-    
+
     initEvents() {
         let searchInput = null;
         if (this.searchSelector) {
             searchInput = document.querySelector(this.searchSelector);
         } else {
             const card = this.element.closest('.card') || this.element.parentElement;
-            searchInput = card.previousElementSibling?.querySelector?.('input[type="search"], input[id*="search" i], .auto-table-search') || 
+            searchInput = card.previousElementSibling?.querySelector?.('input[type="search"], input[id*="search" i], .auto-table-search') ||
                           card.querySelector('input[id*="search" i], input[name*="search" i], .table-search-input');
         }
-        
+
         if (searchInput) {
             searchInput.addEventListener('input', () => {
                 this.currentPage = 1;
@@ -1125,7 +1167,7 @@ class TablePaginator {
             });
             this.searchInput = searchInput;
         }
-        
+
         this.filterSelectors.forEach(f => {
             const el = document.querySelector(f.selector);
             if (el) {
@@ -1149,28 +1191,28 @@ class TablePaginator {
             }
         }
     }
-    
+
     updateData(newData) {
         this.allData = newData || [];
         this.currentPage = 1;
         this.apply();
     }
-    
+
     apply() {
         let filtered = [...this.allData];
-        
+
         if (this.searchInput) {
             const q = this.searchInput.value.trim().toLowerCase();
             if (q) {
                 filtered = filtered.filter(item => {
-                    return Object.values(item).some(val => 
-                        val !== null && val !== undefined && 
+                    return Object.values(item).some(val =>
+                        val !== null && val !== undefined &&
                         String(val).toLowerCase().includes(q)
                     );
                 });
             }
         }
-        
+
         this.filterSelectors.forEach(f => {
             const el = document.querySelector(f.selector);
             if (el && el.value !== '') {
@@ -1178,20 +1220,20 @@ class TablePaginator {
                 filtered = filtered.filter(item => f.filterFn(item, val));
             }
         });
-        
+
         const total = filtered.length;
         const pages = Math.ceil(total / this.perPage);
         if (this.currentPage > pages && pages > 0) {
             this.currentPage = pages;
         }
-        
+
         const start = total ? (this.currentPage - 1) * this.perPage + 1 : 0;
         const end = Math.min(this.currentPage * this.perPage, total);
-        
+
         if (this.infoEl) {
             this.infoEl.textContent = `Mostrando ${start} a ${end} de ${total} ${this.itemName}`;
         }
-        
+
         if (!this.tbody) return;
         this.tbody.innerHTML = '';
         if (total === 0) {
@@ -1199,7 +1241,7 @@ class TablePaginator {
             if (this.controlsEl) this.controlsEl.innerHTML = '';
             return;
         }
-        
+
         const pageData = filtered.slice((this.currentPage - 1) * this.perPage, this.currentPage * this.perPage);
         pageData.forEach((item, index) => {
             const actualIndex = (this.currentPage - 1) * this.perPage + index;
@@ -1210,20 +1252,20 @@ class TablePaginator {
                 this.tbody.appendChild(trHtmlOrEl);
             }
         });
-        
+
         hydrateDualPrices(this.tbody);
         normalizeActionButtons(this.tbody);
-        
+
         this.renderControls(total, pages);
     }
-    
+
     renderControls(total, pages) {
         if (!this.controlsEl) return;
         this.controlsEl.innerHTML = '';
         if (pages <= 1) return;
-        
+
         const page = this.currentPage;
-        
+
         const prevLi = document.createElement('li');
         prevLi.className = `page-item ${page === 1 ? 'disabled' : ''}`;
         prevLi.innerHTML = `<a class="page-link" href="#"><i class="bi bi-chevron-left"></i></a>`;
@@ -1235,16 +1277,16 @@ class TablePaginator {
             });
         }
         this.controlsEl.appendChild(prevLi);
-        
+
         const maxVisible = 5;
         let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
         let endPage = startPage + maxVisible - 1;
-        
+
         if (endPage > pages) {
             endPage = pages;
             startPage = Math.max(1, endPage - maxVisible + 1);
         }
-        
+
         if (startPage > 1) {
             const firstLi = document.createElement('li');
             firstLi.className = 'page-item';
@@ -1255,7 +1297,7 @@ class TablePaginator {
                 this.apply();
             });
             this.controlsEl.appendChild(firstLi);
-            
+
             if (startPage > 2) {
                 const ellipsisLi = document.createElement('li');
                 ellipsisLi.className = 'page-item disabled';
@@ -1263,7 +1305,7 @@ class TablePaginator {
                 this.controlsEl.appendChild(ellipsisLi);
             }
         }
-        
+
         for (let i = startPage; i <= endPage; i++) {
             const li = document.createElement('li');
             li.className = `page-item ${page === i ? 'active' : ''}`;
@@ -1275,7 +1317,7 @@ class TablePaginator {
             });
             this.controlsEl.appendChild(li);
         }
-        
+
         if (endPage < pages) {
             if (endPage < pages - 1) {
                 const ellipsisLi = document.createElement('li');
@@ -1293,7 +1335,7 @@ class TablePaginator {
             });
             this.controlsEl.appendChild(lastLi);
         }
-        
+
         const nextLi = document.createElement('li');
         nextLi.className = `page-item ${page === pages ? 'disabled' : ''}`;
         nextLi.innerHTML = `<a class="page-link" href="#"><i class="bi bi-chevron-right"></i></a>`;
@@ -1975,4 +2017,28 @@ async function respondToValidationRequest(reqId, responseType) {
     } catch (e) {
         showToast('Error de conexión', 'error');
     }
+}
+
+function sidebarCrearRespaldo(event) {
+    event.preventDefault();
+    confirmAction('¿Crear un respaldo de la base de datos ahora?', () => {
+        showToast('Creando respaldo...', 'info');
+        apiCall('/api/backup/create', 'POST').then(res => {
+            if (res.status === 'error') return showToast(res.message, 'error');
+            showToast(res.message || 'Respaldo creado exitosamente', 'success');
+            if (document.getElementById('backupBody') && typeof loadData === 'function') loadData();
+        });
+    }, { type: 'question', confirmText: 'Crear respaldo' });
+}
+
+function sidebarRestaurarUltimoRespaldo(event) {
+    event.preventDefault();
+    confirmAction('Se restaurará el ÚLTIMO respaldo disponible y se reemplazarán los datos actuales de la base de datos. Antes de continuar se creará un respaldo de seguridad del estado actual. ¿Desea continuar?', () => {
+        showToast('Restaurando último respaldo...', 'info');
+        apiCall('/api/backup/restore-latest', 'POST').then(res => {
+            if (res.status === 'error') return showToast(res.message, 'error');
+            showToast(res.message || 'Respaldo restaurado correctamente', 'success');
+            if (document.getElementById('backupBody') && typeof loadData === 'function') loadData();
+        });
+    }, { type: 'warning', confirmText: 'Restaurar', confirmColor: '#dc3545' });
 }

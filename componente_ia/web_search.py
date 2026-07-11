@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, quote_plus, unquote, urlparse
 import requests
 
 from componente_ia.metrics import assistant_metrics
+from componente_ia.knowledge_types import Evidence, RetrievalResult, evidence_id
 
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,27 @@ class SearchSource:
         data = asdict(self)
         data['fetched_at'] = int(self.fetched_at)
         return data
+
+    def to_evidence(self):
+        quality = dict(self.quality or {})
+        return Evidence(
+            id=evidence_id('web', self.url, self.query),
+            kind='web_source',
+            source=self.domain or self.provider,
+            title=self.title,
+            content=self.snippet,
+            confidence=float(quality.get('score', quality.get('relevance', self.reliability)) or 0.0),
+            verified=bool(quality.get('accepted', False)),
+            dynamic=False,
+            data={
+                'url': self.url,
+                'domain': self.domain,
+                'provider': self.provider,
+                'quality': quality,
+                'status': self.status,
+            },
+            citations=(self.url,) if self.url else (),
+        )
 
 
 class TTLCache:
@@ -124,13 +146,43 @@ class SearchProvider:
         return {'provider': self.name, 'configured': True}
 
 
+class DisabledSearchProvider(SearchProvider):
+    name = 'disabled'
+
+    def search(self, query, max_results=4):
+        return []
+
+    def health(self):
+        return {'provider': self.name, 'configured': False, 'enabled': False}
+
+
+class FakeSearchProvider(SearchProvider):
+    """Deterministic provider for tests; no network access is performed."""
+
+    name = 'fake'
+
+    def __init__(self, results=None):
+        self.results = list(results or [])
+        self.calls = []
+
+    def search(self, query, max_results=4):
+        self.calls.append({'query': query, 'max_results': max_results})
+        return list(self.results[:max_results])
+
+
+MockSearchProvider = FakeSearchProvider
+
+
 class ConfiguredSearchProvider(SearchProvider):
     def __init__(self):
         self.name = 'disabled'
         self.session = requests.Session()
         self.user_agent = os.getenv('ASSISTANT_WEB_USER_AGENT', 'Mozilla/5.0 TransalcaAssistant/1.0')
-        self.connect_timeout = float(os.getenv('ASSISTANT_WEB_CONNECT_TIMEOUT', '0.8'))
-        self.read_timeout = float(os.getenv('ASSISTANT_WEB_READ_TIMEOUT', '2.4'))
+        self.connect_timeout = float(os.getenv('ASSISTANT_WEB_CONNECT_TIMEOUT', '0.35'))
+        self.read_timeout = float(os.getenv('ASSISTANT_WEB_READ_TIMEOUT', '0.85'))
+        total_budget = os.getenv('ASSISTANT_WEB_TOTAL_BUDGET', os.getenv('ASSISTANT_WEB_TOTAL_TIMEOUT', '1.3'))
+        self.total_timeout = max(0.2, float(total_budget))
+        self._budget = threading.local()
         self.provider = os.getenv('ASSISTANT_SEARCH_PROVIDER', '').strip().lower()
         self.enabled = os.getenv('ASSISTANT_WEB_ENABLED', '1').strip().lower() not in {'0', 'false', 'no'}
         self.direct_fitment_enabled = os.getenv('ASSISTANT_DIRECT_FITMENT_ENABLED', '1').strip().lower() not in {'0', 'false', 'no'}
@@ -141,6 +193,7 @@ class ConfiguredSearchProvider(SearchProvider):
             'provider': self._configured_provider(),
             'configured': configured,
             'enabled': self.enabled,
+            'total_timeout_seconds': self.total_timeout,
         }
 
     def _configured_provider(self):
@@ -159,6 +212,7 @@ class ConfiguredSearchProvider(SearchProvider):
     def search(self, query, max_results=4):
         if not self.enabled:
             return []
+        self._budget.deadline = time.monotonic() + self.total_timeout
         provider = self._configured_provider()
         if provider == 'brave':
             found = self._safe_search(self._search_brave, query, max_results)
@@ -181,20 +235,22 @@ class ConfiguredSearchProvider(SearchProvider):
 
     def _fallback_sources(self, query, max_results):
         sources = []
-        if self.direct_fitment_enabled:
+        if self.direct_fitment_enabled and self._remaining_budget() > 0.05:
             sources.extend(self._safe_search(self._search_direct_fitment, query, max_results))
             if sources:
                 return sources[:max_results]
-        if len(sources) < max_results:
+        if len(sources) < max_results and self._remaining_budget() > 0.05:
             sources.extend(self._dedupe(sources, self._safe_search(self._search_duckduckgo_html, query, max_results - len(sources))))
-        if len(sources) < max_results:
+        if len(sources) < max_results and self._remaining_budget() > 0.05:
             sources.extend(self._dedupe(sources, self._safe_search(self._search_duckduckgo_lite, query, max_results - len(sources))))
-        ia_sources = self._safe_search(self._search_duckduckgo_ia, query, max_results)
+        ia_sources = self._safe_search(self._search_duckduckgo_ia, query, max_results) if self._remaining_budget() > 0.05 else []
         if sources and ia_sources:
             sources.extend(self._dedupe(sources, ia_sources))
         return sources[:max_results]
 
     def _safe_search(self, method, query, max_results):
+        if self._remaining_budget() <= 0.05:
+            return []
         try:
             return method(query, max_results) or []
         except requests.Timeout:
@@ -221,7 +277,16 @@ class ConfiguredSearchProvider(SearchProvider):
         return {'User-Agent': self.user_agent}
 
     def _timeout(self):
-        return (self.connect_timeout, self.read_timeout)
+        remaining = max(0.02, self._remaining_budget())
+        connect = max(0.01, min(self.connect_timeout, remaining * 0.35))
+        read = max(0.01, min(self.read_timeout, remaining - connect))
+        return (connect, read)
+
+    def _remaining_budget(self):
+        deadline = getattr(self._budget, 'deadline', None)
+        if deadline is None:
+            return self.total_timeout
+        return max(0.0, deadline - time.monotonic())
 
     def _search_brave(self, query, max_results):
         key = os.getenv('BRAVE_SEARCH_API_KEY')
@@ -331,12 +396,14 @@ class ConfiguredSearchProvider(SearchProvider):
         return [self._source(title, url, snippet, 'duckduckgo_ia', query=query, status='ok')]
 
     def _search_direct_fitment(self, query, max_results):
-        from componente_ia.automotive_entities import extract_entities
+        from componente_ia.entity_extractor import extract as extract_entities
 
         entities = extract_entities(query)
         if not (entities.make and entities.model and entities.year):
             return []
         for candidate in self._direct_fitment_candidates(entities):
+            if self._remaining_budget() <= 0.05:
+                break
             try:
                 source = self._fetch_direct_source(candidate, entities, query)
             except requests.Timeout:
@@ -527,6 +594,37 @@ class ConfiguredSearchProvider(SearchProvider):
         return re.sub(r'[^a-z0-9]', '', str(value or '').lower())
 
 
+class DirectFitmentSearchProvider(ConfiguredSearchProvider):
+    """Direct official/specialized source lookup without search-engine fallback."""
+
+    name = 'direct_fitment'
+
+    def search(self, query, max_results=4):
+        if not self.enabled or not self.direct_fitment_enabled:
+            return []
+        self._budget.deadline = time.monotonic() + self.total_timeout
+        return self._safe_search(self._search_direct_fitment, query, max_results)[:max_results]
+
+
+class DuckDuckGoSearchProvider(ConfiguredSearchProvider):
+    name = 'duckduckgo'
+
+    def __init__(self, mode='html'):
+        super().__init__()
+        self.mode = mode if mode in {'html', 'lite', 'ia'} else 'html'
+
+    def search(self, query, max_results=4):
+        if not self.enabled:
+            return []
+        self._budget.deadline = time.monotonic() + self.total_timeout
+        method = {
+            'html': self._search_duckduckgo_html,
+            'lite': self._search_duckduckgo_lite,
+            'ia': self._search_duckduckgo_ia,
+        }[self.mode]
+        return self._safe_search(method, query, max_results)[:max_results]
+
+
 def source_reliability(domain):
     domain = (domain or '').lower()
     if any(part in domain for part in ('toyota.', 'ford.', 'chevrolet.', 'nissan.', 'nissanusa.', 'honda.', 'mitsubishi.', 'mitsubishicars.', 'hyundai.', 'hyundaiusa.', 'kia.', 'vw.com', 'volkswagen.')):
@@ -546,6 +644,7 @@ class WebSearchService:
         self._lock = threading.RLock()
         self.last_success_at = None
         self.last_error_at = None
+        self._provider_inflight = False
 
     def search(self, query, max_results=4):
         started = time.perf_counter()
@@ -560,15 +659,18 @@ class WebSearchService:
                 assistant_metrics.record_web_call((time.perf_counter() - started) * 1000, status='ok', result_count=len(cached), cache_hit=True)
                 return cached
         try:
-            results = self.provider.search(query, max_results=max_results)
+            results, provider_status = self._provider_search(query, max_results)
             with self._lock:
                 if results:
                     self.breaker.success()
                     self.last_success_at = time.time()
                 else:
                     self.last_error_at = time.time()
+                    if provider_status == 'timeout':
+                        self.breaker.failure()
                 self.cache.set(key, results)
-            assistant_metrics.record_web_call((time.perf_counter() - started) * 1000, status='ok' if results else 'empty', provider=getattr(self.provider, 'name', ''), result_count=len(results or []))
+            metric_status = 'ok' if results else 'timeout' if provider_status == 'timeout' else 'empty'
+            assistant_metrics.record_web_call((time.perf_counter() - started) * 1000, status=metric_status, provider=getattr(self.provider, 'name', ''), result_count=len(results or []))
             return results
         except Exception:
             with self._lock:
@@ -578,18 +680,86 @@ class WebSearchService:
             logger.exception('assistant.web.search_failed')
             return []
 
+    def _provider_search(self, query, max_results):
+        """Apply a hard wall-clock budget to network-capable providers.
+
+        ``requests`` timeouts do not include every DNS/resolver delay. A single
+        daemon worker plus an in-flight guard keeps the request path bounded and
+        prevents a failing network from accumulating queued work.
+        """
+        budget = getattr(self.provider, 'total_timeout', None)
+        if not isinstance(budget, (int, float)) or budget <= 0:
+            return self.provider.search(query, max_results=max_results), 'ok'
+        with self._lock:
+            if self._provider_inflight:
+                return [], 'busy'
+            self._provider_inflight = True
+        event = threading.Event()
+        box = {'results': [], 'error': None}
+
+        def worker():
+            try:
+                box['results'] = self.provider.search(query, max_results=max_results) or []
+            except Exception as exc:
+                box['error'] = exc
+            finally:
+                with self._lock:
+                    self._provider_inflight = False
+                event.set()
+
+        threading.Thread(target=worker, name='assistant-web-provider', daemon=True).start()
+        if not event.wait(float(budget)):
+            return [], 'timeout'
+        if box['error'] is not None:
+            raise box['error']
+        return box['results'], 'ok'
+
     def health(self):
         provider_health = self.provider.health() if hasattr(self.provider, 'health') else {}
         with self._lock:
             last_success_at = self.last_success_at
             last_error_at = self.last_error_at
+            provider_inflight = self._provider_inflight
         return {
             **provider_health,
             'circuit': self.breaker.status(),
             'last_success_at': int(last_success_at) if last_success_at else None,
             'last_error_at': int(last_error_at) if last_error_at else None,
+            'provider_inflight': provider_inflight,
             'cache': self.cache.stats(),
         }
+
+    def search_validated(self, query, *, entities=None, max_results=4, include_rejected=False):
+        from componente_ia.source_quality import evaluate_source
+
+        accepted = []
+        rejected = []
+        for source in self.search(query, max_results=max_results):
+            quality = evaluate_source(source, entities=entities, query=query)
+            source.quality = quality
+            if quality.get('accepted'):
+                accepted.append(source)
+            else:
+                rejected.append(source)
+        return (accepted, rejected) if include_rejected else accepted
+
+    def retrieve(self, query, *, entities=None, max_results=4):
+        accepted, rejected = self.search_validated(
+            query, entities=entities, max_results=max_results, include_rejected=True
+        )
+        evidence = [source.to_evidence() for source in accepted]
+        return RetrievalResult(
+            query=query,
+            evidence=evidence,
+            status='ok' if evidence else 'empty',
+            available=True,
+            reason=None if evidence else 'no_accepted_web_source',
+            diagnostics={
+                'accepted_sources': len(accepted),
+                'rejected_sources': len(rejected),
+                'provider': getattr(self.provider, 'name', ''),
+            },
+        )
 
 
 def extract_tire_sizes_from_sources(sources):

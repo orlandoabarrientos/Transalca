@@ -1,0 +1,116 @@
+{
+  "candidates": [
+    {
+      "algorithm": "hashed_multiclass_perceptron",
+      "benchmark_scope": "validation_inference_existing_artifact",
+      "benchmark_seconds": 0.078325,
+      "feature_family": "word_unigrams_bigrams_prefix_suffix",
+      "offline_dependency": "standard_library",
+      "selected": true,
+      "validation": {
+        "accuracy": 0.998667,
+        "correct": 749,
+        "critical_accuracy": 1.0,
+        "critical_total": 133,
+        "macro_f1": 0.992593,
+        "out_of_scope_accuracy": 1.0,
+        "out_of_scope_total": 10,
+        "security_scope_accuracy": 1.0,
+        "security_scope_total": 37,
+        "total": 750
+      }
+    },
+    {
+      "algorithm": "multinomial_naive_bayes",
+      "benchmark_scope": "offline_train_plus_validation_inference",
+      "benchmark_seconds": 0.046114,
+      "feature_family": "hashed_binary_word_features",
+      "offline_dependency": "numpy_offline_only",
+      "selected": false,
+      "validation": {
+        "accuracy": 0.992,
+        "correct": 744,
+        "critical_accuracy": 1.0,
+        "critical_total": 133,
+        "macro_f1": 0.982295,
+        "out_of_scope_accuracy": 1.0,
+        "out_of_scope_total": 10,
+        "security_scope_accuracy": 1.0,
+        "security_scope_total": 37,
+        "total": 750
+      }
+    },
+    {
+      "algorithm": "logistic_regression_sgd",
+      "benchmark_scope": "offline_train_plus_validation_inference",
+      "benchmark_seconds": 1.621202,
+      "feature_family": "hashed_binary_word_features",
+      "offline_dependency": "numpy_offline_only",
+      "selected": false,
+      "validation": {
+        "accuracy": 1.0,
+        "correct": 750,
+        "critical_accuracy": 1.0,
+        "critical_total": 133,
+        "macro_f1": 1.0,
+        "out_of_scope_accuracy": 1.0,
+        "out_of_scope_total": 10,
+        "security_scope_accuracy": 1.0,
+        "security_scope_total": 37,
+        "total": 750
+      }
+    },
+    {
+      "algorithm": "linear_svm_sgd",
+      "benchmark_scope": "offline_train_plus_validation_inference",
+      "benchmark_seconds": 0.518045,
+      "feature_family": "hashed_binary_word_features",
+      "offline_dependency": "numpy_offline_only",
+      "selected": false,
+      "validation": {
+        "accuracy": 1.0,
+        "correct": 750,
+        "critical_accuracy": 1.0,
+        "critical_total": 133,
+        "macro_f1": 1.0,
+        "out_of_scope_accuracy": 1.0,
+        "out_of_scope_total": 10,
+        "security_scope_accuracy": 1.0,
+        "security_scope_total": 37,
+        "total": 750
+      }
+    },
+    {
+      "algorithm": "fasttext_like_char_ngram_centroid",
+      "benchmark_scope": "offline_train_plus_validation_inference",
+      "benchmark_seconds": 1.516579,
+      "feature_family": "word_and_character_3_5_grams",
+      "offline_dependency": "numpy_offline_only",
+      "selected": false,
+      "validation": {
+        "accuracy": 0.954667,
+        "correct": 716,
+        "critical_accuracy": 0.962406,
+        "critical_total": 133,
+        "macro_f1": 0.945991,
+        "out_of_scope_accuracy": 1.0,
+        "out_of_scope_total": 10,
+        "security_scope_accuracy": 1.0,
+        "security_scope_total": 37,
+        "total": 750
+      }
+    }
+  ],
+  "dataset_sha256": "43af6f239602d9a040c2c8fad0280e3432037fd545ea3e5e86d36056c51a7a34",
+  "generated_at": "2026-07-10T16:04:11.255747Z",
+  "holdout_accessed": false,
+  "optional_embeddings": {
+    "evaluated": false,
+    "reason": "No se añadió un modelo/vectorizador pesado ni un artefacto externo no versionado; RAG semántico ligero cubre el fallback."
+  },
+  "seed": 20260710,
+  "selected_algorithm": "hashed_multiclass_perceptron",
+  "selection_policy": "best validation band of 0.2 percentage points, then smallest production runtime",
+  "train_cases": 3500,
+  "validation_cases": 750
+}

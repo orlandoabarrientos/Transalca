@@ -1,0 +1,90 @@
+{
+  "annotated_facts": 5750,
+  "excluded_from_tuning": true,
+  "f1": 1.0,
+  "failures": [],
+  "false_negative": 0,
+  "false_positive": 0,
+  "messages": 1000,
+  "passed": true,
+  "per_field": {
+    "asks_comparison": {
+      "accuracy": 1.0,
+      "correct": 250,
+      "support": 250
+    },
+    "asks_price": {
+      "accuracy": 1.0,
+      "correct": 500,
+      "support": 500
+    },
+    "asks_stock": {
+      "accuracy": 1.0,
+      "correct": 250,
+      "support": 250
+    },
+    "branch": {
+      "accuracy": 1.0,
+      "correct": 500,
+      "support": 500
+    },
+    "current_tire_size": {
+      "accuracy": 1.0,
+      "correct": 250,
+      "support": 250
+    },
+    "make": {
+      "accuracy": 1.0,
+      "correct": 500,
+      "support": 500
+    },
+    "model": {
+      "accuracy": 1.0,
+      "correct": 500,
+      "support": 500
+    },
+    "requested_rim": {
+      "accuracy": 1.0,
+      "correct": 500,
+      "support": 500
+    },
+    "requested_tire_size": {
+      "accuracy": 1.0,
+      "correct": 250,
+      "support": 250
+    },
+    "service": {
+      "accuracy": 1.0,
+      "correct": 250,
+      "support": 250
+    },
+    "tire_type": {
+      "accuracy": 1.0,
+      "correct": 250,
+      "support": 250
+    },
+    "usage": {
+      "accuracy": 1.0,
+      "correct": 1000,
+      "support": 1000
+    },
+    "vehicle_type": {
+      "accuracy": 1.0,
+      "correct": 250,
+      "support": 250
+    },
+    "year": {
+      "accuracy": 1.0,
+      "correct": 500,
+      "support": 500
+    }
+  },
+  "precision": 1.0,
+  "recall": 1.0,
+  "scoring_method": "micro F1; exact value per explicitly annotated fact; benchmark excluded from tuning",
+  "sha256": "023740690752e94cb15da30d70103fe405659418588758670ef8f01d16ee3a84",
+  "source": "deterministic_annotated_grammar",
+  "threshold": 0.97,
+  "true_positive": 5750,
+  "valid": true
+}

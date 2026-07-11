@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-07-10T16:04:46.645650Z",
+  "release_evidence": {
+    "catalog_p95_ms": 125.2,
+    "critical_behavior_accuracy": 1.0,
+    "evaluation_passed": true,
+    "inventory_hallucination_rate": 0.0,
+    "performance_budget_ms": 150.0,
+    "performance_p95_ms": 15.778,
+    "performance_passed": true,
+    "price_hallucination_rate": 0.0,
+    "security_accuracy": 1.0,
+    "service_hallucination_rate": 0.0,
+    "web_p95_ms": 1306.271
+  }
+}

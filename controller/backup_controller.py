@@ -19,6 +19,14 @@ def _can_restore():
     return bool((session.get('permisos') or {}).get('respaldos', {}).get('actualizar'))
 
 
+def _can_create():
+    if 'user_id' not in session:
+        return False
+    if 'Administrador' in (session.get('roles') or []):
+        return True
+    return bool((session.get('permisos') or {}).get('respaldos', {}).get('crear'))
+
+
 @backup_bp.route('/', methods=['GET'])
 def list_backups():
     try:
@@ -36,8 +44,8 @@ def list_backups():
 @backup_bp.route('/create', methods=['POST'])
 def create_backup():
     try:
-        if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado"}), 401
+        if not _can_create():
+            return jsonify({"status": "error", "message": "No autorizado para crear respaldos."}), 403
         files = model.ejecutar("create_backup")
         if files:
 
@@ -119,3 +127,24 @@ def restore_backup():
         return jsonify({"status": "error", "message": str(e)}), 400
     except Exception:
         return jsonify({"status": "error", "message": "No se pudo restaurar el respaldo. El estado actual no fue modificado por completo; use el respaldo de seguridad si es necesario."}), 500
+
+
+@backup_bp.route('/restore-latest', methods=['POST'])
+def restore_latest():
+    try:
+        if not _can_restore():
+            return jsonify({"status": "error", "message": "No autorizado para restaurar respaldos."}), 403
+        result = model.ejecutar("restore_latest_backup")
+        nombres = ', '.join(item["filename"] for item in result.get("restored", []))
+        model.ejecutar("log_event", session['user_id'], 'ACTUALIZAR', 'RESPALDOS',
+            f"Ultimo respaldo restaurado: {nombres}", request.remote_addr, 0)
+        return jsonify({
+            "status": "success",
+            "message": "Último respaldo restaurado correctamente. Se creó un respaldo de seguridad del estado anterior.",
+            "data": result
+        })
+    except ValueError as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+    except Exception:
+        logger.exception("Error restaurando el ultimo respaldo.")
+        return jsonify({"status": "error", "message": "No se pudo restaurar el último respaldo. Use el respaldo de seguridad si es necesario."}), 500

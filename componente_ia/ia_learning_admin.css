@@ -1,0 +1,29 @@
+:root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color:#17211b; background:#f3f6f2; }
+* { box-sizing:border-box; }
+body { margin:0; }
+.layout { width:min(1180px, calc(100% - 32px)); margin:32px auto 64px; }
+header { margin-bottom:24px; }
+h1 { font-size:clamp(2rem, 5vw, 3.5rem); margin:.15em 0; letter-spacing:-.04em; }
+h2 { margin:0 0 16px; }
+.eyebrow { color:#237047; font-weight:800; letter-spacing:.12em; font-size:.76rem; }
+.cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin:24px 0; }
+.card,.panel { background:#fff; border:1px solid #dfe7df; border-radius:16px; box-shadow:0 8px 30px rgba(23,33,27,.05); }
+.card { padding:16px; }
+.card strong { display:block; font-size:1.7rem; margin-top:4px; }
+.panel { padding:20px; margin-top:16px; }
+.panel-title { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+button { border:0; border-radius:9px; padding:9px 12px; background:#17683f; color:#fff; cursor:pointer; font-weight:700; }
+button.secondary { background:#5e6b63; }
+button.danger { background:#a33434; }
+button:disabled { opacity:.5; cursor:not-allowed; }
+.table-wrap { overflow:auto; }
+table { width:100%; border-collapse:collapse; min-width:850px; }
+th,td { text-align:left; vertical-align:top; border-bottom:1px solid #e8eee8; padding:12px 8px; }
+th { color:#526159; font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; }
+.actions { display:flex; flex-wrap:wrap; gap:6px; }
+.badge { display:inline-block; border-radius:999px; background:#e5f3e9; color:#17683f; padding:3px 7px; margin:2px; font-size:.75rem; }
+.warning { color:#7a4b00; background:#fff6df; padding:10px; border-radius:9px; }
+#notice { min-height:24px; color:#526159; }
+.model { display:grid; grid-template-columns:1fr auto; gap:12px; padding:12px 0; border-bottom:1px solid #e8eee8; }
+pre { white-space:pre-wrap; word-break:break-word; max-width:440px; }
+@media (max-width:700px) { .layout{width:min(100% - 18px,1180px);margin-top:16px}.panel{padding:14px} }

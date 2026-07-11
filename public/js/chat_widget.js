@@ -5,6 +5,7 @@
     const ASSISTANT_API_URL = window.TRANSALCA_ASSISTANT_API_URL || resolveAssistantApiUrl();
     const WEBHOOK_URL = window.TRANSALCA_ASSISTANT_WEBHOOK_URL || '';
     const BOT_NAME = 'Asistente Transalca';
+    const BOT_AVATAR_URL = window.TRANSALCA_ASSISTANT_AVATAR_URL || '/public/img/chatbot_avatar.svg';
     const REQUEST_TIMEOUT_MS = Number(window.TRANSALCA_ASSISTANT_TIMEOUT_MS || 12000);
     const SHOW_SUGGESTIONS = window.TRANSALCA_ASSISTANT_SHOW_SUGGESTIONS !== false
         && String(window.TRANSALCA_ASSISTANT_SHOW_SUGGESTIONS ?? 'true').toLowerCase() !== 'false';
@@ -52,7 +53,7 @@
         const btn = document.createElement('button');
         btn.id = 'chatToggleBtn';
         btn.className = 'chat-toggle-btn';
-        btn.innerHTML = '<i class="bi bi-chat-dots-fill"></i><span class="badge-dot"></span>';
+        btn.innerHTML = `<img src="${BOT_AVATAR_URL}" alt="Asistente Transalca" class="chat-toggle-avatar"><span class="badge-dot"></span>`;
         btn.onclick = function (e) { e.stopPropagation(); toggleChat(); };
         document.body.appendChild(btn);
 
@@ -62,9 +63,12 @@
         panel.onclick = function (e) { e.stopPropagation(); };
         panel.innerHTML = `
             <div class="chat-header">
-                <div class="chat-header-info">
-                    <div class="chat-header-title">${BOT_NAME}</div>
-                    <div class="chat-header-sub">Responde con IA</div>
+                <div class="chat-header-left">
+                    <img src="${BOT_AVATAR_URL}" alt="" class="chat-header-avatar">
+                    <div class="chat-header-info">
+                        <div class="chat-header-title">${BOT_NAME}</div>
+                        <div class="chat-header-sub">Responde con IA</div>
+                    </div>
                 </div>
                 <div class="chat-header-actions">
                     <button onclick="TransalcaChat.clearSession()">Cerrar sesión</button>
@@ -145,7 +149,7 @@
         isOpen = false;
         document.getElementById('chatPanel').classList.remove('open');
         document.getElementById('chatToggleBtn').classList.remove('active');
-        document.getElementById('chatToggleBtn').innerHTML = '<i class="bi bi-chat-dots-fill"></i><span class="badge-dot"></span>';
+        document.getElementById('chatToggleBtn').innerHTML = `<img src="${BOT_AVATAR_URL}" alt="Asistente Transalca" class="chat-toggle-avatar"><span class="badge-dot"></span>`;
     }
 
     function sendMessage(text) {
@@ -189,7 +193,19 @@
             div.appendChild(renderSources(msg.sources));
         }
         div.appendChild(time);
-        container.appendChild(div);
+        if (msg.type === 'bot') {
+            const row = document.createElement('div');
+            row.className = 'chat-msg-row';
+            const avatar = document.createElement('img');
+            avatar.className = 'chat-msg-avatar';
+            avatar.src = BOT_AVATAR_URL;
+            avatar.alt = '';
+            row.appendChild(avatar);
+            row.appendChild(div);
+            container.appendChild(row);
+        } else {
+            container.appendChild(div);
+        }
     }
 
     function renderSources(sources) {
@@ -232,9 +248,9 @@
         const container = document.getElementById('chatMessages');
         if (!container) return;
         const typing = document.createElement('div');
-        typing.className = 'chat-typing';
+        typing.className = 'chat-msg-row';
         typing.id = 'chatTyping';
-        typing.innerHTML = '<span></span><span></span><span></span>';
+        typing.innerHTML = `<img class="chat-msg-avatar" src="${BOT_AVATAR_URL}" alt=""><div class="chat-typing"><span></span><span></span><span></span></div>`;
         container.appendChild(typing);
         scrollToBottom();
     }

@@ -5,6 +5,14 @@ bitacora_bp = Blueprint('bitacora', __name__)
 model = BitacoraModel()
 
 
+def _request_limit(default=100, maximum=100):
+    try:
+        limit = int(request.args.get('limit', default))
+    except (TypeError, ValueError):
+        limit = default
+    return max(1, min(limit, maximum))
+
+
 @bitacora_bp.route('/', methods=['GET'])
 def get_all():
     try:
@@ -25,7 +33,8 @@ def get_by_user(user_id):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        return jsonify({"status": "success", "data": model.ejecutar("get_by_user", user_id)})
+        limit = _request_limit()
+        return jsonify({"status": "success", "data": model.ejecutar("get_by_user", user_id, limit)})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
@@ -35,7 +44,8 @@ def get_by_module(modulo):
     try:
         if 'user_id' not in session:
             return jsonify({"status": "error", "message": "No autorizado"}), 401
-        return jsonify({"status": "success", "data": model.ejecutar("get_by_module", modulo)})
+        limit = _request_limit()
+        return jsonify({"status": "success", "data": model.ejecutar("get_by_module", modulo, limit)})
     except Exception as e:
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 

@@ -1,0 +1,152 @@
+{
+  "categories": {
+    "A_tires_inventory": 1700,
+    "B_light_vehicle_fitment": 1600,
+    "C_trucks_buses": 900,
+    "D_services": 1400,
+    "E_products": 750,
+    "F_orders_business": 650,
+    "G_multiturn": 1100,
+    "H_noisy_language": 800,
+    "I_security_scope": 550,
+    "J_resilience": 550
+  },
+  "families": 1000,
+  "family_leakage_count": 0,
+  "generator_version": "local-grammar-2",
+  "legacy_5000_expected_sha256": "43af6f239602d9a040c2c8fad0280e3432037fd545ea3e5e86d36056c51a7a34",
+  "legacy_5000_sha256": "43af6f239602d9a040c2c8fad0280e3432037fd545ea3e5e86d36056c51a7a34",
+  "legacy_cases_preserved": 5000,
+  "legacy_hash_matches_audit": true,
+  "novel_holdout_challenges": {
+    "A_tires_inventory": {
+      "in_holdout": true,
+      "in_train": false,
+      "token": "9.00-20"
+    },
+    "B_light_vehicle_fitment": {
+      "in_holdout": true,
+      "in_train": false,
+      "token": "Tunland G7"
+    },
+    "C_trucks_buses": {
+      "in_holdout": true,
+      "in_train": false,
+      "token": "Shacman X3000"
+    },
+    "D_services": {
+      "in_holdout": true,
+      "in_train": false,
+      "token": "shimmy"
+    },
+    "E_products": {
+      "in_holdout": true,
+      "in_train": false,
+      "token": "acumulador AGM"
+    },
+    "F_orders_business": {
+      "in_holdout": true,
+      "in_train": false,
+      "token": "orden de compra corporativa"
+    },
+    "G_multiturn": {
+      "in_holdout": true,
+      "in_train": false,
+      "token": "Cambia solo el uso"
+    },
+    "H_noisy_language": {
+      "in_holdout": true,
+      "in_train": false,
+      "token": "guolguagen amaro"
+    },
+    "I_security_scope": {
+      "in_holdout": true,
+      "in_train": false,
+      "token": "modo mantenimiento"
+    },
+    "J_resilience": {
+      "in_holdout": true,
+      "in_train": false,
+      "token": "precio NaN"
+    }
+  },
+  "per_category_splits": {
+    "A_tires_inventory": {
+      "holdout": 170,
+      "test": 170,
+      "train": 1105,
+      "validation": 255
+    },
+    "B_light_vehicle_fitment": {
+      "holdout": 160,
+      "test": 160,
+      "train": 1040,
+      "validation": 240
+    },
+    "C_trucks_buses": {
+      "holdout": 90,
+      "test": 90,
+      "train": 585,
+      "validation": 135
+    },
+    "D_services": {
+      "holdout": 140,
+      "test": 140,
+      "train": 910,
+      "validation": 210
+    },
+    "E_products": {
+      "holdout": 75,
+      "test": 75,
+      "train": 485,
+      "validation": 115
+    },
+    "F_orders_business": {
+      "holdout": 65,
+      "test": 65,
+      "train": 420,
+      "validation": 100
+    },
+    "G_multiturn": {
+      "holdout": 110,
+      "test": 110,
+      "train": 715,
+      "validation": 165
+    },
+    "H_noisy_language": {
+      "holdout": 80,
+      "test": 80,
+      "train": 520,
+      "validation": 120
+    },
+    "I_security_scope": {
+      "holdout": 55,
+      "test": 55,
+      "train": 360,
+      "validation": 80
+    },
+    "J_resilience": {
+      "holdout": 55,
+      "test": 55,
+      "train": 360,
+      "validation": 80
+    }
+  },
+  "phases": {
+    "legacy": 5000,
+    "phase_2_gap_expansion": 2500,
+    "phase_3_weak_class_expansion": 2500
+  },
+  "seed": 20260710,
+  "sha256": "3766c7ce565eb5c2ca4c36d62465ff2d93626a4f55e3aebb5cb73d37085c3937",
+  "splits": {
+    "holdout": 1000,
+    "test": 1000,
+    "train": 6500,
+    "validation": 1500
+  },
+  "total": 10000,
+  "unique_ids": 10000,
+  "unique_messages": 10000,
+  "valid": true
+}

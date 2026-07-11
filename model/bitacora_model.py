@@ -10,14 +10,15 @@ class BitacoraModel(Connection):
             "SELECT b.*, u.nombre, u.apellido FROM bitacora b INNER JOIN usuarios u ON b.usuario_id = u.id ORDER BY b.fecha DESC LIMIT %s OFFSET %s",
             (limit, offset))
 
-    def _get_by_user(self, user_id):
+    def _get_by_user(self, user_id, limit=100):
         return self.fetch_all("mantenimiento",
-            "SELECT * FROM bitacora WHERE usuario_id = %s ORDER BY fecha DESC", (user_id,))
+            "SELECT b.*, u.nombre, u.apellido FROM bitacora b INNER JOIN usuarios u ON b.usuario_id = u.id WHERE b.usuario_id = %s ORDER BY b.fecha DESC LIMIT %s",
+            (user_id, limit))
 
-    def _get_by_module(self, modulo):
+    def _get_by_module(self, modulo, limit=100):
         return self.fetch_all("mantenimiento",
-            "SELECT b.*, u.nombre, u.apellido FROM bitacora b INNER JOIN usuarios u ON b.usuario_id = u.id WHERE b.modulo = %s ORDER BY b.fecha DESC",
-            (modulo,))
+            "SELECT b.*, u.nombre, u.apellido FROM bitacora b INNER JOIN usuarios u ON b.usuario_id = u.id WHERE b.modulo = %s ORDER BY b.fecha DESC LIMIT %s",
+            (modulo, limit))
 
     def _get_by_date_range(self, start, end):
         return self.fetch_all("mantenimiento",

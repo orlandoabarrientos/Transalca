@@ -17,6 +17,13 @@ class AssistantMetrics:
             'out_of_business': 0,
         }
         self._catalog = {'hits': 0, 'misses': 0}
+        self._database = {
+            'calls': 0,
+            'success': 0,
+            'fail': 0,
+            'timeout': 0,
+        }
+        self._cache = {'hits': 0, 'misses': 0, 'evictions': 0}
         self._web = {
             'calls': 0,
             'success': 0,
@@ -25,8 +32,22 @@ class AssistantMetrics:
             'cache_hits': 0,
             'cache_misses': 0,
         }
+        self._learning = {
+            'signals': 0,
+            'candidates': 0,
+            'persist_errors': 0,
+            'reformulations': 0,
+            'corrections': 0,
+            'approved': 0,
+            'rejected': 0,
+            'promotions': 0,
+            'rollbacks': 0,
+        }
         self._latencies = deque(maxlen=self.window_size)
+        self._confidences = deque(maxlen=self.window_size)
         self._web_latencies = deque(maxlen=self.window_size)
+        self._db_latencies = deque(maxlen=self.window_size)
+        self._stage_latencies = {}
         self._intents = Counter()
         self._domains = Counter()
         self._errors = Counter()
@@ -44,6 +65,7 @@ class AssistantMetrics:
         fallback=False,
         error_type=None,
         security_rejected=False,
+        confidence=None,
     ):
         with self._lock:
             self._requests['total'] += 1
@@ -55,7 +77,7 @@ class AssistantMetrics:
                 self._requests['security_rejections'] += 1
             if fallback:
                 self._requests['fallbacks'] += 1
-            if intent == 'fuera_de_negocio':
+            if intent in {'fuera_de_negocio', 'out_of_scope'}:
                 self._requests['out_of_business'] += 1
             if intent:
                 self._intents[str(intent)] += 1
@@ -72,6 +94,74 @@ class AssistantMetrics:
                 self._latencies.append(float(duration_ms))
             except (TypeError, ValueError):
                 pass
+            try:
+                if confidence is not None:
+                    self._confidences.append(max(0.0, min(1.0, float(confidence))))
+            except (TypeError, ValueError):
+                pass
+
+    def record_stages(self, stages):
+        """Record bounded per-stage timings without storing request content."""
+        if not isinstance(stages, dict):
+            return
+        with self._lock:
+            for name, duration in list(stages.items())[:24]:
+                safe_name = ''.join(ch for ch in str(name) if ch.isalnum() or ch in '_-')[:48]
+                if not safe_name:
+                    continue
+                try:
+                    value = max(0.0, float(duration))
+                except (TypeError, ValueError):
+                    continue
+                bucket = self._stage_latencies.setdefault(safe_name, deque(maxlen=self.window_size))
+                bucket.append(value)
+
+    def record_cache(self, hit=False, evicted=False):
+        with self._lock:
+            self._cache['hits' if hit else 'misses'] += 1
+            if evicted:
+                self._cache['evictions'] += 1
+
+    def record_db_call(self, duration_ms=0, status='ok'):
+        with self._lock:
+            self._database['calls'] += 1
+            if status == 'ok':
+                self._database['success'] += 1
+            elif status == 'timeout':
+                self._database['timeout'] += 1
+            else:
+                self._database['fail'] += 1
+            try:
+                self._db_latencies.append(max(0.0, float(duration_ms)))
+            except (TypeError, ValueError):
+                pass
+
+    def record_learning_signal(
+        self, candidate=False, persist_error=False, reformulated=False, corrected=False,
+    ):
+        with self._lock:
+            self._learning['signals'] += 1
+            if candidate:
+                self._learning['candidates'] += 1
+            if persist_error:
+                self._learning['persist_errors'] += 1
+            if reformulated:
+                self._learning['reformulations'] += 1
+            if corrected:
+                self._learning['corrections'] += 1
+
+    def record_learning_event(self, event):
+        mapping = {
+            'approved': 'approved',
+            'rejected': 'rejected',
+            'promotion': 'promotions',
+            'promote': 'promotions',
+            'rollback': 'rollbacks',
+        }
+        key = mapping.get(str(event or '').strip().lower())
+        if key:
+            with self._lock:
+                self._learning[key] += 1
 
     def record_web_call(self, duration_ms, status='ok', provider=None, result_count=0, cache_hit=False):
         with self._lock:
@@ -97,10 +187,22 @@ class AssistantMetrics:
                 'uptime_seconds': round(time.time() - self.started_at, 3),
                 'requests': dict(self._requests),
                 'latency_ms': self._latency_summary(list(self._latencies)),
+                'confidence': self._confidence_summary(list(self._confidences)),
                 'catalog': dict(self._catalog),
+                'database': {
+                    **self._database,
+                    'latency_ms': self._latency_summary(list(self._db_latencies)),
+                },
+                'cache': dict(self._cache),
                 'web': {
                     **self._web,
                     'latency_ms': self._latency_summary(list(self._web_latencies)),
+                },
+                'generation': {'mode': 'local_only', 'external_calls': 0},
+                'learning': dict(self._learning),
+                'stage_latency_ms': {
+                    name: self._latency_summary(list(values))
+                    for name, values in sorted(self._stage_latencies.items())
                 },
                 'top_intents': dict(self._intents.most_common(10)),
                 'top_source_domains': dict(self._domains.most_common(10)),
@@ -109,6 +211,16 @@ class AssistantMetrics:
         if runtime:
             result['runtime'] = runtime
         return result
+
+    def _confidence_summary(self, values):
+        if not values:
+            return {'count': 0, 'average': 0.0, 'low_confidence_rate': 0.0}
+        low = sum(value < 0.65 for value in values)
+        return {
+            'count': len(values),
+            'average': round(sum(values) / len(values), 6),
+            'low_confidence_rate': round(low / len(values), 6),
+        }
 
     def reset(self):
         with self._lock:

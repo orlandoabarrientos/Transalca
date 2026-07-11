@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Aprendizaje local · Transalca</title>
+  <link rel="stylesheet" href="/componente_ia/ia_learning_admin.css">
+</head>
+<body>
+  <main class="layout">
+    <header>
+      <p class="eyebrow">TRANSALCA · SOLO LOCAL</p>
+      <h1>Revisión de aprendizaje</h1>
+      <p>Los cambios requieren revisión, entrenamiento offline y promoción explícita.</p>
+    </header>
+    <section id="summary" class="cards" aria-label="Métricas"></section>
+    <section class="panel">
+      <div class="panel-title">
+        <h2>Casos pendientes</h2>
+        <button id="refresh" type="button">Actualizar</button>
+      </div>
+      <div id="notice" role="status"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Caso</th><th>Razones</th><th>Intención</th><th>Mensaje anonimizado</th><th>Acción</th></tr></thead>
+          <tbody id="cases"></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Modelos</h2>
+      <div id="models"></div>
+      <p class="warning">El panel no promociona silenciosamente: exige confirmación administrativa explícita.</p>
+    </section>
+  </main>
+  <script src="/componente_ia/ia_learning_admin.js"></script>
+</body>
+</html>

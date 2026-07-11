@@ -1,0 +1,220 @@
+{
+  "schema_version": "1.0.0",
+  "locale": "es-VE",
+  "dynamic_data_policy": {
+    "rule": "Los valores comerciales cambiantes solo se muestran cuando un resolver de base de datos o configuración los entrega en la solicitud actual.",
+    "unresolved_value": "unavailable",
+    "dynamic_sources": [
+      "catalog_database",
+      "business_config",
+      "branch_database",
+      "promotion_database",
+      "order_public_status",
+      "policy_database"
+    ]
+  },
+  "product_categories": {
+    "value": "unavailable",
+    "dynamic": true,
+    "dynamic_source": "catalog_database"
+  },
+  "entries": [
+    {
+      "id": "product_categories",
+      "topics": ["productos", "categorías", "catálogo", "repuestos", "cauchos", "baterías", "filtros", "aceites"],
+      "questions": ["¿Qué productos venden?", "¿Qué categorías tienen?", "¿Tienen baterías o filtros?"],
+      "answer": "Las categorías y productos disponibles deben obtenerse del catálogo activo.",
+      "dynamic": true,
+      "dynamic_source": "catalog_database",
+      "value": "unavailable",
+      "required_tool": "search_inventory"
+    },
+    {
+      "id": "purchase_process",
+      "topics": ["compra", "comprar", "pedido", "carrito"],
+      "questions": ["¿Cómo hago un pedido?", "¿Cómo compro?"],
+      "answer": "El flujo de compra usa únicamente productos activos; antes de confirmar deben validarse producto, cantidad, precio y disponibilidad en el sistema.",
+      "dynamic": false,
+      "source": "curated_business_process",
+      "required_tool": "search_inventory"
+    },
+    {
+      "id": "order_status",
+      "topics": ["pedido", "estado", "seguimiento", "orden"],
+      "questions": ["¿Cómo reviso mi pedido?", "¿Dónde veo el estado de la orden?"],
+      "answer": "El estado debe consultarse con la herramienta pública de pedidos y una referencia válida. No se muestran datos privados de clientes.",
+      "dynamic": true,
+      "dynamic_source": "order_public_status",
+      "value": "unavailable",
+      "required_tool": "get_order_public_status"
+    },
+    {
+      "id": "payment_methods",
+      "topics": ["pago", "pagos", "métodos de pago", "pagar", "transferencia", "tarjeta"],
+      "questions": ["¿Cómo pago?", "¿Qué métodos de pago aceptan?"],
+      "answer": "Los métodos de pago vigentes deben consultarse en la configuración comercial antes de indicarlos.",
+      "dynamic": true,
+      "dynamic_source": "business_config",
+      "value": "unavailable",
+      "required_tool": "search_business_faq"
+    },
+    {
+      "id": "upload_receipt",
+      "topics": ["comprobante", "subir comprobante", "pago", "recibo"],
+      "questions": ["¿Cómo subo un comprobante?"],
+      "answer": "El comprobante se asocia al pedido correspondiente mediante la opción disponible en ese pedido. Debe evitarse publicar información bancaria o personal en el chat.",
+      "dynamic": false,
+      "source": "curated_business_process",
+      "required_tool": null
+    },
+    {
+      "id": "branches",
+      "topics": ["sucursal", "sucursales", "ubicación", "dirección", "dónde están"],
+      "questions": ["¿Dónde están ubicados?", "¿En cuál sucursal está?"],
+      "answer": "Las sucursales y direcciones deben obtenerse de la base de sucursales activas.",
+      "dynamic": true,
+      "dynamic_source": "branch_database",
+      "value": "unavailable",
+      "required_tool": "get_branches"
+    },
+    {
+      "id": "business_hours",
+      "topics": ["horario", "hora", "abren", "cierran", "atención"],
+      "questions": ["¿Cuál es el horario?", "¿Abren hoy?"],
+      "answer": "El horario vigente debe consultarse por sucursal en configuración o base de datos.",
+      "dynamic": true,
+      "dynamic_source": "business_config",
+      "value": "unavailable",
+      "required_tool": "get_branches"
+    },
+    {
+      "id": "promotions",
+      "topics": ["promoción", "promociones", "oferta", "descuento"],
+      "questions": ["¿Qué promociones tienen?", "¿Hay oferta?"],
+      "answer": "Las promociones solo se confirman si aparecen activas y vigentes en el sistema.",
+      "dynamic": true,
+      "dynamic_source": "promotion_database",
+      "value": "unavailable",
+      "required_tool": "search_inventory"
+    },
+    {
+      "id": "warranty",
+      "topics": ["garantía", "reclamo", "defecto", "cobertura"],
+      "questions": ["¿Tienen garantía?", "¿Qué cubre la garantía?"],
+      "answer": "Cobertura, plazos, exclusiones y requisitos deben consultarse en la política vigente y según el producto o servicio.",
+      "dynamic": true,
+      "dynamic_source": "policy_database",
+      "value": "unavailable",
+      "required_tool": "search_business_faq"
+    },
+    {
+      "id": "credit",
+      "topics": ["crédito", "financiamiento", "financiar", "cuotas"],
+      "questions": ["¿Tienen financiamiento o crédito?"],
+      "answer": "Disponibilidad, condiciones y elegibilidad de crédito o financiamiento deben consultarse en la configuración comercial vigente.",
+      "dynamic": true,
+      "dynamic_source": "business_config",
+      "value": "unavailable",
+      "required_tool": "search_business_faq"
+    },
+    {
+      "id": "business_customers",
+      "topics": ["empresa", "empresas", "cliente corporativo", "mayorista"],
+      "questions": ["¿Trabajan con empresas?"],
+      "answer": "La modalidad de atención a empresas, sus requisitos y condiciones deben confirmarse con la configuración comercial vigente.",
+      "dynamic": true,
+      "dynamic_source": "business_config",
+      "value": "unavailable",
+      "required_tool": "search_business_faq"
+    },
+    {
+      "id": "fleet_service",
+      "topics": ["flota", "flotas", "camiones", "vehículos de carga", "gandolas"],
+      "questions": ["¿Atienden flotas?", "¿Tienen servicios para camiones?"],
+      "answer": "Cobertura, capacidad y servicios activos para flotas o vehículos de carga deben validarse contra servicios y configuración comercial.",
+      "dynamic": true,
+      "dynamic_source": "business_config",
+      "value": "unavailable",
+      "required_tool": "search_services"
+    },
+    {
+      "id": "contact",
+      "topics": ["contacto", "teléfono", "correo", "whatsapp", "comunicar"],
+      "questions": ["¿Cómo los contacto?"],
+      "answer": "Los canales de contacto vigentes deben obtenerse de configuración; no se deben inventar números, correos ni redes sociales.",
+      "dynamic": true,
+      "dynamic_source": "business_config",
+      "value": "unavailable",
+      "required_tool": "get_branches"
+    },
+    {
+      "id": "reservations",
+      "topics": ["apartar", "reservar", "reserva", "separar producto"],
+      "questions": ["¿Puedo apartar un producto?"],
+      "answer": "La posibilidad, vigencia y condiciones de una reserva deben confirmarse en la política comercial y con stock actual.",
+      "dynamic": true,
+      "dynamic_source": "policy_database",
+      "value": "unavailable",
+      "required_tool": "search_inventory"
+    },
+    {
+      "id": "delivery",
+      "topics": ["delivery", "envío", "despacho", "domicilio"],
+      "questions": ["¿Tienen delivery?", "¿Hacen envíos?"],
+      "answer": "Cobertura, costo, plazo y disponibilidad de despacho deben consultarse en configuración para la zona y el pedido.",
+      "dynamic": true,
+      "dynamic_source": "business_config",
+      "value": "unavailable",
+      "required_tool": "search_business_faq"
+    },
+    {
+      "id": "service_booking",
+      "topics": ["cita", "agendar", "reservar servicio", "turno"],
+      "questions": ["¿Necesito cita?", "¿Cómo agendo?"],
+      "answer": "La necesidad de cita y los cupos deben consultarse por servicio y sucursal en el sistema vigente.",
+      "dynamic": true,
+      "dynamic_source": "business_config",
+      "value": "unavailable",
+      "required_tool": "search_services"
+    },
+    {
+      "id": "bring_own_parts",
+      "topics": ["mis cauchos", "repuesto propio", "llevar producto", "propios cauchos"],
+      "questions": ["¿Puedo llevar mis propios cauchos?"],
+      "answer": "La aceptación de productos aportados por el cliente y sus implicaciones de garantía deben consultarse en la política de servicio vigente.",
+      "dynamic": true,
+      "dynamic_source": "policy_database",
+      "value": "unavailable",
+      "required_tool": "search_business_faq"
+    },
+    {
+      "id": "returns_and_claims",
+      "topics": ["devolución", "cambio", "reclamo", "producto incorrecto"],
+      "questions": ["¿Puedo cambiar o devolver un producto?"],
+      "answer": "Plazos, estado requerido, documentos y excepciones se rigen por la política vigente aplicable al producto.",
+      "dynamic": true,
+      "dynamic_source": "policy_database",
+      "value": "unavailable",
+      "required_tool": "search_business_faq"
+    },
+    {
+      "id": "business_policies",
+      "topics": ["política", "políticas", "términos", "condiciones"],
+      "questions": ["¿Cuáles son sus políticas?"],
+      "answer": "Las políticas deben recuperarse de la versión vigente; el asistente no completa ni modifica condiciones faltantes.",
+      "dynamic": true,
+      "dynamic_source": "policy_database",
+      "value": "unavailable",
+      "required_tool": "search_business_faq"
+    },
+    {
+      "id": "privacy_and_order_safety",
+      "topics": ["datos personales", "privacidad", "contraseña", "pedido de otra persona"],
+      "questions": ["¿Puedes mostrarme los datos del cliente?"],
+      "answer": "No se revelan datos personales, credenciales ni información privada de pedidos. Solo puede usarse un estado público mínimo con la validación prevista por el sistema.",
+      "dynamic": false,
+      "source": "assistant_security_policy",
+      "required_tool": null
+    }
+  ]
+}

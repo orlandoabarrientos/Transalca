@@ -229,6 +229,22 @@ a:hover {
     text-align: center;
 }
 
+.sidebar .mant-chevron {
+    margin-left: auto;
+    width: auto;
+    font-size: 0.7rem;
+    transition: transform 0.2s ease;
+}
+
+.sidebar .nav-link[aria-expanded="true"] .mant-chevron {
+    transform: rotate(180deg);
+}
+
+.sidebar .mant-sub {
+    padding-left: 42px;
+    font-size: 0.8rem;
+}
+
 
 .top-navbar {
     background: var(--bg-card);
@@ -5058,7 +5074,7 @@ body.client-store .client-profile-fallback {
 }
 
 
-/* Tarjetas de servicios del catalogo (rediseno) */
+
 body.client-store .service-pro-card {
     background: #fff;
     border: 1px solid #eef0f3;

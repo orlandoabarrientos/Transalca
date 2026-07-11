@@ -5,7 +5,6 @@ import threading
 from datetime import datetime
 
 import pymysql
-from pymysql.constants import CLIENT
 
 from config.config import BACKUP_FOLDER, DB_CONFIG_MANTENIMIENTO, DB_CONFIG_TRANSALCA
 from model.connection import Connection
@@ -141,27 +140,76 @@ class BackupModel(Connection):
             raise ValueError("El archivo no es un respaldo valido del sistema.")
         return script
 
+    def _iter_statements(self, script):
+
+
+        buffer = []
+        for line in script.splitlines():
+            stripped = line.strip()
+            if not buffer and (not stripped or stripped.startswith('--')):
+                continue
+            buffer.append(line)
+            if stripped.endswith(';'):
+                yield '\n'.join(buffer)
+                buffer = []
+        remainder = '\n'.join(buffer).strip()
+        if remainder:
+            yield remainder
+
+    def _apply_backup_script(self, filepath, db_config):
+
+
+        script = self._read_validated_backup(filepath)
+        conn = pymysql.connect(
+            host=db_config["host"], port=db_config["port"], user=db_config["user"],
+            password=db_config["password"], database=db_config["database"],
+            charset=db_config["charset"], autocommit=True)
+        try:
+            cursor = conn.cursor()
+            for statement in self._iter_statements(script):
+                cursor.execute(statement)
+        finally:
+            conn.close()
+
     def _restore_backup(self, filename):
         filepath = self._safe_backup_path(filename)
         db_config = self._db_config_for_file(filename)
         if not db_config:
             raise ValueError("El respaldo no corresponde a una base de datos del sistema.")
-        script = self._read_validated_backup(filepath)
+        self._read_validated_backup(filepath)
         safety = self._create_backup()
-        conn = pymysql.connect(
-            host=db_config["host"], port=db_config["port"], user=db_config["user"],
-            password=db_config["password"], database=db_config["database"],
-            charset=db_config["charset"], autocommit=True,
-            client_flag=CLIENT.MULTI_STATEMENTS)
-        try:
-            cursor = conn.cursor()
-            cursor.execute(script)
-            while cursor.nextset():
-                pass
-        finally:
-            conn.close()
+        self._apply_backup_script(filepath, db_config)
         return {
             "database": db_config["database"],
+            "safety_backup": [item["filename"] for item in safety],
+        }
+
+    def _latest_backup_set(self):
+        latest = {}
+        for item in self._list_backups():
+            db_config = self._db_config_for_file(item["filename"])
+            if db_config and db_config["database"] not in latest:
+                latest[db_config["database"]] = item["filename"]
+        return latest
+
+    def _restore_latest_backup(self):
+        latest = self._latest_backup_set()
+        if not latest:
+            raise ValueError("No hay respaldos disponibles para restaurar.")
+        targets = []
+        for db_config in (DB_CONFIG_MANTENIMIENTO, DB_CONFIG_TRANSALCA):
+            filename = latest.get(db_config["database"])
+            if filename:
+                filepath = self._safe_backup_path(filename)
+                self._read_validated_backup(filepath)
+                targets.append((filename, filepath, db_config))
+        safety = self._create_backup()
+        restored = []
+        for filename, filepath, db_config in targets:
+            self._apply_backup_script(filepath, db_config)
+            restored.append({"filename": filename, "database": db_config["database"]})
+        return {
+            "restored": restored,
             "safety_backup": [item["filename"] for item in safety],
         }
 
@@ -207,9 +255,15 @@ class BackupModel(Connection):
             "INSERT INTO bitacora (usuario_id, accion, modulo, descripcion, ip, respaldo) VALUES (%s, %s, %s, %s, %s, %s)",
             (usuario_id, accion, modulo, descripcion, ip, int(respaldo)))
 
-    def _has_backup_this_week(self):
+    def _has_backup_today(self):
         row = self.fetch_one("mantenimiento",
-            "SELECT 1 FROM bitacora WHERE respaldo = 1 AND YEARWEEK(fecha, 3) = YEARWEEK(CURDATE(), 3) LIMIT 1")
+            "SELECT 1 FROM bitacora WHERE respaldo = 1 AND DATE(fecha) = CURDATE() LIMIT 1")
+        return row is not None
+
+    def _has_backup_last_days(self, days=7):
+        row = self.fetch_one("mantenimiento",
+            "SELECT 1 FROM bitacora WHERE respaldo = 1 AND fecha >= NOW() - INTERVAL %s DAY LIMIT 1",
+            (int(days),))
         return row is not None
 
     def ejecutar(self, accion, *args, **kwargs):
@@ -219,10 +273,12 @@ class BackupModel(Connection):
             "delete_backup": self._delete_backup,
             "get_backup_path": self._get_backup_path,
             "restore_backup": self._restore_backup,
+            "restore_latest_backup": self._restore_latest_backup,
             "save_uploaded_backup": self._save_uploaded_backup,
             "cleanup_old_backups": self._cleanup_old_backups,
             "log_event": self._log_event,
-            "has_backup_this_week": self._has_backup_this_week,
+            "has_backup_today": self._has_backup_today,
+            "has_backup_last_days": self._has_backup_last_days,
         }
         if accion not in acciones:
             raise ValueError("Accion no permitida")
@@ -250,6 +306,7 @@ class WeeklyBackupScheduler:
         self._stop_event.set()
 
     def _run_loop(self):
+        self._run_once()
         while not self._stop_event.wait(self.interval_seconds):
             self._run_once()
 
@@ -263,12 +320,19 @@ class WeeklyBackupScheduler:
         except Exception:
             logger.exception("Error limpiando respaldos antiguos.")
         try:
-            if self._model.ejecutar("has_backup_this_week"):
+
+
+            is_sunday = datetime.now().weekday() == 6
+            if is_sunday:
+                due = not self._model.ejecutar("has_backup_today")
+            else:
+                due = not self._model.ejecutar("has_backup_last_days", 7)
+            if not due:
                 return
             files = self._model.ejecutar("create_backup")
             if files:
                 nombres = ', '.join(f['filename'] for f in files)
-                self._model.ejecutar("log_event", 1, 'CREAR', 'RESPALDOS', f"Respaldo creado: {nombres}", '127.0.0.1', 1)
+                self._model.ejecutar("log_event", 1, 'CREAR', 'RESPALDOS', f"Respaldo semanal automatico: {nombres}", '127.0.0.1', 1)
                 logger.info("Respaldo semanal automatico creado: %s", nombres)
         except Exception:
             logger.exception("Error en respaldo semanal automatico.")

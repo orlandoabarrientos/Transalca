@@ -1,0 +1,13 @@
+{
+  "active_version": "intent-43af6f239602-s20260710",
+  "candidate_version": "intent-43af6f239602-s20260710",
+  "dataset_preparation": {
+    "status": "manager_unavailable",
+    "used_existing_dataset": true
+  },
+  "generated_at": "2026-07-10T20:41:58+00:00",
+  "promoted": false,
+  "reason": "dataset_and_training_version_already_active",
+  "silent_promotion": false,
+  "status": "no_change"
+}

@@ -1,0 +1,16 @@
+{
+  "version": "2026.07.1",
+  "updated_at": "2026-06-16",
+  "disclaimer": "Referencia local curada. Confirmar siempre en etiqueta de puerta, manual del fabricante o documentacion tecnica aplicable a la version exacta.",
+  "records": [
+    {"make": "toyota", "model": "hilux", "year_start": 2016, "year_end": 2023, "trim": "varias", "sizes": ["225/70R17", "265/65R17", "265/60R18"], "confidence": 0.68, "note": "Varia por version, mercado y rin."},
+    {"make": "toyota", "model": "4runner", "year_start": 2010, "year_end": 2024, "trim": "varias", "sizes": ["265/70R17", "245/60R20"], "confidence": 0.78, "note": "El equipamiento puede cambiar por version; Limited suele diferir."},
+    {"make": "toyota", "model": "corolla", "year_start": 2014, "year_end": 2019, "trim": "varias", "sizes": ["195/65R15", "205/55R16", "215/45R17"], "confidence": 0.70, "note": "Depende de version y rin instalado."},
+    {"make": "toyota", "model": "fortuner", "year_start": 2016, "year_end": 2023, "trim": "varias", "sizes": ["265/65R17", "265/60R18"], "confidence": 0.68, "note": "Validar version y mercado."},
+    {"make": "toyota", "model": "prado", "year_start": 2010, "year_end": 2023, "trim": "varias", "sizes": ["265/65R17", "265/60R18"], "confidence": 0.62, "note": "Validar version exacta."},
+    {"make": "toyota", "model": "yaris", "year_start": 2014, "year_end": 2022, "trim": "varias", "sizes": ["175/65R14", "185/60R15"], "confidence": 0.62, "note": "Validar carroceria y rin."},
+    {"make": "chevrolet", "model": "aveo", "year_start": 2005, "year_end": 2018, "trim": "varias", "sizes": ["185/60R14", "185/55R15"], "confidence": 0.62, "note": "Validar version y mercado."},
+    {"make": "ford", "model": "explorer", "year_start": 2011, "year_end": 2019, "trim": "varias", "sizes": ["245/60R18", "255/50R20"], "confidence": 0.62, "note": "Validar version, paquete y rin."},
+    {"make": "suzuki", "model": "grand vitara", "year_start": 2006, "year_end": 2015, "trim": "varias", "sizes": ["225/65R17", "235/60R16"], "confidence": 0.60, "note": "Validar rin actual, version y marca comercial del vehiculo."}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "buckets": {
+    "feedback_manual_proxy": 300,
+    "manual_curated": 300,
+    "multiturn_curated": 200,
+    "security_curated": 100,
+    "truck_curated": 100
+  },
+  "critical": 200,
+  "excluded_from_training": 1000,
+  "feedback_proxy_cases": 300,
+  "pending_requirement": "Reemplazar 300 proxies por feedback real aprobado y anonimizado cuando exista.",
+  "real_feedback_cases": 0,
+  "sha256": "f8fa26dfebba9447432074add5e614d77af25f7c7ea8bb354fd8c9d80f638d52",
+  "total": 1000,
+  "training_overlap": 0,
+  "valid": true
+}

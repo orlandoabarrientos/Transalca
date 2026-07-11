@@ -35,6 +35,11 @@
     <a href="/admin/report_stats" class="nav-link" data-page="report_stats"><i class="bi bi-pie-chart-fill"></i> Reportes Estadísticos</a>
     <a href="/admin/bitacora" class="nav-link" data-page="bitacora"><i class="bi bi-journal-text"></i> G. Bitácora</a>
     <a href="/admin/backup" class="nav-link" data-page="backup"><i class="bi bi-database-fill-down"></i> G. Respaldos</a>
+    <a href="#" class="nav-link" data-bs-toggle="collapse" data-bs-target="#mantSubmenu" aria-expanded="true"><i class="bi bi-tools"></i> Mantenimiento<i class="bi bi-chevron-down mant-chevron"></i></a>
+    <div class="collapse show" id="mantSubmenu">
+        <a href="#" class="nav-link mant-sub" onclick="sidebarCrearRespaldo(event)"><i class="bi bi-database-fill-add"></i> Crear respaldo</a>
+        <a href="#" class="nav-link mant-sub" onclick="sidebarRestaurarUltimoRespaldo(event)"><i class="bi bi-database-fill-up"></i> Restaurar último respaldo</a>
+    </div>
     <a href="/admin/profile" class="nav-link" data-page="profile"><i class="bi bi-person-circle"></i> G. Mi Perfil</a>
     <a href="/admin/guide" class="nav-link" data-page="guide"><i class="bi bi-journal-bookmark-fill"></i> Guía</a>
     <hr style="border-color:rgba(255,255,255,0.1);margin:8px 16px;">

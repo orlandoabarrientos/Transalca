@@ -1,0 +1,80 @@
+name: IA intelligence validation
+
+on:
+  pull_request:
+    paths:
+      - "componente_ia/**"
+  push:
+    paths:
+      - "componente_ia/**"
+  workflow_dispatch:
+    inputs:
+      full_performance:
+        description: "Run the full 1000/100/10000 profile"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  deterministic-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: python -m pip install -r requirements.txt -r requirements-dev.txt
+      - name: Compile assistant
+        run: python -m compileall -q componente_ia
+      - name: Dataset, holdout, grounding, safety and red-team
+        run: python -m pytest -q componente_ia/tests
+        env:
+          ASSISTANT_WEB_ENABLED: "0"
+          ASSISTANT_LLM_ENABLED: "0"
+          ASSISTANT_BUSINESS_DYNAMIC_ENABLED: "0"
+          ASSISTANT_FEEDBACK_PERSIST: "0"
+      - name: Integral evaluation
+        run: python -m componente_ia.evaluation evaluate
+
+  short-performance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - name: Short production profile
+        run: >-
+          python -m componente_ia.production_validation
+          --sequential 100 --concurrent 50 --catalog-size 10000 --soak 100
+          --output componente_ia/artifacts/ia_performance_ci.json
+        env:
+          ASSISTANT_WEB_ENABLED: "0"
+          ASSISTANT_LLM_ENABLED: "0"
+          ASSISTANT_BUSINESS_DYNAMIC_ENABLED: "0"
+
+  full-performance:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_performance }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - run: >-
+          python -m componente_ia.production_validation
+          --sequential 1000 --concurrent 100 --catalog-size 10000 --soak 1000
+          --output componente_ia/artifacts/ia_performance_results.json
+        env:
+          ASSISTANT_WEB_ENABLED: "0"
+          ASSISTANT_LLM_ENABLED: "0"
+          ASSISTANT_BUSINESS_DYNAMIC_ENABLED: "0"
+
