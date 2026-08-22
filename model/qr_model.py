@@ -76,7 +76,7 @@ class QRModel(Connection):
         }
         if not referencia_id:
             return fields
-        if utility_type == 'promocion' or tipo == 'promocion' or utility_type.startswith('mesa'):
+        if utility_type == 'promocion' or tipo == 'promocion':
             fields['promocion_id'] = referencia_id
         elif utility_type in ('factura', 'validar_pago', 'pago') or tipo == 'pago':
             fields['orden_venta_id'] = referencia_id
@@ -123,7 +123,7 @@ class QRModel(Connection):
         utilidad_tipo = (data.get('utilidad_tipo') or '').strip().lower()
         if not utilidad_tipo:
             errors['utilidad_tipo'] = 'La utilidad es obligatoria'
-        elif utilidad_tipo in ('promocion', 'mesa') and not str(data.get('referencia_id') or '').strip():
+        elif utilidad_tipo == 'promocion' and not str(data.get('referencia_id') or '').strip():
             errors['referencia_id'] = 'Seleccione una referencia para esta utilidad'
         if errors:
             raise ValidationError(errors)

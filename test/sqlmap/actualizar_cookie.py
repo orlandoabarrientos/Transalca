@@ -1,9 +1,25 @@
 import os
 import re
+import requests
 
-NEW_COOKIE = '.eJyllsFuFDEMht8l51LtQCVgTvAMSFyqauR1vFurSRxszyK16rujWXZKBQVtzZwcJd8f-5cdzUPqpJVNLI0PacsOKApLDOgzFL4HTePmIqHSKaLCldtpUYg0jcPjxRM7HeiWcS7yu8jwJDI8FxmeiyA47UUZLEQXpuYUY6WysbQgrZTZJcRmsNutgOaI61S7ksXsIkNoy-L16I6La6zc_cyh_qqgGKuzEkJjjKVbySWLTR32oY6ukucSu7qJ844RMNyWopnahFL7nzN9Nh-7evErBpLuuEQ6pKvkGYNT2FWqxJ3uKgeiLBrDv4WmUKmLvvDenWPWyk5kDpnNXxqQ84SsQ8n_goe_w1JihhnpgZFlWof7f0RiGbjgXQiccVaDYOEOBjbBAdo95Nh76Ix35CF0thk0aNj6X2Cvh391ynX6nCs3NlfIoulmyYl0gk6lcJY0pi9sThXSaQcpzwXSmL6-2Zy-dYsqLC9NgkXykys0g4JwiVLXIzvxRfMYD9Pw_sPm6t3H4e3V5Xfa9vUQ52O2x7hJ3Sql8Wee6wnnvshQ7YUgS3r8AYDQGKo.ak7mig.Ph0qT2GCwIr4osfWId-YwSVIZzg'
-
+# ── Configuración ──
+LOGIN_URL = "http://127.0.0.1:5000/auth/do_login"
+LOGIN_DATA = {"email": "admin@transalca.com", "password": "Admin123!"}
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ── 1. Hacer login y obtener cookie ──
+print("[*] Iniciando sesion...")
+resp = requests.post(LOGIN_URL, json=LOGIN_DATA)
+cookie = resp.cookies.get("session")
+
+if not cookie:
+    print("[ERROR] No se obtuvo cookie de sesion. Verifica credenciales y que el servidor este corriendo.")
+    print(f"        Status: {resp.status_code} | Respuesta: {resp.text[:200]}")
+    exit(1)
+
+print(f"[OK] Cookie obtenida: {cookie[:40]}...")
+
+# ── 2. Actualizar todos los archivos .txt ──
 updated = []
 skipped = []
 
@@ -14,7 +30,7 @@ for root, dirs, files in os.walk(BASE_DIR):
             with open(fpath, 'r', encoding='utf-8') as f:
                 content = f.read()
             if 'Cookie: session=' in content:
-                new_content = re.sub(r'Cookie: session=[^\r\n]+', f'Cookie: session={NEW_COOKIE}', content)
+                new_content = re.sub(r'Cookie: session=[^\r\n]+', f'Cookie: session={cookie}', content)
                 with open(fpath, 'w', encoding='utf-8') as f:
                     f.write(new_content)
                 rel = os.path.relpath(fpath, BASE_DIR)

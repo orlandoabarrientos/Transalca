@@ -103,15 +103,7 @@ class ScannerModel(Connection):
         content['fulfilled_at'] = datetime.now().isoformat(timespec='seconds')
         self._save_content(qr['id'], content)
 
-    def _is_table_qr(self, qr):
-        utilidad = (qr.get('utilidad') or '').strip().lower()
-        return utilidad.startswith('mesa:')
 
-    def _mesa_codigo(self, qr):
-        utilidad = (qr.get('utilidad') or '').strip()
-        if ':' not in utilidad:
-            return ''
-        return utilidad.split(':', 1)[1]
 
     def _get_active_qr_by_id(self, qr_id):
         return self.fetch_one("transalca", "SELECT q.*, CASE q.tipo_qr_code WHEN 1 THEN 'pago' WHEN 2 THEN 'promocion' WHEN 3 THEN 'servicio' ELSE 'info' END AS tipo, q.referencia_qr_code AS referencia_id FROM qr_codes q WHERE q.id_qr_code = %s AND q.estado = 1", (qr_id,))
@@ -233,78 +225,7 @@ class ScannerModel(Connection):
         return self.fetch_all("transalca",
             "SELECT id_promocion AS id, nombre_promocion AS nombre, puntos_requeridos, recompensa_promocion AS recompensa FROM promociones WHERE estado = 1 AND (fecha_fin_promocion IS NULL OR fecha_fin_promocion >= CURDATE()) ORDER BY nombre_promocion")
 
-    def _get_table_qrs(self):
-        if "promocion_id" in self._qr_columns():
-            rows = self.fetch_all("transalca",
-                "SELECT q.*, CASE q.tipo_qr_code WHEN 1 THEN 'pago' WHEN 2 THEN 'promocion' WHEN 3 THEN 'servicio' ELSE 'info' END AS tipo, q.referencia_qr_code AS referencia_id, p.nombre_promocion as promocion_nombre FROM qr_codes q LEFT JOIN promociones p ON COALESCE(q.promocion_id, q.referencia_qr_code) = p.id_promocion WHERE q.estado = 1 AND q.utilidad LIKE 'mesa:%%' ORDER BY q.created_at DESC")
-        else:
-            rows = self.fetch_all("transalca",
-                "SELECT q.*, CASE q.tipo_qr_code WHEN 1 THEN 'pago' WHEN 2 THEN 'promocion' WHEN 3 THEN 'servicio' ELSE 'info' END AS tipo, q.referencia_qr_code AS referencia_id, p.nombre_promocion as promocion_nombre FROM qr_codes q LEFT JOIN promociones p ON q.referencia_qr_code = p.id_promocion WHERE q.estado = 1 AND q.utilidad LIKE 'mesa:%%' ORDER BY q.created_at DESC")
 
-        for row in rows:
-            content = self._parse_content(row.get('contenido'))
-            row['codigo_mesa'] = self._mesa_codigo(row)
-            row['accion'] = content.get('accion', 'sin_accion')
-            row['promocion_id'] = row.get('referencia_id') or content.get('promocion_id')
-
-        return rows
-
-    def _create_table_qr(self, usuario_cedula, codigo_mesa):
-        code = re.sub(r'[^A-Za-z0-9_-]', '', (codigo_mesa or '').upper())
-        if len(code) < 2:
-            raise ValueError('Codigo de mesa invalido')
-
-        utilidad = f"mesa:{code}"
-        existing = self.fetch_one("transalca",
-            "SELECT id_qr_code AS id FROM qr_codes WHERE utilidad = %s AND estado = 1 ORDER BY id_qr_code DESC LIMIT 1",
-            (utilidad,))
-        if existing:
-            return {'id': existing['id'], 'created': False}
-
-        content = json.dumps({"kind": "mesa", "accion": "sin_accion", "promocion_id": None})
-        qr_id = self.insert("transalca",
-            "INSERT INTO qr_codes (usuario_cedula, tipo_qr_code, contenido, utilidad) VALUES (%s, 0, %s, %s)",
-            (usuario_cedula, content, utilidad))
-
-        return {'id': qr_id, 'created': True}
-
-    def _set_table_qr_action(self, qr_id, accion, promocion_id=None):
-        qr = self._get_active_qr_by_id(qr_id)
-        if not qr or not self._is_table_qr(qr):
-            raise ValueError('QR de mesa no encontrado')
-
-        action = (accion or '').strip().lower()
-        allowed = {'sin_accion', 'promocion', 'validar_pago'}
-        if action not in allowed:
-            raise ValueError('Accion invalida')
-
-        promo_id = None
-        if action == 'promocion':
-            try:
-                promo_id = int(promocion_id)
-            except Exception:
-                raise ValueError('Debe seleccionar una promocion valida')
-
-            promo = self.fetch_one("transalca",
-                "SELECT id_promocion AS id FROM promociones WHERE id_promocion = %s AND estado = 1", (promo_id,))
-            if not promo:
-                raise ValueError('Promocion no encontrada o inactiva')
-
-        content = self._parse_content(qr.get('contenido'))
-        content['kind'] = 'mesa'
-        content['accion'] = action
-        content['promocion_id'] = promo_id
-
-        if "promocion_id" in self._qr_columns():
-            self.update("transalca",
-                "UPDATE qr_codes SET contenido = %s, referencia_qr_code = %s, promocion_id = %s WHERE id_qr_code = %s",
-                (json.dumps(content), promo_id, promo_id, qr_id))
-        else:
-            self.update("transalca",
-                "UPDATE qr_codes SET contenido = %s, referencia_qr_code = %s WHERE id_qr_code = %s",
-                (json.dumps(content), promo_id, qr_id))
-
-        return self._get_active_qr_by_id(qr_id)
 
     def _assign_card_to_client(self, cliente_cedula, promocion_id):
         promo = self.fetch_one("transalca",
@@ -369,14 +290,7 @@ class ScannerModel(Connection):
         utility = state['utility']
         content = state['content']
 
-        if utility.startswith('mesa') or self._is_table_qr(qr):
-            return {
-                'mode': 'mesa_info',
-                'message': 'QR de mesa detectado',
-                'codigo_mesa': self._mesa_codigo(qr),
-                'accion': content.get('accion', 'sin_accion'),
-                'promocion_id': qr.get('referencia_id') or content.get('promocion_id')
-            }
+
 
         if utility in ('validar_pago', 'factura', 'pago') or content.get('kind') == 'factura' or qr.get('tipo') == 'pago':
             order_id = state.get('reference_id') or qr.get('referencia_id') or content.get('orden_id')
@@ -434,39 +348,7 @@ class ScannerModel(Connection):
         utility = state['utility']
         content = state['content']
 
-        if utility.startswith('mesa') or self._is_table_qr(qr):
-            action = content.get('accion', 'sin_accion')
-            if action == 'promocion':
-                promo_id = state.get('reference_id') or qr.get('referencia_id') or content.get('promocion_id')
-                card = self._assign_card_to_client(cliente_cedula, promo_id)
-                if not card:
-                    return {
-                        'mode': 'mesa_sin_accion',
-                        'message': 'La promocion asociada ya no esta disponible',
-                        'codigo_mesa': self._mesa_codigo(qr)
-                    }
-                self._mark_completed(qr)
-                return {
-                    'mode': 'mesa_promocion_aplicada',
-                    'message': 'Promocion registrada en su fidelizacion',
-                    'codigo_mesa': self._mesa_codigo(qr),
-                    'card': card
-                }
 
-            if action == 'validar_pago':
-                latest_order = self._get_latest_order_full(cliente_cedula)
-                return {
-                    'mode': 'mesa_validar_pago',
-                    'message': 'Datos de su ultima factura listos para validacion',
-                    'codigo_mesa': self._mesa_codigo(qr),
-                    'order': latest_order
-                }
-
-            return {
-                'mode': 'mesa_sin_accion',
-                'message': 'Este QR de mesa no tiene accion asignada',
-                'codigo_mesa': self._mesa_codigo(qr)
-            }
 
         if utility == 'validar_pago':
             order_id = state.get('reference_id') or qr.get('referencia_id') or content.get('orden_id')
@@ -566,9 +448,7 @@ class ScannerModel(Connection):
             "get_latest_order_full": self._get_latest_order_full,
             "ensure_invoice_qr": self._ensure_invoice_qr,
             "get_active_promotions": self._get_active_promotions,
-            "get_table_qrs": self._get_table_qrs,
-            "create_table_qr": self._create_table_qr,
-            "set_table_qr_action": self._set_table_qr_action,
+
             "assign_card_to_client": self._assign_card_to_client,
             "process_scan_for_employee": self._process_scan_for_employee,
             "process_scan_for_client": self._process_scan_for_client,

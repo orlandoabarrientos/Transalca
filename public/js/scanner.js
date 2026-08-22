@@ -24,11 +24,7 @@ $(document).ready(async function () {
 
         bindScannerEvents();
 
-        if (isEmployee()) {
-            document.getElementById('employeeTools').style.display = '';
-            await loadPromotions();
-            await loadTableQrs();
-        }
+
 
         const autoQr = new URLSearchParams(window.location.search).get('qr');
         if (autoQr && /^\d+$/.test(autoQr)) {
@@ -57,48 +53,7 @@ function bindScannerEvents() {
     document.getElementById('btnStartCamera')?.addEventListener('click', startCamera);
     document.getElementById('btnStopCamera')?.addEventListener('click', stopCamera);
 
-    document.getElementById('btnCreateMesaQr')?.addEventListener('click', createMesaQr);
 
-    $('#tableQrList').on('change', '.action-select', function () {
-        const qrId = this.getAttribute('data-id');
-        const action = this.value;
-        const promoSelect = document.querySelector(`.promo-select[data-id="${qrId}"]`);
-        if (!promoSelect) return;
-        promoSelect.style.display = action === 'promocion' ? '' : 'none';
-    });
-
-    $('#tableQrList').on('click', '.btn-save-action', async function () {
-        const qrId = this.getAttribute('data-id');
-        const actionSelect = document.querySelector(`.action-select[data-id="${qrId}"]`);
-        const promoSelect = document.querySelector(`.promo-select[data-id="${qrId}"]`);
-        if (!actionSelect) return;
-
-        const action = actionSelect.value;
-        const promoId = promoSelect ? promoSelect.value : '';
-
-        const payload = {
-            accion: action,
-            promocion_id: action === 'promocion' ? promoId : null
-        };
-
-        try {
-            const res = await fetch(`/api/scanner/table-qrs/${qrId}/action`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (!res.ok || data.status === 'error') {
-                showToast(data.message || 'No se pudo actualizar la accion', 'error');
-                return;
-            }
-            showToast(data.message || 'Accion actualizada', 'success');
-            await loadTableQrs();
-        } catch (e) {
-            showToast('Error de conexion al actualizar accion', 'error');
-        }
-    });
 }
 
 async function processScan(rawOverride = null) {
@@ -135,7 +90,7 @@ async function processScan(rawOverride = null) {
 }
 
 function renderScanResult(data) {
-    if (data.mode === 'promocion_directa_aplicada' || data.mode === 'mesa_promocion_aplicada') {
+    if (data.mode === 'promocion_directa_aplicada') {
         const cardData = data.card || {};
         const promoName = cardData.promo_nombre || 'Promoción';
         window.location.href = `/client/my_loyalty?promo_registered=1&promo_name=${encodeURIComponent(promoName)}`;
@@ -163,62 +118,7 @@ function renderScanResult(data) {
         return;
     }
 
-    if (data.mode === 'mesa_promocion_aplicada') {
-        const cardData = data.card || {};
-        body.innerHTML = `
-            <div class="alert alert-success mb-3">${escapeHtml(data.message || 'Promocion aplicada')}</div>
-            <div><strong>Mesa:</strong> ${escapeHtml(data.codigo_mesa || '-')}</div>
-            <div><strong>Tarjeta:</strong> #${cardData.id || '-'}</div>
-            <div><strong>Promocion:</strong> ${escapeHtml(cardData.promo_nombre || '-')}</div>
-            <div><strong>Puntos:</strong> ${cardData.puntos_acumulados || 0} / ${cardData.puntos_requeridos || '-'}</div>
-            <div><strong>Recompensa:</strong> ${escapeHtml(cardData.recompensa || '-')}</div>
-        `;
-        return;
-    }
-
-    if (data.mode === 'promocion_info') {
-        const promo = data.promocion || {};
-        body.innerHTML = `
-            <div class="alert alert-info mb-3">${escapeHtml(data.message || 'Promocion disponible')}</div>
-            <div><strong>Promocion:</strong> ${escapeHtml(promo.nombre || '-')}</div>
-            <div><strong>Puntos requeridos:</strong> ${promo.puntos_requeridos || '-'}</div>
-            <div><strong>Recompensa:</strong> ${escapeHtml(promo.recompensa || '-')}</div>
-        `;
-        return;
-    }
-
-    if (data.mode === 'promocion_directa_aplicada') {
-        const cardData = data.card || {};
-        body.innerHTML = `
-            <div class="alert alert-success mb-3">${escapeHtml(data.message || 'Promocion aplicada')}</div>
-            <div><strong>Tarjeta:</strong> #${cardData.id || '-'}</div>
-            <div><strong>Promocion:</strong> ${escapeHtml(cardData.promo_nombre || '-')}</div>
-            <div><strong>Puntos:</strong> ${cardData.puntos_acumulados || 0} / ${cardData.puntos_requeridos || '-'}</div>
-        `;
-        return;
-    }
-
-    if (data.mode === 'mesa_validar_pago') {
-        const header = `<div class="alert alert-info mb-3">${escapeHtml(data.message || 'Validacion de pago')}</div><div><strong>Mesa:</strong> ${escapeHtml(data.codigo_mesa || '-')}</div>`;
-        if (!data.order) {
-            body.innerHTML = `${header}<div class="mt-2 text-muted">No se encontro factura reciente para este cliente.</div>`;
-            return;
-        }
-        body.innerHTML = `${header}${renderOrderBlock(data.order, 'Ultima factura del cliente')}`;
-        return;
-    }
-
-    if (data.mode === 'mesa_info') {
-        body.innerHTML = `
-            <div class="alert alert-secondary mb-3">${escapeHtml(data.message || 'QR de mesa')}</div>
-            <div><strong>Mesa:</strong> ${escapeHtml(data.codigo_mesa || '-')}</div>
-            <div><strong>Accion:</strong> ${escapeHtml(data.accion || 'sin_accion')}</div>
-            <div><strong>Promocion ID:</strong> ${data.promocion_id || '-'}</div>
-        `;
-        return;
-    }
-
-    if (data.mode === 'mesa_sin_accion' || data.mode === 'factura_restringida' || data.mode === 'factura_invalida' || data.mode === 'qr_sin_utilidad') {
+    if (data.mode === 'factura_restringida' || data.mode === 'factura_invalida' || data.mode === 'qr_sin_utilidad') {
         body.innerHTML = `<div class="alert alert-warning mb-0">${escapeHtml(data.message || 'Sin accion configurada')}</div>`;
         return;
     }
@@ -316,115 +216,7 @@ async function stopCamera() {
     document.getElementById('btnStopCamera').disabled = true;
 }
 
-async function loadPromotions() {
-    try {
-        const res = await fetch('/api/scanner/promotions', { credentials: 'same-origin' });
-        const data = await res.json();
-        if (!res.ok || data.status === 'error') {
-            promotionsCache = [];
-            return;
-        }
-        promotionsCache = data.data || [];
-    } catch (e) {
-        promotionsCache = [];
-    }
-}
 
-async function loadTableQrs() {
-    if (!isEmployee()) return;
-
-    try {
-        const res = await fetch('/api/scanner/table-qrs', { credentials: 'same-origin' });
-        const data = await res.json();
-
-        if (!res.ok || data.status === 'error') {
-            showToast(data.message || 'No se pudo cargar los QR de mesa', 'error');
-            return;
-        }
-
-        renderTableQrs(data.data || []);
-    } catch (e) {
-        showToast('Error al cargar QR de mesas', 'error');
-    }
-}
-
-function renderTableQrs(items) {
-    const container = document.getElementById('tableQrList');
-    if (!container) return;
-
-    if (!items.length) {
-        container.innerHTML = '<div class="text-muted">No hay QR de mesa registrados.</div>';
-        return;
-    }
-
-    const html = items.map(item => {
-        const action = item.accion || 'sin_accion';
-        const promoSelectStyle = action === 'promocion' ? '' : 'display:none;';
-
-        return `
-            <div class="border rounded p-3 mb-3">
-                <div class="d-flex gap-3 align-items-start mb-2">
-                    <img class="scanner-mini-qr" src="/api/qr/${item.id}/image?t=${Date.now()}" alt="QR mesa">
-                    <div class="flex-grow-1">
-                        <div><strong>${escapeHtml(item.codigo_mesa || '-')}</strong></div>
-                        <small class="text-muted d-block mb-2">QR #${item.id}</small>
-                        <select class="form-select form-select-sm action-select" data-id="${item.id}">
-                            <option value="sin_accion" ${action === 'sin_accion' ? 'selected' : ''}>Sin accion</option>
-                            <option value="promocion" ${action === 'promocion' ? 'selected' : ''}>Asignar promocion</option>
-                            <option value="validar_pago" ${action === 'validar_pago' ? 'selected' : ''}>Validar pago</option>
-                        </select>
-                        <select class="form-select form-select-sm mt-2 promo-select" data-id="${item.id}" style="${promoSelectStyle}">
-                            <option value="">Seleccione promocion</option>
-                            ${buildPromotionOptions(item.promocion_id)}
-                        </select>
-                        <button class="btn btn-sm btn-orange mt-2 btn-save-action" data-id="${item.id}">Guardar accion</button>
-                        <a class="btn btn-sm btn-outline-orange mt-2 ms-2" href="/scanner?qr=${item.id}" target="_blank">Abrir QR</a>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    container.innerHTML = html;
-}
-
-function buildPromotionOptions(selectedId) {
-    return promotionsCache.map(p => {
-        const selected = Number(selectedId) === Number(p.id) ? 'selected' : '';
-        return `<option value="${p.id}" ${selected}>${escapeHtml(p.nombre)}</option>`;
-    }).join('');
-}
-
-async function createMesaQr() {
-    if (!isEmployee()) return;
-
-    const codeInput = document.getElementById('mesaCodeInput');
-    const codigo = (codeInput?.value || '').trim();
-    if (!codigo) {
-        showToast('Ingrese el codigo de mesa', 'warning');
-        return;
-    }
-
-    try {
-        const res = await fetch('/api/scanner/table-qrs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ codigo_mesa: codigo })
-        });
-        const data = await res.json();
-        if (!res.ok || data.status === 'error') {
-            showToast(data.message || 'No se pudo crear el QR de mesa', 'error');
-            return;
-        }
-
-        showToast(data.message || 'QR de mesa generado', 'success');
-        codeInput.value = '';
-        await loadTableQrs();
-    } catch (e) {
-        showToast('Error de conexion al crear QR de mesa', 'error');
-    }
-}
 
 function formatMoney(value) {
     return parseFloat(value || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

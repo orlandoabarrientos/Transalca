@@ -57,67 +57,7 @@ def scan_qr():
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
-@scanner_bp.route('/table-qrs', methods=['GET'])
-def get_table_qrs():
-    try:
-        if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado"}), 401
-        if not _is_employee():
-            return jsonify({"status": "error", "message": "Solo empleados"}), 403
 
-        return jsonify({"status": "success", "data": model.ejecutar("get_table_qrs")})
-    except Exception as e:
-        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
-
-
-@scanner_bp.route('/table-qrs', methods=['POST'])
-def create_table_qr():
-    try:
-        if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado"}), 401
-        if not _is_employee():
-            return jsonify({"status": "error", "message": "Solo empleados"}), 403
-
-        data = request.get_json() or {}
-        codigo_mesa = data.get('codigo_mesa') or data.get('codigo')
-        if not codigo_mesa:
-            return jsonify({"status": "error", "message": "Codigo de mesa requerido"}), 400
-
-        result = model.ejecutar("create_table_qr", session.get('user_cedula'), codigo_mesa)
-
-
-
-
-        msg = 'QR de mesa creado' if result.get('created') else 'Ya existe un QR activo para esa mesa'
-        return jsonify({"status": "success", "message": msg, "data": result})
-    except ValueError as ve:
-        return jsonify({"status": "error", "message": str(ve)}), 400
-    except Exception as e:
-        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
-
-
-@scanner_bp.route('/table-qrs/<int:qr_id>/action', methods=['PUT'])
-def update_table_qr_action(qr_id):
-    try:
-        if 'user_id' not in session:
-            return jsonify({"status": "error", "message": "No autorizado"}), 401
-        if not _is_employee():
-            return jsonify({"status": "error", "message": "Solo empleados"}), 403
-
-        data = request.get_json() or {}
-        accion = data.get('accion')
-        promocion_id = data.get('promocion_id')
-
-        qr = model.ejecutar("set_table_qr_action", qr_id, accion, promocion_id)
-
-
-
-
-        return jsonify({"status": "success", "message": "Accion actualizada", "data": qr})
-    except ValueError as ve:
-        return jsonify({"status": "error", "message": str(ve)}), 400
-    except Exception as e:
-        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
 
 
 @scanner_bp.route('/promotions', methods=['GET'])
