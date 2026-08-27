@@ -61,7 +61,8 @@ class TestServiceModelValidation:
         "mantenimiento_super_express",
         "",
     ])
-    def test_validate_invalid_tipos_data_provider(self, invalid_tipo):
+    @patch.object(ServiceModel, "_sucursal_exists", return_value=True)
+    def test_validate_invalid_tipos_data_provider(self, mock_suc_exists, invalid_tipo):
         model = ServiceModel()
         data = {
             "nombre": "Servicio Test",
@@ -78,7 +79,8 @@ class TestServiceModelValidation:
         -10.00,        # Precio negativo
         "abc",         # No numérico
     ])
-    def test_validate_invalid_precios_data_provider(self, invalid_precio):
+    @patch.object(ServiceModel, "_sucursal_exists", return_value=True)
+    def test_validate_invalid_precios_data_provider(self, mock_suc_exists, invalid_precio):
         model = ServiceModel()
         data = {
             "nombre": "Servicio Test",
