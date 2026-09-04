@@ -1068,8 +1068,13 @@ function enhanceSearchableSelects(root = document) {
                     minimumResultsForSearch: select.hasAttribute('data-no-search') ? Infinity : 0
                 };
                 if (firstEmptyOption) {
-                    config.placeholder = firstEmptyOption.textContent.trim();
-                    config.allowClear = false;
+                    const rawText = firstEmptyOption.textContent.trim();
+                    const lowerText = rawText.toLowerCase();
+                    const isAllOption = lowerText === 'todos' || lowerText === 'todas' || lowerText.startsWith('todos ') || lowerText.startsWith('todas ');
+                    if (!isAllOption) {
+                        config.placeholder = rawText;
+                        config.allowClear = true;
+                    }
                 }
                 if (modal) config.dropdownParent = window.jQuery(modal);
                 $select.select2(config);

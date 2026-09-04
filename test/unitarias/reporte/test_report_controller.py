@@ -77,3 +77,101 @@ class TestReportController:
         assert response.status_code == 200
         assert response.mimetype == "text/csv"
         assert b"Juan P" in response.data
+
+    @patch("model.report_model.ReportModel._get_top_products_report")
+    def test_query_top_products_authorized_success(self, mock_get_top, auth_employee_client):
+        mock_get_top.return_value = [
+            {"ranking": 1, "codigo": "FIL-001", "nombre_producto": "Filtro de Aceite", "total_vendido": 80, "total_recaudado": 640.00}
+        ]
+        response = auth_employee_client.get('/api/reports/query?type=top_products&category=Filtros&limit=10&sucursal_id=1')
+        json_data = response.get_json()
+
+        assert response.status_code == 200
+        assert json_data["status"] == "success"
+        assert json_data["data"][0]["codigo"] == "FIL-001"
+        assert json_data["data"][0]["total_vendido"] == 80
+        mock_get_top.assert_called_once()
+        assert mock_get_top.call_args.kwargs.get('sucursal_id') == '1'
+
+    @patch("model.report_model.ReportModel._get_top_products_report")
+    def test_export_top_products_excel_success(self, mock_get_top, auth_employee_client):
+        mock_get_top.return_value = [
+            {
+                "ranking": 1,
+                "codigo": "FIL-001",
+                "nombre_producto": "Filtro de Aceite",
+                "categoria": "Filtros",
+                "marca": "Wix",
+                "total_vendido": 80,
+                "total_recaudado": 640.00,
+                "total_ordenes": 25,
+                "stock_actual": 12
+            }
+        ]
+        response = auth_employee_client.get('/api/reports/export?type=top_products&format=excel')
+
+        assert response.status_code == 200
+        assert response.mimetype == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        assert len(response.data) > 0
+
+    @patch("model.report_model.ReportModel._get_top_products_report")
+    def test_export_top_products_pdf_success(self, mock_get_top, auth_employee_client):
+        mock_get_top.return_value = [
+            {
+                "ranking": 1,
+                "codigo": "LUB-000032",
+                "nombre_producto": "10W30 SEMI SINTETICO MOBIL ULTRA HIGH PERFORMANCE MOTOR OIL",
+                "categoria": "Lubricantes",
+                "marca": "MOBIL",
+                "total_vendido": 80,
+                "total_recaudado": 640.00,
+                "total_ordenes": 25,
+                "stock_actual": 12
+            }
+        ]
+        response = auth_employee_client.get('/api/reports/export?type=top_products&format=pdf')
+
+        assert response.status_code == 200
+        assert response.mimetype == "application/pdf"
+        assert len(response.data) > 0
+
+    @patch("model.report_model.ReportModel._get_inventory_kardex")
+    def test_export_inventory_pdf_success(self, mock_get_inv, auth_employee_client):
+        mock_get_inv.return_value = [
+            {
+                "id": 1,
+                "producto": "Aceite Sintetico 10W30 Mobil Delvac Legend Extra",
+                "codigo": "LUB-001",
+                "categoria": "Lubricantes",
+                "marca": "Mobil",
+                "motivo": "Venta en tienda orden #12",
+                "tipo": "salida",
+                "cantidad": 5,
+                "fecha": "2026-09-03 10:00:00"
+            }
+        ]
+        response = auth_employee_client.get('/api/reports/export?type=inventory&format=pdf')
+
+        assert response.status_code == 200
+        assert response.mimetype == "application/pdf"
+        assert len(response.data) > 0
+
+    @patch("model.report_model.ReportModel._get_bitacora_audit")
+    def test_export_bitacora_pdf_success(self, mock_get_bitacora, auth_employee_client):
+        mock_get_bitacora.return_value = [
+            {
+                "id": 1,
+                "fecha": "2026-09-03 12:00:00",
+                "usuario": "admin",
+                "modulo": "PRODUCTOS",
+                "accion": "CREAR",
+                "descripcion": "Creación de producto LUB-001 con stock inicial 100",
+                "ip": "127.0.0.1"
+            }
+        ]
+        response = auth_employee_client.get('/api/reports/export?type=bitacora&format=pdf')
+
+        assert response.status_code == 200
+        assert response.mimetype == "application/pdf"
+        assert len(response.data) > 0
+

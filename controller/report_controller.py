@@ -37,18 +37,34 @@ def query_reports():
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         status = request.args.get('status')
+        category = request.args.get('category')
+        brand = request.args.get('brand')
+        payment_method = request.args.get('payment_method')
+        moneda = request.args.get('moneda')
+        client_type = request.args.get('client_type')
+        min_amount = request.args.get('min_amount')
+        max_amount = request.args.get('max_amount')
+        stock_status = request.args.get('stock_status')
+        order_by = request.args.get('order_by')
+        mechanic_cedula = request.args.get('mechanic_cedula')
+        limit = request.args.get('limit')
+        search = request.args.get('search')
+        accion_tipo = request.args.get('accion_tipo')
+        sucursal_id = request.args.get('sucursal_id')
 
         data = []
         if report_type == 'sales':
-            data = model.ejecutar("get_sales_history", start_date, end_date, status)
+            data = model.ejecutar("get_sales_history", start_date=start_date, end_date=end_date, status=status, payment_method=payment_method, client_type=client_type, min_amount=min_amount, max_amount=max_amount, search=search, sucursal_id=sucursal_id)
         elif report_type == 'payments':
-            data = model.ejecutar("get_payments_history", start_date, end_date, status)
+            data = model.ejecutar("get_payments_history", start_date=start_date, end_date=end_date, status=status, payment_method=payment_method, moneda=moneda, client_type=client_type, search=search)
         elif report_type == 'inventory':
-            data = model.ejecutar("get_inventory_kardex", start_date, end_date)
+            data = model.ejecutar("get_inventory_kardex", start_date=start_date, end_date=end_date, category=category, brand=brand, stock_status=stock_status, search=search, sucursal_id=sucursal_id)
         elif report_type == 'mechanics':
-            data = model.ejecutar("get_mechanics_performance", start_date, end_date)
+            data = model.ejecutar("get_mechanics_performance", start_date=start_date, end_date=end_date, mechanic_cedula=mechanic_cedula, status=status)
         elif report_type == 'bitacora':
-            data = model.ejecutar("get_bitacora_audit", start_date, end_date, status)
+            data = model.ejecutar("get_bitacora_audit", start_date=start_date, end_date=end_date, modulo=status or request.args.get('modulo'), accion_tipo=accion_tipo, search=search)
+        elif report_type == 'top_products':
+            data = model.ejecutar("get_top_products_report", start_date=start_date, end_date=end_date, category=category, brand=brand, status=status, limit=limit, search=search, stock_status=stock_status, order_by=order_by, sucursal_id=sucursal_id)
         else:
             return jsonify({"status": "error", "message": "Tipo de reporte invalido"}), 400
 
@@ -67,38 +83,56 @@ def export_reports():
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         status = request.args.get('status')
+        category = request.args.get('category')
+        brand = request.args.get('brand')
+        payment_method = request.args.get('payment_method')
+        moneda = request.args.get('moneda')
+        client_type = request.args.get('client_type')
+        min_amount = request.args.get('min_amount')
+        max_amount = request.args.get('max_amount')
+        stock_status = request.args.get('stock_status')
+        order_by = request.args.get('order_by')
+        mechanic_cedula = request.args.get('mechanic_cedula')
+        limit = request.args.get('limit')
+        search = request.args.get('search')
+        accion_tipo = request.args.get('accion_tipo')
+        sucursal_id = request.args.get('sucursal_id')
         format_type = request.args.get('format', 'csv')
-
 
         data = []
         filename = f"reporte_{report_type}_{datetime.now().strftime('%Y%m%d%H%M')}"
         headers = []
 
         if report_type == 'sales':
-            data = model.ejecutar("get_sales_history", start_date, end_date, status)
+            data = model.ejecutar("get_sales_history", start_date=start_date, end_date=end_date, status=status, payment_method=payment_method, client_type=client_type, min_amount=min_amount, max_amount=max_amount, search=search, sucursal_id=sucursal_id)
             headers = ["ID", "Cliente", "Fecha", "Total", "Estado"]
             rows = [[d['id'], d['cliente'], d['fecha'], d['total'], d['estado']] for d in data]
             title = "Reporte Orden de Venta"
         elif report_type == 'payments':
-            data = model.ejecutar("get_payments_history", start_date, end_date, status)
+            data = model.ejecutar("get_payments_history", start_date=start_date, end_date=end_date, status=status, payment_method=payment_method, moneda=moneda, client_type=client_type, search=search)
             headers = ["ID", "Orden", "Cliente", "Fecha", "Referencia", "Monto", "Moneda", "Método", "Estado"]
             rows = [[d['id'], d['orden_id'], d['cliente'], d['fecha'], d['referencia'], d['monto'], d['moneda'], d['metodo'], d['estado']] for d in data]
             title = "Flujo de Pagos"
         elif report_type == 'inventory':
-            data = model.ejecutar("get_inventory_kardex", start_date, end_date)
-            headers = ["ID", "Producto", "Código", "Motivo", "Tipo Obra", "Fecha", "Cantidad"]
-            rows = [[d['id'], d['producto'], d['codigo'], d['motivo'], d['tipo'], d['fecha'], d['cantidad']] for d in data]
+            data = model.ejecutar("get_inventory_kardex", start_date=start_date, end_date=end_date, category=category, brand=brand, stock_status=stock_status, search=search, sucursal_id=sucursal_id)
+            headers = ["ID", "Producto", "Código", "Categoría", "Marca", "Motivo", "Tipo", "Cantidad", "Fecha"]
+            rows = [[d['id'], d['producto'], d['codigo'], d.get('categoria', 'N/A'), d.get('marca', 'N/A'), d['motivo'], d['tipo'], d['cantidad'], d['fecha']] for d in data]
             title = "Kardex de Stock"
         elif report_type == 'mechanics':
-            data = model.ejecutar("get_mechanics_performance", start_date, end_date)
+            data = model.ejecutar("get_mechanics_performance", start_date=start_date, end_date=end_date, mechanic_cedula=mechanic_cedula, status=status)
             headers = ["Mecánico", "Servicios Asignados", "Completados", "Ingreso Generado"]
             rows = [[d['mecanico_nombre'], d['total_asignados'], d['total_completados'], d['ingreso_generado']] for d in data]
             title = "Desempeño de Mecánicos"
         elif report_type == 'bitacora':
-            data = model.ejecutar("get_bitacora_audit", start_date, end_date, status)
+            data = model.ejecutar("get_bitacora_audit", start_date=start_date, end_date=end_date, modulo=status or request.args.get('modulo'), accion_tipo=accion_tipo, search=search)
             headers = ["ID", "Fecha", "Usuario", "Módulo", "Acción", "Descripción", "IP"]
             rows = [[d['id'], d['fecha'], d['usuario'], d['modulo'], d['accion'], d['descripcion'], d['ip']] for d in data]
             title = "Auditoría de Bitácora"
+        elif report_type == 'top_products':
+            data = model.ejecutar("get_top_products_report", start_date=start_date, end_date=end_date, category=category, brand=brand, status=status, limit=limit, search=search, stock_status=stock_status, order_by=order_by, sucursal_id=sucursal_id)
+            headers = ["Ranking", "Código", "Producto", "Categoría", "Marca", "Unidades Vendidas", "Total Facturado", "Órdenes"]
+            rows = [[d['ranking'], d['codigo'], d['nombre_producto'], d['categoria'], d['marca'], d['total_vendido'], d['total_recaudado'], d['total_ordenes']] for d in data]
+            title = "Productos Más Vendidos"
         else:
             return jsonify({"status": "error", "message": "Tipo de reporte invalido"}), 400
 
@@ -116,7 +150,7 @@ def export_reports():
 
             wb = openpyxl.Workbook()
             ws = wb.active
-            ws.title = title
+            ws.title = title[:31]
 
             ws.append(headers)
 
@@ -146,11 +180,11 @@ def export_reports():
             
             for col_idx, header in enumerate(headers, 1):
                 header_lower = header.lower()
-                if "total" in header_lower or "monto" in header_lower or "ingreso" in header_lower:
+                if "total" in header_lower or "monto" in header_lower or "ingreso" in header_lower or "facturado" in header_lower:
                     currency_cols.append(col_idx)
                 elif "fecha" in header_lower:
                     date_cols.append(col_idx)
-                elif header_lower in ["id", "orden", "código", "estado", "moneda", "ip", "cantidad", "servicios asignados", "completados"]:
+                elif header_lower in ["id", "ranking", "orden", "código", "estado", "moneda", "ip", "cantidad", "unidades vendidas", "órdenes", "stock actual", "servicios asignados", "completados"]:
                     center_cols.append(col_idx)
 
             for row_idx in range(2, ws.max_row + 1):
@@ -173,7 +207,7 @@ def export_reports():
                         cell.alignment = Alignment(horizontal="center", vertical="center")
                         val = cell.value
                         if isinstance(val, str):
-                            cell.value = val.replace('T', ' ')
+                            val = val.replace('T', ' ')
                     elif col_idx in center_cols:
                         cell.alignment = Alignment(horizontal="center", vertical="center")
                     else:
@@ -201,34 +235,74 @@ def export_reports():
 
         elif format_type == 'pdf':
             from fpdf import FPDF
-            pdf = FPDF(orientation='L' if report_type in ['bitacora', 'payments', 'inventory'] else 'P')
+            orientation = 'L' if report_type in ['bitacora', 'payments', 'inventory', 'top_products'] else 'P'
+            pdf = FPDF(orientation=orientation)
+            pdf.set_auto_page_break(auto=True, margin=15)
             pdf.add_page()
             pdf.set_font("helvetica", "B", 16)
             pdf.cell(0, 10, title, new_x="LMARGIN", new_y="NEXT", align="C")
             pdf.set_font("helvetica", "", 10)
-            pdf.cell(0, 10, f"Generado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", new_x="LMARGIN", new_y="NEXT", align="C")
-            pdf.ln(5)
+            pdf.cell(0, 8, f"Generado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", new_x="LMARGIN", new_y="NEXT", align="C")
+            pdf.ln(4)
 
-            page_w = 277 if pdf.cur_orientation == 'L' else 190
-            col_w = page_w / len(headers)
+            page_w = 277 if orientation == 'L' else 190
 
-            pdf.set_font("helvetica", "B", 9)
-            pdf.set_fill_color(26, 54, 93)
-            pdf.set_text_color(255, 255, 255)
-            for h in headers:
-                pdf.cell(col_w, 8, str(h), border=1, align='C', fill=True)
-            pdf.ln(8)
+            col_widths = []
+            if report_type == 'top_products' and len(headers) == 8:
+                col_widths = [18, 26, 95, 34, 28, 32, 26, 18]
+            elif report_type == 'inventory' and len(headers) == 9:
+                col_widths = [14, 85, 24, 30, 26, 30, 18, 18, 32]
+            elif report_type == 'payments' and len(headers) == 9:
+                col_widths = [14, 16, 65, 30, 32, 26, 18, 48, 28]
+            elif report_type == 'bitacora' and len(headers) == 7:
+                col_widths = [14, 30, 40, 30, 25, 110, 28]
+            elif report_type == 'sales' and len(headers) == 5:
+                col_widths = [18, 78, 34, 30, 30]
+            elif report_type == 'mechanics' and len(headers) == 4:
+                col_widths = [76, 40, 34, 40]
+            else:
+                col_w = page_w / len(headers)
+                col_widths = [col_w] * len(headers)
+
+            scale_factor = page_w / sum(col_widths)
+            col_widths = [w * scale_factor for w in col_widths]
+
+            def print_table_header():
+                pdf.set_font("helvetica", "B", 8)
+                pdf.set_fill_color(26, 54, 93)
+                pdf.set_text_color(255, 255, 255)
+                for col_idx, h in enumerate(headers):
+                    h_str = str(h)
+                    while pdf.get_string_width(h_str) > (col_widths[col_idx] - 2) and len(h_str) > 3:
+                        h_str = h_str[:-4] + "..."
+                    pdf.cell(col_widths[col_idx], 8, h_str, border=1, align='C', fill=True)
+                pdf.ln(8)
+
+            print_table_header()
 
             pdf.set_font("helvetica", "", 8)
             pdf.set_text_color(0, 0, 0)
             for r in rows:
+                if pdf.get_y() > (190 if orientation == 'L' else 265):
+                    pdf.add_page()
+                    print_table_header()
+                    pdf.set_font("helvetica", "", 8)
+                    pdf.set_text_color(0, 0, 0)
+
                 for col_idx, c in enumerate(r):
-                    val = str(c)
+                    w = col_widths[col_idx]
+                    val = str(c) if c is not None else ''
                     header_lower = headers[col_idx].lower()
-                    if ("total" in header_lower or "monto" in header_lower or "ingreso" in header_lower) and isinstance(c, (int, float)):
+                    if ("total" in header_lower or "monto" in header_lower or "ingreso" in header_lower or "facturado" in header_lower) and isinstance(c, (int, float)):
                         val = f"${c:.2f}"
-                    val = val[:(int(col_w/1.5))]
-                    pdf.cell(col_w, 6, val, border=1, align='R' if "total" in header_lower or "monto" in header_lower or "ingreso" in header_lower else 'L')
+                    elif "fecha" in header_lower and 'T' in val:
+                        val = val.replace('T', ' ')
+
+                    while pdf.get_string_width(val) > (w - 3) and len(val) > 3:
+                        val = val[:-4] + "..."
+
+                    align = 'R' if any(k in header_lower for k in ["total", "monto", "ingreso", "facturado"]) else ('C' if any(k in header_lower for k in ["id", "ranking", "orden", "código", "estado", "moneda", "ip", "cantidad", "unidades", "órdenes", "tipo"]) else 'L')
+                    pdf.cell(w, 6, val, border=1, align=align)
                 pdf.ln(6)
 
             output = bytearray(pdf.output())

@@ -23,21 +23,111 @@
                 <div class="card mb-4">
                     <div class="card-body">
                         <form id="filterForm" class="row g-3 align-items-end">
-                            <div class="col-md-3">
+                            <div class="col-md-2" id="startDateContainer">
                                 <label class="form-label text-muted small mb-1">Fecha Inicio</label>
                                 <input type="date" class="form-control form-control-sm" id="startDate" name="startDate">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2" id="endDateContainer">
                                 <label class="form-label text-muted small mb-1">Fecha Fin</label>
                                 <input type="date" class="form-control form-control-sm" id="endDate" name="endDate">
                             </div>
-                            <div class="col-md-3" id="statusFilterContainer" style="display:none;">
-                                <label class="form-label text-muted small mb-1">Estado</label>
+                            <div class="col-md-2" id="categoryFilterContainer" style="display:none;">
+                                <label class="form-label text-muted small mb-1">Categoría</label>
+                                <select class="form-select form-select-sm" id="categoryFilter" name="category">
+                                    <option value="">Todas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2" id="brandFilterContainer" style="display:none;">
+                                <label class="form-label text-muted small mb-1">Marca</label>
+                                <select class="form-select form-select-sm" id="brandFilter" name="brand">
+                                    <option value="">Todas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2" id="statusFilterContainer" style="display:none;">
+                                <label class="form-label text-muted small mb-1" id="statusLabel">Estado</label>
                                 <select class="form-select form-select-sm" id="status" name="status">
                                     <option value="">Todos</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2" id="paymentMethodFilterContainer" style="display:none;">
+                                <label class="form-label text-muted small mb-1">Método Pago</label>
+                                <select class="form-select form-select-sm" id="paymentMethodFilter" name="payment_method">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2" id="clientTypeFilterContainer" style="display:none;">
+                                <label class="form-label text-muted small mb-1">Tipo Cliente</label>
+                                <select class="form-select form-select-sm" id="clientTypeFilter" name="client_type">
+                                    <option value="">Todos</option>
+                                    <option value="natural">Natural</option>
+                                    <option value="juridica">Jurídica / Empresa</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2" id="monedaFilterContainer" style="display:none;">
+                                <label class="form-label text-muted small mb-1">Moneda</label>
+                                <select class="form-select form-select-sm" id="monedaFilter" name="moneda">
+                                    <option value="">Todas</option>
+                                    <option value="USD">USD ($)</option>
+                                    <option value="VES">VES (Bs)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2" id="stockStatusFilterContainer" style="display:none;">
+                                <label class="form-label text-muted small mb-1">Nivel Stock</label>
+                                <select class="form-select form-select-sm" id="stockStatusFilter" name="stock_status">
+                                    <option value="">Todos</option>
+                                    <option value="in_stock">En Stock</option>
+                                    <option value="low_stock">Stock Bajo (Alerta)</option>
+                                    <option value="out_of_stock">Sin Stock (Agotado)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2" id="mechanicFilterContainer" style="display:none;">
+                                <label class="form-label text-muted small mb-1">Mecánico</label>
+                                <select class="form-select form-select-sm" id="mechanicFilter" name="mechanic_cedula">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2" id="sucursalFilterContainer" style="display:none;">
+                                <label class="form-label text-muted small mb-1">Sucursal</label>
+                                <select class="form-select form-select-sm" id="sucursalFilter" name="sucursal_id">
+                                    <option value="">Todas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2" id="limitFilterContainer" style="display:none;">
+                                <label class="form-label text-muted small mb-1">Mostrar Top</label>
+                                <select class="form-select form-select-sm" id="limitFilter" name="limit">
+                                    <option value="5">Top 5</option>
+                                    <option value="10" selected>Top 10</option>
+                                    <option value="25">Top 25</option>
+                                    <option value="50">Top 50</option>
+                                    <option value="0">Todos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2" id="orderByFilterContainer" style="display:none;">
+                                <label class="form-label text-muted small mb-1">Ordenar por</label>
+                                <select class="form-select form-select-sm" id="orderByFilter" name="order_by">
+                                    <option value="units" selected>Mayor Cantidad (Uds)</option>
+                                    <option value="revenue">Mayor Ingreso ($)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2" id="accionFilterContainer" style="display:none;">
+                                <label class="form-label text-muted small mb-1">Acción</label>
+                                <select class="form-select form-select-sm" id="accionFilter" name="accion_tipo">
+                                    <option value="">Todas</option>
+                                    <option value="CREAR">CREAR</option>
+                                    <option value="MODIFICAR">MODIFICAR</option>
+                                    <option value="ELIMINAR">ELIMINAR</option>
+                                    <option value="LOGIN">LOGIN</option>
+                                    <option value="LOGOUT">LOGOUT</option>
+                                    <option value="LEER">LEER</option>
+                                    <option value="aceptado">ACEPTADO</option>
+                                    <option value="rechazado">RECHAZADO</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2" id="searchFilterContainer" style="display:none;">
+                                <label class="form-label text-muted small mb-1">Búsqueda</label>
+                                <input type="text" class="form-control form-control-sm" id="searchFilter" placeholder="Buscar..." onkeypress="if(event.key==='Enter'){event.preventDefault();loadReportData();}">
+                            </div>
+                            <div class="col-md-2" id="filterBtnContainer">
                                 <button type="button" class="btn btn-dark w-100 report-filter-button" onclick="loadReportData()"><i class="bi bi-funnel me-2"></i>Filtrar</button>
                             </div>
                         </form>
@@ -46,6 +136,7 @@
 
                 <div class="report-tabs" id="reportTabs">
                     <div class="report-tab active" data-report="sales" onclick="switchReport('sales', this)">Reporte Orden de Venta</div>
+                    <div class="report-tab" data-report="top_products" onclick="switchReport('top_products', this)">Productos Más Vendidos</div>
                     <div class="report-tab" data-report="payments" onclick="switchReport('payments', this)">Flujo de Pagos</div>
                     <div class="report-tab" data-report="inventory" onclick="switchReport('inventory', this)">Kardex de Stock</div>
                     <div class="report-tab" data-report="mechanics" onclick="switchReport('mechanics', this)">Desempeño Mecánicos</div>
@@ -58,7 +149,7 @@
 
                 <div class="card">
                     <div class="card-body p-0 table-responsive">
-                        <table class="table mb-0">
+                        <table class="table mb-0" id="reportTable" data-no-auto-search="1">
                             <thead id="reportHead"></thead>
                             <tbody id="reportBody"></tbody>
                         </table>

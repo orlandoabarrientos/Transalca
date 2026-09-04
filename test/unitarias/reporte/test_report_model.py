@@ -83,9 +83,83 @@ class TestReportModelDatabaseOperations:
         assert perf[0]["total_completados"] == 1
         assert perf[0]["ingreso_generado"] == 50.00
 
+    @patch.object(ReportModel, "fetch_all")
+    def test_get_top_products_report(self, mock_fetch_all):
+        mock_fetch_all.return_value = [
+            {
+                "codigo": "ACE-10W40",
+                "nombre_producto": "Aceite Semi-Sintético 10W40",
+                "categoria": "Aceites",
+                "marca": "Castrol",
+                "precio_actual": 12.50,
+                "total_vendido": 150,
+                "total_recaudado": 1875.00,
+                "total_ordenes": 30,
+                "stock_actual": 45
+            }
+        ]
+        model = ReportModel()
+        report = model.ejecutar("get_top_products_report", start_date="2026-08-01", end_date="2026-08-31", category="Aceites", limit=5)
+
+        assert len(report) == 1
+        assert report[0]["ranking"] == 1
+        assert report[0]["codigo"] == "ACE-10W40"
+        assert report[0]["total_vendido"] == 150
+        assert report[0]["total_recaudado"] == 1875.00
+
+    @patch.object(ReportModel, "fetch_all")
+    def test_get_top_products_report_with_filters(self, mock_fetch_all):
+        mock_fetch_all.return_value = [
+            {
+                "codigo": "ACE-10W40",
+                "nombre_producto": "Aceite Semi-Sintético 10W40",
+                "categoria": "Aceites",
+                "marca": "Castrol",
+                "precio_actual": 12.50,
+                "total_vendido": 150,
+                "total_recaudado": 1875.00,
+                "total_ordenes": 30,
+                "stock_actual": 45
+            }
+        ]
+        model = ReportModel()
+        report = model.ejecutar(
+            "get_top_products_report",
+            start_date="2026-08-01",
+            end_date="2026-08-31",
+            category="Aceites",
+            brand="Castrol",
+            status="aprobada",
+            limit=5,
+            search="Aceite",
+            stock_status="in_stock",
+            order_by="revenue",
+            sucursal_id=1
+        )
+
+        assert len(report) == 1
+        assert report[0]["ranking"] == 1
+        assert report[0]["codigo"] == "ACE-10W40"
+        assert report[0]["total_vendido"] == 150
+        assert report[0]["total_recaudado"] == 1875.00
+
+    @patch.object(ReportModel, "fetch_all")
+    def test_get_sales_history_with_client_type(self, mock_fetch_all):
+        mock_fetch_all.return_value = [
+            {"id": 1, "tipo_cliente": "juridica", "nombre": "Inversiones", "razon_social": "Inversiones C.A.", "total": 500.00, "estado": "aprobada", "fecha": "2026-08-20"}
+        ]
+        model = ReportModel()
+        sales = model.ejecutar("get_sales_history", client_type="juridica", min_amount=100.0, max_amount=1000.0, search="Inversiones")
+
+        assert len(sales) == 1
+        assert sales[0]["cliente"] == "Inversiones C.A."
+        assert sales[0]["total"] == 500.00
+
     def test_ejecutar_invalid_action(self):
         model = ReportModel()
         with pytest.raises(ValueError) as exc_info:
             model.ejecutar("accion_inexistente")
 
         assert "Accion no permitida" in str(exc_info.value)
+
+
