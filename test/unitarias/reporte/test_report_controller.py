@@ -175,3 +175,83 @@ class TestReportController:
         assert response.mimetype == "application/pdf"
         assert len(response.data) > 0
 
+    def test_export_table_unauthorized(self, client):
+        response = client.post('/api/reports/export-table', json={
+            "title": "Marcas",
+            "headers": ["Nombre", "Descripción"],
+            "rows": [["Toyota", "Repuestos"]]
+        })
+        assert response.status_code == 401
+
+    def test_export_table_no_headers_fails(self, auth_employee_client):
+        response = auth_employee_client.post('/api/reports/export-table', json={
+            "title": "Marcas",
+            "headers": [],
+            "rows": []
+        })
+        assert response.status_code == 400
+
+    def test_export_table_csv_success(self, auth_employee_client):
+        response = auth_employee_client.post('/api/reports/export-table', json={
+            "title": "Gestionar Marcas",
+            "headers": ["Nombre", "Descripción", "Total Productos"],
+            "rows": [
+                ["Toyota", "Repuestos originales Toyota", "15"],
+                ["Chevrolet", "Partes y accesorios", "8"]
+            ],
+            "format": "csv"
+        })
+        assert response.status_code == 200
+        assert "text/csv" in response.mimetype
+        assert b"Toyota" in response.data
+        assert b"Chevrolet" in response.data
+
+    def test_export_table_excel_success(self, auth_employee_client):
+        response = auth_employee_client.post('/api/reports/export-table', json={
+            "title": "Gestionar Usuarios",
+            "headers": ["ID", "Nombre", "Cédula", "Email", "Tipo", "Roles"],
+            "rows": [
+                [1, "Admin General", "V-12345678", "admin@transalca.com", "Empleado", "Administrador"]
+            ],
+            "format": "excel"
+        })
+        assert response.status_code == 200
+        assert response.mimetype == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        assert len(response.data) > 0
+
+    def test_export_table_pdf_portrait_success(self, auth_employee_client):
+        response = auth_employee_client.post('/api/reports/export-table', json={
+            "title": "Gestionar Marcas",
+            "headers": ["Nombre", "Descripción", "Total Productos"],
+            "rows": [
+                ["Toyota", "Repuestos originales Toyota", "15"]
+            ],
+            "format": "pdf"
+        })
+        assert response.status_code == 200
+        assert response.mimetype == "application/pdf"
+        assert b"%PDF" in response.data
+
+    def test_export_table_pdf_landscape_success(self, auth_employee_client):
+        response = auth_employee_client.post('/api/reports/export-table', json={
+            "title": "Gestionar Clientes",
+            "headers": ["Cédula", "Nombre", "Email", "Teléfono", "Vehículos", "Compras", "Crédito", "Estado"],
+            "rows": [
+                ["V-12345678", "Carlos Mendoza", "carlos@gmail.com", "04121234567", "2", "$450.00", "$100.00", "Activo"]
+            ],
+            "format": "pdf"
+        })
+        assert response.status_code == 200
+        assert response.mimetype == "application/pdf"
+        assert b"%PDF" in response.data
+
+    def test_export_table_invalid_format_fails(self, auth_employee_client):
+        response = auth_employee_client.post('/api/reports/export-table', json={
+            "title": "Marcas",
+            "headers": ["Nombre"],
+            "rows": [["Toyota"]],
+            "format": "invalid_format"
+        })
+        assert response.status_code == 400
+
+

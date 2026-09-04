@@ -137,3 +137,43 @@ function renderStockPagination(total, page, pages, perPage) {
     nextLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); if(${page < pages}) loadStock(${page + 1})"><i class="bi bi-chevron-right"></i></a>`;
     controls.appendChild(nextLi);
 }
+
+async function exportInventoryTable(format = 'pdf') {
+    try {
+        const sucursal = document.getElementById('filterSucursal')?.value || '';
+        const q = document.getElementById('searchStock')?.value.trim() || '';
+
+        let url = '/api/inventory/?';
+        if (sucursal) url += `sucursal_id=${encodeURIComponent(sucursal)}&`;
+        if (q) url += `q=${encodeURIComponent(q)}&`;
+
+        const res = await apiCall(url);
+        const data = res.data || [];
+        if (!data.length) {
+            showToast('No hay registros de stock para exportar', 'warning');
+            return;
+        }
+
+        const headers = ["Producto", "Código", "Sucursal", "Stock Actual", "Stock Mínimo", "Alerta"];
+        const rows = data.map(s => {
+            const isLow = Number(s.stock || 0) <= Number(s.stock_minimo || 5);
+            return [
+                s.producto_nombre || '-',
+                s.codigo || '-',
+                s.sucursal_nombre || 'N/A',
+                String(Number(s.stock || 0)),
+                String(Number(s.stock_minimo || 5)),
+                isLow ? 'Bajo' : 'OK'
+            ];
+        });
+
+        exportCurrentModuleTable(format, {
+            title: 'Reporte Stock de Productos',
+            headers: headers,
+            rows: rows
+        });
+    } catch (e) {
+        exportCurrentModuleTable(format);
+    }
+}
+

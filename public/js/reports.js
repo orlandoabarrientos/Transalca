@@ -22,7 +22,7 @@ $(document).ready(function () {
 });
 
 const reportDescriptions = {
-    sales: "Muestra las órdenes de venta registradas en el sistema, permitiendo filtrar por fechas, estados, métodos de pago, tipo de cliente (natural/jurídica) y sucursales.",
+    sales: "Muestra las órdenes de venta registradas en el sistema, permitiendo filtrar por fechas, estados, métodos de pago y tipo de cliente (natural/jurídica).",
     top_products: "Presenta los productos más vendidos en el sistema (únicamente de órdenes aprobadas o completadas) ordenados por unidades vendidas o ingresos, permitiendo filtrar por fechas, categoría, marca, sucursal, ordenamiento y límite de ranking.",
     payments: "Detalla el flujo de pagos realizados por los clientes, permitiendo filtrar por fechas, moneda (USD/VES), tipo de cliente, método de pago y estado de verificación.",
     inventory: "Presenta el Kardex de stock e inventario, permitiendo filtrar por fechas, categoría, marca, sucursal y nivel de stock (alerta de mínimo, agotado o disponible).",
@@ -203,8 +203,7 @@ function switchReport(type, el) {
         clientTypeContainer.style.display = 'block';
         clientTypeContainer.className = 'col-md-2';
         if (sucursalContainer) {
-            sucursalContainer.style.display = 'block';
-            sucursalContainer.className = 'col-md-2';
+            sucursalContainer.style.display = 'none';
         }
         searchContainer.style.display = 'none';
         monedaContainer.style.display = 'none';
@@ -221,7 +220,7 @@ function switchReport(type, el) {
         statusContainer.style.display = 'block';
         statusContainer.className = 'col-md-2';
         statusLabel.textContent = 'Estado';
-        ['pendiente', 'aprobado', 'rechazado'].forEach(s => {
+        ['pendiente', 'verificado', 'rechazado'].forEach(s => {
             statusSelect.innerHTML += `<option value="${s}">${s.charAt(0).toUpperCase() + s.slice(1)}</option>`;
         });
         pmContainer.style.display = 'block';

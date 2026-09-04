@@ -17,6 +17,16 @@
         <div class="content-area">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4 class="fw-bold mb-0">Gestionar R. Stock de producto</h4>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-download me-1"></i> Exportar Reporte
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="exportInventoryTable('pdf')"><i class="bi bi-file-earmark-pdf text-danger me-2"></i>Exportar PDF</a></li>
+                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="exportInventoryTable('excel')"><i class="bi bi-file-earmark-excel text-success me-2"></i>Exportar Excel (.xlsx)</a></li>
+                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="exportInventoryTable('csv')"><i class="bi bi-filetype-csv text-primary me-2"></i>Exportar CSV</a></li>
+                    </ul>
+                </div>
             </div>
 
             <div class="filter-bar">

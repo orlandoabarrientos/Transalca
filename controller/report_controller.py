@@ -54,7 +54,7 @@ def query_reports():
 
         data = []
         if report_type == 'sales':
-            data = model.ejecutar("get_sales_history", start_date=start_date, end_date=end_date, status=status, payment_method=payment_method, client_type=client_type, min_amount=min_amount, max_amount=max_amount, search=search, sucursal_id=sucursal_id)
+            data = model.ejecutar("get_sales_history", start_date=start_date, end_date=end_date, status=status, payment_method=payment_method, client_type=client_type, min_amount=min_amount, max_amount=max_amount, search=search)
         elif report_type == 'payments':
             data = model.ejecutar("get_payments_history", start_date=start_date, end_date=end_date, status=status, payment_method=payment_method, moneda=moneda, client_type=client_type, search=search)
         elif report_type == 'inventory':
@@ -104,7 +104,7 @@ def export_reports():
         headers = []
 
         if report_type == 'sales':
-            data = model.ejecutar("get_sales_history", start_date=start_date, end_date=end_date, status=status, payment_method=payment_method, client_type=client_type, min_amount=min_amount, max_amount=max_amount, search=search, sucursal_id=sucursal_id)
+            data = model.ejecutar("get_sales_history", start_date=start_date, end_date=end_date, status=status, payment_method=payment_method, client_type=client_type, min_amount=min_amount, max_amount=max_amount, search=search)
             headers = ["ID", "Cliente", "Fecha", "Total", "Estado"]
             rows = [[d['id'], d['cliente'], d['fecha'], d['total'], d['estado']] for d in data]
             title = "Reporte Orden de Venta"

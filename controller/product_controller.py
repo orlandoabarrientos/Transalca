@@ -62,6 +62,10 @@ def get_all():
                 "pages": paginated["pages"]
             })
 
+        if q:
+            paginated = model.ejecutar("get_all_paginated", 1, 10000, q)
+            return jsonify({"status": "success", "data": paginated["data"]})
+
         products = model.ejecutar("get_all")
         return jsonify({"status": "success", "data": products})
     except Exception:

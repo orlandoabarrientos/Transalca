@@ -51,7 +51,7 @@ class ReportModel(Connection):
             order['fecha'] = order['fecha'].isoformat() if hasattr(order['fecha'], 'isoformat') else order['fecha']
         return orders
 
-    def _get_sales_history(self, start_date=None, end_date=None, status=None, payment_method=None, client_type=None, min_amount=None, max_amount=None, search=None, sucursal_id=None):
+    def _get_sales_history(self, start_date=None, end_date=None, status=None, payment_method=None, client_type=None, min_amount=None, max_amount=None, search=None):
         sql = (
             "SELECT ov.id_orden_venta AS id, ov.fecha_orden_venta AS fecha, ov.total_orden_venta AS total, ov.estado, "
             "c.nombre_cliente AS nombre, '' AS apellido, c.tipo_cliente, c.nombre_cliente AS razon_social, "
@@ -74,10 +74,6 @@ class ReportModel(Connection):
         if payment_method:
             sql += " AND ov.metodo_pago_id = %s"
             params.append(payment_method)
-        if sucursal_id and str(sucursal_id).strip() not in ('', '0', 'null', 'undefined'):
-            suc_val = str(sucursal_id).strip()
-            sql += " AND (ov.sucursal_id = %s OR (ov.sucursal_id IS NULL AND EXISTS (SELECT 1 FROM detalle_orden_venta_productos dov INNER JOIN stock st ON st.producto_codigo = dov.producto_codigo WHERE dov.orden_id = ov.id_orden_venta AND st.sucursal_id = %s)))"
-            params.extend([suc_val, suc_val])
         if client_type:
             sql += " AND c.tipo_cliente = %s"
             params.append(client_type)

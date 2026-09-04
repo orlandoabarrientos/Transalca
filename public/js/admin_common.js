@@ -1102,6 +1102,17 @@ class TablePaginator {
         if (!this.element) return;
         this.isTable = this.element.tagName === 'TABLE';
         this.tbody = this.isTable ? this.element.querySelector('tbody') : this.element;
+        if (this.tbody) {
+            this.tbody._paginator = this;
+            const parentTable = this.tbody.closest('table');
+            if (parentTable) parentTable._paginator = this;
+        }
+        if (this.element) {
+            this.element._paginator = this;
+            const parentTable = this.element.closest('table');
+            if (parentTable) parentTable._paginator = this;
+        }
+        window._lastActiveTablePaginator = this;
         this.allData = options.allData || [];
         this.perPage = options.perPage || 30;
         this.currentPage = 1;
@@ -1155,15 +1166,28 @@ class TablePaginator {
         this.limitSelect = pInfo.querySelector('.paginator-limit-select');
     }
 
-    initEvents() {
-        let searchInput = null;
-        if (this.searchSelector) {
-            searchInput = document.querySelector(this.searchSelector);
-        } else {
-            const card = this.element.closest('.card') || this.element.parentElement;
-            searchInput = card.previousElementSibling?.querySelector?.('input[type="search"], input[id*="search" i], .auto-table-search') ||
-                          card.querySelector('input[id*="search" i], input[name*="search" i], .table-search-input');
+    getSearchInputElement() {
+        if (this.searchInput && document.contains(this.searchInput)) {
+            return this.searchInput;
         }
+        let el = null;
+        if (this.searchSelector) {
+            el = document.querySelector(this.searchSelector);
+        }
+        if (!el) {
+            const card = this.element.closest('.card') || this.element.parentElement;
+            el = card?.previousElementSibling?.querySelector?.('input[type="search"], input[id*="search" i], .auto-table-search, input[placeholder*="buscar" i]') ||
+                 card?.querySelector?.('input[id*="search" i], input[name*="search" i], .table-search-input, input[placeholder*="buscar" i]') ||
+                 document.querySelector('.content-area input[type="search"], .content-area input[id*="search" i], .content-area .auto-table-search');
+        }
+        if (el) {
+            this.searchInput = el;
+        }
+        return el;
+    }
+
+    initEvents() {
+        const searchInput = this.getSearchInputElement();
 
         if (searchInput) {
             searchInput.addEventListener('input', () => {
@@ -1203,29 +1227,106 @@ class TablePaginator {
         this.apply();
     }
 
-    apply() {
+    getFilteredData() {
         let filtered = [...this.allData];
 
-        if (this.searchInput) {
-            const q = this.searchInput.value.trim().toLowerCase();
-            if (q) {
-                filtered = filtered.filter(item => {
-                    return Object.values(item).some(val =>
-                        val !== null && val !== undefined &&
-                        String(val).toLowerCase().includes(q)
-                    );
+        const searchEl = this.getSearchInputElement();
+        if (searchEl && searchEl.value) {
+            const rawQ = searchEl.value.trim().toLowerCase();
+            if (rawQ) {
+                const qWords = rawQ.split(/\s+/).filter(Boolean);
+                filtered = filtered.filter((item, index) => {
+                    let objText = Object.values(item)
+                        .filter(v => v !== null && v !== undefined && typeof v !== 'object')
+                        .map(v => String(v))
+                        .join(' ')
+                        .toLowerCase();
+
+                    let renderedText = '';
+                    if (typeof this.renderRow === 'function') {
+                        try {
+                            const rowRes = this.renderRow(item, index);
+                            if (typeof rowRes === 'string') {
+                                renderedText = rowRes.replace(/<[^>]*>/g, ' ').toLowerCase();
+                            } else if (rowRes instanceof HTMLElement) {
+                                renderedText = (rowRes.innerText || rowRes.textContent || '').toLowerCase();
+                            }
+                        } catch (e) {}
+                    }
+
+                    const combinedText = `${objText} ${renderedText}`;
+                    return qWords.every(word => combinedText.includes(word));
                 });
             }
         }
 
         this.filterSelectors.forEach(f => {
             const el = document.querySelector(f.selector);
-            if (el && el.value !== '') {
+            if (el && el.value !== '' && el.value !== 'all' && el.value !== 'todos') {
                 const val = el.value;
                 filtered = filtered.filter(item => f.filterFn(item, val));
             }
         });
 
+        return filtered;
+    }
+
+    getExportData() {
+        const filtered = this.getFilteredData();
+        const table = this.tbody ? this.tbody.closest('table') : (this.isTable ? this.element : null);
+        if (!table) return { headers: [], rows: [] };
+
+        const ths = Array.from(table.querySelectorAll('thead th'));
+        const validColIndices = [];
+        const headers = [];
+        const ignoredHeaders = ['acciones', 'accion', 'opciones', 'opcion', 'foto', 'imagen', 'img', 'qr'];
+
+        ths.forEach((th, idx) => {
+            const text = th.textContent.trim();
+            const lower = text.toLowerCase();
+            if (ignoredHeaders.includes(lower) || !text) return;
+            validColIndices.push(idx);
+            headers.push(text);
+        });
+
+        if (validColIndices.length === 0) {
+            ths.forEach((th, idx) => {
+                validColIndices.push(idx);
+                headers.push(th.textContent.trim() || `Columna ${idx + 1}`);
+            });
+        }
+
+        const rows = [];
+        filtered.forEach((item, index) => {
+            if (typeof this.renderRow === 'function') {
+                const tempTr = document.createElement('tr');
+                const rowOutput = this.renderRow(item, index);
+                if (typeof rowOutput === 'string') {
+                    tempTr.innerHTML = rowOutput;
+                } else if (rowOutput instanceof HTMLElement) {
+                    tempTr.appendChild(rowOutput);
+                }
+                const tds = Array.from(tempTr.children);
+                const rowData = validColIndices.map(colIdx => {
+                    const cell = tds[colIdx];
+                    if (!cell) return '';
+                    const clone = cell.cloneNode(true);
+                    clone.querySelectorAll('button, input, select, textarea, .btn, .btn-icon, script, style').forEach(el => el.remove());
+                    let text = clone.innerText || clone.textContent || '';
+                    return text.replace(/\s+/g, ' ').trim();
+                });
+                rows.push(rowData);
+            } else {
+                const rowData = Object.values(item).map(v => String(v ?? ''));
+                rows.push(rowData);
+            }
+        });
+
+        return { headers, rows };
+    }
+
+    apply() {
+        const filtered = this.getFilteredData();
         const total = filtered.length;
         const pages = Math.ceil(total / this.perPage);
         if (this.currentPage > pages && pages > 0) {
@@ -1353,6 +1454,127 @@ class TablePaginator {
         }
         this.controlsEl.appendChild(nextLi);
     }
+}
+
+async function exportCurrentModuleTable(format = 'pdf', options = {}) {
+    try {
+        const safeFormat = (format || 'pdf').toLowerCase();
+        const validFormats = ['pdf', 'excel', 'xlsx', 'csv'];
+        if (!validFormats.includes(safeFormat)) {
+            showToast('Formato de exportación no soportado', 'error');
+            return;
+        }
+
+        const table = options.tableElement || document.querySelector('.content-area table') || document.querySelector('table');
+        if (!table) {
+            showToast('No se encontró una tabla para exportar', 'warning');
+            return;
+        }
+
+        let title = options.title || document.querySelector('.content-area h4')?.textContent?.trim() || document.title.replace(/Transalca\s*Admin\s*\|\s*/i, '').trim() || 'Reporte';
+        let headers = options.headers || [];
+        let rows = options.rows || [];
+
+        const paginator = table._paginator || table.querySelector('tbody')?._paginator || window.paginator || window.allPaginator || window.promoPaginator || window.cardsPaginator || window.pendingPaginator || window._lastActiveTablePaginator;
+
+        if (headers.length === 0 && rows.length === 0) {
+            if (paginator && typeof paginator.getExportData === 'function' && paginator.allData && paginator.allData.length > 0) {
+                const exportData = paginator.getExportData();
+                headers = exportData.headers;
+                rows = exportData.rows;
+            } else {
+                const ths = Array.from(table.querySelectorAll('thead th'));
+                const validColIndices = [];
+                const ignoredHeaders = ['acciones', 'accion', 'opciones', 'opcion', 'foto', 'imagen', 'img', 'qr'];
+
+                ths.forEach((th, idx) => {
+                    const text = th.textContent.trim();
+                    const lower = text.toLowerCase();
+                    if (ignoredHeaders.includes(lower) || !text) return;
+                    validColIndices.push(idx);
+                    headers.push(text);
+                });
+
+                if (validColIndices.length === 0) {
+                    ths.forEach((th, idx) => {
+                        validColIndices.push(idx);
+                        headers.push(th.textContent.trim() || `Columna ${idx + 1}`);
+                    });
+                }
+
+                const domRows = Array.from(table.querySelectorAll('tbody tr'));
+                domRows.forEach(tr => {
+                    if (tr.style.display === 'none' || tr.querySelector('.empty-state') || tr.classList.contains('empty-row') || tr.textContent.includes('No se encontraron') || tr.textContent.includes('Sin registros')) return;
+                    const tds = Array.from(tr.children);
+                    const rowData = validColIndices.map(colIdx => {
+                        const cell = tds[colIdx];
+                        if (!cell) return '';
+                        const clone = cell.cloneNode(true);
+                        clone.querySelectorAll('button, input, select, textarea, .btn, .btn-icon, script, style').forEach(el => el.remove());
+                        let text = clone.innerText || clone.textContent || '';
+                        return text.replace(/\s+/g, ' ').trim();
+                    });
+                    rows.push(rowData);
+                });
+            }
+        }
+
+        if (rows.length === 0) {
+            showToast('No hay datos en la tabla para exportar', 'warning');
+            return;
+        }
+
+        const isPdf = safeFormat === 'pdf';
+        const isExcel = safeFormat === 'excel' || safeFormat === 'xlsx' || safeFormat.includes('xls');
+        const ext = isPdf ? 'pdf' : (isExcel ? 'xlsx' : 'csv');
+        const formatLabel = isPdf ? 'PDF' : (isExcel ? 'Excel' : 'CSV');
+        const backendFormat = isPdf ? 'pdf' : (isExcel ? 'excel' : 'csv');
+
+        const cleanTitle = title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        const filename = `reporte_${cleanTitle}_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
+
+        const res = await fetch('/api/reports/export-table', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title: title,
+                headers: headers,
+                rows: rows,
+                format: backendFormat,
+                filename: filename
+            })
+        });
+
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            showToast(errData.message || 'Error al exportar el reporte', 'error');
+            return;
+        }
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `${filename}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        }, 1000);
+
+        showToast(`Reporte ${formatLabel} descargado exitosamente`, 'success');
+    } catch (e) {
+        console.error('Error exportando reporte de módulo:', e);
+        showToast('Error al generar el reporte', 'error');
+    }
+}
+
+function exportTableData(format, customOptions) {
+    return exportCurrentModuleTable(format, customOptions);
 }
 
 function installListSearches(root = document) {

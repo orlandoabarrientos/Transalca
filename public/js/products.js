@@ -375,3 +375,35 @@ function validateUniqueProductCodigo() {
         updateFormSubmitState('productForm');
     }, 350);
 }
+
+async function exportProductsTable(format = 'pdf') {
+    try {
+        const searchVal = document.getElementById('productSearch')?.value.trim() || '';
+        const res = await apiCall(`/api/products/?q=${encodeURIComponent(searchVal)}`);
+        const products = res.data || [];
+        if (!products.length) {
+            showToast('No hay productos para exportar', 'warning');
+            return;
+        }
+
+        const headers = ["Producto", "Código", "Categoría", "Marca", "Sucursal", "Precio", "Stock"];
+        const rows = products.map(p => [
+            p.nombre || '-',
+            p.codigo || '-',
+            p.categoria_nombre || '-',
+            p.marca_nombre || '-',
+            p.sucursal_nombre || 'Todas',
+            `$${parseFloat(p.precio || 0).toFixed(2)}`,
+            p.stock !== undefined ? String(p.stock) : '0'
+        ]);
+
+        exportCurrentModuleTable(format, {
+            title: 'Gestionar Productos',
+            headers: headers,
+            rows: rows
+        });
+    } catch (e) {
+        exportCurrentModuleTable(format);
+    }
+}
+

@@ -70,7 +70,19 @@
                             <option value="comprado">Compradas</option>
                         </select>
                     </div>
-                    <button class="btn btn-orange" onclick="showCreateOrderModal()"><i class="bi bi-plus-circle me-1"></i>Registrar Compra</button>
+                    <div class="d-flex gap-2">
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-download me-1"></i> Exportar Reporte
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="exportCurrentModuleTable('pdf')"><i class="bi bi-file-earmark-pdf text-danger me-2"></i>Exportar PDF</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="exportCurrentModuleTable('excel')"><i class="bi bi-file-earmark-excel text-success me-2"></i>Exportar Excel (.xlsx)</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="exportCurrentModuleTable('csv')"><i class="bi bi-filetype-csv text-primary me-2"></i>Exportar CSV</a></li>
+                            </ul>
+                        </div>
+                        <button class="btn btn-orange" onclick="showCreateOrderModal()"><i class="bi bi-plus-circle me-1"></i>Registrar Compra</button>
+                    </div>
                 </div>
             </div>
 
