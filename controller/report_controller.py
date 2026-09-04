@@ -314,3 +314,195 @@ def export_reports():
         import traceback
         traceback.print_exc()
         return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
+
+
+@report_bp.route('/export-table', methods=['POST'])
+def export_table():
+    try:
+        if 'user_id' not in session:
+            return jsonify({"status": "error", "message": "No autorizado"}), 401
+
+        payload = request.get_json(silent=True) or {}
+        title = payload.get('title') or 'Reporte'
+        headers = payload.get('headers')
+        rows = payload.get('rows')
+        format_type = (payload.get('format') or 'pdf').lower()
+        filename = payload.get('filename') or f"reporte_{datetime.now().strftime('%Y%m%d%H%M')}"
+
+        if not headers or not isinstance(headers, list) or len(headers) == 0:
+            return jsonify({"status": "error", "message": "Encabezados requeridos"}), 400
+
+        if format_type not in ['csv', 'excel', 'xlsx', 'pdf']:
+            return jsonify({"status": "error", "message": "Formato de exportacion invalido"}), 400
+
+        if rows is None or not isinstance(rows, list):
+            rows = []
+
+        if format_type == 'csv':
+            output = io.StringIO()
+            writer = csv.writer(output, lineterminator='\n')
+            writer.writerow(headers)
+            writer.writerows(rows)
+            return Response(output.getvalue().encode('utf-8'), mimetype="text/csv", headers={"Content-Disposition": f"attachment;filename={filename}.csv"})
+
+        elif format_type in ['excel', 'xlsx']:
+            import openpyxl
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            from openpyxl.utils import get_column_letter
+
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = str(title)[:31]
+
+            ws.append(headers)
+
+            font_family = "Segoe UI"
+            header_font = Font(name=font_family, size=11, bold=True, color="FFFFFF")
+            header_fill = PatternFill(start_color="1A365D", end_color="1A365D", fill_type="solid")
+            data_font = Font(name=font_family, size=10)
+
+            thin_border = Border(
+                left=Side(style='thin', color='E2E8F0'),
+                right=Side(style='thin', color='E2E8F0'),
+                top=Side(style='thin', color='E2E8F0'),
+                bottom=Side(style='thin', color='E2E8F0')
+            )
+
+            for cell in ws[1]:
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+            for r in rows:
+                ws.append(r)
+
+            currency_cols = []
+            date_cols = []
+            center_cols = []
+
+            for col_idx, header in enumerate(headers, 1):
+                header_lower = str(header).lower()
+                if any(k in header_lower for k in ["total", "monto", "ingreso", "facturado", "precio", "costo", "saldo", "crédito", "credito"]):
+                    currency_cols.append(col_idx)
+                elif "fecha" in header_lower:
+                    date_cols.append(col_idx)
+                elif any(k == header_lower for k in ["id", "ranking", "orden", "código", "codigo", "estado", "moneda", "ip", "cantidad", "unidades", "órdenes", "ordenes", "stock", "tipo", "cédula", "cedula", "teléfono", "telefono"]):
+                    center_cols.append(col_idx)
+
+            for row_idx in range(2, ws.max_row + 1):
+                for col_idx in range(1, len(headers) + 1):
+                    cell = ws.cell(row=row_idx, column=col_idx)
+                    cell.font = data_font
+                    cell.border = thin_border
+
+                    if col_idx in currency_cols:
+                        cell.alignment = Alignment(horizontal="right", vertical="center")
+                        val = cell.value
+                        if isinstance(val, str) and (val.startswith('$') or val.replace('.', '', 1).isdigit()):
+                            val_num = val.replace('$', '').replace(',', '').strip()
+                            try:
+                                cell.value = float(val_num)
+                                cell.number_format = '$#,##0.00'
+                            except (ValueError, TypeError):
+                                pass
+                    elif col_idx in date_cols:
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                        val = cell.value
+                        if isinstance(val, str):
+                            val = val.replace('T', ' ')
+                    elif col_idx in center_cols:
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                    else:
+                        cell.alignment = Alignment(horizontal="left", vertical="center")
+
+            for col in ws.columns:
+                max_len = 0
+                col_letter = get_column_letter(col[0].column)
+                for cell in col:
+                    if cell.value is not None:
+                        val_str = str(cell.value)
+                        if cell.column in currency_cols:
+                            val_str = f"${val_str}"
+                        max_len = max(max_len, len(val_str))
+                ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+            ws.row_dimensions[1].height = 25
+            for r_idx in range(2, ws.max_row + 1):
+                ws.row_dimensions[r_idx].height = 20
+
+            output = io.BytesIO()
+            wb.save(output)
+            output.seek(0)
+            return Response(output.read(), mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f"attachment;filename={filename}.xlsx"})
+
+        elif format_type == 'pdf':
+            from fpdf import FPDF
+            orientation = 'L' if len(headers) >= 6 else 'P'
+            pdf = FPDF(orientation=orientation)
+            pdf.set_auto_page_break(auto=True, margin=15)
+            pdf.add_page()
+            pdf.set_font("helvetica", "B", 14)
+            pdf.cell(0, 10, title, new_x="LMARGIN", new_y="NEXT", align="C")
+            pdf.set_font("helvetica", "", 9)
+            pdf.cell(0, 6, f"Generado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", new_x="LMARGIN", new_y="NEXT", align="C")
+            pdf.ln(4)
+
+            page_w = 277 if orientation == 'L' else 190
+
+            col_weights = []
+            for col_idx, h in enumerate(headers):
+                max_w = len(str(h))
+                for r in rows:
+                    if col_idx < len(r) and r[col_idx] is not None:
+                        max_w = max(max_w, len(str(r[col_idx])))
+                col_weights.append(min(max(max_w, 8), 40))
+
+            total_weight = sum(col_weights) or 1
+            col_widths = [(w / total_weight) * page_w for w in col_weights]
+
+            def print_table_header():
+                pdf.set_font("helvetica", "B", 8)
+                pdf.set_fill_color(26, 54, 93)
+                pdf.set_text_color(255, 255, 255)
+                for col_idx, h in enumerate(headers):
+                    h_str = str(h)
+                    while pdf.get_string_width(h_str) > (col_widths[col_idx] - 2) and len(h_str) > 3:
+                        h_str = h_str[:-4] + "..."
+                    pdf.cell(col_widths[col_idx], 8, h_str, border=1, align='C', fill=True)
+                pdf.ln(8)
+
+            print_table_header()
+
+            pdf.set_font("helvetica", "", 8)
+            pdf.set_text_color(0, 0, 0)
+            for r in rows:
+                if pdf.get_y() > (190 if orientation == 'L' else 265):
+                    pdf.add_page()
+                    print_table_header()
+                    pdf.set_font("helvetica", "", 8)
+                    pdf.set_text_color(0, 0, 0)
+
+                for col_idx, h in enumerate(headers):
+                    w = col_widths[col_idx]
+                    c = r[col_idx] if col_idx < len(r) else ''
+                    val = str(c) if c is not None else ''
+                    header_lower = str(h).lower()
+                    if ("total" in header_lower or "monto" in header_lower or "ingreso" in header_lower or "facturado" in header_lower) and isinstance(c, (int, float)):
+                        val = f"${c:.2f}"
+                    elif "fecha" in header_lower and 'T' in val:
+                        val = val.replace('T', ' ')
+
+                    while pdf.get_string_width(val) > (w - 3) and len(val) > 3:
+                        val = val[:-4] + "..."
+
+                    align = 'R' if any(k in header_lower for k in ["total", "monto", "ingreso", "facturado", "precio", "costo", "saldo"]) else ('C' if any(k in header_lower for k in ["id", "ranking", "orden", "código", "codigo", "estado", "moneda", "ip", "cantidad", "unidades", "órdenes", "ordenes", "tipo", "cédula", "cedula", "teléfono", "telefono"]) else 'L')
+                    pdf.cell(w, 6, val, border=1, align=align)
+                pdf.ln(6)
+
+            output = bytearray(pdf.output())
+            return Response(bytes(output), mimetype="application/pdf", headers={"Content-Disposition": f"attachment;filename={filename}.pdf"})
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": "No se pudo completar la solicitud."}), 500
