@@ -33,10 +33,9 @@ function setupPaginator(data) {
                     <td><span style="color:${actionColor(b.accion)};font-weight:700;">${escapeHtml(b.accion)}</span></td>
                     <td><span class="badge-status badge-info">${escapeHtml(b.modulo)}</span></td>
                     <td class="text-center"><button class="btn btn-icon btn-sm btn-outline-orange rounded-circle" onclick="verDetalle(${b.id})" title="Ver detalle"><i class="bi bi-eye"></i></button></td>
-                    <td><code>${escapeHtml(b.ip || '-')}</code></td>
                 </tr>`;
             },
-            onEmpty: () => '<tr><td colspan="6" class="text-center py-4"><div class="empty-state"><i class="bi bi-journal-text"></i><p>Sin registros</p></div></td></tr>'
+            onEmpty: () => '<tr><td colspan="5" class="text-center py-4"><div class="empty-state"><i class="bi bi-journal-text"></i><p>Sin registros</p></div></td></tr>'
         });
     } else {
         paginator.updateData(data || []);
