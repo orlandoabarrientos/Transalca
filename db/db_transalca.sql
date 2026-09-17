@@ -189,6 +189,7 @@ DROP TABLE IF EXISTS `cliente`;
 CREATE TABLE `cliente` (
   `id_cliente` int(11) NOT NULL AUTO_INCREMENT,
   `nombre_cliente` varchar(200) NOT NULL,
+  `apellido_cliente` varchar(200) DEFAULT NULL,
   `correo_cliente` varchar(150) DEFAULT NULL,
   `identificador_cliente` varchar(20) NOT NULL,
   `telefono_cliente` varchar(20) DEFAULT NULL,
@@ -205,7 +206,7 @@ CREATE TABLE `cliente` (
 
 LOCK TABLES `cliente` WRITE;
 /*!40000 ALTER TABLE `cliente` DISABLE KEYS */;
-INSERT INTO `cliente` VALUES (1,'Orlando Barrientos','orlandoabarrientos@gmail.com','30396029','04122397209','','natural',1,'2026-05-01 01:36:53','2026-05-28 14:51:31'),(2,'dede dede','deded@gmail.com','314141341','34141414','dqada','natural',1,'2026-04-30 23:44:31','2026-05-28 14:51:31'),(3,'dede dede','deded@gmail.com','dede','34141414','dede','natural',1,'2026-04-30 23:45:04','2026-05-28 14:51:31'),(4,'cxxgx','business@tanqueteodigital.com','J-55656666-5','04122397209','cgfcgfxgx','juridica',1,'2026-05-29 07:01:17','2026-05-29 07:01:17'),(5,'Admin Sistema','admin@transalca.com','V-00000000','0424-0000000','Oficina Principal','natural',1,'2026-05-18 04:29:47','2026-05-28 06:14:49'),(6,'Carlos Prueba','cli0507224100@mail.com','V-07224100','04121234567','Dir cliente','natural',1,'2026-05-08 02:41:00','2026-05-28 06:14:49'),(7,'Carlos Cliente','c0507224338@mail.com','V-07224350','04121234567','Dir cliente','natural',0,'2026-05-08 02:43:38','2026-05-28 06:14:49'),(8,'dede dede','fderf@gmail.com','V-3131333','04122222222',NULL,'natural',1,'2026-06-07 17:04:20','2026-06-07 17:04:20'),(9,'dede dede','business@tanqueteodigital.com','V-31423434','04122397209',NULL,'natural',1,'2026-06-07 16:54:48','2026-06-07 16:54:48');
+INSERT INTO `cliente` VALUES (1,'Orlando','Barrientos','orlandoabarrientos@gmail.com','30396029','04122397209','','natural',1,'2026-05-01 01:36:53','2026-05-28 14:51:31'),(2,'dede','dede','deded@gmail.com','314141341','34141414','dqada','natural',1,'2026-04-30 23:44:31','2026-05-28 14:51:31'),(3,'dede','dede','deded@gmail.com','dede','34141414','dede','natural',1,'2026-04-30 23:45:04','2026-05-28 14:51:31'),(4,'cxxgx',NULL,'business@tanqueteodigital.com','J-55656666-5','04122397209','cgfcgfxgx','juridica',1,'2026-05-29 07:01:17','2026-05-29 07:01:17'),(5,'Admin','Sistema','admin@transalca.com','V-00000000','0424-0000000','Oficina Principal','natural',1,'2026-05-18 04:29:47','2026-05-28 06:14:49'),(6,'Carlos','Prueba','cli0507224100@mail.com','V-07224100','04121234567','Dir cliente','natural',1,'2026-05-08 02:41:00','2026-05-28 06:14:49'),(7,'Carlos','Cliente','c0507224338@mail.com','V-07224350','04121234567','Dir cliente','natural',0,'2026-05-08 02:43:38','2026-05-28 06:14:49'),(8,'dede','dede','fderf@gmail.com','V-3131333','04122222222',NULL,'natural',1,'2026-06-07 17:04:20','2026-06-07 17:04:20'),(9,'dede','dede','business@tanqueteodigital.com','V-31423434','04122397209',NULL,'natural',1,'2026-06-07 16:54:48','2026-06-07 16:54:48');
 /*!40000 ALTER TABLE `cliente` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;

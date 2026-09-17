@@ -9,7 +9,7 @@ class ReportModel(Connection):
     def _client_name(self, cedula):
         client = self.fetch_one(
             "transalca",
-            "SELECT c.nombre_cliente AS nombre, '' AS apellido, c.tipo_cliente, c.nombre_cliente AS razon_social "
+            "SELECT c.nombre_cliente AS nombre, COALESCE(c.apellido_cliente, '') AS apellido, c.tipo_cliente, c.nombre_cliente AS razon_social "
             "FROM cliente c "
             "WHERE c.identificador_cliente = %s",
             (cedula,))
@@ -54,7 +54,7 @@ class ReportModel(Connection):
     def _get_sales_history(self, start_date=None, end_date=None, status=None, payment_method=None, client_type=None, min_amount=None, max_amount=None, search=None):
         sql = (
             "SELECT ov.id_orden_venta AS id, ov.fecha_orden_venta AS fecha, ov.total_orden_venta AS total, ov.estado, "
-            "c.nombre_cliente AS nombre, '' AS apellido, c.tipo_cliente, c.nombre_cliente AS razon_social, "
+            "c.nombre_cliente AS nombre, COALESCE(c.apellido_cliente, '') AS apellido, c.tipo_cliente, c.nombre_cliente AS razon_social, "
             "mp.nombre_metodo_pago AS metodo_pago, mp.id_metodo_pago "
             "FROM ordenes_venta ov "
             "LEFT JOIN cliente c ON ov.cliente_cedula = c.identificador_cliente "

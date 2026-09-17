@@ -10,11 +10,15 @@ class TestClientModelProperties:
     def test_property_setters_strip_whitespace(self):
         model = ClientModel()
         model.cedula = "  V-12345678  "
+        model.nombre = "  Ana  "
+        model.apellido = "  López  "
         model.email = "  cliente@ejemplo.com  "
         model.telefono = "  04121234567  "
         model.direccion = "  Av. Principal  "
 
         assert model.cedula == "V-12345678"
+        assert model.nombre == "Ana"
+        assert model.apellido == "López"
         assert model.email == "cliente@ejemplo.com"
         assert model.telefono == "04121234567"
         assert model.direccion == "Av. Principal"

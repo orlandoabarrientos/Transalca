@@ -179,20 +179,21 @@ class AuthModel(Connection):
             (user_id,))
 
     def _sync_client_to_transalca(self, data, user_id=None):
-        nombre_cliente = (str(data['nombre']).strip() + ' ' + str(data['apellido']).strip()).strip()
+        nombre = str(data.get('nombre') or '').strip()
+        apellido = str(data.get('apellido') or '').strip()
         existing = self.fetch_one("transalca",
             "SELECT id_cliente FROM cliente WHERE identificador_cliente = %s", (data['cedula'],))
         if existing:
             cliente_id = existing['id_cliente']
             self.update("transalca",
-                "UPDATE cliente SET nombre_cliente=%s, correo_cliente=%s, telefono_cliente=%s, direccion_cliente=%s, estado=1 "
+                "UPDATE cliente SET nombre_cliente=%s, apellido_cliente=%s, correo_cliente=%s, telefono_cliente=%s, direccion_cliente=%s, estado=1 "
                 "WHERE id_cliente=%s",
-                (nombre_cliente, data.get('email', ''), data.get('telefono', ''), data.get('direccion', ''), cliente_id))
+                (nombre, apellido, data.get('email', ''), data.get('telefono', ''), data.get('direccion', ''), cliente_id))
         else:
             cliente_id = self.insert("transalca",
-                "INSERT INTO cliente (nombre_cliente, correo_cliente, identificador_cliente, telefono_cliente, direccion_cliente, tipo_cliente, estado) "
-                "VALUES (%s, %s, %s, %s, %s, 'natural', 1)",
-                (nombre_cliente, data.get('email', ''), data['cedula'], data.get('telefono', ''), data.get('direccion', '')))
+                "INSERT INTO cliente (nombre_cliente, apellido_cliente, correo_cliente, identificador_cliente, telefono_cliente, direccion_cliente, tipo_cliente, estado) "
+                "VALUES (%s, %s, %s, %s, %s, %s, 'natural', 1)",
+                (nombre, apellido, data.get('email', ''), data['cedula'], data.get('telefono', ''), data.get('direccion', '')))
         self.insert("transalca",
             "INSERT INTO cliente_natural (id_cliente, usuario_id, origen_registro) VALUES (%s, %s, %s) "
             "ON DUPLICATE KEY UPDATE usuario_id = COALESCE(VALUES(usuario_id), usuario_id)",

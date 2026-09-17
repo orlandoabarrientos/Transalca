@@ -53,7 +53,7 @@ class PaymentModel(Connection):
                     "SELECT nombre, apellido, email, telefono FROM usuarios WHERE cedula = %s", (order['cliente_cedula'],))
                 if not client:
                     client = self.fetch_one("transalca",
-                        "SELECT nombre_cliente AS nombre, '' AS apellido, correo_cliente AS email, telefono_cliente AS telefono "
+                        "SELECT nombre_cliente AS nombre, COALESCE(apellido_cliente, '') AS apellido, correo_cliente AS email, telefono_cliente AS telefono "
                         "FROM cliente WHERE identificador_cliente = %s", (order['cliente_cedula'],))
                 if client:
                     comp['cliente_nombre'] = f"{client['nombre']} {client['apellido']}".strip()

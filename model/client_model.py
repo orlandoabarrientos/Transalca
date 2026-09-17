@@ -10,7 +10,7 @@ from config.validation import (
 
 
 CLIENTE_BASE = (
-    "SELECT c.identificador_cliente AS cedula, c.nombre_cliente AS nombre, '' AS apellido, "
+    "SELECT c.identificador_cliente AS cedula, c.nombre_cliente AS nombre, COALESCE(c.apellido_cliente, '') AS apellido, "
     "c.correo_cliente AS email, c.telefono_cliente AS telefono, c.direccion_cliente AS direccion, "
     "c.tipo_cliente, c.estado, c.id_cliente, c.created_at, c.updated_at, "
     "n.id_natural, n.usuario_id, n.origen_registro "
@@ -22,6 +22,8 @@ class ClientModel(Connection):
     def __init__(self):
         super().__init__()
         self._cedula = None
+        self._nombre = None
+        self._apellido = None
         self._email = None
         self._telefono = None
         self._direccion = None
@@ -35,6 +37,26 @@ class ClientModel(Connection):
         if valor:
             valor = str(valor).strip()
         self._cedula = valor
+
+    @property
+    def nombre(self):
+        return self._nombre
+
+    @nombre.setter
+    def nombre(self, valor):
+        if valor:
+            valor = str(valor).strip()
+        self._nombre = valor
+
+    @property
+    def apellido(self):
+        return self._apellido
+
+    @apellido.setter
+    def apellido(self, valor):
+        if valor:
+            valor = str(valor).strip()
+        self._apellido = valor
 
     @property
     def email(self):
@@ -92,9 +114,9 @@ class ClientModel(Connection):
             sql += " AND c.tipo_cliente = %s"
             params.append(tipo)
         if search:
-            sql += " AND (c.nombre_cliente LIKE %s OR c.identificador_cliente LIKE %s OR c.correo_cliente LIKE %s OR c.telefono_cliente LIKE %s)"
+            sql += " AND (c.nombre_cliente LIKE %s OR c.apellido_cliente LIKE %s OR c.identificador_cliente LIKE %s OR c.correo_cliente LIKE %s OR c.telefono_cliente LIKE %s)"
             q = f"%{search}%"
-            params.extend([q, q, q, q])
+            params.extend([q, q, q, q, q])
         sql += " AND c.estado = %s"
         try:
             estado_val = int(estado) if estado is not None else 1
@@ -128,7 +150,17 @@ class ClientModel(Connection):
         clean = self._validate(data, require_cedula=True)
         data = {**data, **clean}
         self.cedula = data['cedula']
+        self.nombre = data.get('nombre') or ''
+        self.apellido = data.get('apellido') or ''
+        self.email = data.get('email') or ''
+        self.telefono = data.get('telefono') or ''
+        self.direccion = data.get('direccion') or ''
         cedula = self._cedula
+        nombre_cliente = self._nombre
+        apellido_cliente = self._apellido
+        email = self._email
+        telefono = self._telefono
+        direccion = self._direccion
         existing_client = self._get_by_cedula(cedula)
         if existing_client and existing_client.get('estado'):
             raise ValidationError({'cedula': 'Esta cedula ya esta registrada.'})
@@ -138,13 +170,6 @@ class ClientModel(Connection):
         if user and user.get('tipo') != 'cliente':
             raise ValueError('La cedula pertenece a un usuario interno')
         tipo = 'juridica' if data.get('tipo_cliente') in ('empresa', 'juridica') else 'natural'
-        nombre_cliente = self._full_name(data)
-        self.email = data.get('email') or ''
-        self.telefono = data.get('telefono') or ''
-        self.direccion = data.get('direccion') or ''
-        email = self._email
-        telefono = self._telefono
-        direccion = self._direccion
         conn = self.con_transalca()
         try:
             conn.begin()
@@ -152,15 +177,15 @@ class ClientModel(Connection):
             self._set_session_variables(cursor)
             if existing_client:
                 cursor.execute(
-                    "UPDATE cliente SET nombre_cliente=%s, correo_cliente=%s, telefono_cliente=%s, direccion_cliente=%s, tipo_cliente=%s, estado=1 "
+                    "UPDATE cliente SET nombre_cliente=%s, apellido_cliente=%s, correo_cliente=%s, telefono_cliente=%s, direccion_cliente=%s, tipo_cliente=%s, estado=1 "
                     "WHERE identificador_cliente=%s",
-                    (nombre_cliente, email, telefono, direccion, tipo, cedula))
+                    (nombre_cliente, apellido_cliente, email, telefono, direccion, tipo, cedula))
                 cliente_id = existing_client['id_cliente']
             else:
                 cursor.execute(
-                    "INSERT INTO cliente (nombre_cliente, correo_cliente, identificador_cliente, telefono_cliente, direccion_cliente, tipo_cliente, estado) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, 1)",
-                    (nombre_cliente, email, cedula, telefono, direccion, tipo))
+                    "INSERT INTO cliente (nombre_cliente, apellido_cliente, correo_cliente, identificador_cliente, telefono_cliente, direccion_cliente, tipo_cliente, estado) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, 1)",
+                    (nombre_cliente, apellido_cliente, email, cedula, telefono, direccion, tipo))
                 cliente_id = cursor.lastrowid
             if tipo == 'natural':
                 cursor.execute(
@@ -179,7 +204,7 @@ class ClientModel(Connection):
         if user:
             self.update("mantenimiento",
                 "UPDATE usuarios SET nombre=%s, apellido=%s, telefono=%s, email=%s, direccion=%s WHERE id=%s AND tipo='cliente'",
-                ((data.get('nombre') or nombre_cliente).strip(), (data.get('apellido') or '').strip(),
+                (nombre_cliente, apellido_cliente,
                  telefono, email, direccion, user['id']))
         return {'cedula': cedula, 'reactivated': bool(existing_client and not existing_client.get('estado'))}
 
@@ -191,18 +216,19 @@ class ClientModel(Connection):
         if clean.get('email') and self.email_exists_globally(clean['email'], {"cliente_cedula": cedula, "usuario_cedula": cedula}):
             raise ValidationError({'email': 'Este correo ya esta registrado.'})
         data = {**data, **clean}
+        self.nombre = data.get('nombre') or ''
+        self.apellido = data.get('apellido') or ''
         self.email = data.get('email') or ''
         self.telefono = data.get('telefono') or ''
         self.direccion = data.get('direccion') or ''
-        nombre_cliente = self._full_name(data)
         result = self.update("transalca",
-            "UPDATE cliente SET nombre_cliente=%s, correo_cliente=%s, telefono_cliente=%s, direccion_cliente=%s "
+            "UPDATE cliente SET nombre_cliente=%s, apellido_cliente=%s, correo_cliente=%s, telefono_cliente=%s, direccion_cliente=%s "
             "WHERE identificador_cliente=%s",
-            (nombre_cliente, self._email, self._telefono, self._direccion, cedula))
+            (self._nombre, self._apellido, self._email, self._telefono, self._direccion, cedula))
         if client.get('usuario_id'):
             self.update("mantenimiento",
                 "UPDATE usuarios SET nombre=%s, apellido=%s, telefono=%s, email=%s, direccion=%s WHERE id=%s AND tipo='cliente'",
-                ((data.get('nombre') or nombre_cliente).strip(), (data.get('apellido') or '').strip(),
+                (self._nombre, self._apellido,
                  self._telefono, self._email, self._direccion, client['usuario_id']))
         return result
 

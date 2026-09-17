@@ -153,7 +153,7 @@ class ScannerModel(Connection):
         if profile:
             return profile
         return self.fetch_one("transalca",
-            "SELECT identificador_cliente AS cedula, nombre_cliente AS nombre, '' AS apellido, correo_cliente AS email, telefono_cliente AS telefono FROM cliente WHERE identificador_cliente = %s", (cliente_cedula,))
+            "SELECT identificador_cliente AS cedula, nombre_cliente AS nombre, COALESCE(apellido_cliente, '') AS apellido, correo_cliente AS email, telefono_cliente AS telefono FROM cliente WHERE identificador_cliente = %s", (cliente_cedula,))
 
     def _get_order_full(self, order_id):
         order = self.fetch_one("transalca",
@@ -239,10 +239,9 @@ class ScannerModel(Connection):
         if not client:
             user = self.fetch_one("mantenimiento", "SELECT id, nombre, apellido, email, telefono, direccion FROM usuarios WHERE cedula = %s", (cliente_cedula,))
             if user:
-                nombre_completo = (str(user['nombre'] or '') + ' ' + str(user['apellido'] or '')).strip()
                 cliente_id = self.insert("transalca",
-                    "INSERT INTO cliente (nombre_cliente, correo_cliente, identificador_cliente, telefono_cliente, direccion_cliente, tipo_cliente) VALUES (%s, %s, %s, %s, %s, 'natural')",
-                    (nombre_completo, user['email'], cliente_cedula, user.get('telefono') or '', user.get('direccion') or ''))
+                    "INSERT INTO cliente (nombre_cliente, apellido_cliente, correo_cliente, identificador_cliente, telefono_cliente, direccion_cliente, tipo_cliente) VALUES (%s, %s, %s, %s, %s, %s, 'natural')",
+                    (user.get('nombre') or '', user.get('apellido') or '', user['email'], cliente_cedula, user.get('telefono') or '', user.get('direccion') or ''))
                 self.insert("transalca",
                     "INSERT INTO cliente_natural (id_cliente, usuario_id, origen_registro) VALUES (%s, %s, 'cliente')",
                     (cliente_id, user['id']))

@@ -38,7 +38,7 @@ LOG_BY_ID_SQL = (
     "v.placa_vehiculo AS placa, v.marca_vehiculo AS marca, v.modelo_vehiculo AS modelo, "
     "m.nombre_mecanico as mecanico_nombre, m.apellido_mecanico as mecanico_apellido, "
     "s.nombre_servicio as servicio_nombre, c.identificador_cliente as cliente_cedula, "
-    "c.nombre_cliente as cliente_nombre, '' as cliente_apellido "
+    "c.nombre_cliente as cliente_nombre, COALESCE(c.apellido_cliente, '') as cliente_apellido "
     "FROM bitacora_vehiculo bv "
     "INNER JOIN vehiculos v ON bv.vehiculo_placa = v.placa_vehiculo "
     "LEFT JOIN cliente_vehiculo cv ON cv.vehiculo_placa = v.placa_vehiculo AND cv.estado = 1 "

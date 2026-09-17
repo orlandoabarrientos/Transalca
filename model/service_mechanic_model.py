@@ -46,7 +46,7 @@ class ServiceMechanicModel(Connection):
             "s.nombre_servicio as servicio_nombre, s.precio_servicio AS precio, "
             "COALESCE(sm.cliente_cedula, ov.cliente_cedula) as cliente_cedula, "
             "COALESCE(sm.vehiculo_placa, bv.vehiculo_placa) as vehiculo_placa, "
-            "c.nombre_cliente as cliente_nombre, '' as cliente_apellido, "
+            "c.nombre_cliente as cliente_nombre, COALESCE(c.apellido_cliente, '') as cliente_apellido, "
             "v.marca_vehiculo as vehiculo_marca, v.modelo_vehiculo as vehiculo_modelo, "
             "m.nombre_mecanico as mecanico_nombre_base, m.apellido_mecanico as mecanico_apellido_base, "
             "cm.porcentaje_comision "

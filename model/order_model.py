@@ -58,11 +58,12 @@ class OrderModel(Connection):
         if not user:
             return False
 
-        nombre = (str(user.get('nombre') or 'Cliente').strip() + ' ' + str(user.get('apellido') or '').strip()).strip()
+        nombre = str(user.get('nombre') or 'Cliente').strip()
+        apellido = str(user.get('apellido') or '').strip()
         cliente_id = self.insert("transalca",
-            "INSERT INTO cliente (nombre_cliente, correo_cliente, identificador_cliente, telefono_cliente, direccion_cliente, tipo_cliente, estado) "
-            "VALUES (%s, %s, %s, %s, %s, 'natural', 1)",
-            (nombre, user.get('email', ''), user['cedula'], user.get('telefono', ''), user.get('direccion', '')))
+            "INSERT INTO cliente (nombre_cliente, apellido_cliente, correo_cliente, identificador_cliente, telefono_cliente, direccion_cliente, tipo_cliente, estado) "
+            "VALUES (%s, %s, %s, %s, %s, %s, 'natural', 1)",
+            (nombre, apellido, user.get('email', ''), user['cedula'], user.get('telefono', ''), user.get('direccion', '')))
         self.insert("transalca",
             "INSERT INTO cliente_natural (id_cliente, usuario_id, origen_registro) VALUES (%s, %s, 'cliente')",
             (cliente_id, user['id']))
@@ -328,7 +329,7 @@ class OrderModel(Connection):
                 "SELECT nombre, apellido, email, telefono, cedula FROM usuarios WHERE cedula = %s", (order['cliente_cedula'],))
             if not client:
                 client = self.fetch_one("transalca",
-                    "SELECT nombre_cliente AS nombre, '' AS apellido, correo_cliente AS email, "
+                    "SELECT nombre_cliente AS nombre, COALESCE(apellido_cliente, '') AS apellido, correo_cliente AS email, "
                     "telefono_cliente AS telefono, identificador_cliente AS cedula "
                     "FROM cliente WHERE identificador_cliente = %s", (order['cliente_cedula'],))
             if client:

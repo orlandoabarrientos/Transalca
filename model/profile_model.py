@@ -41,11 +41,10 @@ class ProfileModel(Connection):
             (clean['nombre'], clean['apellido'], clean.get('telefono', '') or '', clean.get('direccion', '') or '', user_id))
         user = self._get_profile(user_id)
         if user and user.get('tipo') == 'cliente':
-            nombre_cliente = (str(clean['nombre']).strip() + ' ' + str(clean['apellido']).strip()).strip()
             self.update("transalca",
-                "UPDATE cliente SET nombre_cliente=%s, telefono_cliente=%s, direccion_cliente=%s, correo_cliente=%s "
+                "UPDATE cliente SET nombre_cliente=%s, apellido_cliente=%s, telefono_cliente=%s, direccion_cliente=%s, correo_cliente=%s "
                 "WHERE identificador_cliente=%s",
-                (nombre_cliente, clean.get('telefono', '') or '', clean.get('direccion', '') or '',
+                (clean['nombre'], clean['apellido'], clean.get('telefono', '') or '', clean.get('direccion', '') or '',
                  user.get('email', ''), user['cedula']))
         return clean
 

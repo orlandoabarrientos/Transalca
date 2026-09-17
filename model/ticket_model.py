@@ -2,7 +2,7 @@ from model.connection import Connection
 
 TICKET_BASE_LIST_SQL = (
     "SELECT t.*, t.id_ticket_soporte AS id, t.prioridad_ticket AS prioridad, t.descripcion_ticket_soporte as descripcion, "
-    "c.nombre_cliente as cliente_nombre, '' as cliente_apellido, "
+    "c.nombre_cliente as cliente_nombre, COALESCE(c.apellido_cliente, '') as cliente_apellido, "
     "v.placa_vehiculo as vehiculo_placa, v.marca_vehiculo as vehiculo_marca, v.modelo_vehiculo as vehiculo_modelo, "
     "p.nombre_producto as producto_nombre, s.nombre_servicio as servicio_nombre "
     "FROM tickets_soporte t "
@@ -14,7 +14,7 @@ TICKET_BASE_LIST_SQL = (
 )
 TICKET_BY_ID_SQL = (
     "SELECT t.*, t.id_ticket_soporte AS id, t.prioridad_ticket AS prioridad, t.descripcion_ticket_soporte as descripcion, "
-    "c.nombre_cliente as cliente_nombre, '' as cliente_apellido, "
+    "c.nombre_cliente as cliente_nombre, COALESCE(c.apellido_cliente, '') as cliente_apellido, "
     "c.telefono_cliente as cliente_telefono, c.correo_cliente as cliente_email, "
     "v.placa_vehiculo as vehiculo_placa, v.marca_vehiculo as vehiculo_marca, v.modelo_vehiculo as vehiculo_modelo, "
     "p.nombre_producto as producto_nombre, s.nombre_servicio as servicio_nombre "
