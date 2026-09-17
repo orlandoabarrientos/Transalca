@@ -52,7 +52,9 @@ def route_intent(text, entities=None, state=None):
         return "inventory_by_brand"
     if re.search(r"\b(?:sedes?|sucursales?|ubicacion|ubicados|direccion|donde estan)\b", value):
         return "branches"
-    if re.search(r"\b(?:stock|existencia|disponibilidad|cauchos?|neumaticos?|gomas?)\b", value):
+    if re.search(r"\b(?:stock|existencia|disponibilidad|cauchos?|neumaticos?|gomas?|baterias?|lubricantes?|aceites?)\b", value):
+        return "stock"
+    if entities.get("category") or (entities.get("asks_stock") and (entities.get("brand") or entities.get("product_query"))):
         return "stock"
     if state.get("last_products") and (entities.get("asks_stock") or re.search(r"\b(?:primer[oa]|segund[oa]|tercer[oa]|ese|esa|comparar?|comparacion|diferencia)\b", value)):
         return "stock"

@@ -19,6 +19,7 @@ TIRE_BRANDS = ("Michelin", "Goodyear", "Bridgestone", "Firestone", "Pirelli", "C
                "Hankook", "Kumho", "Yokohama", "Toyo", "Maxxis", "Cooper", "BFGoodrich", "Goodrich",
                "Falken", "General", "Triangle", "Chengshan", "Linglong", "Roadcruza", "Sailun", "Westlake",
                "Goodride", "Roadmax", "Double Coin", "Durun", "Compasal", "Arivo", "Haida", "Grenlander", "Budget")
+NON_TIRE_BRANDS = ("Duracell", "Extrema", "Moura", "Duncan", "Titan", "ACDelco", "Dauer", "Gulf", "Mobil", "Valvoline", "Castrol", "Shell", "Motul", "Inca", "PDV")
 # Recognition vocabulary only. None of these names is a fitment/catalog claim.
 VEHICLES = {"Toyota": ("Hilux", "Corolla", "Fortuner", "Prado", "Yaris", "4Runner", "Land Cruiser", "Rav4"),
             "Chevrolet": ("Aveo", "Spark", "Optra", "Silverado", "Tahoe", "Corsa", "Cruze"),
@@ -86,11 +87,23 @@ def extract_entities(text, *, brands=(), models=(), branches=()):
         if re.search(pattern, value):
             tire_type = key
             break
-    brand = _find_name(value, (*TIRE_BRANDS, *brands))
+    brand = _find_name(value, (*TIRE_BRANDS, *NON_TIRE_BRANDS, *brands))
     model = _find_name(value, models)
     model_match = re.search(r"\bmodelo\s+([\w-]+)", value)
     if not model and model_match:
         model = model_match.group(1)
+    category = None
+    if re.search(r"\b(?:baterias?|acumulador(?:es)?)\b", value):
+        category = "Baterias"
+    elif re.search(r"\b(?:lubricantes?|aceites?|fluidos?|valvulina(?:s)?)\b", value):
+        category = "Lubricantes"
+    elif re.search(r"\b(?:cauchos?|neumaticos?|gomas?|llantas?)\b", value):
+        category = "Cauchos"
+    elif re.search(r"\bcombos?\b", value):
+        category = "Combos"
+    clean_query = re.sub(r"\b(?:tienen|tiene|hay|disponibles?|disponibilidad|cuanto cuesta|cuanto vale|precio de|precio|stock de|stock|baterias?|cauchos?|aceite|por favor|buenas|hola|cual es|el mas|la mas|mas barat[oa]s?|mas economic[oa]s?|mas stock|mayor stock)\b", " ", value).strip(" ?¿!.,")
+    clean_query = " ".join(clean_query.split())
+    product_query = clean_query if len(clean_query) >= 3 else None
     vehicle_brand, vehicle_model = None, None
     for make, names in VEHICLES.items():
         found = _find_name(value, names)
@@ -114,6 +127,7 @@ def extract_entities(text, *, brands=(), models=(), branches=()):
     if not branch and branch_match:
         branch = branch_match.group(1).strip()
     return {"tire_size": size, "rim": rim, "tire_type": tire_type, "brand": brand, "model": model,
+            "category": category, "product_query": product_query, "raw": text,
             "vehicle_brand": vehicle_brand, "vehicle_model": vehicle_model,
             "vehicle_year": int(year_match.group(1)) if year_match else None, "service": service,
             "payment_method": payment, "branch": branch,
