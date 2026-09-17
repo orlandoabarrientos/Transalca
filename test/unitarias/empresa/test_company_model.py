@@ -164,3 +164,54 @@ class TestCompanyModelDatabaseOperations:
             model.ejecutar("accion_inexistente")
 
         assert "Accion no permitida" in str(exc_info.value)
+
+    @patch.object(CompanyModel, "fetch_all")
+    def test_get_all_from_view(self, mock_fetch_all):
+        mock_fetch_all.return_value = [
+            {"rif": "J-12345678-9", "razon_social": "Transalca C.A.", "flota_count": 5, "estado_credito": "al_dia"}
+        ]
+        model = CompanyModel()
+        result = model.ejecutar("get_all_from_view")
+
+        assert len(result) == 1
+        assert result[0]["rif"] == "J-12345678-9"
+        assert result[0]["flota_count"] == 5
+        mock_fetch_all.assert_called_once()
+
+    @patch.object(CompanyModel, "fetch_one")
+    def test_get_from_view_by_rif(self, mock_fetch_one):
+        mock_fetch_one.return_value = {
+            "rif": "J-12345678-9",
+            "razon_social": "Transalca C.A.",
+            "estado_credito": "al_dia",
+            "representantes_count": 2
+        }
+        model = CompanyModel()
+        result = model.ejecutar("get_from_view", "J-12345678-9")
+
+        assert result["rif"] == "J-12345678-9"
+        assert result["representantes_count"] == 2
+        mock_fetch_one.assert_called_once()
+
+    @patch.object(CompanyModel, "email_exists_globally", return_value=False)
+    @patch.object(CompanyModel, "execute_query")
+    def test_save_company_sp_success(self, mock_execute_query, mock_email_exists):
+        model = CompanyModel()
+        data = {
+            "rif": "J-123456789",
+            "razon_social": "Transalca C.A.",
+            "email": "contacto@transalca.com",
+            "telefono": "04121234567",
+            "direccion": "Zona Industrial",
+            "sector": "Transporte",
+            "limite_credito": 5000,
+            "dias_credito": 30
+        }
+        result = model.ejecutar("save_company_sp", data)
+
+        assert result["rif"] == "J-12345678-9"
+        mock_execute_query.assert_called_once()
+        args = mock_execute_query.call_args[0]
+        assert args[0] == "transalca"
+        assert "CALL sp_registrar_o_actualizar_empresa" in args[1]
+

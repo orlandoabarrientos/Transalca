@@ -113,38 +113,51 @@ class CompanyModel(Connection):
         )
 
     def _company_select(self):
-        return "".join([
-            "SELECT c.identificador_cliente AS cedula, c.identificador_cliente AS rif, NULL AS rif_prefijo, ",
-            "c.nombre_cliente AS razon_social, c.nombre_cliente AS nombre, '' AS apellido, NULL AS nombre_comercial, ",
-            "c.correo_cliente AS email, c.telefono_cliente AS telefono, c.direccion_cliente AS direccion, ",
-            "c.tipo_cliente, c.estado, c.id_cliente, c.created_at, c.updated_at, ",
-            "j.id_juridica, j.sector, j.limite_credito, j.dias_credito, ",
-            self._credit_status_sql(), " AS estado_credito, ",
-            "(SELECT MIN(cr.fecha_vencimiento_credito) FROM creditos_orden_venta cr INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id ",
-            "WHERE ov.cliente_cedula = c.identificador_cliente ",
-            "AND cr.estado_credito NOT IN ('pagado','anulado') AND ",
-            "(ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) > 0) AS credito_vencimiento, ",
-            "(SELECT COUNT(*) FROM cliente_vehiculo cv INNER JOIN vehiculos v ON cv.vehiculo_placa = v.placa_vehiculo ",
-            "WHERE cv.cliente_cedula = c.identificador_cliente AND cv.estado = 1 AND v.estado = 1) as flota_count ",
-            "FROM cliente c INNER JOIN cliente_juridico j ON j.id_cliente = c.id_cliente ",
-            "WHERE c.tipo_cliente = 'juridica'",
-        ])
+        return "SELECT * FROM vw_empresas_detalle WHERE 1=1"
+
+    def _get_from_view(self, rif=None):
+        if rif:
+            return self.fetch_one("transalca", "SELECT * FROM vw_empresas_detalle WHERE rif = %s OR identificador_cliente = %s", (rif, rif))
+        return self.fetch_all("transalca", "SELECT * FROM vw_empresas_detalle WHERE estado = 1 ORDER BY created_at DESC")
+
+    def _get_all_from_view(self, search=None, estado=None):
+        return self._get_all(search=search, estado=estado)
 
     def _get_all(self, search=None, estado=None):
         sql = self._company_select()
         params = []
         if search:
             q = f"%{search}%"
-            sql += " AND (c.identificador_cliente LIKE %s OR c.nombre_cliente LIKE %s OR c.correo_cliente LIKE %s OR c.telefono_cliente LIKE %s)"
-            params.extend([q, q, q, q])
-        sql += " AND c.estado = %s"
+            sql += " AND (rif LIKE %s OR razon_social LIKE %s OR email LIKE %s OR telefono LIKE %s OR identificador_cliente LIKE %s OR nombre_cliente LIKE %s)"
+            params.extend([q, q, q, q, q, q])
+        sql += " AND estado = %s"
         params.append(int(estado) if estado is not None else 1)
-        sql += " ORDER BY c.created_at DESC"
+        sql += " ORDER BY created_at DESC"
         return self.fetch_all("transalca", sql, tuple(params))
 
     def _get_by_rif(self, rif):
-        sql = self._company_select() + " AND c.identificador_cliente = %s"
-        return self.fetch_one("transalca", sql, (rif,))
+        sql = self._company_select() + " AND (rif = %s OR identificador_cliente = %s)"
+        return self.fetch_one("transalca", sql, (rif, rif))
+
+    def _save_company_sp(self, data):
+        clean = self._validate(data, require_rif=True)
+        data = {**data, **clean}
+        if clean.get('email') and self.email_exists_globally(clean['email'], {"cliente_cedula": clean['rif']}):
+            raise ValidationError({'email': 'Este correo ya esta registrado.'})
+        self.execute_query("transalca",
+            "CALL sp_registrar_o_actualizar_empresa(%s, %s, %s, %s, %s, %s, %s, %s)",
+            (
+                clean['rif'],
+                clean['razon_social'],
+                clean.get('email') or '',
+                clean.get('telefono') or '',
+                clean.get('direccion') or '',
+                clean.get('sector') or '',
+                clean.get('limite_credito') or Decimal('0.00'),
+                clean.get('dias_credito') or 0
+            )
+        )
+        return {'rif': clean['rif']}
 
     def _validate(self, data, require_rif=True):
         errors = {}
@@ -322,7 +335,10 @@ class CompanyModel(Connection):
         acciones = {
             "get_all": self._get_all,
             "get_by_rif": self._get_by_rif,
+            "get_from_view": self._get_from_view,
+            "get_all_from_view": self._get_all_from_view,
             "create": self._create,
+            "save_company_sp": self._save_company_sp,
             "update_company": self._update_company,
             "soft_delete": self._soft_delete,
             "get_stats": self._get_stats,

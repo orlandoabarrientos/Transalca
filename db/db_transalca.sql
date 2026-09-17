@@ -2238,6 +2238,137 @@ BEGIN
 END ;;
 DELIMITER ;
 
+DROP VIEW IF EXISTS `vw_empresas_detalle`;
+CREATE VIEW `vw_empresas_detalle` AS
+SELECT 
+    c.id_cliente,
+    j.id_juridica,
+    c.identificador_cliente,
+    c.identificador_cliente AS cedula,
+    c.identificador_cliente AS rif,
+    NULL AS rif_prefijo,
+    c.nombre_cliente,
+    c.nombre_cliente AS razon_social,
+    c.nombre_cliente AS nombre,
+    '' AS apellido,
+    NULL AS nombre_comercial,
+    c.correo_cliente,
+    c.correo_cliente AS email,
+    c.telefono_cliente,
+    c.telefono_cliente AS telefono,
+    c.direccion_cliente,
+    c.direccion_cliente AS direccion,
+    j.sector,
+    COALESCE(j.limite_credito, 0.00) AS limite_credito,
+    COALESCE(j.dias_credito, 0) AS dias_credito,
+    c.tipo_cliente,
+    c.estado,
+    c.created_at,
+    c.updated_at,
+    CASE 
+        WHEN EXISTS (
+            SELECT 1 
+            FROM creditos_orden_venta cr 
+            INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id 
+            WHERE ov.cliente_cedula = c.identificador_cliente 
+              AND cr.estado_credito NOT IN ('pagado','anulado') 
+              AND (ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) > 0 
+              AND (cr.estado_credito = 'vencido' OR (cr.fecha_vencimiento_credito IS NOT NULL AND cr.fecha_vencimiento_credito <= CURDATE()))
+        ) THEN 'deudora'
+        WHEN EXISTS (
+            SELECT 1 
+            FROM creditos_orden_venta cr 
+            INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id 
+            WHERE ov.cliente_cedula = c.identificador_cliente 
+              AND cr.estado_credito IN ('pendiente','aprobado','activo') 
+              AND (ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) > 0 
+              AND (cr.fecha_vencimiento_credito IS NULL OR cr.fecha_vencimiento_credito > CURDATE())
+        ) THEN 'credito_activo'
+        ELSE 'al_dia' 
+    END AS estado_credito,
+    (
+        SELECT MIN(cr.fecha_vencimiento_credito) 
+        FROM creditos_orden_venta cr 
+        INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id 
+        WHERE ov.cliente_cedula = c.identificador_cliente 
+          AND cr.estado_credito NOT IN ('pagado','anulado') 
+          AND (ov.total_orden_venta - COALESCE((SELECT SUM(pc.monto_pago) FROM pagos_credito pc WHERE pc.id_credito = cr.id_credito), 0)) > 0
+    ) AS credito_vencimiento,
+    (
+        SELECT COUNT(*) 
+        FROM cliente_vehiculo cv 
+        INNER JOIN vehiculos v ON cv.vehiculo_placa = v.placa_vehiculo 
+        WHERE cv.cliente_cedula = c.identificador_cliente 
+          AND cv.estado = 1 
+          AND v.estado = 1
+    ) AS flota_count,
+    (
+        SELECT COUNT(*) 
+        FROM representante r 
+        WHERE r.empresa_rif = c.identificador_cliente 
+          AND r.estado = 1
+    ) AS representantes_count
+FROM cliente c
+INNER JOIN cliente_juridico j ON j.id_cliente = c.id_cliente
+WHERE c.tipo_cliente = 'juridica';
+
+DROP PROCEDURE IF EXISTS `sp_registrar_o_actualizar_empresa`;
+DELIMITER ;;
+CREATE PROCEDURE `sp_registrar_o_actualizar_empresa`(
+    IN p_rif VARCHAR(50),
+    IN p_razon_social VARCHAR(150),
+    IN p_correo VARCHAR(100),
+    IN p_telefono VARCHAR(50),
+    IN p_direccion VARCHAR(255),
+    IN p_sector VARCHAR(150),
+    IN p_limite_credito DECIMAL(10,2),
+    IN p_dias_credito INT
+)
+BEGIN
+    DECLARE v_cliente_id INT DEFAULT NULL;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+    
+    START TRANSACTION;
+    
+    SELECT id_cliente INTO v_cliente_id 
+    FROM cliente 
+    WHERE identificador_cliente = p_rif 
+    LIMIT 1;
+    
+    IF v_cliente_id IS NOT NULL THEN
+        UPDATE cliente 
+        SET nombre_cliente = p_razon_social,
+            telefono_cliente = p_telefono,
+            correo_cliente = p_correo,
+            direccion_cliente = p_direccion,
+            tipo_cliente = 'juridica',
+            estado = 1
+        WHERE id_cliente = v_cliente_id;
+        
+        IF EXISTS (SELECT 1 FROM cliente_juridico WHERE id_cliente = v_cliente_id) THEN
+            UPDATE cliente_juridico 
+            SET sector = p_sector,
+                limite_credito = COALESCE(p_limite_credito, 0.00),
+                dias_credito = COALESCE(p_dias_credito, 0)
+            WHERE id_cliente = v_cliente_id;
+        ELSE
+            INSERT INTO cliente_juridico (id_cliente, sector, limite_credito, dias_credito)
+            VALUES (v_cliente_id, p_sector, COALESCE(p_limite_credito, 0.00), COALESCE(p_dias_credito, 0));
+        END IF;
+    ELSE
+        INSERT INTO cliente (nombre_cliente, correo_cliente, identificador_cliente, telefono_cliente, direccion_cliente, tipo_cliente, estado)
+        VALUES (p_razon_social, p_correo, p_rif, p_telefono, p_direccion, 'juridica', 1);
+        
+        SET v_cliente_id = LAST_INSERT_ID();
+        
+        INSERT INTO cliente_juridico (id_cliente, sector, limite_credito, dias_credito)
+        VALUES (v_cliente_id, p_sector, COALESCE(p_limite_credito, 0.00), COALESCE(p_dias_credito, 0));
+    END IF;
+    
+    COMMIT;
+END ;;
+DELIMITER ;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
