@@ -257,18 +257,20 @@ def reset_lite_session():
 
 @asistente_bp.route("/shadow/candidate", methods=["POST"])
 def shadow_candidate():
-    """Protected candidate runtime; disabled and fail-closed by default."""
-    from componente_ia.candidate_shadow import candidate_shadow_message
-
-    return candidate_shadow_message()
+    """Protected candidate runtime; deprecated and disabled."""
+    return jsonify({
+        "status": "deprecated",
+        "message": "Candidate shadow endpoint is deprecated and disabled."
+    }), 410
 
 
 @asistente_bp.route("/shadow/health", methods=["GET"])
 def shadow_healthcheck():
-    """Identity-gated health endpoint for sealed candidate audits."""
-    from componente_ia.candidate_shadow import candidate_shadow_health
-
-    return candidate_shadow_health()
+    """Identity-gated health endpoint for sealed candidate audits; deprecated."""
+    return jsonify({
+        "status": "deprecated",
+        "message": "Candidate shadow health endpoint is deprecated."
+    }), 410
 
 
 @asistente_bp.route("/metrics", methods=["GET"])
