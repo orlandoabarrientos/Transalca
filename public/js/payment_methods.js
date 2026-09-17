@@ -68,8 +68,15 @@ function openPaymentMethodModal() {
     Validator.clearForm('paymentMethodForm');
     document.getElementById('paymentMethodId').value = '';
     document.getElementById('permite_credito').checked = false;
-    document.getElementById('moneda').value = 'usd';
+    document.getElementById('nombre').value = '';
     document.getElementById('datos_pago').value = '';
+    const monedaEl = document.getElementById('moneda');
+    if (monedaEl) {
+        monedaEl.value = 'usd';
+        if (window.jQuery) {
+            $(monedaEl).val('usd').trigger('change.select2');
+        }
+    }
     document.getElementById('paymentMethodModalTitle').textContent = 'Registrar Método de Pago';
     document.getElementById('btnSavePaymentMethod').innerHTML = '<i class="bi bi-check-circle me-1"></i>Guardar';
     new bootstrap.Modal(document.getElementById('paymentMethodModal')).show();
@@ -84,7 +91,19 @@ function editPaymentMethod(id) {
         document.getElementById('nombre').value = item.nombre || '';
         document.getElementById('datos_pago').value = item.datos_pago || '';
         document.getElementById('permite_credito').checked = !!item.permite_credito;
-        document.getElementById('moneda').value = item.moneda || 'usd';
+        let monedaVal = (item.moneda || 'usd').toString().trim().toLowerCase();
+        if (monedaVal === 'ves' || monedaVal === 'bolivares' || monedaVal === 'bolivar' || monedaVal === 'bs' || monedaVal === 'bs.') {
+            monedaVal = 'bs';
+        } else {
+            monedaVal = 'usd';
+        }
+        const monedaEl = document.getElementById('moneda');
+        if (monedaEl) {
+            monedaEl.value = monedaVal;
+            if (window.jQuery) {
+                $(monedaEl).val(monedaVal).trigger('change.select2');
+            }
+        }
         document.getElementById('paymentMethodModalTitle').textContent = 'Modificar Método de Pago';
         document.getElementById('btnSavePaymentMethod').innerHTML = '<i class="bi bi-check-circle me-1"></i>Guardar';
         new bootstrap.Modal(document.getElementById('paymentMethodModal')).show();

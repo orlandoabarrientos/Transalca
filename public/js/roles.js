@@ -144,11 +144,19 @@ function renderPermissionsPage(page = 1) {
     renderPermissionsPagination(MODULES.length, page);
 }
 
+function syncPermissionsPayload() {
+    const payloadEl = document.getElementById('permisosPayload');
+    if (payloadEl) {
+        payloadEl.value = JSON.stringify(permissionsState);
+    }
+}
+
 function updatePermissionState(mod, perm, checked) {
     if (!permissionsState[mod]) {
         permissionsState[mod] = { crear: 0, leer: 0, actualizar: 0, eliminar: 0 };
     }
     permissionsState[mod][perm] = checked ? 1 : 0;
+    syncPermissionsPayload();
     updateFormSubmitState('roleForm');
 }
 
@@ -223,8 +231,11 @@ function renderPermissionsPagination(total, page) {
 function openModal() {
     Validator.clearForm('roleForm');
     document.getElementById('roleId').value = '';
-    document.getElementById('modalTitle').textContent = 'Registrar rol';
+    document.getElementById('nombre').value = '';
+    document.getElementById('descripcion').value = '';
+    document.getElementById('modalTitle').textContent = 'Registrar Rol';
     initPermissionsState();
+    syncPermissionsPayload();
     renderPermissionsPage(1);
     new bootstrap.Modal(document.getElementById('roleModal')).show();
     Validator.initTracking('roleForm');
@@ -239,6 +250,7 @@ function editData(id) {
         document.getElementById('nombre').value = r.nombre || '';
         document.getElementById('descripcion').value = r.descripcion || '';
         initPermissionsState(r.permisos || []);
+        syncPermissionsPayload();
         renderPermissionsPage(1);
         document.getElementById('modalTitle').textContent = 'Modificar rol';
         new bootstrap.Modal(document.getElementById('roleModal')).show();

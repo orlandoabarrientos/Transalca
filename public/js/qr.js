@@ -6,7 +6,8 @@ $(document).ready(function () {
     Validator.setRules('qrForm', {
         tipo: { required: true, requiredMsg: 'Seleccione un tipo de QR' },
         utilidad_tipo: { required: true, requiredMsg: 'Seleccione una utilidad' },
-        contenido: { maxLength: 150, maxLengthMsg: 'El contenido no puede superar los 150 caracteres.' }
+        contenido: { maxLength: 150, maxLengthMsg: 'El contenido no puede superar los 150 caracteres.' },
+        ttl_minutos: { min: 1, minMsg: 'La vigencia debe ser de al menos 1 minuto' }
     });
     Validator.setupRealtime('qrForm');
     $('#utilidad_tipo, #tipo').on('change', toggleUtilityFields);
@@ -47,22 +48,38 @@ function loadData() {
     });
 }
 
-function openModal() { Validator.clearForm('qrForm'); document.getElementById('qrId').value = ''; document.getElementById('modalTitle').textContent = 'Nuevo QR'; document.getElementById('contenido').value = ''; document.getElementById('utilidad_tipo').value = ''; document.getElementById('referenciaId').value = ''; document.getElementById('promocionRefSelect').value = ''; document.getElementById('ttlMinutos').value = '10'; toggleUtilityFields(); new bootstrap.Modal(document.getElementById('qrModal')).show(); }
+function openModal() {
+    Validator.clearForm('qrForm');
+    document.getElementById('qrId').value = '';
+    document.getElementById('modalTitle').textContent = 'Nuevo QR';
+    document.getElementById('contenido').value = '';
+    document.getElementById('tipo').value = '';
+    document.getElementById('utilidad_tipo').value = '';
+    document.getElementById('referenciaId').value = '';
+    document.getElementById('promocionRefSelect').value = '';
+    document.getElementById('ttlMinutos').value = '10';
+    toggleUtilityFields();
+    new bootstrap.Modal(document.getElementById('qrModal')).show();
+    Validator.initTracking('qrForm');
+}
 
 function editData(id) {
     apiCall(`/api/qr/${id}`).then(res => {
+        if (res.status === 'error') return showToast(res.message, 'error');
         const q = res.data;
+        Validator.clearForm('qrForm');
         document.getElementById('qrId').value = q.id;
-        document.getElementById('tipo').value = q.tipo;
+        document.getElementById('tipo').value = q.tipo || '';
         document.getElementById('contenido').value = q.contenido_resumen || q.contenido || '';
         document.getElementById('utilidad_tipo').value = q.utilidad || '';
         document.getElementById('referenciaId').value = q.utilidad_referencia_id || '';
         const isPromo = (q.tipo === 'promocion' || q.utilidad === 'promocion');
         document.getElementById('promocionRefSelect').value = isPromo ? (q.utilidad_referencia_id || '') : '';
-        document.getElementById('ttlMinutos').value = '10';
+        document.getElementById('ttlMinutos').value = q.ttl_minutos || '10';
         document.getElementById('modalTitle').textContent = 'Editar QR';
         toggleUtilityFields();
         new bootstrap.Modal(document.getElementById('qrModal')).show();
+        Validator.initTracking('qrForm');
     });
 }
 
@@ -73,10 +90,10 @@ function saveData() {
     const utilidadTipo = (document.getElementById('utilidad_tipo').value || '').trim();
     const contenido = (document.getElementById('contenido').value || '').trim();
     const promoRefId = (document.getElementById('promocionRefSelect').value || '').trim();
-    const ttlMinutos = (document.getElementById('ttlMinutos').value || '').trim() || '10';
+    const ttlMinutos = parseInt(document.getElementById('ttlMinutos').value, 10) || 10;
 
     const isPromo = (tipo === 'promocion' || utilidadTipo === 'promocion');
-    const referenciaId = isPromo ? promoRefId : '';
+    const referenciaId = isPromo ? promoRefId : (document.getElementById('referenciaId').value || '').trim();
 
     if (!utilidadTipo && contenido.length < 3) {
         return showToast('El contenido o la utilidad es requerido', 'warning');
@@ -94,9 +111,17 @@ function saveData() {
         referencia_id: referenciaId,
         ttl_minutos: ttlMinutos
     };
+    const saveBtn = document.querySelector('#qrModal .btn-orange');
+    setButtonLoading(saveBtn, true, 'Guardando...');
     apiCall(id ? `/api/qr/${id}` : '/api/qr/', id ? 'PUT' : 'POST', data).then(res => {
-        if (res.status === 'error') { Validator.showServerErrors('qrForm', res.errors); return showToast(res.message, 'error'); }
-        bootstrap.Modal.getInstance(document.getElementById('qrModal')).hide(); showToast(res.message); loadData();
+        setButtonLoading(saveBtn, false);
+        if (res.status === 'error') {
+            Validator.showServerErrors('qrForm', res.errors);
+            return showToast(res.message, 'error');
+        }
+        bootstrap.Modal.getInstance(document.getElementById('qrModal')).hide();
+        showToast(res.message, 'success');
+        loadData();
     });
 }
 

@@ -68,7 +68,6 @@ function loadOrders() {
                                 <div class="d-flex gap-1 justify-content-start align-items-center">
                                     <button class="btn btn-sm btn-outline-orange" title="Ver detalle" onclick="viewOrderDetails(${o.id})"><i class="bi bi-eye"></i></button>
                                     <button class="btn btn-sm btn-success text-nowrap" title="Marcar como Comprado" onclick="markOrderAsBought(${o.id})" ${isBought ? 'disabled' : ''}><i class="bi bi-cart-check"></i> <span class="d-none d-xl-inline">Comprado</span></button>
-                                    <button class="btn btn-sm btn-danger text-nowrap" title="Ver PDF" onclick="downloadOrderPdf(${o.id})"><i class="bi bi-file-earmark-pdf"></i> <span class="d-none d-xl-inline">PDF</span></button>
                                 </div>
                             </td>
                         </tr>

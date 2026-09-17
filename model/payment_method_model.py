@@ -41,6 +41,8 @@ class PaymentMethodModel(Connection):
     def moneda(self, valor):
         if valor:
             valor = str(valor).strip().lower()
+            if valor in ('ves', 'bolivares', 'bolivar'):
+                valor = 'bs'
         self._moneda = valor
 
     @property
@@ -61,16 +63,32 @@ class PaymentMethodModel(Connection):
             valor = str(valor).strip()
         self._datos_pago = valor
 
+    @staticmethod
+    def _normalize_moneda(item):
+        if item and isinstance(item, dict) and 'moneda' in item and item['moneda']:
+            m = str(item['moneda']).strip().lower()
+            if m in ('ves', 'bolivares', 'bolivar'):
+                m = 'bs'
+            item['moneda'] = m
+        return item
+
     def _get_all(self):
-        return self.fetch_all("transalca", METODO_PAGO_LIST_SQL)
+        items = self.fetch_all("transalca", METODO_PAGO_LIST_SQL) or []
+        for it in items:
+            self._normalize_moneda(it)
+        return items
 
     def _get_active(self):
-        return self.fetch_all("transalca",
+        items = self.fetch_all("transalca",
             "SELECT id_metodo_pago AS id, nombre_metodo_pago AS nombre, permite_credito, moneda, datos_metodo_pago AS datos_pago "
-            "FROM metodos_pago WHERE estado = 1 ORDER BY nombre_metodo_pago")
+            "FROM metodos_pago WHERE estado = 1 ORDER BY nombre_metodo_pago") or []
+        for it in items:
+            self._normalize_moneda(it)
+        return items
 
     def _get_by_id(self, method_id):
-        return self.fetch_one("transalca", METODO_PAGO_BY_ID_SQL, (method_id,))
+        item = self.fetch_one("transalca", METODO_PAGO_BY_ID_SQL, (method_id,))
+        return self._normalize_moneda(item)
 
     def _name_exists(self, nombre, exclude_id=None):
         value = (nombre or '').strip()
@@ -96,7 +114,10 @@ class PaymentMethodModel(Connection):
         clean['nombre'] = require_text(errors, 'nombre', data.get('nombre'), 'El nombre', min_len=3, max_len=100, allow_serial=True)
         clean['datos_pago'] = require_text(errors, 'datos_pago', data.get('datos_pago'), 'Los datos de pago', min_len=3, max_len=80, allow_serial=True)
         clean['permite_credito'] = 1 if data.get('permite_credito') in (1, '1', True, 'true', 'on') else 0
-        clean['moneda'] = (data.get('moneda') or 'usd').strip().lower()
+        raw_moneda = (data.get('moneda') or 'usd').strip().lower()
+        if raw_moneda in ('ves', 'bolivares', 'bolivar'):
+            raw_moneda = 'bs'
+        clean['moneda'] = raw_moneda
         if clean['moneda'] not in ('usd', 'bs'):
             errors['moneda'] = 'La moneda debe ser usd o bs.'
         if errors:

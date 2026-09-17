@@ -107,6 +107,7 @@ class QRModel(Connection):
             'referencia_id': referencia_id,
             'estado': 'activa',
             'assigned_at': now.isoformat(timespec='seconds'),
+            'ttl_minutos': ttl_minutos,
             'expires_at': (now + timedelta(minutes=ttl_minutos)).isoformat(timespec='seconds'),
             'fulfilled_at': None,
             'nota': (data.get('contenido') or '').strip()
@@ -155,6 +156,15 @@ class QRModel(Connection):
             qr['utilidad_asignada_at'] = content.get('assigned_at')
             qr['utilidad_expires_at'] = content.get('expires_at')
             qr['utilidad_referencia_id'] = content.get('referencia_id')
+            ttl = content.get('ttl_minutos')
+            if not ttl and content.get('assigned_at') and content.get('expires_at'):
+                try:
+                    dt_assigned = datetime.fromisoformat(content['assigned_at'])
+                    dt_expires = datetime.fromisoformat(content['expires_at'])
+                    ttl = max(int(round((dt_expires - dt_assigned).total_seconds() / 60)), 1)
+                except Exception:
+                    ttl = 10
+            qr['ttl_minutos'] = ttl or 10
             if qr.get('utilidad'):
                 qr['contenido_resumen'] = content.get('nota') or ''
             else:
@@ -227,6 +237,15 @@ class QRModel(Connection):
             qr['utilidad_asignada_at'] = content.get('assigned_at')
             qr['utilidad_expires_at'] = content.get('expires_at')
             qr['utilidad_referencia_id'] = content.get('referencia_id')
+            ttl = content.get('ttl_minutos')
+            if not ttl and content.get('assigned_at') and content.get('expires_at'):
+                try:
+                    dt_assigned = datetime.fromisoformat(content['assigned_at'])
+                    dt_expires = datetime.fromisoformat(content['expires_at'])
+                    ttl = max(int(round((dt_expires - dt_assigned).total_seconds() / 60)), 1)
+                except Exception:
+                    ttl = 10
+            qr['ttl_minutos'] = ttl or 10
             if qr.get('utilidad'):
                 qr['contenido_resumen'] = content.get('nota') or ''
             else:
