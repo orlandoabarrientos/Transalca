@@ -3,7 +3,6 @@ import threading
 import time
 from collections import Counter, deque
 
-
 class AssistantMetrics:
     def __init__(self, window_size=2000):
         self.window_size = int(window_size)
@@ -101,7 +100,6 @@ class AssistantMetrics:
                 pass
 
     def record_stages(self, stages):
-        """Record bounded per-stage timings without storing request content."""
         if not isinstance(stages, dict):
             return
         with self._lock:
@@ -238,7 +236,6 @@ class AssistantMetrics:
             'max': round(max(ordered), 3),
         }
 
-
 def percentile(sorted_values, pct):
     if not sorted_values:
         return 0.0
@@ -250,12 +247,10 @@ def percentile(sorted_values, pct):
     weight = rank - low
     return float(sorted_values[low] * (1 - weight) + sorted_values[high] * weight)
 
-
 def short_hash(value):
     text = str(value or '')
     if not text:
         return ''
     return hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
-
 
 assistant_metrics = AssistantMetrics()

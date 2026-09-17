@@ -1,5 +1,3 @@
-"""Small dependency-free BM25/fuzzy retriever for curated public knowledge."""
-
 from __future__ import annotations
 
 import math
@@ -13,7 +11,6 @@ from typing import Any, Iterable, Mapping
 
 from componente_ia.knowledge_types import Evidence, RetrievalResult, evidence_id, to_jsonable
 
-
 _TOKEN_RE = re.compile(r"[a-z0-9]+(?:[/.-][a-z0-9]+)*", re.IGNORECASE)
 _STOPWORDS = {
     "a", "al", "algo", "como", "con", "cual", "de", "del", "el", "en",
@@ -22,12 +19,10 @@ _STOPWORDS = {
     "sus", "tengo", "un", "una", "y",
 }
 
-
 def normalize_text(value: object) -> str:
     text = unicodedata.normalize("NFKD", str(value or ""))
     text = text.encode("ascii", "ignore").decode("ascii").lower()
     return re.sub(r"\s+", " ", text).strip()
-
 
 def tokenize(value: object) -> list[str]:
     return [
@@ -35,7 +30,6 @@ def tokenize(value: object) -> list[str]:
         for token in _TOKEN_RE.findall(normalize_text(value))
         if token not in _STOPWORDS and (len(token) > 1 or any(char.isdigit() for char in token))
     ]
-
 
 @dataclass(frozen=True)
 class RAGDocument:
@@ -61,7 +55,6 @@ class RAGDocument:
             "keywords": self.keywords,
             "metadata": self.metadata,
         })
-
 
 @dataclass(frozen=True)
 class RAGHit:
@@ -98,13 +91,7 @@ class RAGHit:
             },
         )
 
-
 class LightweightRAG:
-    """In-memory BM25 index with a conservative typo-tolerant supplement.
-
-    The index is designed for a few thousand public records. It has no model or
-    network dependency and never accepts documents marked ``private``.
-    """
 
     def __init__(
         self,
@@ -253,6 +240,5 @@ class LightweightRAG:
 
     def __len__(self) -> int:
         return len(self._documents)
-
 
 BM25Index = LightweightRAG

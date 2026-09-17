@@ -1,11 +1,3 @@
-"""Fail-fast access to the existing synchronous catalog provider.
-
-Database drivers used by the legacy models do not expose a per-call timeout here.
-This adapter therefore permits at most one daemon load per provider, waits only a
-small configurable budget, caches successful snapshots, and never queues more
-work while a load is still running.
-"""
-
 from __future__ import annotations
 
 import os
@@ -17,10 +9,8 @@ from typing import Any
 from componente_ia.catalog_retriever import CatalogProvider, CatalogSnapshot
 from componente_ia.metrics import assistant_metrics
 
-
 class CatalogAccessTimeout(TimeoutError):
     pass
-
 
 class ResilientCatalogAccess:
     def __init__(
@@ -28,6 +18,7 @@ class ResilientCatalogAccess:
         provider: CatalogProvider,
         *,
         wait_timeout: float | None = None,
+        cold_start_timeout: float | None = None,
         cache_ttl: float = 60.0,
         failure_cache_ttl: float = 5.0,
         cooldown: float = 5.0,
@@ -35,6 +26,15 @@ class ResilientCatalogAccess:
         self.provider = provider
         self.wait_timeout = max(0.01, float(
             wait_timeout if wait_timeout is not None else os.getenv("ASSISTANT_DB_RETRIEVAL_TIMEOUT", "0.08")
+        ))
+
+        default_cold_timeout = (
+            self.wait_timeout
+            if wait_timeout is not None and cold_start_timeout is None
+            else os.getenv("ASSISTANT_DB_COLD_START_TIMEOUT", "1.25")
+        )
+        self.cold_start_timeout = max(self.wait_timeout, float(
+            cold_start_timeout if cold_start_timeout is not None else default_cold_timeout
         ))
         self.cache_ttl = max(0.1, float(cache_ttl))
         self.failure_cache_ttl = max(0.1, float(failure_cache_ttl))
@@ -49,15 +49,19 @@ class ResilientCatalogAccess:
 
     def load(self, force: bool = False) -> CatalogSnapshot:
         now = time.monotonic()
+        cold_start = False
         with self._lock:
             if not force and self._fresh(now):
                 assistant_metrics.record_cache(hit=True)
                 return self._snapshot
             if self._loading:
-
                 if self._snapshot is not None:
                     return self._snapshot
-                raise CatalogAccessTimeout("catalog load already in progress")
+                if self._last_timeout_at and now - self._last_timeout_at < self.cooldown:
+                    raise CatalogAccessTimeout("catalog load circuit is cooling down")
+
+                event = self._event
+                cold_start = True
             elif self._last_timeout_at and now - self._last_timeout_at < self.cooldown:
                 if self._snapshot is not None:
                     return self._snapshot
@@ -67,6 +71,7 @@ class ResilientCatalogAccess:
                 event = threading.Event()
                 self._event = event
                 self._loading = True
+                cold_start = self._snapshot is None
                 worker = threading.Thread(
                     target=self._load_worker,
                     args=(event, force),
@@ -74,7 +79,8 @@ class ResilientCatalogAccess:
                     daemon=True,
                 )
                 worker.start()
-        if event is not None and event.wait(self.wait_timeout):
+        wait_budget = self.cold_start_timeout if cold_start else self.wait_timeout
+        if event is not None and event.wait(wait_budget):
             with self._lock:
                 if self._snapshot is not None:
                     return self._snapshot
@@ -86,7 +92,6 @@ class ResilientCatalogAccess:
         raise CatalogAccessTimeout("catalog provider exceeded retrieval budget")
 
     def warm(self) -> bool:
-        """Start one background load without waiting or queueing another."""
 
         with self._lock:
             if self._loading or self._fresh(time.monotonic()):
@@ -141,12 +146,11 @@ class ResilientCatalogAccess:
                 "cache_age_seconds": round(max(0.0, time.monotonic() - self._loaded_at), 3) if self._snapshot else None,
                 "last_error": self._last_error,
                 "wait_timeout_seconds": self.wait_timeout,
+                "cold_start_timeout_seconds": self.cold_start_timeout,
             }
-
 
 _REGISTRY_LOCK = threading.RLock()
 _REGISTRY: "weakref.WeakKeyDictionary[CatalogProvider, ResilientCatalogAccess]" = weakref.WeakKeyDictionary()
-
 
 def resilient_catalog_access(provider: CatalogProvider) -> ResilientCatalogAccess:
     with _REGISTRY_LOCK:

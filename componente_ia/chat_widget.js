@@ -25,7 +25,7 @@
     let requestSeq = 0;
 
     function resolveAssistantApiUrl() {
-        const devPorts = ['3000', '5173', '5500', '5501'];
+        const devPorts = ['3000', '4173', '5173', '5500', '5501'];
         const isDetachedFrontend = window.location.protocol === 'file:' || devPorts.includes(window.location.port);
         if (isDetachedFrontend) {
             return 'http://127.0.0.1:5000/api/asistente/mensaje';
@@ -75,6 +75,61 @@
         return id;
     }
 
+    function node(tag, className, textValue) {
+        const value = document.createElement(tag);
+        if (className) value.className = className;
+        if (textValue !== undefined) value.textContent = textValue;
+        return value;
+    }
+
+    function renderToggleButton(button, opened) {
+        button.replaceChildren();
+        const icon = node('i', opened ? 'bi bi-x-lg' : 'bi bi-chat-dots-fill');
+        button.appendChild(icon);
+        if (!opened) button.appendChild(node('span', 'badge-dot'));
+    }
+
+    function buildPanel() {
+        const panel = node('div', 'chat-panel');
+        panel.id = 'chatPanel';
+        panel.onclick = function (event) { event.stopPropagation(); };
+
+        const header = node('div', 'chat-header');
+        const info = node('div', 'chat-header-info');
+        info.append(node('div', 'chat-header-title', BOT_NAME), node('div', 'chat-header-sub', 'Asesor de cauchos y servicios'));
+        const actions = node('div', 'chat-header-actions');
+        const clear = node('button', '', 'Cerrar sesión');
+        clear.type = 'button';
+        clear.addEventListener('click', clearSession);
+        const close = node('button', 'chat-close-btn', '×');
+        close.type = 'button';
+        close.setAttribute('aria-label', 'Cerrar chat');
+        close.addEventListener('click', closeChat);
+        actions.append(clear, close);
+        header.append(info, actions);
+
+        const chips = node('div', 'chat-chips');
+        chips.id = 'chatChips';
+        const messageList = node('div', 'chat-messages');
+        messageList.id = 'chatMessages';
+        const inputArea = node('div', 'chat-input-area');
+        const input = node('input', 'chat-input');
+        input.id = 'chatInput';
+        input.type = 'text';
+        input.placeholder = 'Escribe tu pregunta…';
+        input.autocomplete = 'off';
+        input.maxLength = MAX_MESSAGE_LENGTH;
+        const send = node('button', 'chat-send-btn');
+        send.id = 'chatSendBtn';
+        send.type = 'button';
+        send.setAttribute('aria-label', 'Enviar mensaje');
+        send.appendChild(node('i', 'bi bi-send-fill'));
+        send.addEventListener('click', () => sendMessage(input.value));
+        inputArea.append(input, send);
+        panel.append(header, chips, messageList, inputArea);
+        return panel;
+    }
+
     function injectWidget() {
         if (document.getElementById('chatToggleBtn')) return;
         loadStoredState();
@@ -83,32 +138,12 @@
         btn.id = 'chatToggleBtn';
         btn.className = 'chat-toggle-btn';
         btn.type = 'button';
-        btn.innerHTML = '<i class="bi bi-chat-dots-fill"></i><span class="badge-dot"></span>';
+        btn.setAttribute('aria-label', 'Abrir asistente Transalca');
+        renderToggleButton(btn, false);
         btn.onclick = function (e) { e.stopPropagation(); toggleChat(); };
         document.body.appendChild(btn);
 
-        const panel = document.createElement('div');
-        panel.id = 'chatPanel';
-        panel.className = 'chat-panel';
-        panel.onclick = function (e) { e.stopPropagation(); };
-        panel.innerHTML = `
-            <div class="chat-header">
-                <div class="chat-header-info">
-                    <div class="chat-header-title">${BOT_NAME}</div>
-                    <div class="chat-header-sub">Asistente ligero</div>
-                </div>
-                <div class="chat-header-actions">
-                    <button type="button" onclick="TransalcaChat.clearSession()">Cerrar sesion</button>
-                    <button type="button" class="chat-close-btn" onclick="TransalcaChat.close()">x</button>
-                </div>
-            </div>
-            <div class="chat-chips" id="chatChips"></div>
-            <div class="chat-messages" id="chatMessages"></div>
-            <div class="chat-input-area">
-                <input type="text" class="chat-input" id="chatInput" placeholder="Escribe tu pregunta..." autocomplete="off" maxlength="${MAX_MESSAGE_LENGTH}">
-                <button type="button" class="chat-send-btn" id="chatSendBtn" onclick="TransalcaChat.send()"><i class="bi bi-send-fill"></i></button>
-            </div>
-        `;
+        const panel = buildPanel();
         document.body.appendChild(panel);
 
         const input = document.getElementById('chatInput');
@@ -141,7 +176,7 @@
     function renderAllMessages() {
         const container = document.getElementById('chatMessages');
         if (!container) return;
-        container.innerHTML = '';
+        container.replaceChildren();
         messages.forEach((msg) => renderMessage(msg));
         scrollToBottom();
     }
@@ -149,7 +184,7 @@
     function renderChips() {
         const container = document.getElementById('chatChips');
         if (!container) return;
-        container.innerHTML = '';
+        container.replaceChildren();
         if (!SHOW_SUGGESTIONS) {
             container.style.display = 'none';
             return;
@@ -186,7 +221,8 @@
         const btn = document.getElementById('chatToggleBtn');
         if (btn) {
             btn.classList.add('active');
-            btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+            btn.setAttribute('aria-label', 'Cerrar asistente Transalca');
+            renderToggleButton(btn, true);
         }
         setTimeout(() => {
             document.getElementById('chatInput')?.focus();
@@ -199,7 +235,8 @@
         const btn = document.getElementById('chatToggleBtn');
         if (btn) {
             btn.classList.remove('active');
-            btn.innerHTML = '<i class="bi bi-chat-dots-fill"></i><span class="badge-dot"></span>';
+            btn.setAttribute('aria-label', 'Abrir asistente Transalca');
+            renderToggleButton(btn, false);
         }
     }
 
@@ -308,7 +345,7 @@
         const typing = document.createElement('div');
         typing.className = 'chat-typing';
         typing.id = 'chatTyping';
-        typing.innerHTML = '<span></span><span></span><span></span>';
+        typing.append(node('span'), node('span'), node('span'));
         container.appendChild(typing);
         scrollToBottom();
     }
@@ -397,7 +434,7 @@
         messages = [];
         saveStoredState();
         const container = document.getElementById('chatMessages');
-        if (container) container.innerHTML = '';
+        if (container) container.replaceChildren();
         addBotMessage(WELCOME_MSG);
     }
 

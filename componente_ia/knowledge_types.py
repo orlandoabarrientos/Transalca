@@ -1,10 +1,3 @@
-"""Serializable contracts shared by the assistant retrieval layer.
-
-The assistant deliberately keeps evidence separate from prose.  An orchestrator or
-LLM may phrase an answer, but facts such as stock, price, active services and
-business policies must remain traceable to one of these records.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -13,7 +6,6 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Iterable, Mapping
-
 
 _SENSITIVE_KEYS = {
     "api_key",
@@ -27,22 +19,17 @@ _SENSITIVE_KEYS = {
     "token",
 }
 
-
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
-
 def evidence_id(prefix: str, *parts: object) -> str:
-    """Build a stable, opaque id without leaking database identifiers in prose."""
 
     payload = "\x1f".join(str(part or "") for part in parts)
     digest = hashlib.sha256(payload.encode("utf-8", errors="ignore")).hexdigest()[:16]
     clean_prefix = "".join(char for char in str(prefix).lower() if char.isalnum() or char in "_-")
     return f"{clean_prefix or 'ev'}:{digest}"
 
-
 def to_jsonable(value: Any) -> Any:
-    """Convert values to plain JSON types and redact common secret-bearing keys."""
 
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
@@ -69,16 +56,8 @@ def to_jsonable(value: Any) -> Any:
         return [to_jsonable(item) for item in value]
     return str(value)
 
-
 @dataclass(frozen=True)
 class Evidence:
-    """One grounded fact or knowledge fragment.
-
-    ``dynamic`` identifies values that may change (inventory, active services,
-    branch data, and policies). ``verified`` means the configured source actually
-    supplied the value for this request; it never means technical certainty beyond
-    that source.
-    """
 
     id: str
     kind: str
@@ -100,10 +79,8 @@ class Evidence:
     def to_dict(self) -> dict[str, Any]:
         return to_jsonable(asdict(self))
 
-
 @dataclass
 class RetrievalResult:
-    """Uniform result returned by inventory, service, FAQ, RAG and web adapters."""
 
     query: str
     evidence: list[Evidence] = field(default_factory=list)
@@ -115,7 +92,6 @@ class RetrievalResult:
 
     @property
     def items(self) -> list[Evidence]:
-        """Compatibility alias for callers that call retrieved evidence 'items'."""
 
         return self.evidence
 
@@ -137,4 +113,3 @@ class RetrievalResult:
             "reason": self.reason,
             "diagnostics": to_jsonable(self.diagnostics),
         }
-

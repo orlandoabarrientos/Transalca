@@ -1,8 +1,5 @@
-"""Only source-backed public business records, using existing retrievers."""
-
 from .lite_entities import normalize
 from .lite_response_templates import MISSING, money, public_text
-
 
 class LiteBusinessHandler:
     def __init__(self, business_retriever, service_retriever, inventory_retriever):

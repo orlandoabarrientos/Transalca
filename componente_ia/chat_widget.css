@@ -198,13 +198,18 @@
 .chat-messages::-webkit-scrollbar { width: 4px; }
 .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
 
-.chat-msg {
+.chat-msg,
+.chat-message {
     max-width: 85%;
+    min-width: 0;
     padding: 10px 14px;
     border-radius: 12px;
     font-size: 0.82rem;
     line-height: 1.5;
     font-family: 'Inter', sans-serif;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     animation: chatMsgIn 0.25s ease;
 }
 

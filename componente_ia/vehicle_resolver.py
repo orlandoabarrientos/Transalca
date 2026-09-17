@@ -1,19 +1,12 @@
-"""Resolucion de vehiculos conocidos, regionales y desconocidos.
-
-Resolver un nombre no equivale a validar una medida. Este modulo solo produce
-identidad linguistica y banderas de incertidumbre para que el orquestador pueda
-pedir datos o consultar una fuente tecnica.
-"""
-
 from __future__ import annotations
 
 import re
 from dataclasses import asdict, dataclass, field
 from difflib import SequenceMatcher
+from functools import lru_cache
 from typing import Any, Iterator
 
 from componente_ia.vehicle_aliases import alias_indexes, normalize_alias, resolve_make, resolve_model
-
 
 @dataclass
 class VehicleResolution:
@@ -43,6 +36,16 @@ class VehicleResolution:
     def __iter__(self) -> Iterator[str]:
         return iter(self.to_dict())
 
+@lru_cache(maxsize=None)
+def _bounded_alias_pattern(alias: str) -> re.Pattern[str]:
+
+    return re.compile(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])")
+
+@lru_cache(maxsize=None)
+def _model_after_make_pattern(alias: str) -> re.Pattern[str]:
+    return re.compile(
+        rf"\b{re.escape(alias)}\b\s+([a-z0-9-]+(?:\s+[a-z0-9-]+)?)"
+    )
 
 def _bounded_matches(text: str, aliases: dict[str, Any]) -> list[tuple[int, int, str, Any]]:
     matches: list[tuple[int, int, str, Any]] = []
@@ -52,11 +55,13 @@ def _bounded_matches(text: str, aliases: dict[str, Any]) -> list[tuple[int, int,
 
         if alias.isdigit() and not any(make in text for make in ("hino", "ram", "ford")):
             continue
-        found = re.search(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", text)
+
+        if alias not in text:
+            continue
+        found = _bounded_alias_pattern(alias).search(text)
         if found:
             matches.append((found.start(), found.end(), alias, target))
     return matches
-
 
 def _best_known_model(text: str) -> tuple[str | None, dict[str, Any] | None, int]:
     matches = _bounded_matches(text, alias_indexes()["models"])
@@ -70,7 +75,6 @@ def _best_known_model(text: str) -> tuple[str | None, dict[str, Any] | None, int
         chosen = min(matches, key=lambda item: (item[0], -(item[1] - item[0])))
     return chosen[2], dict(chosen[3]), chosen[0]
 
-
 def _best_make(text: str) -> tuple[str | None, str | None, int]:
     matches = _bounded_matches(text, alias_indexes()["makes"])
     if not matches:
@@ -78,7 +82,6 @@ def _best_make(text: str) -> tuple[str | None, str | None, int]:
     correction = bool(re.search(r"\b(?:en realidad|mejor|no es|quise decir|corrijo)\b", text))
     chosen = max(matches, key=lambda item: item[0]) if correction else min(matches, key=lambda item: item[0])
     return chosen[3], chosen[2], chosen[0]
-
 
 def _fuzzy_model(text: str) -> tuple[str | None, dict[str, Any] | None, float]:
     words = text.split()
@@ -99,21 +102,25 @@ def _fuzzy_model(text: str) -> tuple[str | None, dict[str, Any] | None, float]:
                     best = (alias, dict(metadata), score)
     return best if best[2] >= 0.84 else (None, None, 0.0)
 
-
 def _vehicle_type(text: str) -> str | None:
     matches = _bounded_matches(text, alias_indexes()["vehicle_types"])
     if not matches:
         return None
     return max(matches, key=lambda item: item[1] - item[0])[3]
 
-
 def _unknown_candidate(text: str, known_make_alias: str | None = None) -> str | None:
     stop = {
         "caucho", "cauchos", "llanta", "llantas", "rin", "aro", "que", "cual",
         "necesito", "quiero", "busco", "tiene", "tienen", "usa", "para", "pero",
+        "y", "e", "con", "del", "al", "recomiendas", "recomienda",
+        "gandola", "camion", "camioneta", "vehiculo", "autobus", "bus", "pickup", "suv",
+        "carretera", "autopista", "ruta", "tierra", "barro", "trocha", "carga",
+        "rustiquear", "off-road", "offroad", "silencioso", "economico",
     }
     if known_make_alias:
-        match = re.search(rf"\b{re.escape(known_make_alias)}\b\s+([a-z0-9-]+(?:\s+[a-z0-9-]+)?)", text)
+        stop.add(known_make_alias)
+    if known_make_alias:
+        match = _model_after_make_pattern(known_make_alias).search(text)
         if match:
             words = [word for word in match.group(1).split() if word not in stop and not re.fullmatch(r"(?:19|20)\d{2}", word)]
             if words:
@@ -130,7 +137,6 @@ def _unknown_candidate(text: str, known_make_alias: str | None = None) -> str | 
     words = [part for part in match.groups() if part and part not in stop]
     return " ".join(words[:2]) or None
 
-
 def resolve_vehicle(message: Any = "", make: Any = None, model: Any = None) -> VehicleResolution:
     text = normalize_alias(message)
     explicit_make = resolve_make(make) or (normalize_alias(make) or None)
@@ -140,7 +146,13 @@ def resolve_vehicle(message: Any = "", make: Any = None, model: Any = None) -> V
     make_name, make_alias, _ = _best_make(text)
     model_alias, model_record, _ = _best_known_model(text)
     fuzzy_score = 0.0
-    if not model_record:
+    fuzzy_vehicle_context = bool(
+        explicit_make
+        or make_name
+        or re.search(r"\b(?:19|20)\d{2}\b", text)
+        or re.search(r"\b(?:tengo|manejo|mi|vehiculo|carro|camioneta|camion)\b", text)
+    )
+    if not model_record and fuzzy_vehicle_context:
         model_alias, model_record, fuzzy_score = _fuzzy_model(text)
 
     resolved_make = explicit_make or make_name
@@ -183,10 +195,8 @@ def resolve_vehicle(message: Any = "", make: Any = None, model: Any = None) -> V
         conflicts=conflicts,
     )
 
-
 class VehicleResolver:
     def resolve(self, message: Any = "", make: Any = None, model: Any = None) -> VehicleResolution:
         return resolve_vehicle(message, make=make, model=model)
-
 
 __all__ = ["VehicleResolution", "VehicleResolver", "resolve_vehicle"]

@@ -1,5 +1,3 @@
-"""Deterministic, removable orchestration over the existing read-only retrievers."""
-
 from __future__ import annotations
 
 import re
@@ -13,7 +11,6 @@ from .lite_state import LiteStateStore
 from .lite_vehicle_handler import LiteVehicleHandler
 
 INVENTORY_INTENTS = {"inventory_by_size", "inventory_by_brand", "inventory_by_type", "price", "stock", "cheapest", "most_stock"}
-
 
 class LiteAssistant:
     def __init__(self, *, inventory_retriever=None, service_retriever=None,
@@ -41,7 +38,7 @@ class LiteAssistant:
         self.state_store.reset(session_id)
 
     def respond(self, message, session_id=None, history=None, request_id=None, **kwargs):
-        # A lock also prevents interleaving state updates for the same session.
+
         with self.state_store.lock:
             return self._respond(message, session_id, request_id)
 
@@ -57,7 +54,7 @@ class LiteAssistant:
         available = None
         matches = []
         if is_unsafe(message):
-            # Never echo unsafe text/entities or call a data source for it.
+
             entities = extract_entities("")
             answer = UNSUPPORTED
             intent = "unsupported"
@@ -71,7 +68,7 @@ class LiteAssistant:
             catalog_branches = [name.strip() for item in products for name in (item.get("sucursal") or "").split(",") if name.strip()] if products else ()
             entities = self.vehicle.enrich(message, extract_entities(message, brands=catalog_brands, models=catalog_models, branches=catalog_branches))
             intent = route_intent(message, entities, state)
-            # Explicit sizes or new vehicles replace stale inventory context.
+
             new_vehicle = bool(entities.get("vehicle_model") and normalize(entities["vehicle_model"]) != normalize(state.get("vehicle_model")))
             new_size = entities.get("tire_size") is not None and entities["tire_size"] != state.get("tire_size")
             if new_vehicle or new_size:
@@ -99,7 +96,7 @@ class LiteAssistant:
                     answer = "Indícame una medida válida, por ejemplo 265/65R17."
                 else:
                     try:
-                        # Selecting an item is bounded to products from this session.
+
                         ordinal = re.search(r"\b(primero|primera|segundo|segunda|tercero|tercera)\b", normalize(message))
                         if ordinal and state.get("last_products"):
                             index = {"primero": 0, "primera": 0, "segundo": 1, "segunda": 1, "tercero": 2, "tercera": 2}[ordinal.group(1)]
@@ -136,10 +133,8 @@ class LiteAssistant:
                                    "web_attempted": False, "web_used": False, "fitment_inferred": False}}
         return payload, 200
 
-
 _default_assistant = None
 _default_lock = threading.Lock()
-
 
 def get_default_assistant():
     global _default_assistant
@@ -147,7 +142,6 @@ def get_default_assistant():
         if _default_assistant is None:
             _default_assistant = LiteAssistant()
         return _default_assistant
-
 
 def build_response(message, session_id=None, history=None, request_id=None, **kwargs):
     return get_default_assistant().respond(message, session_id=session_id, history=history, request_id=request_id, **kwargs)

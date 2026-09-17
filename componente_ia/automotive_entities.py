@@ -2,7 +2,7 @@ import re
 import unicodedata
 from dataclasses import asdict, dataclass, field
 from difflib import SequenceMatcher
-
+from functools import lru_cache
 
 METRIC_SIZE_PATTERN = re.compile(r'(?<![a-z0-9])(?P<prefix>lt|p)?\s*(?P<w>\d{3})\s*/\s*(?P<p>\d{2})\s*r\s*(?P<r>\d{2})\b', re.IGNORECASE)
 LOOSE_METRIC_SIZE_PATTERN = re.compile(r'(?<![a-z0-9-])(?P<w>\d{3})[\s\-.x/]+(?P<p>\d{2})[\s\-./]*(?:r\s*)?(?P<r>\d{2})\b', re.IGNORECASE)
@@ -13,7 +13,6 @@ YEAR_PATTERN = re.compile(r'\b(19[8-9]\d|20[0-3]\d)\b')
 SHORT_YEAR_PATTERN = re.compile(r'\b0(?P<yy>1[0-9]|2[0-9])\b')
 OIL_PATTERN = re.compile(r'\b\d{1,2}w-?\d{2}\b', re.IGNORECASE)
 LOAD_SPEED_PATTERN = re.compile(r'\b\d{2,3}[a-z]\b', re.IGNORECASE)
-
 
 COMMON_TYPOS = {
     'q': 'que',
@@ -313,7 +312,6 @@ KNOWN_WORDS = sorted(
     | {word for words in SERVICE_SYMPTOMS.values() for word in words}
 )
 
-
 @dataclass
 class TireSize:
     raw: str
@@ -326,7 +324,6 @@ class TireSize:
 
     def to_dict(self):
         return asdict(self)
-
 
 @dataclass
 class AutomotiveEntities:
@@ -366,10 +363,8 @@ class AutomotiveEntities:
         data['uses'] = sorted(self.uses)
         return data
 
-
 def _strip_accents(value):
     return unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
-
 
 def basic_normalize(value):
     text = str(value or '').strip()
@@ -412,7 +407,6 @@ def basic_normalize(value):
     text = re.sub(r'[^a-z0-9/\.\sx-]', ' ', text)
     return re.sub(r'\s+', ' ', text).strip()
 
-
 def _is_technical_token(token):
     return bool(
         METRIC_SIZE_PATTERN.search(token)
@@ -422,7 +416,6 @@ def _is_technical_token(token):
         or re.fullmatch(r'[amh r]/t', token or '')
         or any(ch.isdigit() for ch in token)
     )
-
 
 def correct_token(token):
     token = COMMON_TYPOS.get(token, token)
@@ -443,22 +436,18 @@ def correct_token(token):
             best_score = score
     return best if best_score >= 0.86 else token
 
-
 def normalize_text(value, autocorrect=True):
     text = basic_normalize(value)
     if not autocorrect:
         return text
     return ' '.join(correct_token(token) for token in text.split())
 
-
 def tokenize(value, autocorrect=True):
     clean = normalize_text(value, autocorrect=autocorrect)
     return {token.strip('.,;:?') for token in re.split(r'[\s-]+', clean) if token.strip('.,;:?')}
 
-
 def compact_text(value):
     return re.sub(r'[^a-z0-9]', '', normalize_text(value, autocorrect=False))
-
 
 def extract_sizes(value):
     clean = basic_normalize(value)
@@ -489,7 +478,6 @@ def extract_sizes(value):
             sizes.append(TireSize(match.group(0).upper().replace(' ', ''), normalized, None, None, rim, '', True))
     return sizes
 
-
 def extract_rim(value):
     sizes = extract_sizes(value)
     if sizes and sizes[0].rim:
@@ -507,7 +495,6 @@ def extract_rim(value):
             return int(tokens[index + 1])
     return None
 
-
 def extract_year(value):
     years = [int(match.group(1)) for match in YEAR_PATTERN.finditer(str(value or ''))]
     if years:
@@ -517,6 +504,9 @@ def extract_year(value):
         return 2000 + int(short.group('yy'))
     return None
 
+@lru_cache(maxsize=None)
+def _model_alias_pattern(alias):
+    return re.compile(rf'\b{re.escape(alias)}\b')
 
 def extract_vehicle(clean, tokens):
     make = None
@@ -530,7 +520,9 @@ def extract_vehicle(clean, tokens):
     joined = ' '.join(token_list)
     candidates = []
     for alias in sorted(MODEL_ALIASES, key=len, reverse=True):
-        match = re.search(rf'\b{re.escape(alias)}\b', joined)
+        if alias not in joined:
+            continue
+        match = _model_alias_pattern(alias).search(joined)
         if not match:
             continue
         prefix = joined[max(0, match.start() - 18):match.start()]
@@ -545,7 +537,6 @@ def extract_vehicle(clean, tokens):
     if model and not make:
         make = MODEL_MAKE.get(model)
     return make, model
-
 
 def extract_tire_type(clean, tokens):
     joined = f" {clean} "
@@ -568,14 +559,12 @@ def extract_tire_type(clean, tokens):
         return 'H/T'
     return None
 
-
 def extract_uses(tokens):
     uses = set()
     for use, words in USE_TERMS.items():
         if tokens & words:
             uses.add(use)
     return uses
-
 
 def extract_budget(clean, tokens):
     max_price = None
@@ -590,7 +579,6 @@ def extract_budget(clean, tokens):
         budget = budget or 'calidad'
     return budget, max_price
 
-
 def extract_quantity(tokens):
     for token in tokens:
         if token.isdigit():
@@ -598,7 +586,6 @@ def extract_quantity(tokens):
             if 1 <= value <= 12:
                 return value
     return None
-
 
 def infer_need(tokens):
     if tokens & TIRE_TERMS:
@@ -611,11 +598,9 @@ def infer_need(tokens):
         return 'producto'
     return None
 
-
 def detect_followup(tokens):
     has_product_context = bool(tokens & (TIRE_TERMS | SERVICE_TERMS | PRODUCT_TERMS))
     return len(tokens) <= 6 and bool(tokens & FOLLOWUP_TERMS) and not has_product_context
-
 
 def detect_intent_hint(entities):
     tokens = entities.tokens
@@ -652,7 +637,6 @@ def detect_intent_hint(entities):
         return 'recomendacion_cauchos'
     return 'consulta'
 
-
 def is_business_related(entities):
     if entities.tire_size or entities.rim or entities.tire_type or entities.has_vehicle():
         return True
@@ -661,7 +645,6 @@ def is_business_related(entities):
     if any(entities.tokens & words for words in SERVICE_SYMPTOMS.values()):
         return True
     return False
-
 
 def extract_entities(value):
     raw = str(value or '').strip()

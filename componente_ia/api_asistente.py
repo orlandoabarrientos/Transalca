@@ -16,16 +16,48 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from componente_ia.ai_mode import MAX_MESSAGE_LENGTH, build_response, get_default_orchestrator, is_lite_mode
-from componente_ia.decision_trace import decision_trace_store
-from componente_ia.feedback_store import feedback_store
-from componente_ia.health import assistant_health as assistant_health_monitor
-from componente_ia.learning_observability import learning_metrics_snapshot
-from componente_ia.metrics import assistant_metrics, short_hash
-from componente_ia.model_registry import ModelRegistry
 
+try:
+    from componente_ia.metrics import assistant_metrics, short_hash
+except Exception:
+    class _DummyMetrics:
+        def record_request(self, *a, **k): pass
+        def record_learning_signal(self, *a, **k): pass
+        def snapshot(self, *a, **k): return {"status": "ok", "ai_mode": "lite"}
+    assistant_metrics = _DummyMetrics()
+    def short_hash(v): return hashlib.sha256(str(v or "").encode("utf-8")).hexdigest()[:12]
+
+try:
+    from componente_ia.decision_trace import decision_trace_store
+except Exception:
+    class _DummyTrace:
+        def capture(self, **kwargs): pass
+    decision_trace_store = _DummyTrace()
+
+try:
+    from componente_ia.feedback_store import feedback_store
+except Exception:
+    class _DummyFeedback:
+        def capture_passive_signal(self, *a, **k): pass
+        def rate(self, *a, **k): return False
+    feedback_store = _DummyFeedback()
+
+try:
+    from componente_ia.health import assistant_health as assistant_health_monitor
+except Exception:
+    assistant_health_monitor = None
+
+try:
+    from componente_ia.learning_observability import learning_metrics_snapshot
+except Exception:
+    def learning_metrics_snapshot(): return {"status": "ok", "ai_mode": "lite"}
+
+try:
+    from componente_ia.model_registry import ModelRegistry
+except Exception:
+    ModelRegistry = None
 
 logger = logging.getLogger(__name__)
-
 
 asistente_bp = Blueprint('asistente_ia', __name__)
 _rate_window = {}
@@ -34,7 +66,6 @@ RATE_LIMIT_WINDOW_SECONDS = int(os.getenv('ASSISTANT_RATE_WINDOW_SECONDS', '60')
 RATE_LIMIT_MAX_REQUESTS = int(os.getenv('ASSISTANT_RATE_LIMIT', '60'))
 ENGINE_VERSION = "universal-tire-advisor-v3"
 ENGINE_MODULE = "assistant_orchestrator"
-
 
 def _build_id():
     digest = hashlib.sha256()
@@ -47,33 +78,27 @@ def _build_id():
             digest.update(name.encode("utf-8"))
     return digest.hexdigest()[:12]
 
-
 try:
     BUILD_ID = "lite-v1" if is_lite_mode() else ModelRegistry().active_identity()["build_id"]
 except Exception:
     BUILD_ID = _build_id()
 
-
 def generar_id_aleatorio(longitud=20):
     alfabeto = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
     return "".join(alfabeto[secrets.randbelow(len(alfabeto))] for _ in range(longitud))
 
-
 def _runtime_health():
     runtime = get_default_orchestrator()
-    if is_lite_mode():
+    if is_lite_mode() or assistant_health_monitor is None:
         return runtime.health()
     return assistant_health_monitor.snapshot(runtime)
-
 
 def _request_id():
     return request.headers.get('X-Request-ID') or uuid.uuid4().hex[:12]
 
-
 def _development_metadata_enabled():
     environment = os.getenv("TRANSALCA_ENV", "local").strip().lower()
     return bool(current_app.config.get("TESTING") or current_app.debug or environment not in {"prod", "production"})
-
 
 def _safe_session_id(value):
     session_id = str(value or "").strip()
@@ -82,7 +107,6 @@ def _safe_session_id(value):
     if re.fullmatch(r"[A-Za-z0-9_-]{8,80}", session_id):
         return session_id
     return generar_id_aleatorio(20)
-
 
 def _rate_limited(remote_addr):
     if RATE_LIMIT_MAX_REQUESTS <= 0:
@@ -101,7 +125,6 @@ def _rate_limited(remote_addr):
         bucket.append(now)
         _rate_window[key] = bucket
         return False
-
 
 @asistente_bp.route("/mensaje", methods=["POST"])
 def procesar_mensaje():
@@ -219,7 +242,6 @@ def procesar_mensaje():
             "request_id": rid
         }), 500
 
-
 @asistente_bp.route("/health", methods=["GET"])
 def healthcheck():
     rid = _request_id()
@@ -242,7 +264,6 @@ def healthcheck():
             "request_id": rid
         }), 500
 
-
 @asistente_bp.route("/reset", methods=["POST"])
 def reset_lite_session():
     if not is_lite_mode():
@@ -254,24 +275,19 @@ def reset_lite_session():
     get_default_orchestrator().reset_session(session_id)
     return jsonify({"status": "success", "session_id": session_id}), 200
 
-
 @asistente_bp.route("/shadow/candidate", methods=["POST"])
 def shadow_candidate():
-    """Protected candidate runtime; deprecated and disabled."""
     return jsonify({
         "status": "deprecated",
         "message": "Candidate shadow endpoint is deprecated and disabled."
     }), 410
 
-
 @asistente_bp.route("/shadow/health", methods=["GET"])
 def shadow_healthcheck():
-    """Identity-gated health endpoint for sealed candidate audits; deprecated."""
     return jsonify({
         "status": "deprecated",
         "message": "Candidate shadow health endpoint is deprecated."
     }), 410
-
 
 @asistente_bp.route("/metrics", methods=["GET"])
 def metrics():
@@ -288,10 +304,8 @@ def metrics():
     payload["timestamp"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     return jsonify(payload), 200
 
-
 @asistente_bp.route("/feedback", methods=["POST"])
 def operator_feedback():
-    """Protected operator signal; it never accepts or stores a raw customer message."""
     rid = _request_id()
     if not _metrics_allowed():
         return jsonify({
@@ -315,10 +329,8 @@ def operator_feedback():
         "request_id": rid,
     }), 200 if updated else 404
 
-
 @asistente_bp.route("/learning-metrics", methods=["GET"])
 def learning_metrics():
-    """Protected aggregate metrics; never returns messages or entity payloads."""
     rid = _request_id()
     if not _metrics_allowed():
         return jsonify({
@@ -334,13 +346,11 @@ def learning_metrics():
     })
     return jsonify(payload), 200
 
-
 @asistente_bp.route("/admin/ia-learning", methods=["GET"])
 def learning_admin_panel():
     if not _metrics_allowed():
         return "Acceso denegado.", 403
     return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "ia_learning_admin.html")
-
 
 def _metrics_allowed():
     if os.getenv('ASSISTANT_METRICS_PUBLIC', '').strip().lower() in {'1', 'true', 'yes'}:
@@ -357,7 +367,6 @@ def _metrics_allowed():
     if isinstance(role, dict):
         role = role.get('nombre') or role.get('name')
     return str(role or '').strip().lower() in {'admin', 'administrador', 'empleado', 'soporte'}
-
 
 def create_app():
     standalone = Flask(__name__)
@@ -379,7 +388,6 @@ def create_app():
         return send_from_directory(os.path.dirname(os.path.abspath(__file__)), filename)
 
     return standalone
-
 
 if __name__ == "__main__":
     assistant_host = os.getenv("ASSISTANT_HOST", "127.0.0.1")

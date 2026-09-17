@@ -28,7 +28,10 @@
     "dongfeng": ["dongfeng"],
     "chery": ["chery"],
     "daihatsu": ["daihatsu"],
-    "lexus": ["lexus"]
+    "lexus": ["lexus"],
+    "land rover": ["land rover", "landrover"],
+    "volvo": ["volvo"],
+    "scania": ["scania"]
   },
   "models": {
     "4runner": {"make": "toyota", "type": "suv", "aliases": ["4runner", "4 runner", "forrunner", "forruner", "runner"]},
@@ -70,7 +73,18 @@
     "tucson": {"make": "hyundai", "type": "crossover", "aliases": ["tucson"]},
     "cr-v": {"make": "honda", "type": "crossover", "aliases": ["cr-v", "crv"]},
     "bt-50": {"make": "mazda", "type": "pickup", "aliases": ["bt-50", "bt50"]},
-    "1500": {"make": "ram", "type": "pickup", "aliases": ["ram 1500", "dodge ram 1500"]}
+    "1500": {"make": "ram", "type": "pickup", "aliases": ["ram 1500", "dodge ram 1500"]},
+    "anthem": {"make": "mack", "type": "camion pesado", "aliases": ["mack anthem", "anthem"]},
+    "discovery": {"make": "land rover", "type": "suv", "aliases": ["land rover discovery", "discovery"]},
+    "fh": {"make": "volvo", "type": "camion pesado", "aliases": ["volvo fh", "fh"]},
+    "r450": {"make": "scania", "type": "camion pesado", "aliases": ["scania r450", "r450"]},
+    "actros": {"make": "mercedes-benz", "type": "camion pesado", "aliases": ["mercedes-benz actros", "mercedes benz actros", "actros"]},
+    "trailblazer": {"make": "chevrolet", "type": "suv", "aliases": ["chevrolet trailblazer", "trailblazer"]},
+    "granite": {"make": "mack", "type": "camion pesado", "aliases": ["mack granite", "granite"]},
+    "cascadia": {"make": "freightliner", "type": "camion pesado", "aliases": ["freightliner cascadia", "cascadia"]},
+    "daily": {"make": "iveco", "type": "camion liviano", "aliases": ["iveco daily", "daily"]},
+    "duster": {"make": "renault", "type": "suv", "aliases": ["renault duster", "duster"]},
+    "tiggo 7": {"make": "chery", "type": "suv", "aliases": ["chery tiggo 7", "tiggo 7", "tiggo7"]}
   },
   "generic_types": {
     "sedan": ["sedan", "sedán"],

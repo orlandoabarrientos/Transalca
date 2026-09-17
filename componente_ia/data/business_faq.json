@@ -42,7 +42,7 @@
       "id": "order_status",
       "topics": ["pedido", "estado", "seguimiento", "orden"],
       "questions": ["¿Cómo reviso mi pedido?", "¿Dónde veo el estado de la orden?"],
-      "answer": "El estado debe consultarse con la herramienta pública de pedidos y una referencia válida. No se muestran datos privados de clientes.",
+      "answer": "El estado y detalle se consultan desde la sección Mis Pedidos de la sesión autenticada. El chat no muestra datos privados de clientes ni estados de pedidos sin esa validación.",
       "dynamic": true,
       "dynamic_source": "order_public_status",
       "value": "unavailable",
@@ -62,7 +62,7 @@
       "id": "upload_receipt",
       "topics": ["comprobante", "subir comprobante", "pago", "recibo"],
       "questions": ["¿Cómo subo un comprobante?"],
-      "answer": "El comprobante se asocia al pedido correspondiente mediante la opción disponible en ese pedido. Debe evitarse publicar información bancaria o personal en el chat.",
+      "answer": "Carga la imagen o PDF del comprobante al finalizar la compra desde el carrito. Luego revísalo en Mis Pedidos. No envíes datos bancarios por el chat.",
       "dynamic": false,
       "source": "curated_business_process",
       "required_tool": null

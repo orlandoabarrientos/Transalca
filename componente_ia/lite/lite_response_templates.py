@@ -1,5 +1,3 @@
-"""Public, short Spanish responses and a strict public-field formatter."""
-
 import math
 import re
 from .lite_entities import normalize
@@ -10,7 +8,6 @@ UNSUPPORTED = "Solo puedo ayudarte con información de Transalca, cauchos, servi
 GREETING = "Puedo ayudarte con cauchos, precios, disponibilidad, servicios, métodos de pago, sucursales y algunos vehículos que tenemos verificados."
 SYNTHETIC_NOTE = "Stock sintético registrado; no garantiza el conteo físico."
 
-
 def public_text(value, limit=160):
     text = " ".join(str(value or "").split())
     if not text or normalize(text) in {"none", "null", "undefined", "por configurar", "configurar en panel admin", "todo config"}:
@@ -19,7 +16,6 @@ def public_text(value, limit=160):
         return ""
     return text[:limit]
 
-
 def number(value):
     try:
         result = float(value)
@@ -27,11 +23,9 @@ def number(value):
     except (TypeError, ValueError):
         return None
 
-
 def money(value):
     result = number(value)
     return f"${result:.2f}" if result is not None else "precio no configurado / verificado"
-
 
 def product_line(product):
     name = public_text(product.get("nombre")) or "Producto"

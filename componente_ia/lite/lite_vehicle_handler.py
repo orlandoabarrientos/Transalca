@@ -1,10 +1,7 @@
-"""Exact local VERIFIED fitment only. No web or inferred sizes."""
-
 import json
 from pathlib import Path
 from .lite_entities import normalize, parse_tire_size
 from .lite_response_templates import UNVERIFIED_VEHICLE, public_text
-
 
 class LiteVehicleHandler:
     def __init__(self, catalog_path=None):
@@ -40,7 +37,7 @@ class LiteVehicleHandler:
             if normalize(row["model"]) != normalize(model) or (brand and normalize(row["brand"]) != normalize(brand)) or row["year"] != year:
                 continue
             verified.append((row, size))
-        # Ambiguous versions or different measures fail closed.
+
         identities = {(normalize(row["brand"]), normalize(row["model"]), row["year"], size) for row, size in verified}
         if len(identities) != 1:
             return UNVERIFIED_VEHICLE, None

@@ -1,9 +1,3 @@
-"""Catalogo liviano de marcas, modelos y alias regionales.
-
-El catalogo mejora la comprension, pero nunca se trata como evidencia de fitment.
-Un modelo no listado puede conservarse como desconocido y resolverse por otra fuente.
-"""
-
 from __future__ import annotations
 
 import json
@@ -13,16 +7,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
 
-
 DATA_PATH = Path(__file__).with_name("data") / "vehicle_aliases.json"
-
 
 def normalize_alias(value: Any) -> str:
     text = unicodedata.normalize("NFKD", str(value or ""))
     text = text.encode("ascii", "ignore").decode("ascii").lower()
     text = re.sub(r"[^a-z0-9]+", " ", text)
     return re.sub(r"\s+", " ", text).strip()
-
 
 @lru_cache(maxsize=1)
 def load_alias_catalog(path: str | Path | None = None) -> dict[str, Any]:
@@ -35,7 +26,6 @@ def load_alias_catalog(path: str | Path | None = None) -> dict[str, Any]:
         if not isinstance(data.get(key), dict):
             data[key] = {}
     return data
-
 
 @lru_cache(maxsize=1)
 def alias_indexes() -> dict[str, dict[str, Any]]:
@@ -65,32 +55,25 @@ def alias_indexes() -> dict[str, dict[str, Any]]:
                 vehicle_types[normalized] = canonical
     return {"makes": makes, "models": models, "vehicle_types": vehicle_types}
 
-
 def iter_aliases(kind: str) -> Iterable[tuple[str, Any]]:
     return alias_indexes().get(kind, {}).items()
 
-
 def resolve_make(value: Any) -> str | None:
     return alias_indexes()["makes"].get(normalize_alias(value))
-
 
 def resolve_model(value: Any) -> dict[str, Any] | None:
     match = alias_indexes()["models"].get(normalize_alias(value))
     return dict(match) if match else None
 
-
 def resolve_vehicle_type(value: Any) -> str | None:
     return alias_indexes()["vehicle_types"].get(normalize_alias(value))
-
 
 def model_make(model: Any) -> str | None:
     resolved = resolve_model(model)
     return resolved.get("make") if resolved else None
 
-
 def aliases_version() -> str:
     return str(load_alias_catalog().get("version") or "unknown")
-
 
 __all__ = [
     "DATA_PATH",

@@ -1,9 +1,3 @@
-"""Extraccion determinista de entidades automotrices y comerciales.
-
-No requiere modelos pesados. Conserva tanto valores normalizados como detalles
-de la expresion original y acepta acceso estilo diccionario o atributo.
-"""
-
 from __future__ import annotations
 
 import html
@@ -11,10 +5,10 @@ import re
 import unicodedata
 from dataclasses import asdict, dataclass
 from decimal import Decimal, InvalidOperation
+from functools import lru_cache
 from typing import Any
 
 from componente_ia.vehicle_resolver import resolve_vehicle
-
 
 _TYPO_REPLACEMENTS = {
     "cauxos": "cauchos", "cauchoz": "cauchos", "caucos": "cauchos",
@@ -28,6 +22,8 @@ _TYPO_REPLACEMENTS = {
     "forruner": "4runner", "forrunner": "4runner", "corola": "corolla",
     "autanna": "autana", "cheroky": "cherokee", "explore": "explorer",
     "silveradoo": "silverado", "fronetier": "frontier",
+
+    "sedees": "sedes",
 }
 
 _SERVICE_ALIASES = {
@@ -52,7 +48,7 @@ _SERVICE_ALIASES = {
 _PRODUCT_CATEGORIES = {
     "tires": ("caucho", "cauchos", "llanta", "llantas", "goma", "gomas", "neumatico", "neumaticos"),
     "batteries": ("bateria", "baterias"),
-    "oil": ("aceite", "lubricante"),
+    "oil": ("aceite", "aceites", "lubricante", "lubricantes"),
     "filters": ("filtro", "filtros"),
     "brakes": ("freno", "frenos", "pastilla", "pastillas", "disco", "discos"),
     "parts": ("repuesto", "repuestos", "pieza", "piezas"),
@@ -63,14 +59,20 @@ _USAGE_ALIASES = {
     "highway": ("autopista", "carretera", "asfalto", "viaje"),
     "rain": ("lluvia", "mojado", "agua", "hidroplaneo"),
     "gravel": ("grava", "piedra"),
-    "dirt": ("tierra", "trocha", "rustiqueo", "off road", "offroad"),
+    "dirt": ("tierra", "trocha", "camino de tierra"),
+    "offroad": (
+        "rustiquear", "rustiqueo", "rustiqueando", "rustiquearse", "off road", "off-road", "offroad",
+        "fuera de carretera", "montana", "campo", "4x4",
+    ),
     "mud": ("barro", "lodo", "fango", "pantano"),
     "load": ("carga", "cargar", "peso", "mercancia"),
     "trailer": ("remolque", "remolcar", "trailer"),
     "fleet": ("flota", "flotas"),
     "quiet": ("silencioso", "silenciosa", "sin ruido", "no haga ruido"),
-}
 
+    "economy": ("presupuesto bajo", "priorizo economia", "uso economico"),
+    "comfort": ("comodidad", "comodo", "comoda", "confort"),
+}
 
 @dataclass(frozen=True)
 class TireSize:
@@ -86,9 +88,7 @@ class TireSize:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
-
 class ExtractedEntities(dict):
-    """Diccionario con accesores compatibles para migraciones graduales."""
 
     _ALIASES = {
         "rim": "requested_rim",
@@ -128,11 +128,9 @@ class ExtractedEntities(dict):
             or self.get("tire_type") or self.get("product_category") == "tires"
         )
 
-
 def _strip_accents(value: Any) -> str:
     text = unicodedata.normalize("NFKD", str(value or ""))
     return text.encode("ascii", "ignore").decode("ascii")
-
 
 def normalize_message(value: Any) -> str:
     text = html.unescape(str(value or "")).strip()
@@ -147,35 +145,38 @@ def normalize_message(value: Any) -> str:
     text = re.sub(r"[^a-z0-9$€./+_\-\sx]", " ", text)
     return re.sub(r"\s+", " ", text).strip()
 
-
 def _number(value: str) -> float | int:
     number = float(value)
     return int(number) if number.is_integer() else number
 
-
 def _metric_diameter(width_mm: float, aspect: float, rim_in: float) -> float:
     return round((2 * width_mm * (aspect / 100.0) / 25.4) + rim_in, 3)
 
+_METRIC_TIRE_RE = re.compile(
+    r"(?<![A-Z0-9])(?P<prefix>LT|P)?\s*(?P<w>\d{3})\s*[/ .-]\s*"
+    r"(?P<a>\d{2})\s*(?:R\s*|[/ .-]\s*)(?P<r>\d{2}(?:\.5)?)(?!\d)",
+    re.IGNORECASE,
+)
+_FLOTATION_TIRE_RE = re.compile(
+    r"(?<![A-Z0-9])(?P<h>\d{2}(?:\.\d+)?)\s*X\s*"
+    r"(?P<w>\d{1,2}(?:\.\d+)?)\s*R\s*(?P<r>\d{2}(?:\.5)?)(?!\d)",
+    re.IGNORECASE,
+)
+_CONVENTIONAL_TIRE_RE = re.compile(
+    r"(?<![A-Z0-9.])(?P<w>\d{1,2}(?:\.\d{1,2})?)\s*R\s*"
+    r"(?P<r>\d{2}(?:\.5)?)(?!\d)",
+    re.IGNORECASE,
+)
+_COMPACT_TIRE_RE = re.compile(
+    r"(?<![A-Z0-9])(?P<w>\d{3,4})\s*R\s*(?P<r>\d{2}(?:\.5)?)(?!\d)",
+    re.IGNORECASE,
+)
 
 def extract_tire_sizes(value: Any) -> list[TireSize]:
     text = normalize_message(value).upper()
     found: list[tuple[int, int, TireSize]] = []
 
-    metric = re.compile(
-        r"(?<![A-Z0-9])(?P<prefix>LT|P)?\s*(?P<w>\d{3})\s*[/ .-]\s*(?P<a>\d{2})\s*(?:R\s*|[/ .-]\s*)(?P<r>\d{2}(?:\.5)?)(?!\d)",
-        re.IGNORECASE,
-    )
-    flotation = re.compile(
-        r"(?<![A-Z0-9])(?P<h>\d{2}(?:\.\d+)?)\s*X\s*(?P<w>\d{1,2}(?:\.\d+)?)\s*R\s*(?P<r>\d{2}(?:\.5)?)(?!\d)",
-        re.IGNORECASE,
-    )
-    conventional = re.compile(
-        r"(?<![A-Z0-9.])(?P<w>\d{1,2}(?:\.\d{1,2})?)\s*R\s*(?P<r>\d{2}(?:\.5)?)(?!\d)",
-        re.IGNORECASE,
-    )
-    compact = re.compile(r"(?<![A-Z0-9])(?P<w>\d{3,4})\s*R\s*(?P<r>\d{2}(?:\.5)?)(?!\d)", re.IGNORECASE)
-
-    for match in metric.finditer(text):
+    for match in _METRIC_TIRE_RE.finditer(text):
         width = float(match.group("w"))
         aspect = float(match.group("a"))
         rim = float(match.group("r"))
@@ -187,7 +188,7 @@ def extract_tire_sizes(value: Any) -> list[TireSize]:
             width=int(width), aspect_ratio=int(aspect), rim=_number(match.group("r")),
             prefix=prefix or None, overall_diameter_in=_metric_diameter(width, aspect, rim),
         )))
-    for match in flotation.finditer(text):
+    for match in _FLOTATION_TIRE_RE.finditer(text):
         height = float(match.group("h"))
         width = _number(match.group("w"))
         rim = _number(match.group("r"))
@@ -197,7 +198,9 @@ def extract_tire_sizes(value: Any) -> list[TireSize]:
             width=float(width), rim=rim, overall_diameter_in=height,
         )))
     occupied = [(start, end) for start, end, _ in found]
-    for pattern, compact_format in ((conventional, False), (compact, True)):
+    for pattern, compact_format in (
+        (_CONVENTIONAL_TIRE_RE, False), (_COMPACT_TIRE_RE, True),
+    ):
         for match in pattern.finditer(text):
             if any(match.start() < end and match.end() > start for start, end in occupied):
                 continue
@@ -223,15 +226,19 @@ def extract_tire_sizes(value: Any) -> list[TireSize]:
             unique.append(size)
     return unique
 
-
 def normalize_tire_size(value: Any) -> str | None:
     sizes = extract_tire_sizes(value)
     return sizes[0].normalized if sizes else None
 
+@lru_cache(maxsize=None)
+def _bounded_phrase_pattern(phrase: str) -> re.Pattern[str]:
+    return re.compile(rf"(?<![a-z0-9]){re.escape(phrase)}(?![a-z0-9])")
 
 def _contains_phrase(text: str, phrases: tuple[str, ...] | list[str]) -> bool:
-    return any(re.search(rf"(?<![a-z0-9]){re.escape(phrase)}(?![a-z0-9])", text) for phrase in phrases)
-
+    return any(
+        phrase in text and _bounded_phrase_pattern(phrase).search(text)
+        for phrase in phrases
+    )
 
 def _extract_rim(text: str) -> float | int | None:
     match = re.search(r"\b(?:rin|rines|aro|aros|r)\s*-?\s*(1[2-9]|2\d(?:\.5)?)\b", text)
@@ -240,7 +247,6 @@ def _extract_rim(text: str) -> float | int | None:
     if re.fullmatch(r"(?:y\s+)?(?:rin|aro)?\s*(1[2-9]|2\d(?:\.5)?)", text):
         return _number(re.search(r"(1[2-9]|2\d(?:\.5)?)", text).group(1))
     return None
-
 
 def _extract_year(text: str) -> int | None:
     match = re.search(r"\b(19[8-9]\d|20[0-3]\d)\b", text)
@@ -256,8 +262,17 @@ def _extract_year(text: str) -> int | None:
         return 2000 + year if year <= 35 else 1900 + year
     return None
 
-
 def _extract_tire_type(text: str) -> str | None:
+    non_substitution = re.search(
+        r"\bno\s+(?:conviertas?|trates?)\s+"
+        r"(?P<source>[ahrm]\s*/?\s*t)\s+(?:en|como)\s+"
+        r"(?P<target>[ahrm]\s*/?\s*t)\b",
+        text,
+    )
+    if non_substitution:
+
+        compact = re.sub(r"[^ahrmt]", "", non_substitution.group("source"))
+        return {"at": "A/T", "ht": "H/T", "rt": "R/T", "mt": "M/T"}.get(compact)
     rules = (
         ("A/T", (r"\ba\s*/?\s*t\b", r"\ball terrain\b", r"\btodo terreno\b")),
         ("H/T", (r"\bh\s*/?\s*t\b", r"\bhighway terrain\b")),
@@ -269,10 +284,16 @@ def _extract_tire_type(text: str) -> str | None:
             return value
     return None
 
-
 def _extract_usage(text: str) -> list[str]:
-    return [name for name, aliases in _USAGE_ALIASES.items() if _contains_phrase(text, aliases)]
+    values = [name for name, aliases in _USAGE_ALIASES.items() if _contains_phrase(text, aliases)]
 
+    if "load" in values and re.search(
+        r"\b(?:base|db|web|pagina|catalogo|servicios?|sistema)\b.{0,20}\bno carga\b|"
+        r"\bno carga\b.{0,20}\b(?:base|db|web|pagina|catalogo|servicios?|sistema)\b",
+        text,
+    ):
+        values.remove("load")
+    return values
 
 def _extract_budget(text: str) -> tuple[str | None, float | None]:
     level = None
@@ -288,7 +309,6 @@ def _extract_budget(text: str) -> tuple[str | None, float | None]:
         return level or "maximum", float(number)
     except InvalidOperation:
         return level, None
-
 
 def _extract_load(text: str) -> tuple[str | None, str | None, str | None]:
     code = re.search(r"\b(\d{2,3}(?:\s*/\s*\d{2,3})?)\s*([a-z])\b", text, re.IGNORECASE)
@@ -309,42 +329,77 @@ def _extract_load(text: str) -> tuple[str | None, str | None, str | None]:
         load_range = f"{ply_match.group(1)}PR"
     return load_index, speed, load_range
 
-
 def _first_mapping(text: str, mapping: dict[str, tuple[str, ...]]) -> str | None:
     for canonical, aliases in mapping.items():
         if _contains_phrase(text, aliases):
             return canonical
     return None
 
-
 def _extract_service(text: str) -> str | None:
     direct = _first_mapping(text, _SERVICE_ALIASES)
     if direct:
         product_question = bool(re.search(r"\b(?:tienen|hay|venden|precio|cuanto cuesta|usa|lleva|disponible|stock)\b", text))
         service_action = bool(re.search(r"\b(?:servicio|cambio|cambiar|revision|revisar|diagnostico|hacer|hacen|incluye|mantenimiento)\b", text))
+
+        if direct == "heavy_vehicle_inspection" and not service_action:
+            return None
+        if (
+            direct == "mounting"
+            and re.search(r"\b(?:puedo|se puede|le puedo)\s+montar\b", text)
+            and re.search(
+                r"\b(?:lt|p)?\d{3}[ /.-]\d{2}r\d{2}(?:\.5)?\b|"
+                r"\b\d{1,2}(?:\.\d+)?r\d{2}(?:\.5)?\b",
+                text,
+            )
+            and not service_action
+        ):
+            return None
         if direct in {"batteries", "filters", "brakes", "oil_change"} and product_question and not service_action:
             return None
         return direct
     return None
 
-
 def _extract_branch(text: str) -> str | None:
+    if re.search(r"\bdonde\b.{0,24}\b(?:sucursal|sede|tienda)\b", text):
+        return None
+    if re.search(r"\b(?:sucursal|sede|tienda)\s+(?:del|de la|para|donde|esta)\b", text):
+        return None
     match = re.search(r"\b(?:sucursal|sede|tienda)\s+(?:de\s+|en\s+)?([a-z][a-z0-9 -]{1,40})", text)
     if not match:
         return None
     value = re.split(r"\b(?:tiene|tienen|hay|esta|queda|con|y|que)\b", match.group(1))[0].strip()
+    if value and value.split()[0] in {
+        "est", "estan", "tiene", "tienen", "hay", "queda", "quedan", "se",
+        "es", "son", "puedo", "venden", "manejan", "activa", "activas",
+        "activo", "activos", "asociada", "asociadas", "asociado", "asociados",
+        "correspondiente", "correspondientes", "publica", "publicas", "publico",
+        "publicos", "disponible", "disponibles", "cercana", "cercanas", "donde",
+    }:
+        return None
     return value or None
 
-
 def _extract_order_reference(text: str) -> str | None:
-    match = re.search(r"\b(?:pedido|orden|referencia|ref)\s*(?:numero|nro|no|#)?\s*[:#-]?\s*([a-z0-9][a-z0-9-]{3,30})\b", text)
-    return match.group(1).upper() if match else None
+    match = re.search(
+        r"\b(?:pedido|orden)\b\s*(?:numero|nro|no|#)?\s*[:#-]?\s*"
+        r"([a-z0-9][a-z0-9-]{3,30})\b",
+        text,
+    )
+    if match:
+        candidate = match.group(1)
+        if candidate not in {"esta", "este", "actual", "inicial", "correcto", "correspondiente"}:
+            return candidate.upper()
 
+    match = re.search(
+        r"\b(?:referencia|ref)\b\s*(?:(?:numero|nro|no)\s*|[#:-]\s*)"
+        r"([a-z0-9][a-z0-9-]{3,30})\b",
+        text,
+    )
+    candidate = match.group(1) if match else ""
+    return candidate.upper() if candidate and any(char.isdigit() for char in candidate) else None
 
 def _extract_engine(text: str) -> str | None:
     match = re.search(r"\b(?:motor\s*)?(\d[.,]\d\s*(?:l|lts?)|v[468]|\d\.\d\s*(?:diesel|gasolina))\b", text)
     return match.group(1).replace(",", ".") if match else None
-
 
 def extract(message: Any) -> ExtractedEntities:
     raw = str(message or "").strip()
@@ -375,9 +430,33 @@ def extract(message: Any) -> ExtractedEntities:
     product_category = _first_mapping(clean, _PRODUCT_CATEGORIES)
     tokens = sorted(set(re.findall(r"[a-z0-9]+(?:/[a-z0-9]+)?", clean)))
 
-    asks_price = bool(re.search(r"\b(?:precio|precios|cuanto cuesta|cuestan|valor|mas barato|barato|barata|baratos|baratas|economico|economica|economicos|economicas|menor precio|precio menor)\b", clean))
-    asks_stock = bool(re.search(r"\b(?:stock|existencia|disponible|disponibles|tienen|hay)\b", clean))
-    asks_comparison = compares or bool(re.search(r"\b(?:comparar|comparacion|diferencia|mejor entre|versus|vs)\b", clean))
+    asks_price = bool(re.search(r"\b(?:precio|precios|cuanto cuesta|cuestan|cuesta menos|cuestan menos|valor|mas barato|barato|barata|baratos|baratas|economico|economica|economicos|economicas|mas economico|mas economica|menor precio|precio menor|menor costo)\b", clean))
+    if asks_price and re.search(
+        r"\b(?:sin|no)\b.{0,24}\b(?:inventar|mostrar|usar|asumir|afirmar)\b.{0,16}\bprecios?\b",
+        clean,
+    ):
+        asks_price = False
+    asks_stock = bool(re.search(
+        r"\b(?:stock|existencias?|disponibilidad|disponible|disponibles|unidades?|tienen|hay)\b",
+        clean,
+    ))
+    if asks_stock and re.search(
+        r"\b(?:sin|no)\b.{0,24}\b(?:inventar|mostrar|usar|asumir|afirmar)\b.{0,16}\b(?:stock|existencias?|disponibilidad)\b",
+        clean,
+    ):
+        asks_stock = False
+
+    if re.search(r"\bservicios?\b", clean) and not re.search(
+        r"\b(?:stock|existencias?|unidades?)\b", clean,
+    ):
+        asks_stock = False
+    asks_comparison = compares or bool(re.search(
+        r"\b(?:compara(?:r|cion)?|compa\b.{0,80}\bcon|diferencia|mejor entre|versus|vs|"
+        r"de (?:esas|estas) opciones|ordena(?:r|los|las)? .{0,20}(?:por )?(?:precio|stock|existencia)|"
+        r"cual .{0,48}(?:menor precio|mas barato|mas economico|cuesta menos|mas stock|mayor existencia)|"
+        r"mas (?:barat[oa]|economic[oa])|cuesta menos)\b",
+        clean,
+    ))
     drivetrain_match = re.search(r"\b(4x4|4x2|awd|fwd|rwd)\b", clean)
     trim_match = re.search(r"\b(?:version|trim)\s+([a-z0-9][a-z0-9 -]{0,24})", clean)
 
@@ -415,10 +494,15 @@ def extract(message: Any) -> ExtractedEntities:
         "tire_sizes": size_values,
         "tire_size_details": [size.to_dict() for size in sizes],
         "vehicle_resolution": vehicle.to_dict(),
-        "followup": bool(clean.startswith(("y ", "el ", "la ", "ese ", "esa ", "en realidad", "no ")) or len(tokens) <= 5 and any(word in tokens for word in ("primero", "barato", "stock", "precio", "sirve"))),
+        "followup": bool(
+            clean.startswith(("y ", "el ", "la ", "ese ", "esa ", "en realidad", "no "))
+            or len(tokens) <= 7 and (
+                any(word in tokens for word in ("primero", "barato", "stock", "precio", "sirve", "sede", "sucursal"))
+                or bool(re.search(r"\b(?:menos ruido|mas barato|mas stock|cual recomiendas|cual es mejor)\b", clean))
+            )
+        ),
     })
     return result
-
 
 class EntityExtractor:
     def extract(self, message: Any) -> ExtractedEntities:
@@ -427,9 +511,7 @@ class EntityExtractor:
     def normalize(self, message: Any) -> str:
         return normalize_message(message)
 
-
 extract_entities = extract
-
 
 __all__ = [
     "EntityExtractor",

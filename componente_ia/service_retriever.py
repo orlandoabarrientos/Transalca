@@ -1,5 +1,3 @@
-"""Technical service knowledge crossed with the active service catalog."""
-
 from __future__ import annotations
 
 import json
@@ -8,26 +6,45 @@ import unicodedata
 from pathlib import Path
 from typing import Any, Mapping
 
+from componente_ia.canonical_entities import CANONICAL_SERVICE_VALUES, canonicalize_entities
 from componente_ia.catalog_retriever import CatalogProvider, CatalogSnapshot, decimal_to_float, normalize_catalog_item
+from componente_ia.domain_router_v10 import normalize_domain_text
 from componente_ia.knowledge_types import Evidence, RetrievalResult, evidence_id, to_jsonable
 from componente_ia.lightweight_rag import LightweightRAG, RAGDocument
+from componente_ia.public_business_values import sanitize_public_business_value
 from componente_ia.resilient_catalog import resilient_catalog_access
-
 
 DEFAULT_SERVICE_PATH = Path(__file__).with_name("data") / "service_knowledge.json"
 _DURATION_FIELDS = ("duracion_estimada", "duration", "duration_minutes", "duracion_minutos")
 
+CANONICAL_SERVICE_KNOWLEDGE_MAP_VERSION = "v10r1-service-map-2026.09.08.1"
+CANONICAL_SERVICE_KNOWLEDGE_IDS: dict[str, str] = {
+    "alignment": "alignment",
+    "balancing": "balancing",
+    "rotation": "rotation",
+    "mounting": "tire_mounting",
+    "tire_repair": "tire_repair",
+    "valve": "valve_replacement",
+    "oil_change": "oil_change",
+    "filters": "filters",
+    "brakes": "brakes",
+    "scanner": "scanner",
+    "batteries": "batteries",
+    "injectors": "injectors",
+    "suspension": "suspension",
+    "front_end": "front_end",
+    "preventive_maintenance": "preventive_maintenance",
+    "heavy_vehicle_inspection": "heavy_vehicle_inspection",
+}
 
 def _normalize(value: Any) -> str:
     text = unicodedata.normalize("NFKD", str(value or ""))
     text = text.encode("ascii", "ignore").decode("ascii").lower()
     return re.sub(r"[^a-z0-9]+", " ", text).strip()
 
-
 def _clean(value: Any, limit: int = 500) -> str:
     text = re.sub(r"<[^>]*>", " ", str(value or ""))
     return re.sub(r"\s+", " ", text).strip()[:limit]
-
 
 class ServiceRetriever:
     def __init__(
@@ -67,6 +84,36 @@ class ServiceRetriever:
                 raise ValueError(f"service {service.get('id')} missing fields: {sorted(missing)}")
             if service["price_source"] != "database":
                 raise ValueError(f"service {service['id']} price_source must be database")
+        canonical_values = set(CANONICAL_SERVICE_VALUES)
+        mapped_values = set(CANONICAL_SERVICE_KNOWLEDGE_IDS)
+        if mapped_values != canonical_values:
+            missing = sorted(canonical_values - mapped_values)
+            extra = sorted(mapped_values - canonical_values)
+            raise ValueError(
+                "canonical service knowledge map must be exhaustive; "
+                f"missing={missing}, extra={extra}"
+            )
+        targets = list(CANONICAL_SERVICE_KNOWLEDGE_IDS.values())
+        missing_targets = sorted(set(targets) - set(self.services))
+        if missing_targets:
+            raise ValueError(
+                "canonical service knowledge map references missing service ids: "
+                f"{missing_targets}"
+            )
+        if len(targets) != len(set(targets)):
+            raise ValueError("canonical service knowledge map must resolve one family per value")
+
+    def resolve_knowledge_service_id(self, value: Any) -> str | None:
+
+        raw = str(value or "").strip()
+        if not raw:
+            return None
+        if raw in self.services:
+            return raw
+        canonical = canonicalize_entities(
+            {"service": raw}, include_empty=False,
+        ).entities.get("service")
+        return CANONICAL_SERVICE_KNOWLEDGE_IDS.get(str(canonical or ""))
 
     def _documents(self) -> list[RAGDocument]:
         documents = []
@@ -97,15 +144,19 @@ class ServiceRetriever:
         snapshot: CatalogSnapshot | None = None,
     ) -> RetrievalResult:
         search_text = " ".join(str(item) for item in (query, service or "", *(symptoms or ())) if item)
+        service_entity = None
         if entities is not None:
             service_entity = entities.get("service") if isinstance(entities, Mapping) else getattr(entities, "service", None)
             if service_entity:
                 search_text = f"{search_text} {service_entity}"
+        requested_service = service or service_entity
+        resolved_service_id = self.resolve_knowledge_service_id(requested_service)
         selected: list[dict[str, Any]] = []
-        if service and service in self.services:
-            selected = [self.services[service]]
+        if resolved_service_id:
+            selected = [self.services[resolved_service_id]]
         else:
-            hits = self.rag.search(search_text, limit=limit)
+
+            hits = self.rag.search(normalize_domain_text(search_text), limit=limit)
             selected = [self.services[hit.document.id] for hit in hits]
 
         catalog, load_error = self._load_snapshot(snapshot)
@@ -116,8 +167,6 @@ class ServiceRetriever:
             evidence.append(self._knowledge_evidence(item))
             active = self._match_active(item, active_services) if service_source_available else None
             evidence.append(self._availability_evidence(item, active, service_source_available, load_error or (catalog.service_error if catalog else None)))
-
-
 
         if not selected and service_source_available and search_text:
             active_matches = self._search_active(search_text, active_services, limit)
@@ -140,6 +189,15 @@ class ServiceRetriever:
             reason=reason,
             diagnostics={
                 "knowledge_matches": len(selected),
+                "canonical_service": (
+                    canonicalize_entities(
+                        {"service": requested_service}, include_empty=False,
+                    ).entities.get("service")
+                    if requested_service else None
+                ),
+                "resolved_service_id": resolved_service_id,
+                "service_mapping_version": CANONICAL_SERVICE_KNOWLEDGE_MAP_VERSION,
+                "semantic_ranking_used": resolved_service_id is None,
                 "active_services": len(active_services),
                 "service_source_available": service_source_available,
                 "source_error": load_error or (catalog.service_error if catalog else None),
@@ -176,6 +234,37 @@ class ServiceRetriever:
             status="ok" if evidence else "empty", available=True,
             reason=None if evidence else "no_active_services",
             diagnostics={"active_services": len(evidence)},
+        )
+
+    def find_active_exact(
+        self,
+        service: str,
+        *,
+        snapshot: CatalogSnapshot | None = None,
+    ) -> RetrievalResult:
+
+        catalog, error = self._load_snapshot(snapshot)
+        if catalog is None or error or catalog.service_error:
+            return RetrievalResult(
+                query=str(service), status="unavailable", available=False,
+                reason="service_source_unavailable",
+                diagnostics={"error": error or (catalog.service_error if catalog else None)},
+            )
+        requested = _normalize(service)
+        active_services = [self._normalize_active(item) for item in catalog.services or []]
+        matches = [
+            item for item in active_services
+            if requested and requested in {
+                _normalize(item.get("nombre")),
+                _normalize(item.get("codigo")),
+            }
+        ]
+        evidence = [self._active_evidence(item, self._static_id_for_active(item)) for item in matches[:1]]
+        return RetrievalResult(
+            query=str(service), evidence=evidence,
+            status="ok" if evidence else "empty", available=True,
+            reason=None if evidence else "no_exact_active_service_match",
+            diagnostics={"active_services": len(active_services), "exact_matches": len(evidence)},
         )
 
     def _load_snapshot(self, override: CatalogSnapshot | None) -> tuple[CatalogSnapshot | None, str | None]:
@@ -290,14 +379,34 @@ class ServiceRetriever:
     @staticmethod
     def _active_evidence(active: Mapping[str, Any], service_id: str | None) -> Evidence:
         raw = active.get("raw") if isinstance(active.get("raw"), Mapping) else None
-        price_known = bool(raw is not None and any(key in raw and raw.get(key) is not None for key in ("precio", "precio_servicio")))
-        if raw is None:
-            price_known = active.get("precio") is not None
+        raw_price = next((
+            raw.get(key) for key in ("precio", "precio_servicio")
+            if raw is not None and key in raw
+        ), active.get("precio"))
+        safe_price = sanitize_public_business_value(
+            raw_price, field="service_price", source="db.services",
+        )
+        price_value = (
+            decimal_to_float(safe_price.public_value)
+            if safe_price.configured
+            else None
+        )
+        price_known = bool(safe_price.configured and price_value is not None)
         duration_field = next((key for key in _DURATION_FIELDS if raw is not None and raw.get(key) is not None), None)
         if raw is None:
             duration_field = next((key for key in _DURATION_FIELDS if active.get(key) is not None), None)
-        duration = (raw.get(duration_field) if raw is not None else active.get(duration_field)) if duration_field else None
-        branch = active.get("sucursal") or active.get("sucursal_nombre")
+        raw_duration = (
+            (raw.get(duration_field) if raw is not None else active.get(duration_field))
+            if duration_field else None
+        )
+        safe_duration = sanitize_public_business_value(
+            raw_duration, field="service_duration", source="db.services",
+        )
+        safe_branch = sanitize_public_business_value(
+            active.get("sucursal") or active.get("sucursal_nombre"),
+            field="branch", source="db.services",
+        )
+        branch = safe_branch.public_value
         name = _clean(active.get("nombre") or "Servicio activo", 200)
         return Evidence(
             id=evidence_id("service-active", active.get("codigo"), name, branch),
@@ -314,14 +423,19 @@ class ServiceRetriever:
                 "name": name,
                 "description": _clean(active.get("descripcion"), 600) or None,
                 "availability": "active",
-                "price": decimal_to_float(active.get("precio")) if price_known else None,
+                "price": price_value,
                 "price_available": price_known,
-                "duration": to_jsonable(duration) if duration_field else None,
-                "duration_available": bool(duration_field),
+                "price_claim": safe_price.claim_metadata(),
+                "duration": (
+                    to_jsonable(safe_duration.public_value)
+                    if safe_duration.configured else None
+                ),
+                "duration_available": safe_duration.configured,
+                "duration_claim": safe_duration.claim_metadata(),
                 "duration_field": duration_field,
                 "branch": _clean(branch, 240) or None,
+                "branch_claim": safe_branch.claim_metadata(),
             },
         )
-
 
 ServiceKnowledgeRetriever = ServiceRetriever

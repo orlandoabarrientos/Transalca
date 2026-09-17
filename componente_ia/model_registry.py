@@ -1,14 +1,7 @@
-"""Registro local, versionado y transaccional de modelos de intenciones.
-
-El registro no entrena ni evalúa modelos. Su única responsabilidad es mantener
-la separación física entre candidatos, activo, archivados y rechazados, además
-de ofrecer promoción y rollback atómicos. Todos los artefactos permanecen en el
-servidor local; nunca se descargan ni se envían a servicios externos.
-"""
-
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 import shutil
@@ -18,7 +11,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-
 PACKAGE_DIR = Path(__file__).resolve().parent
 DEFAULT_MODELS_DIR = PACKAGE_DIR / "models"
 DEFAULT_REGISTRY_PATH = DEFAULT_MODELS_DIR / "registry.json"
@@ -27,10 +19,8 @@ REGISTRY_SCHEMA_VERSION = 1
 _VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$")
 _LOCK = threading.RLock()
 
-
 def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
 
 def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -42,7 +32,6 @@ def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
         temporary = Path(stream.name)
     os.replace(temporary, path)
 
-
 def _atomic_copy(source: Path, target: Path) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile("wb", dir=target.parent, delete=False) as stream:
@@ -53,13 +42,11 @@ def _atomic_copy(source: Path, target: Path) -> None:
         os.fsync(stream.fileno())
     os.replace(temporary, target)
 
-
 def _safe_version(version: str) -> str:
     value = str(version or "").strip()
     if not _VERSION_RE.fullmatch(value):
         raise ValueError("Versión de modelo inválida")
     return value
-
 
 def record_from_artifact(
     artifact: dict[str, Any],
@@ -68,20 +55,26 @@ def record_from_artifact(
     artifact_path: str,
     extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Construye el registro estable a partir de un artefacto entrenado."""
 
     version = _safe_version(str(artifact.get("version") or ""))
     metrics = artifact.get("metrics") if isinstance(artifact.get("metrics"), dict) else {}
     dataset = artifact.get("dataset") if isinstance(artifact.get("dataset"), dict) else {}
     train = metrics.get("train") if isinstance(metrics.get("train"), dict) else {}
+    validation = metrics.get("validation") if isinstance(metrics.get("validation"), dict) else {}
+    test = metrics.get("test") if isinstance(metrics.get("test"), dict) else {}
+    holdout = metrics.get("holdout") if isinstance(metrics.get("holdout"), dict) else {}
     release = artifact.get("release_evidence") if isinstance(artifact.get("release_evidence"), dict) else {}
     record: dict[str, Any] = {
         "version": version,
         "dataset_hash": str(dataset.get("sha256") or ""),
         "train_cases": int(train.get("total") or 0),
-        "validation_metrics": metrics.get("validation") or {},
-        "test_metrics": metrics.get("test") or {},
-        "holdout_metrics": metrics.get("holdout") or {},
+        "validation_cases": int(validation.get("total") or 0),
+        "test_cases": int(test.get("total") or 0),
+        "holdout_cases": int(holdout.get("total") or 0),
+        "total_dataset_cases": int(dataset.get("total_cases") or 0),
+        "validation_metrics": validation,
+        "test_metrics": test,
+        "holdout_metrics": holdout,
         "latency": {
             key: release.get(key)
             for key in ("performance_p95_ms", "catalog_p95_ms", "web_p95_ms")
@@ -101,9 +94,7 @@ def record_from_artifact(
         record.update(extra)
     return record
 
-
 class ModelRegistry:
-    """Administra artefactos locales sin tocar un activo hasta promoción explícita."""
 
     STATUSES = frozenset({"active", "candidate", "archived", "rejected"})
 
@@ -172,7 +163,6 @@ class ModelRegistry:
         return result
 
     def bootstrap_legacy_active(self) -> dict[str, Any] | None:
-        """Importa una sola vez el alias activo previo, sin cambiar su contenido."""
 
         with _LOCK:
             registry = self._read()
@@ -254,6 +244,30 @@ class ModelRegistry:
         version = registry.get("active_version")
         return dict(registry["models"][version]) if version in registry["models"] else None
 
+    def active_identity(self) -> dict[str, Any]:
+
+        active = self.active()
+        if not active or active.get("status") != "active":
+            raise RuntimeError("El registro no declara un modelo activo")
+        path = self.artifact_path(str(active["version"]))
+        artifact = json.loads(path.read_text(encoding="utf-8"))
+        dataset_hash = str((artifact.get("dataset") or {}).get("sha256") or "")
+        if artifact.get("version") != active.get("version"):
+            raise RuntimeError("Versión activa desalineada")
+        if not dataset_hash or dataset_hash != str(active.get("dataset_hash") or ""):
+            raise RuntimeError("Dataset activo desalineado")
+        model_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+        configured = re.sub(
+            r"[^A-Za-z0-9_.-]", "-", os.getenv("ASSISTANT_BUILD_ID", "").strip()
+        )[:80]
+        return {
+            "model_version": str(active["version"]),
+            "model_hash": model_hash,
+            "dataset_hash": dataset_hash,
+            "build_id": configured or f"local-{model_hash[:12]}-{dataset_hash[:12]}",
+            "artifact_path": str(path),
+        }
+
     def _relocate(self, source: Path, destination: Path) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
         if destination.exists():
@@ -261,7 +275,6 @@ class ModelRegistry:
         os.replace(source, destination)
 
     def promote(self, version: str, *, event_extra: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Promueve una versión ya validada. Los gates viven en training_pipeline."""
 
         version = _safe_version(version)
         with _LOCK:
@@ -337,7 +350,6 @@ class ModelRegistry:
             return event
 
     def rollback(self, version: str | None = None) -> dict[str, Any]:
-        """Activa inmediatamente una versión archivada, por versión o la más reciente."""
 
         with _LOCK:
             registry = self._read()
@@ -391,7 +403,6 @@ class ModelRegistry:
 
     def snapshot(self) -> dict[str, Any]:
         return self._read()
-
 
 __all__ = [
     "DEFAULT_MODELS_DIR", "DEFAULT_REGISTRY_PATH", "ModelRegistry",

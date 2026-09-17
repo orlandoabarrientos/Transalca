@@ -1,5 +1,3 @@
-"""Grounded inventory retrieval built on the existing catalog adapter."""
-
 from __future__ import annotations
 
 import re
@@ -17,14 +15,14 @@ from componente_ia.catalog_retriever import (
     size_base,
 )
 from componente_ia.knowledge_types import Evidence, RetrievalResult, evidence_id
+from componente_ia.inventory_index import InventoryIndex
 from componente_ia.resilient_catalog import resilient_catalog_access
-
 
 @dataclass
 class InventoryQuery:
     text: str = ""
     tire_size: str | None = None
-    rim: int | None = None
+    rim: int | float | None = None
     tire_type: str | None = None
     category: str | None = None
     brand: str | None = None
@@ -35,6 +33,20 @@ class InventoryQuery:
     in_stock: bool | None = None
     sort: str | None = None
 
+    normalized_text: str = ""
+    query_tokens: frozenset[str] = field(default_factory=frozenset)
+    compact_query_tokens: tuple[tuple[str, str], ...] = ()
+    tire_size_base: str | None = None
+    tire_type_key: str = ""
+    category_key: str = ""
+    brand_key: str = ""
+    branch_key: str = ""
+
+_IGNORED_QUERY_TOKENS = frozenset({
+    "cual", "cuanto", "dame", "dime", "el", "en", "es", "hay", "la",
+    "las", "lo", "los", "mas", "me", "precio", "que", "stock", "tiene",
+    "tienen", "un", "una", "y",
+})
 
 def _entity_value(entities: Any, *names: str, default: Any = None) -> Any:
     for name in names:
@@ -44,7 +56,6 @@ def _entity_value(entities: Any, *names: str, default: Any = None) -> Any:
             return getattr(entities, name)
     return default
 
-
 def _tire_size_value(value: Any) -> str | None:
     if value is None:
         return None
@@ -53,7 +64,6 @@ def _tire_size_value(value: Any) -> str | None:
     else:
         value = getattr(value, "normalized", value)
     return str(value).upper() if value else None
-
 
 def _known_dynamic_field(item: Mapping[str, Any], field: str) -> bool:
     raw = item.get("raw")
@@ -65,7 +75,6 @@ def _known_dynamic_field(item: Mapping[str, Any], field: str) -> bool:
         }.get(field, (field,))
         return any(key in raw and raw.get(key) is not None for key in candidates)
     return field in item and item.get(field) is not None
-
 
 def _category_key(value: Any) -> str:
     normalized = normalize_text(value or "", autocorrect=False)
@@ -80,13 +89,7 @@ def _category_key(value: Any) -> str:
     }
     return aliases.get(normalized, normalized)
 
-
 class InventoryRetriever:
-    """Search active products without inferring missing commercial fields.
-
-    A fixed ``CatalogSnapshot`` is convenient for tests. In production the existing
-    ``CatalogProvider`` remains the single database boundary and can be injected.
-    """
 
     def __init__(
         self,
@@ -96,6 +99,8 @@ class InventoryRetriever:
         self.catalog_provider = catalog_provider or (None if snapshot is not None else CatalogProvider())
         self.catalog_access = resilient_catalog_access(self.catalog_provider) if self.catalog_provider is not None else None
         self.snapshot = snapshot
+        self._index_key: tuple[int, float, int] | None = None
+        self._index: InventoryIndex | None = None
 
     def search(
         self,
@@ -127,8 +132,13 @@ class InventoryRetriever:
             )
 
         ranked: list[tuple[float, dict[str, Any], str]] = []
-        for raw in catalog.products or []:
-            item = self._normalize_item(raw)
+        index = self._catalog_index(catalog)
+        candidates = index.candidates(
+            tire_size=inventory_query.tire_size,
+            rim=inventory_query.rim,
+            tire_type=inventory_query.tire_type,
+        )
+        for item in candidates:
             match = self._score(item, inventory_query)
             if match is None:
                 continue
@@ -152,7 +162,8 @@ class InventoryRetriever:
             available=True,
             reason=None if evidence else "no_inventory_match",
             diagnostics={
-                "catalog_products": len(catalog.products or []),
+                "catalog_products": len(index.rows),
+                "index_candidates": len(candidates),
                 "matches": len(ranked),
                 "constraints": {
                     "size": inventory_query.tire_size,
@@ -162,6 +173,13 @@ class InventoryRetriever:
                 },
             },
         )
+
+    def _catalog_index(self, catalog: CatalogSnapshot) -> InventoryIndex:
+        key = (id(catalog.products), float(catalog.loaded_at or 0.0), len(catalog.products or []))
+        if self._index is None or self._index_key != key:
+            self._index = InventoryIndex.build(catalog.products or [], self._normalize_item)
+            self._index_key = key
+        return self._index
 
     def search_tires(
         self,
@@ -200,8 +218,7 @@ class InventoryRetriever:
             )
         requested = str(code or "").strip().lower()
         evidence = []
-        for raw in catalog.products or []:
-            item = self._normalize_item(raw)
+        for item in self._catalog_index(catalog).rows:
             if str(item.get("codigo") or "").strip().lower() == requested:
                 evidence.append(self._evidence(item, 100.0, "codigo_exacto"))
                 break
@@ -219,7 +236,7 @@ class InventoryRetriever:
                 reason="inventory_source_unavailable",
                 diagnostics={"error": error or (catalog.product_error if catalog else None)},
             )
-        categories = sorted({str(self._normalize_item(item).get("categoria") or "").strip() for item in catalog.products or []} - {""})
+        categories = sorted({str(item.get("categoria") or "").strip() for item in self._catalog_index(catalog).rows} - {""})
         item = Evidence(
             id=evidence_id("inventory-categories", *categories),
             kind="inventory_categories",
@@ -248,8 +265,31 @@ class InventoryRetriever:
     @staticmethod
     def _normalize_item(item: Mapping[str, Any]) -> dict[str, Any]:
         if item.get("kind") == "producto" and "text" in item:
-            return dict(item)
-        return normalize_catalog_item(dict(item), "producto")
+            normalized = dict(item)
+        else:
+            normalized = normalize_catalog_item(dict(item), "producto")
+
+        sizes = frozenset(
+            str(value).upper() for value in normalized.get("sizes", ()) if value
+        )
+        normalized["_inventory_sizes_upper"] = sizes
+        normalized["_inventory_size_bases"] = frozenset(size_base(value) for value in sizes)
+        normalized["_inventory_category_key"] = _category_key(normalized.get("categoria"))
+        normalized["_inventory_tire_type_key"] = str(
+            normalized.get("tire_type") or ""
+        ).upper()
+        normalized["_inventory_brand_text"] = normalize_text(
+            normalized.get("marca") or normalized.get("text") or "",
+            autocorrect=False,
+        )
+        normalized["_inventory_branch_key"] = compact_text(
+            normalized.get("sucursal") or normalized.get("sucursal_nombre") or ""
+        )
+        normalized["_inventory_text_tokens"] = frozenset(
+            str(normalized.get("text") or "").split()
+        )
+        normalized["_inventory_compact_text"] = str(normalized.get("compact") or "")
+        return normalized
 
     def _build_query(
         self,
@@ -273,10 +313,14 @@ class InventoryRetriever:
         category = values.get("category") or values.get("product_category") or _entity_value(entities, "product_category")
         usage = values.get("usage") or values.get("uses") or _entity_value(entities, "usage", "uses", default=set())
         try:
-            rim = int(rim) if rim not in (None, "") else None
+            if rim not in (None, ""):
+                numeric_rim = float(rim)
+                rim = int(numeric_rim) if numeric_rim.is_integer() else numeric_rim
+            else:
+                rim = None
         except (TypeError, ValueError):
             rim = None
-        return InventoryQuery(
+        request = InventoryQuery(
             text=str(values.get("text") or query or ""),
             tire_size=_tire_size_value(size),
             rim=rim,
@@ -290,18 +334,39 @@ class InventoryRetriever:
             in_stock=values.get("in_stock"),
             sort=values.get("sort"),
         )
+        request.normalized_text = normalize_text(request.text, autocorrect=False)
+        request.query_tokens = frozenset(
+            token
+            for token in re.findall(r"[a-z0-9/.-]+", request.normalized_text)
+            if len(token) >= 2 and token not in _IGNORED_QUERY_TOKENS
+        )
+        request.compact_query_tokens = tuple(
+            (token, compact_text(token)) for token in sorted(request.query_tokens)
+        )
+        request.tire_size_base = size_base(request.tire_size) if request.tire_size else None
+        request.tire_type_key = str(request.tire_type or "").upper()
+        request.category_key = _category_key(request.category)
+        request.brand_key = normalize_text(request.brand or "", autocorrect=False)
+        request.branch_key = compact_text(request.branch or "")
+        return request
 
     @staticmethod
     def _score(item: Mapping[str, Any], request: InventoryQuery) -> tuple[float, str] | None:
         score = 0.0
         compatibility = "textual"
-        item_sizes = {str(value).upper() for value in item.get("sizes", []) if value}
-        item_bases = {size_base(value) for value in item_sizes}
+        item_sizes = item.get("_inventory_sizes_upper")
+        if not isinstance(item_sizes, (set, frozenset)):
+            item_sizes = frozenset(
+                str(value).upper() for value in item.get("sizes", ()) if value
+            )
+        item_bases = item.get("_inventory_size_bases")
+        if not isinstance(item_bases, (set, frozenset)):
+            item_bases = frozenset(size_base(value) for value in item_sizes)
         if request.tire_size:
             if request.tire_size in item_sizes:
                 score += 90
                 compatibility = "medida_exacta"
-            elif size_base(request.tire_size) in item_bases:
+            elif request.tire_size_base in item_bases:
                 score += 82
                 compatibility = "medida_equivalente_sin_prefijo"
             else:
@@ -313,8 +378,10 @@ class InventoryRetriever:
                     compatibility = "mismo_rin_no_confirma_fitment"
             else:
                 return None
-        category = _category_key(request.category)
-        item_category = _category_key(item.get("categoria"))
+        category = request.category_key
+        item_category = str(
+            item.get("_inventory_category_key") or _category_key(item.get("categoria"))
+        )
         if category:
             category_is_tire = category == "tires"
             if category_is_tire and item.get("is_tire"):
@@ -324,19 +391,31 @@ class InventoryRetriever:
             else:
                 return None
         if request.tire_type:
-            if str(item.get("tire_type") or "").upper() == str(request.tire_type).upper():
+            item_tire_type = str(
+                item.get("_inventory_tire_type_key")
+                or str(item.get("tire_type") or "").upper()
+            )
+            if item_tire_type == request.tire_type_key:
                 score += 20
             elif item.get("tire_type"):
                 return None
         if request.brand:
-            brand = normalize_text(request.brand, autocorrect=False)
-            if brand in normalize_text(item.get("marca") or item.get("text") or "", autocorrect=False):
+            item_brand = str(item.get("_inventory_brand_text") or "")
+            if not item_brand:
+                item_brand = normalize_text(
+                    item.get("marca") or item.get("text") or "", autocorrect=False,
+                )
+            if request.brand_key in item_brand:
                 score += 16
             else:
                 return None
         if request.branch:
-            branch = compact_text(request.branch)
-            if branch and branch in compact_text(item.get("sucursal") or item.get("sucursal_nombre") or ""):
+            item_branch = str(item.get("_inventory_branch_key") or "")
+            if not item_branch:
+                item_branch = compact_text(
+                    item.get("sucursal") or item.get("sucursal_nombre") or ""
+                )
+            if request.branch_key and request.branch_key in item_branch:
                 score += 18
             else:
                 return None
@@ -346,18 +425,17 @@ class InventoryRetriever:
             if price is None or price > float(request.max_price):
                 return None
             score += 10
-        normalized_query = normalize_text(request.text, autocorrect=False)
-        ignored = {
-            "cual", "cuanto", "dame", "dime", "el", "en", "es", "hay", "la", "las", "lo", "los",
-            "mas", "me", "precio", "que", "stock", "tiene", "tienen", "un", "una", "y",
-        }
-        query_tokens = {token for token in re.findall(r"[a-z0-9/.-]+", normalized_query) if len(token) >= 2 and token not in ignored}
-        text_tokens = set(str(item.get("text") or "").split())
-        for token in query_tokens:
-            compact = compact_text(token)
+        query_tokens = request.query_tokens
+        text_tokens = item.get("_inventory_text_tokens")
+        if not isinstance(text_tokens, (set, frozenset)):
+            text_tokens = frozenset(str(item.get("text") or "").split())
+        compact_text_value = str(
+            item.get("_inventory_compact_text") or item.get("compact") or ""
+        )
+        for token, compact in request.compact_query_tokens:
             if token in text_tokens:
                 score += 4
-            elif len(compact) >= 4 and compact in str(item.get("compact") or ""):
+            elif len(compact) >= 4 and compact in compact_text_value:
                 score += 2
         if not any((request.tire_size, request.rim, request.category, request.tire_type, request.brand, request.branch)) and query_tokens and score <= 0:
             return None
@@ -425,20 +503,29 @@ class InventoryRetriever:
                 "description": item.get("descripcion") or None,
                 "category": item.get("categoria") or None,
                 "brand": item.get("marca") or None,
+                "model": item.get("modelo") or None,
+                "display_name": item.get("display_name") or name,
+                "original_brand": item.get("marca_original") or None,
+                "normalized_brand": item.get("marca_normalizada") or item.get("marca") or None,
+                "normalized_model": item.get("modelo_normalizado") or item.get("modelo") or None,
+                "brand_model_confidence": item.get("brand_model_confidence"),
+                "brand_model_status": item.get("brand_model_status"),
                 "price": price,
                 "price_available": price_known,
                 "stock": stock,
                 "stock_status": stock_status,
+                "inventory_provenance": dict(item.get("inventory_provenance") or {}),
                 "branch": (item.get("sucursal") or item.get("sucursal_nombre")) if branch_known else None,
                 "branch_available": branch_known,
                 "sizes": list(item.get("sizes") or []),
                 "rim": item.get("rim"),
                 "tire_type": item.get("tire_type"),
+                "applications": list(item.get("applications") or []),
                 "is_tire": bool(item.get("is_tire")),
                 "match": compatibility,
                 "score": round(float(score), 3),
+                "active": bool(item.get("active", True)),
             },
         )
-
 
 CatalogInventoryRetriever = InventoryRetriever

@@ -1,16 +1,12 @@
-"""Bounded, process-local session memory. History is never trusted as evidence."""
-
 from collections import OrderedDict
 from copy import deepcopy
 from threading import RLock
-
 
 def empty_state():
     return {"vehicle_brand": None, "vehicle_model": None, "vehicle_year": None,
             "tire_size": None, "tire_type": None, "last_intent": None,
             "last_products": [], "selected_product": None,
             "rim": None, "brand": None, "model": None, "branch": None}
-
 
 class LiteStateStore:
     def __init__(self, max_sessions=1000):
