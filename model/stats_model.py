@@ -1,7 +1,6 @@
 from model.connection import Connection
 from datetime import datetime, timedelta
 
-
 class StatsModel(Connection):
     def __init__(self):
         super().__init__()
@@ -44,7 +43,6 @@ class StatsModel(Connection):
         return {"labels": labels, "data": data}
 
     def _get_top_services(self, limit=5):
-        """Reporte nuevo: servicios mas solicitados con ingreso generado, calculado por codigo."""
         sql = ("SELECT s.nombre_servicio AS nombre, COUNT(*) as total_solicitados, "
                "COALESCE(SUM(d.cantidad_detalle_orden_venta_servicio * d.precio_unitario_servicio), 0) as ingreso "
                "FROM detalle_orden_venta_servicios d INNER JOIN servicios s ON d.servicio_id = s.id_servicio "

@@ -83,12 +83,10 @@ TIPO_LABEL = {
     'servicio_general': 'Servicio general',
 }
 
-
 class VehicleLogModel(Connection):
     def __init__(self):
         super().__init__()
         self.notifications = NotificationModel()
-
 
     def _vehicle_plate(self, vid):
         placa = (str(vid or '').strip().upper())
@@ -135,7 +133,6 @@ class VehicleLogModel(Connection):
             (orden_venta_id, orden_venta_id, servicio_id, servicio_id, mecanico_cedula, mecanico_cedula)
         )
         return row['id'] if row else None
-
 
     def _get_by_vehicle(self, vid, limit=50):
         return self.fetch_all("transalca", LOG_BY_VEHICLE_SQL, (self._vehicle_plate(vid), limit))
@@ -204,10 +201,7 @@ class VehicleLogModel(Connection):
         result = self.fetch_one("transalca", sql, tuple(params))
         return result['total'] if result else 0
 
-
     def _sync_from_services(self):
-        """Registra automaticamente en la bitacora los servicios completados,
-        con los productos y cauchos usados en la orden asociada."""
         rows = self.fetch_all("transalca",
             "SELECT sm.id_servicio_mecanico AS id, sm.servicio_id, sm.orden_venta_id, sm.vehiculo_placa, sm.fecha_servicio, "
             "s.nombre_servicio "
@@ -243,7 +237,6 @@ class VehicleLogModel(Connection):
             created += 1
         return created
 
-
     def _upsert_prediction(self, placa, tipo, fecha_base, fecha_estimada, referencia, base_calculo):
         today = date.today()
         dias = (fecha_estimada - today).days
@@ -275,8 +268,6 @@ class VehicleLogModel(Connection):
             (placa, tipo, referencia, fecha_base, fecha_estimada, base_calculo, prioridad, estado))
 
     def _generate_predictions(self):
-        """Calcula fechas estimadas de proximos mantenimientos por vehiculo segun el
-        historial de la bitacora, el tipo/categoria de producto usado y la vida util configurada."""
         vehicles = self.fetch_all("transalca",
             "SELECT placa_vehiculo, kilometraje_actual, tipo_vehiculo FROM vehiculos WHERE estado = 1")
         generated = 0
@@ -381,7 +372,6 @@ class VehicleLogModel(Connection):
             "UPDATE bitacora_prediccion SET estado='atendida' WHERE id_bitacora_prediccion=%s", (prediction_id,))
 
     def _notify_due_predictions(self, dias_aviso=14):
-        """Notifica al cliente y a los administradores las predicciones proximas o vencidas."""
         rows = self.fetch_all("transalca",
             "SELECT bp.*, bp.id_bitacora_prediccion AS id, v.marca_vehiculo, v.modelo_vehiculo, DATEDIFF(bp.fecha_estimada, CURDATE()) AS dias "
             "FROM bitacora_prediccion bp INNER JOIN vehiculos v ON v.placa_vehiculo = bp.vehiculo_placa "
@@ -430,7 +420,6 @@ class VehicleLogModel(Connection):
         return sent
 
     def _run_automatic_cycle(self):
-        """Ciclo automatico: sincroniza servicios, recalcula predicciones y notifica."""
         result = {'sincronizados': 0, 'predicciones': 0, 'notificaciones': 0, 'stock_bajo': 0}
         try:
             result['sincronizados'] = self._sync_from_services()
@@ -466,9 +455,7 @@ class VehicleLogModel(Connection):
             raise ValueError("Accion no permitida")
         return acciones[accion](*args, **kwargs)
 
-
 class BitacoraScheduler:
-    """Tarea programada que ejecuta el ciclo automatico de bitacora periodicamente."""
 
     def __init__(self, interval_seconds=3600):
         self._interval = interval_seconds
@@ -497,9 +484,7 @@ class BitacoraScheduler:
                 logger.exception("Fallo el ciclo programado de bitacora")
             self._stop_event.wait(self._interval)
 
-
 _scheduler = BitacoraScheduler()
-
 
 def start_bitacora_scheduler():
     return _scheduler.start()

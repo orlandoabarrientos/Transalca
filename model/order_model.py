@@ -8,10 +8,8 @@ logger = logging.getLogger(__name__)
 
 TIPOS_ITEM = ['producto', 'servicio']
 
-
 def caracas_now():
     return datetime.utcnow() - timedelta(hours=4)
-
 
 ORDER_CLIENT_LIST_SQL = (
     "SELECT ov.*, ov.id_orden_venta AS id, ov.fecha_orden_venta AS fecha, ov.total_orden_venta AS total, "
@@ -39,7 +37,6 @@ ORDER_DETAIL_ITEMS_SQL = (
     "LEFT JOIN productos p ON d.producto_codigo = p.codigo "
     "LEFT JOIN servicios s ON d.servicio_id = s.id_servicio WHERE d.orden_id = %s"
 )
-
 
 class OrderModel(Connection):
     def __init__(self):
@@ -293,7 +290,6 @@ class OrderModel(Connection):
             return None
 
     def _activate_services_for_order(self, order_id):
-        """Crea los registros en servicio_mecanico cuando el pago de la orden fue validado."""
         try:
             order = self.fetch_one("transalca",
                 "SELECT id_orden_venta, cliente_cedula FROM ordenes_venta WHERE id_orden_venta = %s", (order_id,))

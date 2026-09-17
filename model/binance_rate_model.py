@@ -3,7 +3,6 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-
 def _median(arr):
     if not arr or len(arr) == 0:
         return 0
@@ -13,9 +12,7 @@ def _median(arr):
         return s[mid]
     return (s[mid - 1] + s[mid]) / 2
 
-
 def get_usdt_rate_ves(timeout=15) -> float:
-    """Fetch USDT/VES median rate from Binance P2P."""
     try:
         response = requests.post(
             "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",

@@ -29,7 +29,6 @@ SALES_ORDER_DETAIL_ITEMS_SQL = (
     "LEFT JOIN servicios sv ON d.servicio_id = sv.id_servicio WHERE d.orden_id = %s"
 )
 
-
 class InventoryModel(Connection):
     def __init__(self):
         super().__init__()
@@ -87,12 +86,11 @@ class InventoryModel(Connection):
         return self.fetch_all("transalca", LOW_STOCK_SQL, (umbral,))
 
     def _check_low_stock_and_notify(self, producto_codigo=None):
-        """Genera notificaciones de stock bajo (umbral configurable, sin duplicados en 24h)."""
         notifier = NotificationModel()
         created = 0
         for item in self._get_low_stock(producto_codigo):
             umbral = max(int(item.get('stock_minimo') or 0), self._get_low_stock_threshold())
-            created += notifier.ejecutar("notify_stock_low", 
+            created += notifier.ejecutar("notify_stock_low",
                 item['codigo'], item.get('producto_nombre') or item['codigo'],
                 int(item.get('stock') or 0), umbral, item.get('sucursal_nombre'))
         return created

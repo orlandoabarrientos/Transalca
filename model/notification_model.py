@@ -28,7 +28,6 @@ NOTIF_UNREAD_BY_USER_SQL = (
     "FROM notificaciones n WHERE n.usuario_id = %s AND n.leida = 0 ORDER BY n.created_at DESC"
 )
 
-
 class NotificationModel(Connection):
     def __init__(self):
         super().__init__()
@@ -70,7 +69,6 @@ class NotificationModel(Connection):
              data.get('referencia_id')))
 
     def _exists_recent(self, tipo, titulo, usuario_id=None, cliente_cedula=None, hours=24):
-        """Evita notificaciones duplicadas dentro de una ventana de tiempo."""
         sql = ("SELECT id_notificacion FROM notificaciones WHERE tipo_notificacion = %s AND titulo_notificacion = %s "
                "AND created_at > NOW() - INTERVAL %s HOUR")
         params = [tipo, titulo, hours]
@@ -131,7 +129,6 @@ class NotificationModel(Connection):
             "WHERE u.estado = 1 AND p.modulo = %s AND p.leer = 1", (modulo,))
 
     def _notify_stock_low(self, producto_codigo, producto_nombre, stock_actual, umbral, sucursal_nombre=None):
-        """Notifica stock bajo a los usuarios administradores, sin duplicar en 24h."""
         lugar = f" en {sucursal_nombre}" if sucursal_nombre else ""
         titulo = f"Stock bajo: {producto_nombre}"
         mensaje = (f"El producto {producto_nombre} ({producto_codigo}) tiene stock bajo{lugar}: "

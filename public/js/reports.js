@@ -31,7 +31,6 @@ const reportDescriptions = {
 };
 
 function loadFilterOptions() {
-    // Categorías
     apiCall('/api/categories/').then(res => {
         if (res && res.data && Array.isArray(res.data)) {
             const catSelect = document.getElementById('categoryFilter');
@@ -46,7 +45,6 @@ function loadFilterOptions() {
         }
     }).catch(console.error);
 
-    // Marcas
     apiCall('/api/brands/').then(res => {
         if (res && res.data && Array.isArray(res.data)) {
             const brandSelect = document.getElementById('brandFilter');
@@ -61,7 +59,6 @@ function loadFilterOptions() {
         }
     }).catch(console.error);
 
-    // Sucursales
     apiCall('/api/sucursales/active').then(res => {
         if (!res || !res.data || !Array.isArray(res.data) || res.data.length === 0) {
             return apiCall('/api/sucursales/');
@@ -89,7 +86,6 @@ function loadFilterOptions() {
         }
     }).catch(console.error);
 
-    // Métodos de Pago
     apiCall('/api/payment-methods/active').then(res => {
         if (!res || !res.data || !Array.isArray(res.data)) {
             return apiCall('/api/payment-methods/');
@@ -110,7 +106,6 @@ function loadFilterOptions() {
         }
     }).catch(console.error);
 
-    // Mecánicos
     apiCall('/api/mechanics/').then(res => {
         if (res && res.data && Array.isArray(res.data)) {
             const mecSelect = document.getElementById('mechanicFilter');
