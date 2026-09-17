@@ -1,12 +1,9 @@
-"""Read through InventoryRetriever; strict Lite filtering never duplicates SQL."""
-
 import re
 from .lite_entities import extract_sizes, normalize, parse_tire_size
 from .lite_response_templates import MISSING, SYNTHETIC_NOTE, number, product_line, public_text
 
 
 def _base(size):
-    # Prefixes indicate construction/use. They are preserved, never silently equated.
     return parse_tire_size(size)
 
 
@@ -15,8 +12,6 @@ class LiteInventoryHandler:
         self.retriever = inventory_retriever
 
     def load_products(self):
-        # All active rows are needed for correct minimum/maximum after Lite filters.
-        # Canonical filters are not changed; Lite validates formats independently.
         result = self.retriever.search("", entities={}, filters={},
                                        limit=100000, include_out_of_stock=True)
         if not result.available:
@@ -98,7 +93,6 @@ class LiteInventoryHandler:
         if filters["branch"]:
             branch = normalize(filters["branch"])
             products = [item for item in products if branch in [normalize(part) for part in (item.get("sucursal") or "").split(",")]]
-        # Availability queries do not advertise zero/unknown inventory as in stock.
         availability = intent in {"stock", "inventory_by_size", "inventory_by_brand", "inventory_by_type", "cheapest", "most_stock"}
         if availability:
             products = [item for item in products if item["stock"] is not None and item["stock"] > 0]

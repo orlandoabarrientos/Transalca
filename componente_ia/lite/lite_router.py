@@ -1,5 +1,3 @@
-"""Ordered rules only; no model, scoring contract or web lookup."""
-
 import re
 from .lite_entities import extract_entities, normalize
 

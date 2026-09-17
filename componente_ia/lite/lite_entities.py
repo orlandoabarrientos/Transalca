@@ -1,5 +1,3 @@
-"""Small, independent lexical parser. Never implies vehicle compatibility."""
-
 from __future__ import annotations
 
 import re
@@ -20,7 +18,6 @@ TIRE_BRANDS = ("Michelin", "Goodyear", "Bridgestone", "Firestone", "Pirelli", "C
                "Falken", "General", "Triangle", "Chengshan", "Linglong", "Roadcruza", "Sailun", "Westlake",
                "Goodride", "Roadmax", "Double Coin", "Durun", "Compasal", "Arivo", "Haida", "Grenlander", "Budget")
 NON_TIRE_BRANDS = ("Duracell", "Extrema", "Moura", "Duncan", "Titan", "ACDelco", "Dauer", "Gulf", "Mobil", "Valvoline", "Castrol", "Shell", "Motul", "Inca", "PDV")
-# Recognition vocabulary only. None of these names is a fitment/catalog claim.
 VEHICLES = {"Toyota": ("Hilux", "Corolla", "Fortuner", "Prado", "Yaris", "4Runner", "Land Cruiser", "Rav4"),
             "Chevrolet": ("Aveo", "Spark", "Optra", "Silverado", "Tahoe", "Corsa", "Cruze"),
             "Ford": ("Explorer", "Fiesta", "Focus", "Ranger", "F-150", "F150", "Escape", "Bronco"),
@@ -35,7 +32,6 @@ VEHICLES = {"Toyota": ("Hilux", "Corolla", "Fortuner", "Prado", "Yaris", "4Runne
 
 
 def parse_tire_size(value):
-    """Validate one whole size, rejecting malformed/truncated numeric tokens."""
     text = re.sub(r"\s+", "", str(value or "").upper()).replace("×", "X")
     match = _SIZE.fullmatch(text)
     if not match:
