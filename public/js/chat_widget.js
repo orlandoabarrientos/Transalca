@@ -1,35 +1,61 @@
-
 (function () {
     'use strict';
 
     const ASSISTANT_API_URL = window.TRANSALCA_ASSISTANT_API_URL || resolveAssistantApiUrl();
-    const WEBHOOK_URL = window.TRANSALCA_ASSISTANT_WEBHOOK_URL || '';
     const BOT_NAME = 'Asistente Transalca';
-    const BOT_AVATAR_URL = window.TRANSALCA_ASSISTANT_AVATAR_URL || '/public/img/chatbot_avatar.svg';
+    const MAX_MESSAGE_LENGTH = Number(window.TRANSALCA_ASSISTANT_MAX_MESSAGE_LENGTH || 1000);
     const REQUEST_TIMEOUT_MS = Number(window.TRANSALCA_ASSISTANT_TIMEOUT_MS || 12000);
     const SHOW_SUGGESTIONS = window.TRANSALCA_ASSISTANT_SHOW_SUGGESTIONS !== false
         && String(window.TRANSALCA_ASSISTANT_SHOW_SUGGESTIONS ?? 'true').toLowerCase() !== 'false';
-    const BRAND_WELCOME_MSG = 'Hola! Soy el asistente de Transalca Group. Cuentame que necesitas y te ayudo. Si quieres hablar con una persona real, me dices y te paso el numero.';
-    const WELCOME_MSG = 'Hola! Soy el asistente de Transalca Group. Cuentame que necesitas y te ayudo. Si quieres hablar con una persona real, me dices y te paso el numero.';
+    const STORAGE_SESSION_KEY = 'transalca_chat_session_id';
+    const STORAGE_MESSAGES_KEY = 'transalca_chat_messages';
+    const WELCOME_MSG = 'Hola. Soy el asistente de Transalca C.A. Puedo ayudarte con productos, servicios, mantenimiento, compras y pedidos.';
     const SUGGESTIONS = [
+        'Que cauchos son buenos para todo terreno?',
         'Consultar productos',
+        'Cambio de aceite',
         'Precios y promociones',
-        'Sucursales cercanas',
-        'Hablar con un asesor',
         'Estado de mi pedido'
     ];
 
     let sessionId = null;
     let isOpen = false;
+    let isSending = false;
     let messages = [];
+    let requestSeq = 0;
 
     function resolveAssistantApiUrl() {
-        const devPorts = ['3000', '5173', '5500', '5501'];
+        const devPorts = ['3000', '4173', '5173', '5500', '5501'];
         const isDetachedFrontend = window.location.protocol === 'file:' || devPorts.includes(window.location.port);
         if (isDetachedFrontend) {
             return 'http://127.0.0.1:5000/api/asistente/mensaje';
         }
         return '/api/asistente/mensaje';
+    }
+
+    function loadStoredState() {
+        try {
+            sessionId = window.localStorage.getItem(STORAGE_SESSION_KEY) || null;
+            const storedMessages = JSON.parse(window.localStorage.getItem(STORAGE_MESSAGES_KEY) || '[]');
+            messages = Array.isArray(storedMessages)
+                ? storedMessages.slice(-30).map((msg) => ({
+                    type: msg.type === 'user' ? 'user' : 'bot',
+                    text: String(msg.text || '').slice(0, 1000),
+                    sources: Array.isArray(msg.sources) ? msg.sources.slice(0, 4) : [],
+                    time: msg.time ? new Date(msg.time) : new Date()
+                }))
+                : [];
+        } catch (error) {
+            sessionId = null;
+            messages = [];
+        }
+    }
+
+    function saveStoredState() {
+        try {
+            if (sessionId) window.localStorage.setItem(STORAGE_SESSION_KEY, sessionId);
+            window.localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(messages.slice(-30)));
+        } catch (error) { }
     }
 
     function generateSessionId() {
@@ -38,7 +64,7 @@
         if (window.crypto && window.crypto.getRandomValues) {
             const arr = new Uint32Array(20);
             window.crypto.getRandomValues(arr);
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 20; i += 1) {
                 id += chars.charAt(arr[i] % chars.length);
             }
             return id;
@@ -49,71 +75,122 @@
         return id;
     }
 
+    function node(tag, className, textValue) {
+        const value = document.createElement(tag);
+        if (className) value.className = className;
+        if (textValue !== undefined) value.textContent = textValue;
+        return value;
+    }
+
+    function renderToggleButton(button, opened) {
+        button.replaceChildren();
+        const icon = node('i', opened ? 'bi bi-x-lg' : 'bi bi-chat-dots-fill');
+        button.appendChild(icon);
+        if (!opened) button.appendChild(node('span', 'badge-dot'));
+    }
+
+    function buildPanel() {
+        const panel = node('div', 'chat-panel');
+        panel.id = 'chatPanel';
+        panel.onclick = function (event) { event.stopPropagation(); };
+
+        const header = node('div', 'chat-header');
+        const info = node('div', 'chat-header-info');
+        info.append(node('div', 'chat-header-title', BOT_NAME), node('div', 'chat-header-sub', 'Asesor de cauchos y servicios'));
+        const actions = node('div', 'chat-header-actions');
+        const clear = node('button', '', 'Cerrar sesión');
+        clear.type = 'button';
+        clear.addEventListener('click', clearSession);
+        const close = node('button', 'chat-close-btn', '×');
+        close.type = 'button';
+        close.setAttribute('aria-label', 'Cerrar chat');
+        close.addEventListener('click', closeChat);
+        actions.append(clear, close);
+        header.append(info, actions);
+
+        const chips = node('div', 'chat-chips');
+        chips.id = 'chatChips';
+        const messageList = node('div', 'chat-messages');
+        messageList.id = 'chatMessages';
+        const inputArea = node('div', 'chat-input-area');
+        const input = node('input', 'chat-input');
+        input.id = 'chatInput';
+        input.type = 'text';
+        input.placeholder = 'Escribe tu pregunta…';
+        input.autocomplete = 'off';
+        input.maxLength = MAX_MESSAGE_LENGTH;
+        const send = node('button', 'chat-send-btn');
+        send.id = 'chatSendBtn';
+        send.type = 'button';
+        send.setAttribute('aria-label', 'Enviar mensaje');
+        send.appendChild(node('i', 'bi bi-send-fill'));
+        send.addEventListener('click', () => sendMessage(input.value));
+        inputArea.append(input, send);
+        panel.append(header, chips, messageList, inputArea);
+        return panel;
+    }
+
     function injectWidget() {
+        if (document.getElementById('chatToggleBtn')) return;
+        loadStoredState();
+
         const btn = document.createElement('button');
         btn.id = 'chatToggleBtn';
         btn.className = 'chat-toggle-btn';
-        btn.innerHTML = `<img src="${BOT_AVATAR_URL}" alt="Asistente Transalca" class="chat-toggle-avatar"><span class="badge-dot"></span>`;
+        btn.type = 'button';
+        btn.setAttribute('aria-label', 'Abrir asistente Transalca');
+        renderToggleButton(btn, false);
         btn.onclick = function (e) { e.stopPropagation(); toggleChat(); };
         document.body.appendChild(btn);
 
-        const panel = document.createElement('div');
-        panel.id = 'chatPanel';
-        panel.className = 'chat-panel';
-        panel.onclick = function (e) { e.stopPropagation(); };
-        panel.innerHTML = `
-            <div class="chat-header">
-                <div class="chat-header-left">
-                    <img src="${BOT_AVATAR_URL}" alt="" class="chat-header-avatar">
-                    <div class="chat-header-info">
-                        <div class="chat-header-title">${BOT_NAME}</div>
-                        <div class="chat-header-sub">Responde con IA</div>
-                    </div>
-                </div>
-                <div class="chat-header-actions">
-                    <button onclick="TransalcaChat.clearSession()">Cerrar sesión</button>
-                    <button class="chat-close-btn" onclick="TransalcaChat.close()">✕</button>
-                </div>
-            </div>
-            <div class="chat-chips" id="chatChips"></div>
-            <div class="chat-messages" id="chatMessages"></div>
-            <div class="chat-input-area">
-                <input type="text" class="chat-input" id="chatInput" placeholder="Escribe tu mensaje..." autocomplete="off">
-                <button class="chat-send-btn" id="chatSendBtn" onclick="TransalcaChat.send()"><i class="bi bi-send-fill"></i></button>
-            </div>
-        `;
+        const panel = buildPanel();
         document.body.appendChild(panel);
 
-        document.getElementById('chatInput').addEventListener('keydown', function (e) {
+        const input = document.getElementById('chatInput');
+        input.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 window.TransalcaChat.send();
             }
         });
 
+        input.addEventListener('input', function () {
+            if (input.value.length > MAX_MESSAGE_LENGTH) {
+                input.value = input.value.slice(0, MAX_MESSAGE_LENGTH);
+            }
+        });
+
         document.addEventListener('click', function (e) {
-            if (isOpen) {
-                const panel = document.getElementById('chatPanel');
-                const btn = document.getElementById('chatToggleBtn');
-                if (panel && btn && !panel.contains(e.target) && !btn.contains(e.target)) {
-                    closeChat();
-                }
+            if (!isOpen) return;
+            const currentPanel = document.getElementById('chatPanel');
+            const currentBtn = document.getElementById('chatToggleBtn');
+            if (currentPanel && currentBtn && !currentPanel.contains(e.target) && !currentBtn.contains(e.target)) {
+                closeChat();
             }
         });
 
         renderChips();
+        renderAllMessages();
+    }
+
+    function renderAllMessages() {
+        const container = document.getElementById('chatMessages');
+        if (!container) return;
+        container.replaceChildren();
+        messages.forEach((msg) => renderMessage(msg));
+        scrollToBottom();
     }
 
     function renderChips() {
         const container = document.getElementById('chatChips');
         if (!container) return;
-        container.innerHTML = '';
+        container.replaceChildren();
         if (!SHOW_SUGGESTIONS) {
             container.style.display = 'none';
             return;
         }
         container.style.display = '';
-        SUGGESTIONS.forEach(text => {
+        SUGGESTIONS.forEach((text) => {
             const chip = document.createElement('span');
             chip.className = 'chat-chip';
             chip.textContent = text;
@@ -133,39 +210,67 @@
     function openChat() {
         if (!sessionId) {
             sessionId = generateSessionId();
+            saveStoredState();
+        }
+        if (!messages.length) {
             messages = [];
-            addBotMessage(BRAND_WELCOME_MSG);
+            addBotMessage(WELCOME_MSG);
         }
         isOpen = true;
-        document.getElementById('chatPanel').classList.add('open');
-        document.getElementById('chatToggleBtn').classList.add('active');
-        document.getElementById('chatToggleBtn').innerHTML = '<i class="bi bi-x-lg"></i>';
+        document.getElementById('chatPanel')?.classList.add('open');
+        const btn = document.getElementById('chatToggleBtn');
+        if (btn) {
+            btn.classList.add('active');
+            btn.setAttribute('aria-label', 'Cerrar asistente Transalca');
+            renderToggleButton(btn, true);
+        }
         setTimeout(() => {
             document.getElementById('chatInput')?.focus();
-        }, 350);
+        }, 300);
     }
 
     function closeChat() {
         isOpen = false;
-        document.getElementById('chatPanel').classList.remove('open');
-        document.getElementById('chatToggleBtn').classList.remove('active');
-        document.getElementById('chatToggleBtn').innerHTML = `<img src="${BOT_AVATAR_URL}" alt="Asistente Transalca" class="chat-toggle-avatar"><span class="badge-dot"></span>`;
+        document.getElementById('chatPanel')?.classList.remove('open');
+        const btn = document.getElementById('chatToggleBtn');
+        if (btn) {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-label', 'Abrir asistente Transalca');
+            renderToggleButton(btn, false);
+        }
     }
 
     function sendMessage(text) {
+        if (isSending) return;
         if (!text || !text.trim()) return;
+
         const msg = text.trim();
+        if (msg.length > MAX_MESSAGE_LENGTH) {
+            addBotMessage('La pregunta no puede superar 255 caracteres.');
+            return;
+        }
 
         addUserMessage(msg);
-        document.getElementById('chatInput').value = '';
+        const input = document.getElementById('chatInput');
+        if (input) input.value = '';
+        setSending(true);
         showTyping();
         sendToAssistant(msg);
+    }
+
+    function setSending(value) {
+        isSending = value;
+        const btn = document.getElementById('chatSendBtn');
+        const input = document.getElementById('chatInput');
+        if (btn) btn.disabled = value;
+        if (input) input.disabled = value;
     }
 
     function addUserMessage(text) {
         const msg = { type: 'user', text, time: new Date() };
         messages.push(msg);
         renderMessage(msg);
+        saveStoredState();
         scrollToBottom();
     }
 
@@ -173,39 +278,29 @@
         const msg = { type: 'bot', text, sources: Array.isArray(sources) ? sources.slice(0, 4) : [], time: new Date() };
         messages.push(msg);
         renderMessage(msg);
+        saveStoredState();
         scrollToBottom();
     }
 
     function renderMessage(msg) {
         const container = document.getElementById('chatMessages');
         if (!container) return;
-
         const div = document.createElement('div');
         div.className = `chat-msg ${msg.type}`;
 
-        const text = document.createElement('span');
+        const text = document.createElement('div');
         text.textContent = msg.text;
+
         const time = document.createElement('div');
         time.className = 'chat-msg-time';
         time.textContent = msg.time.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+
         div.appendChild(text);
         if (msg.type === 'bot' && Array.isArray(msg.sources) && msg.sources.length) {
             div.appendChild(renderSources(msg.sources));
         }
         div.appendChild(time);
-        if (msg.type === 'bot') {
-            const row = document.createElement('div');
-            row.className = 'chat-msg-row';
-            const avatar = document.createElement('img');
-            avatar.className = 'chat-msg-avatar';
-            avatar.src = BOT_AVATAR_URL;
-            avatar.alt = '';
-            row.appendChild(avatar);
-            row.appendChild(div);
-            container.appendChild(row);
-        } else {
-            container.appendChild(div);
-        }
+        container.appendChild(div);
     }
 
     function renderSources(sources) {
@@ -246,11 +341,11 @@
 
     function showTyping() {
         const container = document.getElementById('chatMessages');
-        if (!container) return;
+        if (!container || document.getElementById('chatTyping')) return;
         const typing = document.createElement('div');
-        typing.className = 'chat-msg-row';
+        typing.className = 'chat-typing';
         typing.id = 'chatTyping';
-        typing.innerHTML = `<img class="chat-msg-avatar" src="${BOT_AVATAR_URL}" alt=""><div class="chat-typing"><span></span><span></span><span></span></div>`;
+        typing.append(node('span'), node('span'), node('span'));
         container.appendChild(typing);
         scrollToBottom();
     }
@@ -261,106 +356,86 @@
     }
 
     async function sendToAssistant(message) {
-        if (ASSISTANT_API_URL) {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-            try {
-                const response = await fetch(ASSISTANT_API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    signal: controller.signal,
-                    body: JSON.stringify({
-                        session_id: sessionId,
-                        id_aleatorio: sessionId,
-                        mensaje: message,
-                        expected_response: 'json',
-                        timestamp: new Date().toISOString(),
-                        source: 'transalca_chat'
-                    })
-                });
-
-                hideTyping();
-
-                if (response.ok) {
-                    const data = await response.json();
-                    const botReply = data.respuesta || data.message || data.output || data.text || 'Recibido. Un asesor te contactará pronto.';
-                    addBotMessage(botReply, data.sources || []);
-                } else {
-                    addBotMessage('Disculpa, hubo un problema al procesar tu solicitud. Intenta de nuevo o llámanos al +58 424-5026456.');
-                }
-                clearTimeout(timeout);
-                return;
-            } catch (error) {
-                clearTimeout(timeout);
-                hideTyping();
-                if (error && error.name === 'AbortError') {
-                    addBotMessage('La consulta tardo demasiado y fue cancelada. Intenta con una pregunta mas puntual o prueba de nuevo.');
-                } else {
-                    addBotMessage('No se pudo conectar con el asistente. Por favor intenta más tarde o contáctanos directamente al +58 424-5026456.');
-                }
-                return;
-            }
-        }
-
-        await sendToWebhook(message);
-    }
-
-    async function sendToWebhook(message) {
-        const payload = {
-            session_id: sessionId,
-            id_aleatorio: sessionId,
-            mensaje: message,
-            expected_response: 'json',
-            timestamp: new Date().toISOString(),
-            source: 'transalca_chat'
-        };
-
-        if (!WEBHOOK_URL) {
-            setTimeout(() => {
-                hideTyping();
-                addBotMessage('Gracias por tu mensaje. En este momento nuestro asistente está siendo configurado. Mientras tanto, puedes contactarnos al +58 424-5026456 o visitar nuestras sucursales. ¡Estamos para servirte!');
-            }, 1500);
-            return;
-        }
-
+        const currentRequest = requestSeq + 1;
+        requestSeq = currentRequest;
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
         try {
-            const response = await fetch(WEBHOOK_URL, {
+            const response = await fetch(ASSISTANT_API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
                 signal: controller.signal,
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    mensaje: message,
+                    history: messages.slice(-7).map((msg) => ({ type: msg.type, text: msg.text })),
+                    source: 'transalca_chat'
+                })
             });
 
-            hideTyping();
+            if (currentRequest !== requestSeq) return;
+
+            const contentType = response.headers.get('content-type') || '';
+            const rawBody = await response.text();
+            let data = null;
+            if (contentType.includes('application/json')) {
+                try {
+                    data = rawBody ? JSON.parse(rawBody) : {};
+                } catch (error) {
+                    data = null;
+                }
+            }
 
             if (response.ok) {
-                const data = await response.json();
-                const botReply = data.respuesta || data.message || data.output || data.text || 'Recibido. Un asesor te contactará pronto.';
-                addBotMessage(botReply, data.sources || []);
+                if (!data) {
+                    addBotMessage('El asistente respondio, pero el servidor no devolvio JSON valido.');
+                    return;
+                }
+                if (data.session_id) {
+                    sessionId = String(data.session_id);
+                    saveStoredState();
+                }
+                addBotMessage(data.respuesta || data.message || 'Recibido.', data.sources || []);
             } else {
-                addBotMessage('Disculpa, hubo un problema al procesar tu solicitud. Intenta de nuevo o llámanos al +58 424-5026456.');
+                if (!data) {
+                    addBotMessage(`El servidor respondio HTTP ${response.status}, pero no devolvio JSON valido.`);
+                    return;
+                }
+                const requestId = data.request_id ? ` Codigo: ${data.request_id}.` : '';
+                if (response.status === 400) {
+                    addBotMessage((data.message || 'La solicitud no es valida.') + requestId);
+                } else if (response.status === 404) {
+                    addBotMessage('El endpoint del asistente no esta disponible.' + requestId);
+                } else if (response.status >= 500) {
+                    addBotMessage('El asistente tuvo un error interno.' + requestId);
+                } else {
+                    addBotMessage((data.message || `No se pudo procesar la pregunta. HTTP ${response.status}.`) + requestId);
+                }
             }
-            clearTimeout(timeout);
         } catch (error) {
-            clearTimeout(timeout);
-            hideTyping();
             if (error && error.name === 'AbortError') {
                 addBotMessage('La consulta tardo demasiado y fue cancelada. Intenta con una pregunta mas puntual o prueba de nuevo.');
+            } else if (!navigator.onLine) {
+                addBotMessage('No hay conexion de red en este momento.');
             } else {
-                addBotMessage('No se pudo conectar con el asistente. Por favor intenta más tarde o contáctanos directamente al +58 424-5026456.');
+                addBotMessage('No pude conectar con el endpoint del asistente. Verifica la red o intenta de nuevo.');
             }
+        } finally {
+            clearTimeout(timeout);
+            hideTyping();
+            setSending(false);
         }
     }
 
     function clearSession() {
-        sessionId = null;
-        messages = [];
-        const container = document.getElementById('chatMessages');
-        if (container) container.innerHTML = '';
         sessionId = generateSessionId();
-        addBotMessage(BRAND_WELCOME_MSG);
+        messages = [];
+        saveStoredState();
+        const container = document.getElementById('chatMessages');
+        if (container) container.replaceChildren();
+        addBotMessage(WELCOME_MSG);
     }
 
     window.TransalcaChat = {
@@ -370,7 +445,7 @@
         },
         close: closeChat,
         open: openChat,
-        clearSession: clearSession
+        clearSession
     };
 
     if (document.readyState === 'loading') {
@@ -378,5 +453,4 @@
     } else {
         injectWidget();
     }
-
 })();

@@ -1,8 +1,11 @@
-from flask import Blueprint, request, jsonify, session, send_from_directory
+from flask import Blueprint, request, jsonify, session, send_from_directory, redirect
 from model.auth_model import AuthModel
+from model.mail_service import MailService
+from config.config import APP_BASE_URL
 
 from config.validation import (
     LoginThrottle,
+    RecoveryThrottle,
     ValidationError,
     normalize_cedula,
     normalize_email,
@@ -12,6 +15,7 @@ auth_bp = Blueprint('auth', __name__)
 model = AuthModel()
 
 login_throttle = LoginThrottle()
+recovery_throttle = RecoveryThrottle()
 
 CREDENTIAL_FIELD = 'pass' + 'word'
 
@@ -29,6 +33,14 @@ def register_page():
 @auth_bp.route('/recover', methods=['GET'])
 def recover_page():
     return send_from_directory('views/auth', 'recover.html')
+
+
+@auth_bp.route('/reset', methods=['GET'])
+def reset_page():
+    token = (request.args.get('token') or '').strip()
+    if not token:
+        return redirect('/auth/login')
+    return send_from_directory('views/auth', 'reset.html')
 
 
 @auth_bp.route('/do_login', methods=['POST'])
@@ -113,9 +125,34 @@ def check_unique():
 def do_recover():
     try:
         data = request.get_json() or {}
-        token = model.ejecutar("create_recovery_token", data.get('email'))
+        email = (data.get('email') or '').strip()
+        client_ip = request.remote_addr or ''
+        allowed, remaining, throttle_msg = recovery_throttle.check(client_ip, email)
+        if not allowed:
+            return jsonify({
+                "status": "error",
+                "message": throttle_msg,
+                "cooldown": remaining
+            }), 429
+        token = model.ejecutar("create_recovery_token", email)
         if token:
-            return jsonify({"status": "success", "message": "Se ha generado un enlace de recuperacion.", "token": token})
+            user = model.ejecutar("get_user_by_email", email)
+            user_name = user.get('nombre') if user else 'Usuario'
+            reset_url = f"{APP_BASE_URL}/auth/reset?token={token}"
+            MailService.send_recovery_email(email, user_name, reset_url)
+            cooldown, count = recovery_throttle.register_success(client_ip, email)
+            if count == recovery_throttle.MAX_TIER1_ATTEMPTS:
+                msg = "Se ha enviado el enlace de recuperacion a su correo electronico. Ha alcanzado el limite de 5 envios; debera esperar 1 hora para un nuevo intento."
+            elif count >= recovery_throttle.MAX_TIER2_ATTEMPTS:
+                msg = "Se ha enviado el enlace de recuperacion a su correo electronico. Ha alcanzado el limite maximo de envios; debera esperar 24 horas para un nuevo intento."
+            else:
+                msg = "Se ha enviado un enlace de recuperacion a su correo electronico."
+            return jsonify({
+                "status": "success",
+                "message": msg,
+                "cooldown": cooldown,
+                "attempt": count
+            })
         return jsonify({"status": "error", "message": "Correo no encontrado.", "errors": {"email": "No existe una cuenta con ese correo."}}), 404
     except ValidationError as e:
         return jsonify({"status": "error", "message": e.message, "errors": e.errors}), 400
@@ -127,7 +164,12 @@ def do_recover():
 def do_reset():
     try:
         data = request.get_json() or {}
-        if model.ejecutar("reset_password", data.get('token', ''), data.get(CREDENTIAL_FIELD)):
+        token = (data.get('token') or '').strip()
+        password = data.get(CREDENTIAL_FIELD) or data.get('password') or ''
+        confirm_password = data.get('confirm_password') or data.get('confirmPassword')
+        if not token:
+            return jsonify({"status": "error", "message": "Token no proporcionado o invalido."}), 400
+        if model.ejecutar("reset_password", token, password, confirm_password):
             return jsonify({"status": "success", "message": "Contrasena modificada correctamente."})
         return jsonify({"status": "error", "message": "Token invalido o expirado."}), 400
     except ValidationError as e:

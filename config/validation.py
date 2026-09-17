@@ -212,3 +212,71 @@ class LoginThrottle:
 
     def clear(self, ip, email):
         self._attempts.pop(self.key(ip, email), None)
+
+
+class RecoveryThrottle:
+    COOLDOWN_NORMAL = 300
+    COOLDOWN_TIER1 = 3600
+    COOLDOWN_TIER2 = 86400
+    MAX_TIER1_ATTEMPTS = 5
+    MAX_TIER2_ATTEMPTS = 10
+
+    def __init__(self):
+        self._records = {}
+
+    def key(self, ip, email):
+        clean_email = clean_string(email).lower()
+        return clean_email or (ip or 'unknown')
+
+    def check(self, ip, email):
+        k = self.key(ip, email)
+        if not k:
+            return True, 0, ""
+        record = self._records.get(k)
+        if not record:
+            return True, 0, ""
+        now = time.time()
+        locked_until = record.get('locked_until', 0)
+        if now < locked_until:
+            remaining = int(locked_until - now) + 1
+            count = record.get('count', 0)
+            if count >= self.MAX_TIER2_ATTEMPTS:
+                msg = "Ha alcanzado el limite maximo de envios. Por favor espere 24 horas antes de intentar nuevamente."
+            elif count >= self.MAX_TIER1_ATTEMPTS:
+                msg = "Ha alcanzado el limite de 5 envios. Por favor espere 1 hora antes de intentar nuevamente."
+            else:
+                msg = "Debe esperar 5 minutos antes de volver a enviar un enlace."
+            return False, remaining, msg
+        return True, 0, ""
+
+    def register_success(self, ip, email):
+        k = self.key(ip, email)
+        now = time.time()
+        record = self._records.get(k)
+        if not record:
+            count = 1
+        else:
+            if record.get('count', 0) >= self.MAX_TIER2_ATTEMPTS and now >= record.get('locked_until', 0):
+                count = 1
+            else:
+                count = record.get('count', 0) + 1
+
+        if count == self.MAX_TIER1_ATTEMPTS:
+            cooldown = self.COOLDOWN_TIER1
+        elif count >= self.MAX_TIER2_ATTEMPTS:
+            cooldown = self.COOLDOWN_TIER2
+        else:
+            cooldown = self.COOLDOWN_NORMAL
+
+        self._records[k] = {
+            'count': count,
+            'last_sent': now,
+            'locked_until': now + cooldown
+        }
+        return cooldown, count
+
+    def clear(self, ip=None, email=None):
+        if email or ip:
+            self._records.pop(self.key(ip, email), None)
+        else:
+            self._records.clear()

@@ -56,7 +56,6 @@ skills-lock.json
 
 /docs
 
-# Reproducible local test/build debris (never candidate packs or evidence).
 .pytest_cache/
 .pytest_cache*/
 .mypy_cache/
@@ -69,3 +68,4 @@ htmlcov/
 *.rej
 .tmp*/
 .tmp_pytest*/
+

@@ -24,6 +24,7 @@ from routes import register_routes
 from model.bcv_sync_model import start_bcv_auto_sync_scheduler
 from model.vehicle_log_model import start_bitacora_scheduler
 from model.backup_model import start_backup_scheduler
+from model.credit_model import start_credit_sync_scheduler
 
 app = Flask(__name__, static_folder='public', template_folder='views')
 app.secret_key = SECRET_KEY
@@ -213,4 +214,5 @@ if __name__ == '__main__':
         start_bcv_auto_sync_scheduler()
         start_bitacora_scheduler()
         start_backup_scheduler()
+        start_credit_sync_scheduler()
     app.run(debug=APP_DEBUG, host=APP_HOST, port=APP_PORT)

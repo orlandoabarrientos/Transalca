@@ -7,13 +7,11 @@ from config.validation import ValidationError
 
 
 class TestCreditModelHelpers:
-    """Pruebas unitarias para métodos auxiliares del modelo de crédito."""
 
-    # DATA PROVIDER: Pruebas de conversión de montos a Decimal (as_money)
     @pytest.mark.parametrize("input_val, expected_decimal", [
         (100, Decimal("100.00")),
         ("50.5", Decimal("50.50")),
-        ("1200.758", Decimal("1200.76")),   # Redondeo bancario a 2 decimales
+        ("1200.758", Decimal("1200.76")),
         (None, Decimal("0.00")),
         ("invalido", Decimal("0.00")),
     ])
@@ -21,12 +19,11 @@ class TestCreditModelHelpers:
         model = CreditModel()
         assert model._as_money(input_val) == expected_decimal
 
-    # DATA PROVIDER: Pruebas de cálculo de estado según saldo y fecha de vencimiento
     @pytest.mark.parametrize("saldo, days_offset, expected_estado", [
-        (0.00, 10, "pagado"),              # Saldo cero -> pagado
-        (-5.00, -10, "pagado"),            # Saldo negativo -> pagado
-        (150.00, -1, "vencido"),            # Saldo > 0 y fecha de vencimiento anterior a hoy -> vencido
-        (150.00, 10, "activo"),            # Saldo > 0 y fecha futura -> activo
+        (0.00, 10, "pagado"),
+        (-5.00, -10, "pagado"),
+        (150.00, -1, "vencido"),
+        (150.00, 10, "activo"),
     ])
     def test_estado_por_saldo_data_provider(self, saldo, days_offset, expected_estado):
         model = CreditModel()
@@ -35,16 +32,14 @@ class TestCreditModelHelpers:
 
 
 class TestCreditModelValidation:
-    """Pruebas unitarias con Data Provider (@pytest.mark.parametrize) para validaciones de crédito."""
 
-    # DATA PROVIDER: Validaciones de monto positivo
     @pytest.mark.parametrize("amount, is_valid", [
         (100, True),
         ("250.75", True),
-        (0, False),         # Monto cero no es permitido
-        (-50, False),       # Monto negativo no es permitido
-        ("abc", False),     # Formato inválido
-        ("", False),        # Vacío
+        (0, False),
+        (-50, False),
+        ("abc", False),
+        ("", False),
     ])
     def test_validate_amount_data_provider(self, amount, is_valid):
         model = CreditModel()
@@ -71,7 +66,6 @@ class TestCreditModelValidation:
 
 
 class TestCreditModelDatabaseOperations:
-    """Pruebas unitarias con mocks de base de datos para operaciones de crédito."""
 
     @patch.object(CreditModel, "fetch_all")
     @patch.object(CreditModel, "_safe_sync_credit_statuses")
@@ -125,3 +119,119 @@ class TestCreditModelDatabaseOperations:
             model.ejecutar("accion_inexistente")
 
         assert "Accion no permitida" in str(exc_info.value)
+
+
+class TestCreditNotifications:
+
+    @patch("model.mail_service.MailService.send_credit_reminder_7d")
+    @patch.object(CreditModel, "update")
+    @patch.object(CreditModel, "fetch_one", return_value={"monto": 45.00})
+    @patch.object(CreditModel, "fetch_all")
+    def test_sync_credit_7d_notification(self, mock_fetch_all, mock_fetch_one, mock_update, mock_mail):
+        model = CreditModel()
+        mock_fetch_all.return_value = [{
+            "id_credito": 1,
+            "id": 101,
+            "estado_credito": "activo",
+            "fecha_vencimiento_credito": date.today() + timedelta(days=6),
+            "monto_deuda": Decimal("500.00"),
+            "notificacion_7d": 0,
+            "notificacion_2d": 0,
+            "notificacion_vencido": 0,
+            "email": "empresa@correo.com",
+            "razon_social": "Corporacion ABC",
+            "rif": "J-12345678-0",
+            "tipo_cliente": "juridica"
+        }]
+
+        model._sync_credit_statuses()
+
+        mock_mail.assert_called_once()
+        mock_update.assert_called_with(
+            "transalca",
+            "UPDATE creditos_orden_venta SET notificacion_7d = 1 WHERE id_credito = %s",
+            (1,)
+        )
+
+    @patch("model.mail_service.MailService.send_credit_alert_2d")
+    @patch.object(CreditModel, "update")
+    @patch.object(CreditModel, "fetch_one", return_value={"monto": 45.00})
+    @patch.object(CreditModel, "fetch_all")
+    def test_sync_credit_2d_notification(self, mock_fetch_all, mock_fetch_one, mock_update, mock_mail):
+        model = CreditModel()
+        mock_fetch_all.return_value = [{
+            "id_credito": 2,
+            "id": 102,
+            "estado_credito": "activo",
+            "fecha_vencimiento_credito": date.today() + timedelta(days=1),
+            "monto_deuda": Decimal("850.00"),
+            "notificacion_7d": 1,
+            "notificacion_2d": 0,
+            "notificacion_vencido": 0,
+            "email": "empresa2@correo.com",
+            "razon_social": "Distribuidora XYZ",
+            "rif": "J-87654321-0",
+            "tipo_cliente": "juridica"
+        }]
+
+        model._sync_credit_statuses()
+
+        mock_mail.assert_called_once()
+        mock_update.assert_called_with(
+            "transalca",
+            "UPDATE creditos_orden_venta SET notificacion_2d = 1, notificacion_7d = 1 WHERE id_credito = %s",
+            (2,)
+        )
+
+    @patch("model.mail_service.MailService.send_credit_expired")
+    @patch.object(CreditModel, "update")
+    @patch.object(CreditModel, "fetch_one", return_value={"monto": 45.00})
+    @patch.object(CreditModel, "fetch_all")
+    def test_sync_credit_expired_notification(self, mock_fetch_all, mock_fetch_one, mock_update, mock_mail):
+        model = CreditModel()
+        mock_fetch_all.return_value = [{
+            "id_credito": 3,
+            "id": 103,
+            "estado_credito": "activo",
+            "fecha_vencimiento_credito": date.today() - timedelta(days=2),
+            "monto_deuda": Decimal("300.00"),
+            "notificacion_7d": 1,
+            "notificacion_2d": 1,
+            "notificacion_vencido": 0,
+            "email": "empresa3@correo.com",
+            "razon_social": "Inversiones Norte",
+            "rif": "J-11223344-5",
+            "tipo_cliente": "juridica"
+        }]
+
+        model._sync_credit_statuses()
+
+        mock_mail.assert_called_once()
+        update_calls = [c[0][1] for c in mock_update.call_args_list]
+        assert any("estado_credito = 'vencido'" in sql for sql in update_calls)
+        assert any("notificacion_vencido = 1" in sql for sql in update_calls)
+
+    @patch("model.mail_service.MailService.send_credit_reminder_7d")
+    @patch.object(CreditModel, "update")
+    @patch.object(CreditModel, "fetch_one", return_value=None)
+    @patch.object(CreditModel, "fetch_all")
+    def test_sync_credit_ignores_non_juridica(self, mock_fetch_all, mock_fetch_one, mock_update, mock_mail):
+        model = CreditModel()
+        mock_fetch_all.return_value = [{
+            "id_credito": 4,
+            "id": 104,
+            "estado_credito": "activo",
+            "fecha_vencimiento_credito": date.today() + timedelta(days=5),
+            "monto_deuda": Decimal("150.00"),
+            "notificacion_7d": 0,
+            "notificacion_2d": 0,
+            "notificacion_vencido": 0,
+            "email": "persona@correo.com",
+            "razon_social": "Pedro Perez",
+            "rif": "V-12345678",
+            "tipo_cliente": "natural"
+        }]
+
+        model._sync_credit_statuses()
+
+        mock_mail.assert_not_called()

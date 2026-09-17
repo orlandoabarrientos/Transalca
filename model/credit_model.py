@@ -1,13 +1,11 @@
 import logging
-import smtplib
+import threading
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
-from config.config import MAIL_PASSWORD, MAIL_PORT, MAIL_SERVER, MAIL_USERNAME
 from config.validation import ValidationError
 from model.connection import Connection
+from model.mail_service import MailService
 from model.notification_model import NotificationModel
 
 logger = logging.getLogger(__name__)
@@ -98,35 +96,7 @@ class CreditModel(Connection):
             self.notifications.ejecutar("create_bulk", notifications)
 
     def _send_expired_email(self, to_email, company_name, order_id, due_date):
-        if not to_email or not MAIL_USERNAME or not MAIL_PASSWORD:
-            return False
-        subject = f"Crédito vencido orden #{order_id}"
-        plain = (
-            f"Estimado cliente, el crédito de {company_name} asociado a la orden #{order_id} "
-            f"venció el {due_date.strftime('%d/%m/%Y')}. Por favor comuníquese con Transalca C.A."
-        )
-        html = (
-            "<div style='font-family:Arial,sans-serif;color:#1f2937'>"
-            "<h2 style='color:#e95d0f'>Crédito vencido</h2>"
-            f"<p>Estimado cliente, el crédito de <strong>{company_name}</strong> asociado a la "
-            f"orden <strong>#{order_id}</strong> venció el <strong>{due_date.strftime('%d/%m/%Y')}</strong>.</p>"
-            "<p>Por favor comuníquese con Transalca C.A. para regularizar el pago.</p>"
-            "</div>"
-        )
-        try:
-            msg = MIMEMultipart("alternative")
-            msg["From"] = MAIL_USERNAME
-            msg["To"] = to_email
-            msg["Subject"] = subject
-            msg.attach(MIMEText(plain, "plain", "utf-8"))
-            msg.attach(MIMEText(html, "html", "utf-8"))
-            with smtplib.SMTP(MAIL_SERVER, int(MAIL_PORT), timeout=10) as server:
-                server.starttls()
-                server.login(MAIL_USERNAME, MAIL_PASSWORD)
-                server.sendmail(MAIL_USERNAME, [to_email], msg.as_string())
-            return True
-        except Exception:
-            return False
+        return MailService.send_credit_expired(to_email, company_name, order_id, Decimal("0.00"), due_date, 0)
 
     def _sync_credit_statuses(self):
         rows = self.fetch_all("transalca",
@@ -135,20 +105,32 @@ class CreditModel(Connection):
             "COALESCE(cr.notificacion_7d, 0) AS notificacion_7d, "
             "COALESCE(cr.notificacion_2d, 0) AS notificacion_2d, "
             "COALESCE(cr.notificacion_vencido, 0) AS notificacion_vencido, "
-            "c.correo_cliente AS email, c.nombre_cliente AS razon_social, c.identificador_cliente AS rif "
+            "c.correo_cliente AS email, c.nombre_cliente AS razon_social, c.identificador_cliente AS rif, c.tipo_cliente "
             "FROM creditos_orden_venta cr "
             "INNER JOIN ordenes_venta ov ON ov.id_orden_venta = cr.orden_venta_id "
             "INNER JOIN cliente c ON c.identificador_cliente = ov.cliente_cedula "
             "WHERE cr.estado_credito NOT IN ('pagado', 'anulado')")
         today = self._today()
+        rate_row = self.fetch_one("transalca",
+            "SELECT monto FROM tasas_cambio WHERE tipo_tasa_cambio = 'bcv' ORDER BY fecha_tasa_cambio DESC, id_tasa_cambio DESC LIMIT 1")
+        if not rate_row:
+            rate_row = self.fetch_one("transalca",
+                "SELECT monto FROM tasas_cambio ORDER BY fecha_tasa_cambio DESC, id_tasa_cambio DESC LIMIT 1")
+        tasa_bcv = Decimal(str(rate_row['monto'])) if rate_row and rate_row.get('monto') else None
+
         for row in rows:
-            if self._as_money(row.get('monto_deuda')) <= 0:
+            monto_deuda = self._as_money(row.get('monto_deuda'))
+            if monto_deuda <= 0:
                 continue
             due_date = self._as_date(row.get('fecha_vencimiento_credito'))
             if not due_date:
                 continue
             days_left = (due_date - today).days
-            company = row.get('razon_social') or row.get('rif') or 'Empresa'
+            company = (row.get('razon_social') or row.get('rif') or 'Empresa').strip()
+            email = (row.get('email') or '').strip()
+            is_juridica = (str(row.get('tipo_cliente') or '').strip().lower() == 'juridica')
+            monto_bs = (monto_deuda * tasa_bcv).quantize(Decimal("0.01")) if tasa_bcv else None
+
             if days_left <= 0:
                 if row.get('estado_credito') != 'vencido':
                     self.update("transalca",
@@ -160,26 +142,32 @@ class CreditModel(Connection):
                         f"El crédito de {company} para la orden #{row['id']} venció.",
                         'alta'
                     )
-                    self._send_expired_email(row.get('email'), company, row['id'], due_date)
+                    if is_juridica and email:
+                        MailService.send_credit_expired(email, company, row['id'], monto_deuda, due_date, abs(days_left), monto_bs)
                     self.update("transalca",
-                        "UPDATE creditos_orden_venta SET notificacion_vencido = 1 WHERE id_credito = %s",
+                        "UPDATE creditos_orden_venta SET notificacion_vencido = 1, notificacion_2d = 1, notificacion_7d = 1 WHERE id_credito = %s",
                         (row['id_credito'],))
                 continue
+
             if days_left <= 2 and not int(row.get('notificacion_2d') or 0):
                 self._notify_credit_users(
                     "Crédito por vencer",
                     f"El crédito de {company} para la orden #{row['id']} vence en {days_left} días.",
                     'alta'
                 )
+                if is_juridica and email:
+                    MailService.send_credit_alert_2d(email, company, row['id'], monto_deuda, due_date, days_left, monto_bs)
                 self.update("transalca",
-                    "UPDATE creditos_orden_venta SET notificacion_2d = 1 WHERE id_credito = %s",
+                    "UPDATE creditos_orden_venta SET notificacion_2d = 1, notificacion_7d = 1 WHERE id_credito = %s",
                     (row['id_credito'],))
-            if days_left <= 7 and not int(row.get('notificacion_7d') or 0):
+            elif days_left <= 7 and not int(row.get('notificacion_7d') or 0):
                 self._notify_credit_users(
                     "Crédito por vencer",
                     f"El crédito de {company} para la orden #{row['id']} vence en {days_left} días.",
                     'media'
                 )
+                if is_juridica and email:
+                    MailService.send_credit_reminder_7d(email, company, row['id'], monto_deuda, due_date, days_left, monto_bs)
                 self.update("transalca",
                     "UPDATE creditos_orden_venta SET notificacion_7d = 1 WHERE id_credito = %s",
                     (row['id_credito'],))
@@ -537,6 +525,7 @@ class CreditModel(Connection):
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {
             "sync_credit_statuses": self._sync_credit_statuses,
+            "safe_sync_credit_statuses": self._safe_sync_credit_statuses,
             "get_all": self._get_all,
             "get_stats": self._get_stats,
             "update_status": self._update_status,
@@ -553,3 +542,48 @@ class CreditModel(Connection):
         if accion not in acciones:
             raise ValueError("Accion no permitida")
         return acciones[accion](*args, **kwargs)
+
+
+class CreditSyncScheduler:
+    def __init__(self, interval_seconds=3600):
+        self.interval_seconds = max(60, int(interval_seconds))
+        self._stop_event = threading.Event()
+        self._thread = None
+        self._lock = threading.Lock()
+        self._last_completed_date = None
+
+    def start(self):
+        with self._lock:
+            if self._thread and self._thread.is_alive():
+                return False
+            self._stop_event.clear()
+            self._thread = threading.Thread(target=self._run_loop, name='credit-sync', daemon=True)
+            self._thread.start()
+            return True
+
+    def stop(self):
+        self._stop_event.set()
+
+    def _run_loop(self):
+        self._run_once()
+        while not self._stop_event.wait(self.interval_seconds):
+            self._run_once()
+
+    def _run_once(self):
+        today = datetime.now().date().isoformat()
+        if self._last_completed_date == today:
+            return
+        try:
+            model = CreditModel()
+            model.ejecutar("safe_sync_credit_statuses")
+            self._last_completed_date = today
+            logger.info("Sincronizacion automatica diaria de creditos ejecutada para %s", today)
+        except Exception:
+            logger.exception("Error en sincronizacion automatica de creditos")
+
+
+_credit_scheduler = CreditSyncScheduler()
+
+
+def start_credit_sync_scheduler():
+    return _credit_scheduler.start()

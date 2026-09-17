@@ -141,7 +141,9 @@ def register_page_routes(app):
 
     @app.route('/auth/<page>')
     def auth_page(page):
-        if page in ['login', 'register', 'recover']:
+        if page in ['login', 'register', 'recover', 'reset']:
+            if page == 'reset' and not (request.args.get('token') or '').strip():
+                return redirect('/auth/login')
             return send_from_directory('views/auth', f'{page}.html')
         return redirect('/auth/login')
 

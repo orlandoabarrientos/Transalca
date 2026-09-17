@@ -130,6 +130,10 @@ class AuthModel(Connection):
             "SELECT id FROM usuarios WHERE cedula = %s", (cedula,))
         return result is not None
 
+    def _get_user_by_email(self, email):
+        return self.fetch_one("mantenimiento",
+            "SELECT id, nombre, apellido, email FROM usuarios WHERE email = %s AND estado = 1", (email,))
+
     def _create_recovery_token(self, email):
         errors = {}
         email = normalize_email(errors, email, 'email', required=True)
@@ -151,10 +155,12 @@ class AuthModel(Connection):
             "SELECT * FROM tokens_recuperacion WHERE token = %s AND usado = 0 AND expira > NOW()", (token,))
         return result
 
-    def _reset_password(self, token, new_password):
+    def _reset_password(self, token, new_password, confirm_password=None):
         errors = {}
         if not new_password or not re.match(CREDENTIAL_PATTERN, new_password or ''):
             errors[CREDENTIAL_FIELD] = 'La contrasena debe tener minimo 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial.'
+        if confirm_password is not None and new_password != confirm_password:
+            errors[CONFIRM_CREDENTIAL_FIELD] = 'Las contrasenas no coinciden.'
         if errors:
             raise ValidationError(errors)
         token_data = self._verify_recovery_token(token)
@@ -214,6 +220,7 @@ class AuthModel(Connection):
             "register_employee": self._register_employee,
             "email_exists": self._email_exists,
             "cedula_exists": self._cedula_exists,
+            "get_user_by_email": self._get_user_by_email,
             "create_recovery_token": self._create_recovery_token,
             "verify_recovery_token": self._verify_recovery_token,
             "reset_password": self._reset_password,

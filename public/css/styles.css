@@ -2012,40 +2012,195 @@ a:hover {
 
 .auth-login-card .input-group-text,
 .auth-login-card .form-control,
+.auth-card .input-group-text,
+.auth-card .form-control,
 .auth-password-toggle {
     min-height: 44px;
     border-color: #E2E8F0;
     background: #F8FAFC;
 }
 
-.auth-login-card .input-group-text {
+.auth-login-card .input-group-text,
+.auth-card .input-group-text {
     width: 50px;
     justify-content: center;
     color: #475569;
     border-radius: 12px 0 0 12px;
 }
 
-.auth-login-card .form-control {
+.auth-login-card .form-control,
+.auth-card .form-control {
     color: #111827;
     font-weight: 600;
 }
 
-.auth-login-card .form-control:focus {
+.auth-login-card .form-control:focus,
+.auth-card .form-control:focus {
     border-color: rgba(249, 115, 22, 0.52);
     box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.12);
     background: #FFFFFF;
 }
 
-.auth-password-toggle {
-    border-radius: 0 12px 12px 0;
-    color: #475569;
+.auth-password-group,
+.input-group:has(.auth-password-toggle) {
+    position: relative;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    width: 100%;
+    border-radius: 12px;
+    background: #F8FAFC;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.auth-password-toggle:hover,
-.auth-password-toggle:focus {
-    background: #FFF7ED;
-    border-color: rgba(249, 115, 22, 0.34);
-    color: #C2410C;
+.auth-password-group .input-group-text,
+.input-group:has(.auth-password-toggle) .input-group-text {
+    border-right: none !important;
+    border-radius: 12px 0 0 12px !important;
+    background: #F8FAFC;
+    border-color: #E2E8F0;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.auth-password-group .form-control,
+.input-group:has(.auth-password-toggle) .form-control {
+    border-right: none !important;
+    background-image: none !important;
+    background-color: #F8FAFC;
+    padding-right: 0.5rem !important;
+    box-shadow: none !important;
+    border-color: #E2E8F0;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.auth-password-group .input-group-text + .form-control,
+.input-group:has(.auth-password-toggle) .input-group-text + .form-control {
+    border-left: none !important;
+    border-radius: 0 !important;
+}
+
+.auth-password-group > .form-control:first-child,
+.input-group:has(.auth-password-toggle) > .form-control:first-child {
+    border-radius: 12px 0 0 12px !important;
+}
+
+.auth-password-group .auth-password-toggle,
+.input-group:has(.auth-password-toggle) .auth-password-toggle,
+.auth-password-toggle {
+    border: 1px solid #E2E8F0;
+    border-left: none !important;
+    border-radius: 0 12px 12px 0 !important;
+    background: #F8FAFC !important;
+    color: #64748B !important;
+    box-shadow: none !important;
+    outline: none !important;
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    min-height: 44px;
+    transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.auth-password-group .auth-password-toggle:hover,
+.input-group:has(.auth-password-toggle) .auth-password-toggle:hover,
+.auth-password-toggle:hover {
+    color: #C2410C !important;
+    background: #F8FAFC !important;
+    border-color: #E2E8F0 !important;
+}
+
+.auth-password-group:focus-within,
+.input-group:has(.auth-password-toggle):focus-within {
+    box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.12) !important;
+    border-radius: 12px;
+}
+
+.auth-password-group:focus-within .input-group-text,
+.input-group:has(.auth-password-toggle):focus-within .input-group-text,
+.auth-password-group:focus-within .form-control,
+.input-group:has(.auth-password-toggle):focus-within .form-control,
+.auth-password-group:focus-within .auth-password-toggle,
+.input-group:has(.auth-password-toggle):focus-within .auth-password-toggle {
+    border-color: rgba(249, 115, 22, 0.52) !important;
+    background-color: #FFFFFF !important;
+}
+
+.auth-password-group:focus-within .auth-password-toggle,
+.input-group:has(.auth-password-toggle):focus-within .auth-password-toggle {
+    color: #1E293B !important;
+}
+
+.auth-password-group:focus-within .auth-password-toggle:hover,
+.input-group:has(.auth-password-toggle):focus-within .auth-password-toggle:hover {
+    color: #C2410C !important;
+}
+
+.auth-password-group:has(.form-control.is-invalid),
+.input-group:has(.auth-password-toggle):has(.form-control.is-invalid) {
+    box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.12) !important;
+    border-radius: 12px;
+}
+
+.auth-password-group:has(.form-control.is-invalid) .input-group-text,
+.input-group:has(.auth-password-toggle):has(.form-control.is-invalid) .input-group-text,
+.auth-password-group:has(.form-control.is-invalid) .form-control,
+.input-group:has(.auth-password-toggle):has(.form-control.is-invalid) .form-control,
+.auth-password-group:has(.form-control.is-invalid) .auth-password-toggle,
+.input-group:has(.auth-password-toggle):has(.form-control.is-invalid) .auth-password-toggle {
+    border-color: #dc3545 !important;
+}
+
+.auth-password-group .form-control.is-invalid,
+.input-group:has(.auth-password-toggle) .form-control.is-invalid {
+    border-color: #dc3545 !important;
+}
+
+.auth-password-group .form-control.is-invalid ~ .auth-password-toggle,
+.input-group:has(.auth-password-toggle) .form-control.is-invalid ~ .auth-password-toggle {
+    border-color: #dc3545 !important;
+}
+
+.auth-password-group:has(.form-control.is-valid),
+.input-group:has(.auth-password-toggle):has(.form-control.is-valid) {
+    box-shadow: 0 0 0 4px rgba(25, 135, 84, 0.12) !important;
+    border-radius: 12px;
+}
+
+.auth-password-group:has(.form-control.is-valid) .input-group-text,
+.input-group:has(.auth-password-toggle):has(.form-control.is-valid) .input-group-text,
+.auth-password-group:has(.form-control.is-valid) .form-control,
+.input-group:has(.auth-password-toggle):has(.form-control.is-valid) .form-control,
+.auth-password-group:has(.form-control.is-valid) .auth-password-toggle,
+.input-group:has(.auth-password-toggle):has(.form-control.is-valid) .auth-password-toggle {
+    border-color: #198754 !important;
+}
+
+.auth-password-group .form-control.is-valid,
+.input-group:has(.auth-password-toggle) .form-control.is-valid {
+    border-color: #198754 !important;
+}
+
+.auth-password-group .form-control.is-valid ~ .auth-password-toggle,
+.input-group:has(.auth-password-toggle) .form-control.is-valid ~ .auth-password-toggle {
+    border-color: #198754 !important;
+}
+
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+.reset-password-hint {
+    display: block;
+}
+
+.auth-password-group:has(.form-control.is-invalid) ~ .reset-password-hint,
+.form-control.is-invalid ~ .reset-password-hint {
+    display: none !important;
 }
 
 .auth-recover-link,
