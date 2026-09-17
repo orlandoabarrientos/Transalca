@@ -1096,6 +1096,35 @@ function enhanceSearchableSelects(root = document) {
     });
 }
 
+function extractCleanCellText(cellNode, originalCellNode = null) {
+    if (!cellNode) return '';
+    const clone = cellNode.cloneNode(true);
+    clone.querySelectorAll('select').forEach((sel, selIdx) => {
+        const origSel = originalCellNode ? originalCellNode.querySelectorAll('select')[selIdx] : null;
+        let valText = '';
+        if (origSel && origSel.selectedIndex >= 0 && origSel.options[origSel.selectedIndex]) {
+            valText = origSel.options[origSel.selectedIndex].text || origSel.options[origSel.selectedIndex].textContent || '';
+        } else {
+            const selectedOpt = sel.querySelector('option[selected]') || (sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex] : null);
+            valText = selectedOpt ? (selectedOpt.innerText || selectedOpt.textContent || '') : (sel.value || '');
+        }
+        sel.replaceWith(document.createTextNode(valText.trim()));
+    });
+    clone.querySelectorAll('input, textarea').forEach((inp, inpIdx) => {
+        const origInp = originalCellNode ? originalCellNode.querySelectorAll('input, textarea')[inpIdx] : null;
+        if (inp.type === 'checkbox' || inp.type === 'radio') {
+            const isChecked = origInp ? origInp.checked : (inp.checked || inp.hasAttribute('checked'));
+            inp.replaceWith(document.createTextNode(isChecked ? 'Sí' : 'No'));
+        } else {
+            const val = origInp ? (origInp.value ?? inp.value) : (inp.value || inp.getAttribute('value') || '');
+            inp.replaceWith(document.createTextNode(val));
+        }
+    });
+    clone.querySelectorAll('button, .btn, .btn-icon, script, style').forEach(el => el.remove());
+    let text = clone.innerText || clone.textContent || '';
+    return text.replace(/\s+/g, ' ').trim();
+}
+
 class TablePaginator {
     constructor(element, options) {
         this.element = typeof element === 'string' ? document.getElementById(element) : element;
@@ -1309,11 +1338,7 @@ class TablePaginator {
                 const tds = Array.from(tempTr.children);
                 const rowData = validColIndices.map(colIdx => {
                     const cell = tds[colIdx];
-                    if (!cell) return '';
-                    const clone = cell.cloneNode(true);
-                    clone.querySelectorAll('button, input, select, textarea, .btn, .btn-icon, script, style').forEach(el => el.remove());
-                    let text = clone.innerText || clone.textContent || '';
-                    return text.replace(/\s+/g, ' ').trim();
+                    return extractCleanCellText(cell);
                 });
                 rows.push(rowData);
             } else {
@@ -1508,11 +1533,7 @@ async function exportCurrentModuleTable(format = 'pdf', options = {}) {
                     const tds = Array.from(tr.children);
                     const rowData = validColIndices.map(colIdx => {
                         const cell = tds[colIdx];
-                        if (!cell) return '';
-                        const clone = cell.cloneNode(true);
-                        clone.querySelectorAll('button, input, select, textarea, .btn, .btn-icon, script, style').forEach(el => el.remove());
-                        let text = clone.innerText || clone.textContent || '';
-                        return text.replace(/\s+/g, ' ').trim();
+                        return extractCleanCellText(cell, cell);
                     });
                     rows.push(rowData);
                 });

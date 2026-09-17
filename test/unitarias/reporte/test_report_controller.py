@@ -245,6 +245,21 @@ class TestReportController:
         assert response.mimetype == "application/pdf"
         assert b"%PDF" in response.data
 
+    def test_export_table_service_mechanics_pdf_with_estado(self, auth_employee_client):
+        response = auth_employee_client.post('/api/reports/export-table', json={
+            "title": "Gestionar Servicio Mecánico",
+            "headers": ["ID", "Servicio", "Orden", "Mecánico", "Ganancia mecanico", "Estado", "Fecha", "Observaciones"],
+            "rows": [
+                [13, "ALINEACION CAMION (22.5)", "13", "Carlos Mendoza V-07224157", "$5,00 25% de $20,00", "Completado", "11/06/2026 02:15", "-"],
+                [12, "ALINEACION CAMION (22.5)", "12", "Sin asignar", "-", "Completado", "10/06/2026 17:09", "Pendiente de asignacion de mecanico"],
+                [1, "Cambio de aceite", "1", "Carlos Mendoza V-07224236", "-", "Asignado", "18/05/2026 00:35", "fwfw"]
+            ],
+            "format": "pdf"
+        })
+        assert response.status_code == 200
+        assert response.mimetype == "application/pdf"
+        assert b"%PDF" in response.data
+
     def test_export_table_invalid_format_fails(self, auth_employee_client):
         response = auth_employee_client.post('/api/reports/export-table', json={
             "title": "Marcas",
@@ -253,5 +268,6 @@ class TestReportController:
             "format": "invalid_format"
         })
         assert response.status_code == 400
+
 
 
