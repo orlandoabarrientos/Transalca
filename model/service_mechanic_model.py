@@ -258,9 +258,17 @@ class ServiceMechanicModel(Connection):
     def _delete_assignment(self, aid):
         return self.delete("transalca", "DELETE FROM servicio_mecanico WHERE id_servicio_mecanico = %s", (aid,))
 
+    def _complete_service_sp(self, aid, porcentaje_comision=None, observaciones=None):
+        return self.execute_query("transalca", "CALL sp_completar_servicio_mecanico(%s, %s, %s)",
+            (aid, porcentaje_comision, observaciones))
+
+    def _get_all_from_view(self):
+        return self.fetch_all("transalca", "SELECT * FROM vw_servicios_mecanicos_detalle ORDER BY fecha_ts DESC")
+
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {
             "get_all": self._get_all,
+            "get_all_from_view": self._get_all_from_view,
             "get_by_id": self._get_by_id,
             "service_exists": self._service_exists,
             "mechanic_exists": self._mechanic_exists,
@@ -273,7 +281,9 @@ class ServiceMechanicModel(Connection):
             "update_status": self._update_status,
             "update_assignment": self._update_assignment,
             "delete_assignment": self._delete_assignment,
+            "complete_service_sp": self._complete_service_sp,
         }
         if accion not in acciones:
             raise ValueError("Accion no permitida")
         return acciones[accion](*args, **kwargs)
+

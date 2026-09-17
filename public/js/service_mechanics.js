@@ -187,8 +187,10 @@ async function loadAssignments() {
             paginator.updateData(assignments);
         }
 
-        document.getElementById('statTotal').textContent = assignments.length;
-        document.getElementById('statNoAssigned').textContent = noAssigned;
+        const statTotalEl = document.getElementById('statTotal');
+        if (statTotalEl) statTotalEl.textContent = assignments.length;
+        const statNoAssignedEl = document.getElementById('statNoAssigned');
+        if (statNoAssignedEl) statNoAssignedEl.textContent = noAssigned;
     } catch (e) { }
 }
 

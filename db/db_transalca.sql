@@ -2050,6 +2050,36 @@ FROM stock i
 INNER JOIN productos p ON i.producto_codigo = p.codigo
 LEFT JOIN sucursales s ON i.sucursal_id = s.id_sucursal;
 
+DROP VIEW IF EXISTS `vw_servicios_mecanicos_detalle`;
+CREATE VIEW `vw_servicios_mecanicos_detalle` AS
+SELECT 
+  sm.id_servicio_mecanico AS id,
+  sm.servicio_id,
+  s.nombre_servicio AS servicio_nombre,
+  s.precio_servicio AS precio,
+  sm.mecanico_cedula,
+  CONCAT(COALESCE(m.nombre_mecanico, ''), ' ', COALESCE(m.apellido_mecanico, '')) AS mecanico_nombre,
+  COALESCE(sm.cliente_cedula, ov.cliente_cedula) AS cliente_cedula,
+  CONCAT(COALESCE(c.nombre_cliente, ''), ' ', COALESCE(c.apellido_cliente, '')) AS cliente_nombre,
+  COALESCE(sm.vehiculo_placa, bv.vehiculo_placa) AS vehiculo_placa,
+  v.marca_vehiculo AS vehiculo_marca,
+  v.modelo_vehiculo AS vehiculo_modelo,
+  sm.orden_venta_id,
+  sm.estado_servicio AS estado,
+  sm.observaciones_servicio AS observaciones,
+  sm.fecha_servicio AS fecha_ts,
+  DATE_FORMAT(sm.fecha_servicio, '%Y-%m-%dT%H:%i') AS fecha,
+  cm.porcentaje_comision,
+  ROUND(COALESCE(cm.precio_servicio_comision, s.precio_servicio) * (COALESCE(cm.porcentaje_comision, 10.00) / 100), 2) AS monto_comision
+FROM servicio_mecanico sm
+INNER JOIN servicios s ON sm.servicio_id = s.id_servicio
+LEFT JOIN mecanicos m ON sm.mecanico_cedula = m.cedula_mecanico
+LEFT JOIN ordenes_venta ov ON sm.orden_venta_id = ov.id_orden_venta
+LEFT JOIN bitacora_vehiculo bv ON sm.id_servicio_mecanico = bv.servicio_mecanico_id
+LEFT JOIN cliente c ON COALESCE(sm.cliente_cedula, ov.cliente_cedula) = c.identificador_cliente
+LEFT JOIN vehiculos v ON COALESCE(sm.vehiculo_placa, bv.vehiculo_placa) = v.placa_vehiculo
+LEFT JOIN comisiones_mecanico cm ON cm.servicio_mecanico_id = sm.id_servicio_mecanico;
+
 DROP PROCEDURE IF EXISTS `sp_aprobar_pago`;
 DELIMITER ;;
 CREATE PROCEDURE `sp_aprobar_pago`(IN p_comprobante_id INT)
@@ -2078,6 +2108,132 @@ BEGIN
     UPDATE ordenes_venta SET estado = 'rechazada' WHERE id_orden_venta = v_orden;
     UPDATE solicitudes_validacion sv INNER JOIN comprobantes_pago cp ON cp.id_comprobante_pago = sv.comprobante_pago_id
       SET sv.estado_validacion = 'rechazada' WHERE sv.estado_validacion = 'pendiente' AND cp.orden_venta_id = v_orden;
+    COMMIT;
+END ;;
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS `sp_completar_servicio_mecanico`;
+DELIMITER ;;
+CREATE PROCEDURE `sp_completar_servicio_mecanico`(
+    IN p_servicio_mecanico_id INT,
+    IN p_porcentaje_comision DECIMAL(5,2),
+    IN p_observaciones VARCHAR(255)
+)
+BEGIN
+    DECLARE v_mecanico_cedula VARCHAR(20) DEFAULT NULL;
+    DECLARE v_precio DECIMAL(10,2) DEFAULT 0.00;
+    DECLARE v_porcentaje DECIMAL(5,2) DEFAULT 10.00;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+    
+    START TRANSACTION;
+    
+    SELECT sm.mecanico_cedula, s.precio_servicio 
+    INTO v_mecanico_cedula, v_precio
+    FROM servicio_mecanico sm
+    INNER JOIN servicios s ON sm.servicio_id = s.id_servicio
+    WHERE sm.id_servicio_mecanico = p_servicio_mecanico_id;
+    
+    IF v_mecanico_cedula IS NOT NULL AND v_mecanico_cedula != '' THEN
+        IF p_porcentaje_comision IS NOT NULL AND p_porcentaje_comision > 0 THEN
+            SET v_porcentaje = p_porcentaje_comision;
+        END IF;
+        
+        INSERT INTO comisiones_mecanico (servicio_mecanico_id, precio_servicio_comision, porcentaje_comision)
+        VALUES (p_servicio_mecanico_id, v_precio, v_porcentaje)
+        ON DUPLICATE KEY UPDATE 
+            precio_servicio_comision = v_precio, 
+            porcentaje_comision = v_porcentaje;
+    END IF;
+    
+    UPDATE servicio_mecanico 
+    SET estado_servicio = 'completado',
+        observaciones_servicio = COALESCE(p_observaciones, observaciones_servicio)
+    WHERE id_servicio_mecanico = p_servicio_mecanico_id;
+    
+    COMMIT;
+END ;;
+DELIMITER ;
+
+DROP VIEW IF EXISTS `vw_catalogo_productos`;
+CREATE VIEW `vw_catalogo_productos` AS
+SELECT 
+    p.codigo,
+    p.nombre_producto AS nombre,
+    p.descripcion_producto AS descripcion,
+    p.precio_producto AS precio,
+    p.categoria AS categoria_nombre,
+    p.marca AS marca_nombre,
+    p.imagen_producto AS imagen,
+    p.estado,
+    c.imagen_categoria AS categoria_imagen,
+    COALESCE(SUM(st.stock), 0) AS stock_total,
+    COALESCE(MIN(st.stock_minimo), 5) AS stock_minimo_referencia,
+    CASE 
+        WHEN p.estado = 0 THEN 'INACTIVO'
+        WHEN COALESCE(SUM(st.stock), 0) <= 0 THEN 'AGOTADO'
+        WHEN COALESCE(SUM(st.stock), 0) <= COALESCE(MIN(st.stock_minimo), 5) THEN 'BAJO'
+        ELSE 'DISPONIBLE'
+    END AS estado_stock,
+    COALESCE(GROUP_CONCAT(DISTINCT su.nombre_sucursal ORDER BY su.nombre_sucursal SEPARATOR ', '), 'Sin stock') AS sucursal_nombre,
+    GROUP_CONCAT(DISTINCT st.sucursal_id ORDER BY st.sucursal_id SEPARATOR ',') AS sucursal_ids
+FROM productos p
+LEFT JOIN categorias c ON p.categoria = c.nombre_categoria
+LEFT JOIN stock st ON p.codigo = st.producto_codigo
+LEFT JOIN sucursales su ON st.sucursal_id = su.id_sucursal
+GROUP BY p.codigo, p.nombre_producto, p.descripcion_producto, p.precio_producto, p.categoria, p.marca, p.imagen_producto, p.estado, c.imagen_categoria;
+
+DROP PROCEDURE IF EXISTS `sp_ajustar_stock_producto`;
+DELIMITER ;;
+CREATE PROCEDURE `sp_ajustar_stock_producto`(
+    IN p_producto_codigo VARCHAR(50),
+    IN p_sucursal_id INT,
+    IN p_cantidad INT,
+    IN p_tipo_ajuste VARCHAR(20),
+    IN p_motivo VARCHAR(255)
+)
+BEGIN
+    DECLARE v_stock_actual INT DEFAULT 0;
+    DECLARE v_nuevo_stock INT DEFAULT 0;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+
+    START TRANSACTION;
+
+    IF NOT EXISTS (SELECT 1 FROM productos WHERE codigo = p_producto_codigo) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El producto no existe.';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM sucursales WHERE id_sucursal = p_sucursal_id) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La sucursal no existe.';
+    END IF;
+
+    SELECT COALESCE(stock, 0) INTO v_stock_actual 
+    FROM stock 
+    WHERE producto_codigo = p_producto_codigo AND sucursal_id = p_sucursal_id 
+    FOR UPDATE;
+
+    IF UPPER(p_tipo_ajuste) = 'INGRESO' THEN
+        SET v_nuevo_stock = v_stock_actual + p_cantidad;
+    ELSEIF UPPER(p_tipo_ajuste) = 'EGRESO' THEN
+        IF v_stock_actual < p_cantidad THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock insuficiente para realizar el egreso.';
+        END IF;
+        SET v_nuevo_stock = v_stock_actual - p_cantidad;
+    ELSEIF UPPER(p_tipo_ajuste) = 'REEMPLAZO' THEN
+        SET v_nuevo_stock = p_cantidad;
+    ELSE
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tipo de ajuste no valido. Use INGRESO, EGRESO o REEMPLAZO.';
+    END IF;
+
+    IF v_nuevo_stock < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El stock resultante no puede ser negativo.';
+    END IF;
+
+    INSERT INTO stock (producto_codigo, sucursal_id, stock, updated_at)
+    VALUES (p_producto_codigo, p_sucursal_id, v_nuevo_stock, NOW())
+    ON DUPLICATE KEY UPDATE 
+        stock = v_nuevo_stock, 
+        updated_at = NOW();
+
     COMMIT;
 END ;;
 DELIMITER ;

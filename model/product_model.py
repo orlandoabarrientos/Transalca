@@ -371,12 +371,20 @@ class ProductModel(Connection):
     def _reactivar(self, codigo):
         return self.update("transalca", "UPDATE productos SET estado = 1 WHERE codigo = %s", (codigo,))
 
+    def _get_catalog_view(self):
+        return self.fetch_all("transalca", "SELECT * FROM vw_catalogo_productos WHERE estado = 1 ORDER BY nombre")
+
+    def _adjust_stock_sp(self, codigo, sucursal_id, cantidad, tipo_ajuste="INGRESO", motivo=""):
+        return self.execute_query("transalca", "CALL sp_ajustar_stock_producto(%s, %s, %s, %s, %s)",
+            (codigo, sucursal_id, cantidad, tipo_ajuste, motivo))
+
     def ejecutar(self, accion, *args, **kwargs):
         acciones = {
             "get_all": self._get_all,
             "get_all_paginated": self._get_all_paginated,
             "get_active_paginated": self._get_active_paginated,
             "get_active": self._get_active,
+            "get_catalog_view": self._get_catalog_view,
             "get_by_estado": self._get_by_estado,
             "get_by_codigo": self._get_by_codigo,
             "get_by_category": self._get_by_category,
@@ -393,7 +401,9 @@ class ProductModel(Connection):
             "brand_exists": self._brand_exists,
             "supplier_exists": self._supplier_exists,
             "reactivar": self._reactivar,
+            "adjust_stock_sp": self._adjust_stock_sp,
         }
         if accion not in acciones:
             raise ValueError("Accion no permitida")
         return acciones[accion](*args, **kwargs)
+
