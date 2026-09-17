@@ -1,4 +1,5 @@
 import logging
+import hashlib
 import os
 import re
 import secrets
@@ -14,11 +15,13 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from componente_ia.assistant_orchestrator import MAX_MESSAGE_LENGTH, build_response, get_default_orchestrator
+from componente_ia.ai_mode import MAX_MESSAGE_LENGTH, build_response, get_default_orchestrator, is_lite_mode
+from componente_ia.decision_trace import decision_trace_store
 from componente_ia.feedback_store import feedback_store
 from componente_ia.health import assistant_health as assistant_health_monitor
 from componente_ia.learning_observability import learning_metrics_snapshot
 from componente_ia.metrics import assistant_metrics, short_hash
+from componente_ia.model_registry import ModelRegistry
 
 
 logger = logging.getLogger(__name__)
@@ -29,6 +32,26 @@ _rate_window = {}
 _rate_lock = threading.RLock()
 RATE_LIMIT_WINDOW_SECONDS = int(os.getenv('ASSISTANT_RATE_WINDOW_SECONDS', '60'))
 RATE_LIMIT_MAX_REQUESTS = int(os.getenv('ASSISTANT_RATE_LIMIT', '60'))
+ENGINE_VERSION = "universal-tire-advisor-v3"
+ENGINE_MODULE = "assistant_orchestrator"
+
+
+def _build_id():
+    digest = hashlib.sha256()
+    base = os.path.dirname(os.path.abspath(__file__))
+    for name in ("assistant_orchestrator.py", "intent_router.py", "entity_extractor.py", "chat_widget.js"):
+        try:
+            with open(os.path.join(base, name), "rb") as stream:
+                digest.update(stream.read())
+        except OSError:
+            digest.update(name.encode("utf-8"))
+    return digest.hexdigest()[:12]
+
+
+try:
+    BUILD_ID = "lite-v1" if is_lite_mode() else ModelRegistry().active_identity()["build_id"]
+except Exception:
+    BUILD_ID = _build_id()
 
 
 def generar_id_aleatorio(longitud=20):
@@ -36,8 +59,20 @@ def generar_id_aleatorio(longitud=20):
     return "".join(alfabeto[secrets.randbelow(len(alfabeto))] for _ in range(longitud))
 
 
+def _runtime_health():
+    runtime = get_default_orchestrator()
+    if is_lite_mode():
+        return runtime.health()
+    return assistant_health_monitor.snapshot(runtime)
+
+
 def _request_id():
     return request.headers.get('X-Request-ID') or uuid.uuid4().hex[:12]
+
+
+def _development_metadata_enabled():
+    environment = os.getenv("TRANSALCA_ENV", "local").strip().lower()
+    return bool(current_app.config.get("TESTING") or current_app.debug or environment not in {"prod", "production"})
 
 
 def _safe_session_id(value):
@@ -112,6 +147,14 @@ def procesar_mensaje():
         )
         payload["session_id"] = session_id
         payload["timestamp"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        if _development_metadata_enabled():
+            payload.update({
+                "engine_version": "lite-v1" if is_lite_mode() else ENGINE_VERSION,
+                "engine_module": "lite_assistant" if is_lite_mode() else ENGINE_MODULE,
+                "model_version": (payload.get("diagnostics") or {}).get("model_version"),
+                "dataset_version": (payload.get("diagnostics") or {}).get("dataset_version"),
+                "build_id": "lite-v1" if is_lite_mode() else BUILD_ID,
+            })
         duration_ms = round((time.perf_counter() - started) * 1000, 2)
         diagnostics = payload.get("diagnostics") or {}
         sources = payload.get("sources") or []
@@ -134,6 +177,25 @@ def procesar_mensaje():
         )
         return jsonify(payload), status_code
     except Exception as exc:
+        decision_trace_store.capture(
+            request_id=rid,
+            normalized_message=mensaje,
+            session_state_before={},
+            entities={},
+            domain=None,
+            primary_intent="error",
+            secondary_intents=[],
+            followup_resolution={},
+            pending_slots=[],
+            actions=[],
+            tools_selected=[],
+            tool_results_summary={"completed": False, "error_type": exc.__class__.__name__},
+            claims=[],
+            response_type="internal_error",
+            session_state_after={},
+            abstained=False,
+            fallback_reason="internal_error",
+        )
         feedback_store.capture_passive_signal(
             mensaje,
             intent="error",
@@ -162,7 +224,13 @@ def procesar_mensaje():
 def healthcheck():
     rid = _request_id()
     try:
-        payload = assistant_health_monitor.snapshot(get_default_orchestrator())
+        payload = _runtime_health()
+        payload["engine_version"] = "lite-v1" if is_lite_mode() else ENGINE_VERSION
+        payload["engine_module"] = "lite_assistant" if is_lite_mode() else ENGINE_MODULE
+        payload["build_id"] = "lite-v1" if is_lite_mode() else BUILD_ID
+        intent_model = (payload.get("components") or {}).get("intent_model") or {}
+        payload["model_version"] = intent_model.get("model_version")
+        payload["dataset_version"] = intent_model.get("dataset_hash")
         payload["request_id"] = rid
         payload["timestamp"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         return jsonify(payload), 200
@@ -175,6 +243,34 @@ def healthcheck():
         }), 500
 
 
+@asistente_bp.route("/reset", methods=["POST"])
+def reset_lite_session():
+    if not is_lite_mode():
+        return jsonify({"status": "error", "message": "Ruta disponible en Lite Mode."}), 404
+    data = request.get_json(silent=True)
+    session_id = data.get("session_id") if isinstance(data, dict) else None
+    if not isinstance(session_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{8,80}", session_id):
+        return jsonify({"status": "error", "message": "session_id inválido."}), 400
+    get_default_orchestrator().reset_session(session_id)
+    return jsonify({"status": "success", "session_id": session_id}), 200
+
+
+@asistente_bp.route("/shadow/candidate", methods=["POST"])
+def shadow_candidate():
+    """Protected candidate runtime; disabled and fail-closed by default."""
+    from componente_ia.candidate_shadow import candidate_shadow_message
+
+    return candidate_shadow_message()
+
+
+@asistente_bp.route("/shadow/health", methods=["GET"])
+def shadow_healthcheck():
+    """Identity-gated health endpoint for sealed candidate audits."""
+    from componente_ia.candidate_shadow import candidate_shadow_health
+
+    return candidate_shadow_health()
+
+
 @asistente_bp.route("/metrics", methods=["GET"])
 def metrics():
     rid = _request_id()
@@ -184,7 +280,7 @@ def metrics():
             "message": "Metricas del asistente no disponibles para esta sesion.",
             "request_id": rid,
         }), 403
-    payload = assistant_metrics.snapshot(runtime=assistant_health_monitor.snapshot(get_default_orchestrator()))
+    payload = assistant_metrics.snapshot(runtime=_runtime_health())
     payload["status"] = "ok"
     payload["request_id"] = rid
     payload["timestamp"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -204,7 +300,7 @@ def operator_feedback():
     data = request.get_json(silent=True) or {}
     case_id = str(data.get("case_id") or "").strip()
     rating = str(data.get("rating") or "").strip()
-    if not re.fullmatch(r"CASE-[0-9a-f]{20}", case_id) or rating.lower() not in {"good", "bad", "buena", "mala", "bueno", "malo", "1", "-1"}:
+    if not re.fullmatch(r"FB-[0-9A-F]{20}", case_id) or rating.lower() not in {"good", "bad", "buena", "mala", "bueno", "malo", "1", "-1"}:
         return jsonify({
             "status": "error",
             "message": "Feedback inválido.",

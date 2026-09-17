@@ -38,6 +38,8 @@ public/assets/images/*
 respaldos/*
 !respaldos/.gitkeep
 
+backups/ia_data_cleanup/
+
 tmp/
 temp/
 scratch/
@@ -52,4 +54,16 @@ tmp_hash.txt
 skills-lock.json
 .claude
 
-docs
+/docs
+
+# Reproducible local test/build debris (never candidate packs or evidence).
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.bak
+*.orig
+*.rej
+.tmp_pytest*/
+.pytest_cache*/
