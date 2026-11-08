@@ -1,7 +1,230 @@
 
-let currentUser = null;
+const CLIENT_SESSION_CACHE_KEY = 'transalca_client_session_cache_v1';
+const CLIENT_CART_COUNT_CACHE_KEY = 'transalca_client_cart_count_v1';
+
+let currentUser = (() => {
+    try {
+        return JSON.parse(sessionStorage.getItem(CLIENT_SESSION_CACHE_KEY) || 'null');
+    } catch (e) {
+        return null;
+    }
+})();
 let clientNotificationsReady = false;
 let clientKnownNotificationIds = new Set();
+
+function buildClientNavbarHtml() {
+    let cachedBcv = '--';
+    try {
+        const ratesCache = JSON.parse(localStorage.getItem('transalca_rates_cache_v1') || 'null');
+        const bcvVal = parseFloat(ratesCache?.data?.bcv || 0);
+        if (bcvVal > 0) cachedBcv = bcvVal.toFixed(2);
+    } catch (e) { }
+    let cachedCart = 0;
+    try {
+        cachedCart = parseInt(sessionStorage.getItem(CLIENT_CART_COUNT_CACHE_KEY) || '0', 10) || 0;
+    } catch (e) { }
+    const currency = (localStorage.getItem('transalca_currency') || 'USD').toUpperCase() === 'VES' ? 'VES' : 'USD';
+    const toggleLabel = currency === 'USD' ? 'Ver precios en bolivares' : 'Ver precios en dolares';
+    const path = window.location.pathname;
+
+    return `<nav class="client-navbar-wrap">
+    <div class="client-topbar">
+        <div class="container d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span><i class="bi bi-shield-check me-1"></i>Compra segura en repuestos, cauchos y servicios</span>
+            <span class="d-none d-md-inline-flex align-items-center gap-3">
+                <span><i class="bi bi-truck me-1"></i>Atencion por sucursal</span>
+                <span><i class="bi bi-headset me-1"></i>Soporte especializado</span>
+            </span>
+        </div>
+    </div>
+    <div class="navbar navbar-expand-lg client-navbar">
+        <div class="container">
+            <a href="/client/home" class="client-brand">
+                <img src="/public/img/transalca-logo.png" alt="Transalca Group" class="client-brand-logo">
+                <div>
+                    <strong>Transalca Group</strong>
+                    <small>Repuestos, cauchos y servicios</small>
+                </div>
+            </a>
+
+            <div class="client-actions d-flex align-items-center gap-2 order-lg-3">
+                <div class="d-flex align-items-center" id="ratesBar">
+                    <span class="client-rate-pill" title="Tasa oficial BCV">
+                        <i class="bi bi-bank me-1"></i><span class="rate-label-text">BCV: </span><span id="rateBcvClient">${cachedBcv}</span> Bs
+                    </span>
+                </div>
+                <a href="/client/cart" class="btn btn-sm auth-required position-relative client-icon-btn client-cart-btn"
+                    style="display:none;" title="Carrito" aria-label="Carrito">
+                    <i class="bi bi-cart3"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                        id="cartBadge" style="${cachedCart > 0 ? '' : 'display:none;'}">${cachedCart}</span>
+                </a>
+                <div class="dropdown auth-required client-notifications" style="display:none;">
+                    <button class="btn btn-sm position-relative client-icon-btn" data-bs-toggle="dropdown" title="Notificaciones">
+                        <i class="bi bi-bell"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="clientNotifBadge" style="display:none;font-size:0.6rem;">0</span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end p-0" style="width:320px;max-height:360px;overflow-y:auto;">
+                        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                            <strong style="font-size:0.85rem;">Notificaciones</strong>
+                            <button class="btn btn-sm btn-link text-decoration-none p-0" data-client-notifications-read-all style="font-size:0.75rem;">Marcar todas</button>
+                        </div>
+                        <div id="clientNotifList"><div class="text-center text-muted py-3" style="font-size:0.8rem;">Sin notificaciones</div></div>
+                    </div>
+                </div>
+                <a href="/admin/dashboard" class="btn btn-sm btn-dark client-icon-btn" id="navAdminBtn" style="display:none;"
+                    title="Panel de Administracion"><i class="bi bi-shield-lock-fill"></i></a>
+                <div class="dropdown auth-required" style="display:none;">
+                    <button class="btn btn-sm client-profile-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="client-profile-fallback" aria-hidden="true"><i class="bi bi-person-circle"></i></span>
+                        <img src="/public/assets/profile_pics/default.png" alt="Perfil" id="clientNavPhoto"
+                            class="client-profile-photo">
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/client/profile"><i class="bi bi-person-circle me-2"></i>Mi
+                                Perfil</a></li>
+                        <li><a class="dropdown-item" href="/client/my_orders"><i class="bi bi-bag-check me-2"></i>Mis
+                                Pedidos</a></li>
+                        <li><a class="dropdown-item" href="/client/my_loyalty"><i class="bi bi-gift me-2"></i>Mi
+                                Fidelizacion</a></li>
+                        <li><a class="dropdown-item" href="/client/help"><i class="bi bi-headset me-2"></i>Ayuda</a></li>
+                        <li><a class="dropdown-item" href="/scanner"><i class="bi bi-upc-scan me-2"></i>Escaner</a></li>
+                        <li><a class="dropdown-item" href="#" data-currency-toggle><i class="bi bi-currency-exchange me-2"></i><span data-currency-toggle-label>${toggleLabel}</span></a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item" href="#" id="clientLogout"><i
+                                    class="bi bi-box-arrow-left me-2"></i>Cerrar Sesion</a></li>
+                    </ul>
+                </div>
+                <a href="/auth/login" class="btn btn-sm guest-only client-login-btn" title="Iniciar Sesion"><i
+                        class="bi bi-person-fill me-1"></i>Entrar</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#clientNavCollapse" aria-controls="clientNavCollapse" aria-expanded="false"
+                    aria-label="Abrir menu">
+                    <i class="bi bi-list"></i>
+                </button>
+            </div>
+
+            <div class="collapse navbar-collapse order-lg-2" id="clientNavCollapse">
+                <ul class="navbar-nav mx-lg-auto client-nav-links">
+                    <li class="nav-item"><a class="nav-link${path === '/client/home' ? ' active' : ''}" href="/client/home"><i
+                                class="bi bi-house-door me-1"></i>Inicio</a></li>
+                    <li class="nav-item"><a class="nav-link${path === '/client/catalog' ? ' active' : ''}" href="/client/catalog"><i
+                                class="bi bi-grid-3x3-gap-fill me-1"></i>Catalogo</a></li>
+                    <li class="nav-item auth-required" style="display:none;"><a class="nav-link${path === '/client/my_orders' ? ' active' : ''}"
+                            href="/client/my_orders"><i class="bi bi-bag-check me-1"></i>Pedidos</a></li>
+                    <li class="nav-item auth-required" style="display:none;"><a class="nav-link${path === '/client/my_loyalty' ? ' active' : ''}"
+                            href="/client/my_loyalty"><i class="bi bi-gift me-1"></i>Fidelizacion</a></li>
+                    <li class="nav-item"><a class="nav-link${path === '/client/help' ? ' active' : ''}" href="/client/help"><i class="bi bi-headset me-1"></i>Ayuda</a></li>
+                    <li class="nav-item auth-required" style="display:none;"><a class="nav-link${path === '/scanner' ? ' active' : ''}" href="/scanner"><i
+                                class="bi bi-upc-scan me-1"></i>Escaner</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>`;
+}
+
+function buildClientFooterHtml() {
+    return `<footer class="client-footer">
+    <div class="container">
+        <div class="row g-4 align-items-start">
+            <div class="col-lg-4">
+                <a href="/client/home" class="client-footer-brand">
+                    <img src="/public/img/transalca-logo.png" alt="Transalca Group" class="client-footer-logo">
+                    <div>
+                        <strong>Transalca Group</strong>
+                        <small>Tienda automotriz y servicios</small>
+                    </div>
+                </a>
+                <p class="client-footer-text mb-0">Calidad, confianza y respaldo tecnico para mantener tu vehiculo
+                    siempre en movimiento.</p>
+            </div>
+            <div class="col-6 col-lg-2">
+                <h6 class="client-footer-title">Navegacion</h6>
+                <a href="/client/home">Inicio</a>
+                <a href="/client/catalog">Catalogo</a>
+                <a href="/client/cart" class="auth-required">Carrito</a>
+                <a href="/client/my_orders" class="auth-required">Mis pedidos</a>
+            </div>
+            <div class="col-6 col-lg-3">
+                <h6 class="client-footer-title">Programa cliente</h6>
+                <a href="/client/my_loyalty" class="auth-required">Fidelizacion</a>
+                <a href="/client/profile" class="auth-required">Mi perfil</a>
+                <a href="/scanner" class="auth-required">Escaner</a>
+                <a href="/auth/login" class="guest-only">Iniciar sesion</a>
+            </div>
+            <div class="col-lg-3">
+                <h6 class="client-footer-title">Contacto</h6>
+                <p class="client-footer-text mb-1"><i class="bi bi-telephone me-2"></i>+58 412-000-0000</p>
+                <p class="client-footer-text mb-1"><i class="bi bi-envelope me-2"></i>atencion@transalca.com</p>
+                <p class="client-footer-text mb-3"><i class="bi bi-geo-alt me-2"></i>Venezuela</p>
+                <a href="/client/catalog" class="btn btn-sm btn-orange"><i class="bi bi-cart-plus me-1"></i>Comprar
+                    ahora</a>
+            </div>
+        </div>
+        <div class="client-footer-bottom">
+            <span>Copyright 2026 Transalca Group. Todos los derechos reservados.</span>
+            <div class="client-footer-social">
+                <a href="#" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+                <a href="#" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+                <a href="#" aria-label="WhatsApp"><i class="bi bi-whatsapp"></i></a>
+            </div>
+        </div>
+    </div>
+</footer>`;
+}
+
+function hydrateClientNavbarSync() {
+    const container = document.getElementById('navbarContainer');
+    if (!container) return null;
+    if (!container.querySelector('.client-navbar-wrap')) {
+        container.innerHTML = buildClientNavbarHtml();
+    }
+    applyAuthVisibility();
+    return container;
+}
+
+function hydrateClientFooterSync() {
+    const container = document.getElementById('footerContainer');
+    if (!container) return null;
+    if (!container.querySelector('.client-footer')) {
+        container.innerHTML = buildClientFooterHtml();
+    }
+    applyAuthVisibility();
+    return container;
+}
+
+function installClientComponentLoadInterceptor() {
+    if (!window.jQuery || !window.jQuery.fn || window.jQuery.fn.__transalcaClientLoadWrapped) return;
+    const origLoad = window.jQuery.fn.load;
+    window.jQuery.fn.load = function(url, params, callback) {
+        const cb = typeof params === 'function' ? params : callback;
+        if (typeof url === 'string') {
+            if (url.includes('client_navbar.html')) {
+                hydrateClientNavbarSync();
+                if (typeof cb === 'function') {
+                    this.each(function() { cb.call(this, '', 'success', null); });
+                }
+                return this;
+            }
+            if (url.includes('client_footer.html')) {
+                hydrateClientFooterSync();
+                if (typeof cb === 'function') {
+                    this.each(function() { cb.call(this, '', 'success', null); });
+                }
+                return this;
+            }
+        }
+        return origLoad.apply(this, arguments);
+    };
+    window.jQuery.fn.__transalcaClientLoadWrapped = true;
+}
+
+installClientComponentLoadInterceptor();
+hydrateClientNavbarSync();
+hydrateClientFooterSync();
 
 function showToast(message, type = 'success') {
     let container = document.getElementById('toastContainer');
@@ -30,22 +253,42 @@ function showToast(message, type = 'success') {
     }, 5000);
 }
 
-async function checkSession() {
-    try {
-        const res = await fetch('/auth/session', { credentials: 'same-origin' });
-        const data = await res.json();
-        if (data.status === 'success') {
-            currentUser = data.user;
-            updateNavForUser();
-            updateCartBadge();
-            return true;
-        }
-        updateNavForGuest();
-        return false;
-    } catch (e) {
-        updateNavForGuest();
-        return false;
+let checkSessionPromise = null;
+
+async function checkSession(force = false) {
+    if (!force && currentUser && currentUser._ts && (Date.now() - currentUser._ts < 60000)) {
+        updateNavForUser();
+        return true;
     }
+    if (!force && checkSessionPromise) return checkSessionPromise;
+    checkSessionPromise = (async () => {
+        try {
+            const res = await fetch('/auth/session', { credentials: 'same-origin' });
+            const data = await res.json();
+            if (data.status === 'success' && data.user) {
+                currentUser = { ...data.user, _ts: Date.now() };
+                try {
+                    sessionStorage.setItem(CLIENT_SESSION_CACHE_KEY, JSON.stringify(currentUser));
+                } catch (e) { }
+                updateNavForUser();
+                updateCartBadge();
+                return true;
+            }
+            currentUser = null;
+            try {
+                sessionStorage.removeItem(CLIENT_SESSION_CACHE_KEY);
+                sessionStorage.removeItem(CLIENT_CART_COUNT_CACHE_KEY);
+            } catch (e) { }
+            updateNavForGuest();
+            return false;
+        } catch (e) {
+            if (!currentUser) updateNavForGuest();
+            return !!currentUser;
+        } finally {
+            checkSessionPromise = null;
+        }
+    })();
+    return checkSessionPromise;
 }
 
 function updateNavForUser() {
@@ -87,10 +330,14 @@ async function updateCartBadge() {
     try {
         const res = await fetch('/api/orders/cart/count', { credentials: 'same-origin' });
         const data = await res.json();
+        const count = data.count || 0;
+        try {
+            sessionStorage.setItem(CLIENT_CART_COUNT_CACHE_KEY, String(count));
+        } catch (e) { }
         const badge = document.getElementById('cartBadge');
         if (badge) {
-            badge.textContent = data.count || 0;
-            badge.style.display = data.count > 0 ? '' : 'none';
+            badge.textContent = count;
+            badge.style.display = count > 0 ? '' : 'none';
         }
     } catch (e) {  }
 }
@@ -341,6 +588,9 @@ document.addEventListener('click', e => {
 }, true);
 
 document.addEventListener('DOMContentLoaded', () => {
+    installClientComponentLoadInterceptor();
+    hydrateClientNavbarSync();
+    hydrateClientFooterSync();
     document.title = 'Transalca Group | La mejor calidad';
     checkSession().then(loggedIn => {
         if (loggedIn) loadClientNotifications();
@@ -454,6 +704,12 @@ document.addEventListener('click', async (e) => {
     const logoutTarget = e.target.closest('#clientLogout');
     if (logoutTarget) {
         e.preventDefault();
+        try {
+            sessionStorage.removeItem(CLIENT_SESSION_CACHE_KEY);
+            sessionStorage.removeItem(CLIENT_CART_COUNT_CACHE_KEY);
+            sessionStorage.removeItem('transalca_admin_sidebar_cache_v2');
+            sessionStorage.removeItem('transalca_admin_session_cache_v2');
+        } catch (err) { }
         await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
         window.location.href = '/client/home';
     }

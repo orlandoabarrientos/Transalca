@@ -156,6 +156,24 @@ a:hover {
     overflow-x: hidden;
 }
 
+#sidebarContainer {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    background: var(--bg-sidebar);
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1040;
+}
+
+.main-content > #navbarContainer {
+    min-height: var(--navbar-height);
+    background: var(--bg-card);
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+}
 
 .sidebar {
     width: var(--sidebar-width);
@@ -169,6 +187,14 @@ a:hover {
     transition: transform 0.3s ease;
     display: flex;
     flex-direction: column;
+}
+
+.sidebar.sidebar-no-transition,
+.sidebar.sidebar-no-transition .nav-link,
+.sidebar.sidebar-no-transition .mant-chevron,
+.sidebar.sidebar-no-transition .collapse,
+.sidebar.sidebar-no-transition .collapsing {
+    transition: none !important;
 }
 
 .sidebar .brand {
@@ -2505,6 +2531,14 @@ body.sidebar-open .sidebar-backdrop {
 @media (max-width: 768px) {
     body.sidebar-open {
         overflow: hidden;
+    }
+
+    #sidebarContainer {
+        width: 0;
+        min-width: 0;
+        background: transparent;
+        position: static;
+        z-index: auto;
     }
 
     #toggleSidebar {

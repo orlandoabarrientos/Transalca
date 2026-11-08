@@ -48,7 +48,7 @@ class Connection:
     def con_mantenimiento(self):
         if not hasattr(Connection._local, 'mantenimiento') or Connection._local.mantenimiento is None or not getattr(Connection._local.mantenimiento, 'open', False):
             self._init_mantenimiento()
-        if hasattr(Connection._local, 'mantenimiento') and Connection._local.mantenimiento is not None:
+        elif hasattr(Connection._local, 'mantenimiento') and Connection._local.mantenimiento is not None:
             try:
                 Connection._local.mantenimiento.ping(reconnect=True)
             except Exception:
@@ -60,7 +60,7 @@ class Connection:
     def con_transalca(self):
         if not hasattr(Connection._local, 'transalca') or Connection._local.transalca is None or not getattr(Connection._local.transalca, 'open', False):
             self._init_transalca()
-        if hasattr(Connection._local, 'transalca') and Connection._local.transalca is not None:
+        elif hasattr(Connection._local, 'transalca') and Connection._local.transalca is not None:
             try:
                 Connection._local.transalca.ping(reconnect=True)
             except Exception:

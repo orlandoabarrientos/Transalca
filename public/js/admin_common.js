@@ -182,28 +182,107 @@ function validateSelectIntegrity(formId, select) {
     select.classList.add('is-valid'); clearFieldError(select); return true;
 }
 
-let sidebarRenderInFlight = false;
-let adminSessionCache = null;
+const ADMIN_SIDEBAR_CACHE_KEY = 'transalca_admin_sidebar_cache_v2';
+const ADMIN_SESSION_CACHE_KEY = 'transalca_admin_session_cache_v2';
+const ADMIN_MANT_EXPANDED_KEY = 'transalca_admin_mant_expanded_v1';
+const ADMIN_NOTIF_CACHE_KEY = 'transalca_admin_notif_cache_v1';
 
-async function getAdminSessionForPermissions() {
-    if (adminSessionCache) return adminSessionCache;
+if (typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/')) {
+    try {
+        sessionStorage.removeItem(ADMIN_SIDEBAR_CACHE_KEY);
+        sessionStorage.removeItem(ADMIN_SESSION_CACHE_KEY);
+        sessionStorage.removeItem(ADMIN_NOTIF_CACHE_KEY);
+        sessionStorage.removeItem('transalca_client_session_cache_v1');
+    } catch (e) { }
+}
+
+let sidebarRenderInFlight = false;
+let sidebarScrollRestoring = false;
+let adminSessionCache = (() => {
+    try {
+        return JSON.parse(sessionStorage.getItem(ADMIN_SESSION_CACHE_KEY) || 'null');
+    } catch (e) {
+        return null;
+    }
+})();
+
+const DEFAULT_SIDEBAR_MODS = [
+    { nombre: 'dashboard', titulo: 'Dashboard', ruta: '/admin/dashboard', icono: 'bi bi-grid-1x2-fill' },
+    { nombre: 'categorias', titulo: 'G. Categorías', ruta: '/admin/categories', icono: 'bi bi-tags-fill' },
+    { nombre: 'clientes', titulo: 'G. Clientes', ruta: '/admin/clients', icono: 'bi bi-people-fill' },
+    { nombre: 'qr', titulo: 'G. Códigos QR', ruta: '/admin/qr', icono: 'bi bi-qr-code' },
+    { nombre: 'credito', titulo: 'G. Crédito', ruta: '/admin/credit', icono: 'bi bi-receipt-cutoff' },
+    { nombre: 'empresas', titulo: 'G. Empresa', ruta: '/admin/companies', icono: 'bi bi-buildings-fill' },
+    { nombre: 'escaner', titulo: 'G. Escáner QR', ruta: '/scanner', icono: 'bi bi-upc-scan' },
+    { nombre: 'marcas', titulo: 'G. Marcas', ruta: '/admin/brands', icono: 'bi bi-award-fill' },
+    { nombre: 'mecanicos', titulo: 'G. Mecánicos', ruta: '/admin/mechanics', icono: 'bi bi-person-badge-fill' },
+    { nombre: 'metodos_pago', titulo: 'G. Métodos de Pago', ruta: '/admin/payment_methods', icono: 'bi bi-wallet2' },
+    { nombre: 'perfil', titulo: 'G. Mi Perfil', ruta: '/admin/profile', icono: 'bi bi-person-circle' },
+    { nombre: 'modulos', titulo: 'G. Módulos', ruta: '/admin/modulos', icono: 'bi bi-grid-3x3-gap-fill' },
+    { nombre: 'ordenes_compra', titulo: 'G. Orden de Compra', ruta: '/admin/purchase_orders', icono: 'bi bi-cart-dash-fill' },
+    { nombre: 'pagos', titulo: 'G. Pagos', ruta: '/admin/payments', icono: 'bi bi-credit-card-2-front-fill' },
+    { nombre: 'productos', titulo: 'G. Productos', ruta: '/admin/products', icono: 'bi bi-box-seam-fill' },
+    { nombre: 'promociones', titulo: 'G. Promociones', ruta: '/admin/promotions', icono: 'bi bi-gift-fill' },
+    { nombre: 'proveedores', titulo: 'G. Proveedores', ruta: '/admin/suppliers', icono: 'bi bi-truck' },
+    { nombre: 'respaldos', titulo: 'G. Respaldos', ruta: '/admin/backup', icono: 'bi bi-database-fill-down' },
+    { nombre: 'roles', titulo: 'G. Roles', ruta: '/admin/roles', icono: 'bi bi-shield-lock-fill' },
+    { nombre: 'servicio_mecanico', titulo: 'G. Servicio Mecánico', ruta: '/admin/service_mechanics', icono: 'bi bi-tools' },
+    { nombre: 'servicios', titulo: 'G. Servicios', ruta: '/admin/services', icono: 'bi bi-wrench-adjustable' },
+    { nombre: 'sucursales', titulo: 'G. Sucursales', ruta: '/admin/sucursales', icono: 'bi bi-building' },
+    { nombre: 'tasas', titulo: 'G. Tasa de Cambio', ruta: '/admin/tasas', icono: 'bi bi-currency-dollar' },
+    { nombre: 'tickets', titulo: 'G. Tickets Soporte', ruta: '/admin/tickets', icono: 'bi bi-chat-dots-fill' },
+    { nombre: 'usuarios', titulo: 'G. Usuarios', ruta: '/admin/users', icono: 'bi bi-people-fill' },
+    { nombre: 'guia', titulo: 'Guía', ruta: '/admin/guide', icono: 'bi bi-journal-bookmark-fill' },
+    { nombre: 'bitacora', titulo: 'L. Bitácora', ruta: '/admin/bitacora', icono: 'bi bi-journal-text' },
+    { nombre: 'bitacora_vehiculo', titulo: 'R. Bitacora Vehiculo', ruta: '/admin/vehicle_log', icono: 'bi bi-car-front-fill' },
+    { nombre: 'ordenes_venta', titulo: 'R. Orden de Venta', ruta: '/admin/orders_sales', icono: 'bi bi-cart-check-fill' },
+    { nombre: 'inventario', titulo: 'R. Stock', ruta: '/admin/inventory', icono: 'bi bi-archive-fill' },
+    { nombre: 'reportes', titulo: 'Reportes', ruta: '/admin/reports', icono: 'bi bi-file-earmark-spreadsheet-fill' },
+    { nombre: 'reportes_estadisticos', titulo: 'Reportes Estadísticos', ruta: '/admin/report_stats', icono: 'bi bi-pie-chart-fill' }
+];
+
+async function getAdminSessionForPermissions(force = false) {
+    if (!force && adminSessionCache && adminSessionCache._ts && (Date.now() - adminSessionCache._ts < 120000)) {
+        return adminSessionCache;
+    }
     const res = await apiCall('/auth/session');
-    adminSessionCache = res && res.status === 'success' ? res.user : null;
+    if (res && res.status === 'success' && res.user) {
+        adminSessionCache = { ...res.user, _ts: Date.now() };
+    } else {
+        adminSessionCache = null;
+    }
+    try {
+        if (adminSessionCache) {
+            sessionStorage.setItem(ADMIN_SESSION_CACHE_KEY, JSON.stringify(adminSessionCache));
+        } else {
+            sessionStorage.removeItem(ADMIN_SESSION_CACHE_KEY);
+        }
+    } catch (e) { }
     return adminSessionCache;
 }
 
 function hasBackupPermission(user, action) {
-    if (!user) return false;
+    if (!user) return true;
     if ((user.roles || []).includes('Administrador')) return true;
     return Boolean((user.permisos || {}).respaldos?.[action]);
+}
+
+function isMaintenanceExpanded() {
+    try {
+        const val = sessionStorage.getItem(ADMIN_MANT_EXPANDED_KEY);
+        return val === null ? true : val === '1';
+    } catch (e) {
+        return true;
+    }
 }
 
 function maintenanceSidebarHtml(user) {
     const canCreateBackup = hasBackupPermission(user, 'crear');
     const canRestoreBackup = hasBackupPermission(user, 'actualizar');
     if (!canCreateBackup && !canRestoreBackup) return '';
-    let html = '<a href="#" class="nav-link" data-bs-toggle="collapse" data-bs-target="#mantSubmenu" aria-expanded="true"><i class="bi bi-tools"></i> Mantenimiento<i class="bi bi-chevron-down mant-chevron"></i></a>';
-    html += '<div class="collapse show" id="mantSubmenu">';
+    const expanded = isMaintenanceExpanded();
+    let html = `<a href="#" class="nav-link${expanded ? '' : ' collapsed'}" data-bs-toggle="collapse" data-bs-target="#mantSubmenu" aria-expanded="${expanded ? 'true' : 'false'}"><i class="bi bi-tools"></i> Mantenimiento<i class="bi bi-chevron-down mant-chevron"></i></a>`;
+    html += `<div class="collapse${expanded ? ' show' : ''}" id="mantSubmenu">`;
     if (canCreateBackup) {
         html += '<a href="#" class="nav-link mant-sub" onclick="sidebarCrearRespaldo(event)"><i class="bi bi-database-fill-add"></i> Crear respaldo</a>';
     }
@@ -213,6 +292,7 @@ function maintenanceSidebarHtml(user) {
     html += '</div>';
     return html;
 }
+
 function getSidebarSortKey(titulo) {
     return (titulo || '')
         .normalize('NFD')
@@ -221,28 +301,40 @@ function getSidebarSortKey(titulo) {
         .trim();
 }
 
-async function renderDynamicSidebar() {
-    const sidebar = document.getElementById('adminSidebar');
-    if (!sidebar || sidebar.dataset.dynamicReady === '1' || sidebarRenderInFlight) return;
-    sidebarRenderInFlight = true;
-    try {
-        const [res, user] = await Promise.all([
-            apiCall('/api/modulos/sidebar'),
-            getAdminSessionForPermissions()
-        ]);
-        const mods = (res && res.data) || [];
-        const maintenanceHtml = maintenanceSidebarHtml(user);
-        if (!mods.length && !maintenanceHtml) { sidebarRenderInFlight = false; return; }
+function sortSidebarModules(mods) {
+    const list = Array.isArray(mods) ? [...mods] : [];
+    const dashboardMod = list.find(m => (m.nombre || '').toLowerCase() === 'dashboard' || (m.ruta || '').endsWith('/dashboard'));
+    const otherMods = list.filter(m => m !== dashboardMod);
+    otherMods.sort((a, b) => {
+        const ta = getSidebarSortKey(a.titulo || a.nombre);
+        const tb = getSidebarSortKey(b.titulo || b.nombre);
+        return ta.localeCompare(tb, 'es', { sensitivity: 'base' });
+    });
+    return { dashboardMod, otherMods };
+}
 
-        const dashboardMod = mods.find(m => (m.nombre || '').toLowerCase() === 'dashboard' || (m.ruta || '').endsWith('/dashboard'));
-        const otherMods = mods.filter(m => m !== dashboardMod);
-        otherMods.sort((a, b) => {
-            const ta = getSidebarSortKey(a.titulo || a.nombre);
-            const tb = getSidebarSortKey(b.titulo || b.nombre);
-            return ta.localeCompare(tb, 'es', { sensitivity: 'base' });
-        });
+function computeSidebarSignature(mods, user) {
+    const { dashboardMod, otherMods } = sortSidebarModules(mods);
+    const ordered = [...(dashboardMod ? [dashboardMod] : []), ...otherMods].map(m => ({
+        r: m.ruta || '',
+        t: m.titulo || m.nombre || '',
+        i: m.icono || ''
+    }));
+    return JSON.stringify({
+        u: user ? user.id : null,
+        c: hasBackupPermission(user, 'crear'),
+        u2: hasBackupPermission(user, 'actualizar'),
+        m: ordered
+    });
+}
 
-        const mobileHeaderHtml = `
+function buildSidebarInnerHtml(mods, user) {
+    const { dashboardMod, otherMods } = sortSidebarModules(mods);
+    const maintenanceHtml = maintenanceSidebarHtml(user);
+    const currentPath = window.location.pathname;
+    const currentPage = currentPath.split('/').pop();
+
+    const mobileHeaderHtml = `
 <div class="sidebar-mobile-header d-flex align-items-center justify-content-between px-3 py-2 border-bottom d-md-none" style="border-color:rgba(255,255,255,0.08)!important;min-height:50px;">
     <span class="fw-bold text-white d-flex align-items-center gap-2" style="font-size:0.95rem;">
         <i class="bi bi-layout-sidebar-inset text-warning"></i> Menú
@@ -252,35 +344,288 @@ async function renderDynamicSidebar() {
     </button>
 </div>`;
 
-        let html = mobileHeaderHtml;
-        if (dashboardMod) {
-            const page = (dashboardMod.ruta || '').split('/').pop();
-            html += `<a href="${escapeHtml(dashboardMod.ruta)}" class="nav-link" data-page="${escapeHtml(page)}"><i class="${escapeHtml(dashboardMod.icono || 'bi bi-grid-1x2-fill')}"></i> ${escapeHtml(dashboardMod.titulo)}</a>`;
+    let html = mobileHeaderHtml;
+    if (dashboardMod) {
+        const page = (dashboardMod.ruta || '').split('/').pop();
+        const isActive = dashboardMod.ruta === currentPath || page === currentPage;
+        html += `<a href="${escapeHtml(dashboardMod.ruta)}" class="nav-link${isActive ? ' active' : ''}" data-page="${escapeHtml(page)}"><i class="${escapeHtml(dashboardMod.icono || 'bi bi-grid-1x2-fill')}"></i> ${escapeHtml(dashboardMod.titulo)}</a>`;
+    }
+
+    let maintenanceInserted = false;
+    otherMods.forEach(m => {
+        const sortKey = getSidebarSortKey(m.titulo || m.nombre);
+        if (!maintenanceInserted && maintenanceHtml && sortKey.localeCompare('mantenimiento', 'es', { sensitivity: 'base' }) > 0) {
+            html += maintenanceHtml;
+            maintenanceInserted = true;
+        }
+        const page = (m.ruta || '').split('/').pop();
+        const isActive = m.ruta === currentPath || (m.ruta && m.ruta.startsWith('/admin/') && page === currentPage);
+        html += `<a href="${escapeHtml(m.ruta)}" class="nav-link${isActive ? ' active' : ''}" data-page="${escapeHtml(page)}"><i class="${escapeHtml(m.icono || 'bi bi-app')}"></i> ${escapeHtml(m.titulo)}</a>`;
+    });
+    if (maintenanceHtml && !maintenanceInserted) {
+        html += maintenanceHtml;
+    }
+    html += '<hr style="border-color:rgba(255,255,255,0.1);margin:8px 16px;">';
+    html += '<a href="/client/home" class="nav-link" style="color:#22c55e;"><i class="bi bi-shop"></i> Ver Tienda</a>';
+    html += '<a href="#" class="nav-link" id="btnLogout"><i class="bi bi-box-arrow-left"></i> Cerrar Sesión</a>';
+    return html;
+}
+
+function markActiveSidebarLink(sidebar) {
+    if (!sidebar) return;
+    const path = window.location.pathname;
+    const page = path.split('/').pop();
+    sidebar.querySelectorAll('a.nav-link[href]').forEach(link => {
+        const href = link.getAttribute('href');
+        if (!href || href === '#') return;
+        const isMatch = href === path || (path.startsWith('/admin/') && link.dataset.page === page);
+        link.classList.toggle('active', isMatch);
+    });
+}
+
+function restoreSidebarScrollSync(sidebar) {
+    if (!sidebar) return;
+    try {
+        const scrollTop = sessionStorage.getItem('adminSidebarScrollTop');
+        if (scrollTop !== null) {
+            const parsed = parseInt(scrollTop, 10);
+            if (Number.isFinite(parsed)) {
+                sidebarScrollRestoring = true;
+                sidebar.scrollTop = parsed;
+                requestAnimationFrame(() => {
+                    sidebar.scrollTop = parsed;
+                    sidebarScrollRestoring = false;
+                });
+            }
+        }
+    } catch (e) {
+        sidebarScrollRestoring = false;
+    }
+}
+
+function bindSidebarEvents(sidebar) {
+    if (!sidebar) return;
+    bindReliableSidebarNavigation();
+    if (sidebar.dataset.sidebarEventsBound !== '1') {
+        sidebar.dataset.sidebarEventsBound = '1';
+        sidebar.addEventListener('scroll', () => {
+            if (sidebarScrollRestoring || sidebarRenderInFlight) return;
+            try {
+                sessionStorage.setItem('adminSidebarScrollTop', String(sidebar.scrollTop));
+            } catch (e) { }
+        }, { passive: true });
+
+        sidebar.addEventListener('show.bs.collapse', (e) => {
+            if (e.target && e.target.id === 'mantSubmenu') {
+                try { sessionStorage.setItem(ADMIN_MANT_EXPANDED_KEY, '1'); } catch (err) { }
+            }
+        });
+        sidebar.addEventListener('hide.bs.collapse', (e) => {
+            if (e.target && e.target.id === 'mantSubmenu') {
+                try { sessionStorage.setItem(ADMIN_MANT_EXPANDED_KEY, '0'); } catch (err) { }
+            }
+        });
+    }
+}
+
+function hydrateAdminSidebarSync() {
+    const container = document.getElementById('sidebarContainer');
+    if (!container) return null;
+    let sidebar = document.getElementById('adminSidebar');
+    if (sidebar) {
+        markActiveSidebarLink(sidebar);
+        bindSidebarEvents(sidebar);
+        return sidebar;
+    }
+
+    let cached = null;
+    try {
+        cached = JSON.parse(sessionStorage.getItem(ADMIN_SIDEBAR_CACHE_KEY) || 'null');
+    } catch (e) { }
+
+    const mods = (cached && Array.isArray(cached.mods) && cached.mods.length) ? cached.mods : DEFAULT_SIDEBAR_MODS;
+    const user = (cached && cached.user) ? cached.user : adminSessionCache;
+    const innerHtml = buildSidebarInnerHtml(mods, user);
+
+    container.innerHTML = `<div class="sidebar sidebar-no-transition" id="adminSidebar">${innerHtml}</div>`;
+    sidebar = document.getElementById('adminSidebar');
+    if (sidebar) {
+        if (cached && cached.signature) {
+            sidebar.dataset.dynamicReady = '1';
+            sidebar.dataset.sidebarSignature = cached.signature;
+            if (cached.ts && (Date.now() - cached.ts < 120000)) {
+                sidebar.dataset.dynamicVerified = '1';
+            }
+        }
+        sidebar.dataset.scrollRestored = '1';
+        bindSidebarEvents(sidebar);
+        restoreSidebarScrollSync(sidebar);
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                sidebar.classList.remove('sidebar-no-transition');
+            });
+        });
+    }
+    return sidebar;
+}
+
+function buildAdminNavbarHtml() {
+    const user = adminSessionCache;
+    const fullName = user ? `${escapeHtml(user.nombre || '')} ${escapeHtml(user.apellido || '')}`.trim() : '';
+    const photo = user && user.foto ? `/public/assets/profile_pics/${escapeHtml(user.foto)}` : '/public/assets/profile_pics/default.png';
+    let cachedBcv = '--';
+    try {
+        const ratesCache = JSON.parse(localStorage.getItem('transalca_rates_cache_v1') || 'null');
+        const bcvVal = parseFloat(ratesCache?.data?.bcv || 0);
+        if (bcvVal > 0) cachedBcv = bcvVal.toFixed(2);
+    } catch (e) { }
+    const currency = (localStorage.getItem('transalca_currency') || 'USD').toUpperCase() === 'VES' ? 'VES' : 'USD';
+    const toggleLabel = currency === 'USD' ? 'Ver precios en bolívares' : 'Ver precios en dólares';
+
+    return `<nav class="top-navbar">
+    <div class="d-flex align-items-center gap-3">
+        <button type="button" class="btn d-md-none" id="toggleSidebar" aria-label="Abrir menú" title="Abrir menú lateral"><i class="bi bi-list fs-3"></i></button>
+        <h5 class="page-title mb-0 fw-bold" style="color:var(--text-dark); letter-spacing:0.5px;">
+            TRANSALCA <span class="fw-normal text-muted fs-6 d-none d-sm-inline">| Sistema de Gestión</span>
+        </h5>
+        <span id="pageTitle" style="display:none;"></span>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <div class="d-none d-lg-flex align-items-center gap-2" id="adminRatesBar" style="font-size:0.68rem;font-weight:600;">
+            <span style="background:var(--primary-soft);padding:3px 10px;border-radius:12px;color:var(--primary-dark);">
+                <i class="bi bi-bank me-1"></i>BCV: <span id="rateBcvAdmin">${cachedBcv}</span> Bs
+            </span>
+        </div>
+        <div class="dropdown">
+            <button class="btn btn-sm position-relative" data-bs-toggle="dropdown" id="bellBtn" title="Notificaciones">
+                <i class="bi bi-bell-fill" style="font-size:1.15rem;color:var(--text-secondary);"></i>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifBadge" style="display:none;font-size:0.6rem;">0</span>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end p-0" style="width:340px;max-height:380px;overflow-y:auto;" id="notifDropdown">
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom" style="background:var(--bg-card);">
+                    <strong style="font-size:0.85rem;">Notificaciones</strong>
+                    <button class="btn btn-sm btn-link text-decoration-none p-0" data-admin-notifications-read-all style="font-size:0.75rem;">Marcar todas</button>
+                </div>
+                <div id="notifList"><div class="text-center text-muted py-3" style="font-size:0.8rem;">Sin notificaciones</div></div>
+            </div>
+        </div>
+        <a href="/client/home" class="btn btn-sm btn-outline-success" title="Ver Tienda"><i class="bi bi-shop me-1"></i>Ver Tienda</a>
+        <div class="user-info">
+            <span class="d-none d-md-inline" id="navUserName">${fullName}</span>
+            <img src="${photo}" alt="Perfil" id="navUserPhoto">
+            <div class="dropdown">
+                <button class="btn btn-sm" data-bs-toggle="dropdown"><i class="bi bi-chevron-down"></i></button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="/admin/profile"><i class="bi bi-person-circle me-2"></i>Mi Perfil</a></li>
+                    <li><a class="dropdown-item" href="#" data-currency-toggle><i class="bi bi-currency-exchange me-2"></i><span data-currency-toggle-label>${toggleLabel}</span></a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" id="navLogout"><i class="bi bi-box-arrow-left me-2"></i>Cerrar Sesión</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>`;
+}
+
+function hydrateAdminNavbarSync() {
+    const container = document.getElementById('navbarContainer');
+    if (!container || document.body.classList.contains('client-store')) return null;
+    if (!container.querySelector('.top-navbar')) {
+        container.innerHTML = buildAdminNavbarHtml();
+    }
+    return container.querySelector('.top-navbar');
+}
+
+function hydrateAdminLayoutSync() {
+    if (!document.getElementById('sidebarContainer')) return;
+    hydrateAdminSidebarSync();
+    hydrateAdminNavbarSync();
+}
+
+function installAdminComponentLoadInterceptor() {
+    if (!window.jQuery || !window.jQuery.fn || window.jQuery.fn.__transalcaAdminLoadWrapped) return;
+    const origLoad = window.jQuery.fn.load;
+    window.jQuery.fn.load = function(url, params, callback) {
+        const cb = typeof params === 'function' ? params : callback;
+        if (typeof url === 'string') {
+            if (url.includes('admin_sidebar.html')) {
+                const sidebar = hydrateAdminSidebarSync();
+                if (sidebar) {
+                    markActiveSidebarLink(sidebar);
+                    restoreSidebarScrollSync(sidebar);
+                }
+                if (typeof cb === 'function') {
+                    this.each(function() { cb.call(this, '', 'success', null); });
+                }
+                return this;
+            }
+            if (url.includes('admin_navbar.html')) {
+                hydrateAdminNavbarSync();
+                initAdminNavbar();
+                if (typeof cb === 'function') {
+                    this.each(function() { cb.call(this, '', 'success', null); });
+                }
+                return this;
+            }
+        }
+        return origLoad.apply(this, arguments);
+    };
+    window.jQuery.fn.__transalcaAdminLoadWrapped = true;
+}
+
+installAdminComponentLoadInterceptor();
+hydrateAdminLayoutSync();
+
+async function renderDynamicSidebar(force = false) {
+    const sidebar = document.getElementById('adminSidebar');
+    if (!sidebar || sidebarRenderInFlight) return;
+    if (!force && sidebar.dataset.dynamicVerified === '1') return;
+    sidebarRenderInFlight = true;
+    try {
+        const [res, user] = await Promise.all([
+            apiCall('/api/modulos/sidebar'),
+            getAdminSessionForPermissions(force)
+        ]);
+        const mods = (res && res.data) || [];
+        const maintenanceHtml = maintenanceSidebarHtml(user);
+        if (!mods.length && !maintenanceHtml) {
+            sidebarRenderInFlight = false;
+            return;
         }
 
-        let maintenanceInserted = false;
-        otherMods.forEach(m => {
-            const sortKey = getSidebarSortKey(m.titulo || m.nombre);
-            if (!maintenanceInserted && maintenanceHtml && sortKey.localeCompare('mantenimiento', 'es', { sensitivity: 'base' }) > 0) {
-                html += maintenanceHtml;
-                maintenanceInserted = true;
-            }
-            const page = (m.ruta || '').split('/').pop();
-            html += `<a href="${escapeHtml(m.ruta)}" class="nav-link" data-page="${escapeHtml(page)}"><i class="${escapeHtml(m.icono || 'bi bi-app')}"></i> ${escapeHtml(m.titulo)}</a>`;
-        });
-        if (maintenanceHtml && !maintenanceInserted) {
-            html += maintenanceHtml;
-        }
-        html += '<hr style="border-color:rgba(255,255,255,0.1);margin:8px 16px;">';
-        html += '<a href="/client/home" class="nav-link" style="color:#22c55e;"><i class="bi bi-shop"></i> Ver Tienda</a>';
-        html += '<a href="#" class="nav-link" id="btnLogout"><i class="bi bi-box-arrow-left"></i> Cerrar Sesión</a>';
-        sidebar.innerHTML = html;
+        const signature = computeSidebarSignature(mods, user);
+        try {
+            sessionStorage.setItem(ADMIN_SIDEBAR_CACHE_KEY, JSON.stringify({ mods, user, signature, ts: Date.now() }));
+        } catch (e) { }
+
         sidebar.dataset.dynamicReady = '1';
-        const path = window.location.pathname;
-        sidebar.querySelectorAll('.nav-link').forEach(link => {
-            if (link.getAttribute('href') === path) link.classList.add('active');
+        sidebar.dataset.dynamicVerified = '1';
+
+        if (!force && sidebar.dataset.sidebarSignature === signature) {
+            markActiveSidebarLink(sidebar);
+            bindSidebarEvents(sidebar);
+            sidebarRenderInFlight = false;
+            return;
+        }
+
+        const savedScroll = sidebar.scrollTop || parseInt(sessionStorage.getItem('adminSidebarScrollTop') || '0', 10) || 0;
+        sidebarScrollRestoring = true;
+        sidebar.classList.add('sidebar-no-transition');
+        sidebar.innerHTML = buildSidebarInnerHtml(mods, user);
+        sidebar.dataset.sidebarSignature = signature;
+        markActiveSidebarLink(sidebar);
+        bindSidebarEvents(sidebar);
+        sidebar.scrollTop = savedScroll;
+        requestAnimationFrame(() => {
+            sidebar.scrollTop = savedScroll;
+            sidebarScrollRestoring = false;
+            requestAnimationFrame(() => {
+                sidebar.classList.remove('sidebar-no-transition');
+            });
         });
-    } catch (e) { }
+    } catch (e) {
+        sidebarScrollRestoring = false;
+    }
     sidebarRenderInFlight = false;
 }
 
@@ -683,6 +1028,16 @@ async function apiCall(url, method = 'GET', data = null) {
                 ? json
                 : { status: 'error', message: 'Error en la solicitud.' };
         }
+        if (method !== 'GET' && json && json.status !== 'error') {
+            if (url.startsWith('/api/modulos') || url.startsWith('/api/roles')) {
+                try { sessionStorage.removeItem(ADMIN_SIDEBAR_CACHE_KEY); } catch (e) { }
+                renderDynamicSidebar(true);
+            }
+            if (url.startsWith('/api/profile') || url.startsWith('/api/users')) {
+                try { sessionStorage.removeItem(ADMIN_SESSION_CACHE_KEY); } catch (e) { }
+                loadNavSession();
+            }
+        }
         return json;
     } catch (e) {
         return { status: 'error', message: e.message || 'Error de conexion.' };
@@ -1027,16 +1382,30 @@ function cleanupUiLocks() {
 }
 
 function bindReliableSidebarNavigation() {
-    if (document.body.dataset.sidebarNavBound === '1') return;
+    if (!document.body || document.body.dataset.sidebarNavBound === '1') return;
     document.body.dataset.sidebarNavBound = '1';
     document.body.addEventListener('click', (e) => {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         const link = e.target.closest('#adminSidebar a.nav-link[href]');
         if (!link) return;
         const href = (link.getAttribute('href') || '').trim();
         if (!href || href === '#' || href.startsWith('javascript:')) return;
         e.preventDefault();
-        if (window.innerWidth <= 768) {
-            closeAdminSidebar();
+        const sidebar = document.getElementById('adminSidebar');
+        if (sidebar) {
+            try {
+                sessionStorage.setItem('adminSidebarScrollTop', String(sidebar.scrollTop));
+            } catch (err) { }
+        }
+        if (href === window.location.pathname && !window.location.search) {
+            if (window.innerWidth <= 768) {
+                closeAdminSidebar();
+            }
+            return;
+        }
+        if (sidebar) {
+            sidebar.querySelectorAll('a.nav-link.active').forEach(el => el.classList.remove('active'));
+            link.classList.add('active');
         }
         window.location.assign(href);
     });
@@ -1058,17 +1427,25 @@ let select2AssetsPromise = null;
 let domEnhancementTimer = null;
 let domEnhancementRunning = false;
 let adminNotificationsInterval = null;
+let ratesFetchPromise = null;
+
+function getCspNonce() {
+    const el = document.querySelector('script[nonce], style[nonce]');
+    return el ? (el.nonce || el.getAttribute('nonce') || '') : '';
+}
 
 function ensureSelect2Assets() {
     if (!window.jQuery) return Promise.resolve(false);
     if (window.jQuery?.fn?.select2) return Promise.resolve(true);
     if (select2AssetsPromise) return select2AssetsPromise;
+    const nonce = getCspNonce();
     const cssId = 'transalca-select2-css';
     if (!document.getElementById(cssId)) {
         const link = document.createElement('link');
         link.id = cssId;
         link.rel = 'stylesheet';
         link.href = '/public/select2/select2.min.css';
+        if (nonce) link.nonce = nonce;
         document.head.appendChild(link);
     }
     select2AssetsPromise = new Promise(resolve => {
@@ -1084,6 +1461,7 @@ function ensureSelect2Assets() {
         const script = document.createElement('script');
         script.id = scriptId;
         script.src = '/public/select2/select2.min.js';
+        if (nonce) script.nonce = nonce;
         script.async = true;
         script.onload = finalize;
         script.onerror = () => resolve(false);
@@ -1731,15 +2109,12 @@ function runDomEnhancements(root = document) {
 
 
         const sidebar = document.getElementById('adminSidebar');
-        if (sidebar && !sidebar.dataset.scrollRestored) {
-            sidebar.dataset.scrollRestored = '1';
-            const scrollTop = sessionStorage.getItem('adminSidebarScrollTop');
-            if (scrollTop !== null) {
-                sidebar.scrollTop = parseInt(scrollTop);
+        if (sidebar) {
+            bindSidebarEvents(sidebar);
+            if (!sidebar.dataset.scrollRestored) {
+                sidebar.dataset.scrollRestored = '1';
+                restoreSidebarScrollSync(sidebar);
             }
-            sidebar.addEventListener('scroll', () => {
-                sessionStorage.setItem('adminSidebarScrollTop', sidebar.scrollTop);
-            });
         }
     } finally {
         domEnhancementRunning = false;
@@ -1809,17 +2184,23 @@ async function loadExchangeRatesCached(force = false) {
             return cached.data;
         }
     } catch (e) {}
-    try {
-        const res = await fetch('/api/rates/', { credentials: 'same-origin' });
-        const json = await res.json();
-        const data = normalizeRatePayload(json);
-        window.TransalcaRates = data;
-        localStorage.setItem(key, JSON.stringify({ data, expires_at: new Date(now + 300000).toISOString() }));
-        return data;
-    } catch (e) {
-        window.TransalcaRates = window.TransalcaRates || { bcv: 0, usdt: 0 };
-        return window.TransalcaRates;
-    }
+    if (!force && ratesFetchPromise) return ratesFetchPromise;
+    ratesFetchPromise = (async () => {
+        try {
+            const res = await fetch('/api/rates/', { credentials: 'same-origin' });
+            const json = await res.json();
+            const data = normalizeRatePayload(json);
+            window.TransalcaRates = data;
+            localStorage.setItem(key, JSON.stringify({ data, expires_at: new Date(Date.now() + 300000).toISOString() }));
+            return data;
+        } catch (e) {
+            window.TransalcaRates = window.TransalcaRates || { bcv: 0, usdt: 0 };
+            return window.TransalcaRates;
+        } finally {
+            ratesFetchPromise = null;
+        }
+    })();
+    return ratesFetchPromise;
 }
 
 function normalizeRatePayload(json) {
@@ -2013,15 +2394,15 @@ function initAdminSidebar() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    installAdminComponentLoadInterceptor();
+    hydrateAdminLayoutSync();
     installSweetAlertDefaults();
     cleanupUiLocks();
     applyAdminDocumentTitle();
-    const path = window.location.pathname;
-    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
-        if (link.getAttribute('href') === path) {
-            link.classList.add('active');
-        }
-    });
+    const sidebar = document.getElementById('adminSidebar');
+    if (sidebar) {
+        markActiveSidebarLink(sidebar);
+    }
     initAdminSidebar();
     runDomEnhancements();
     loadExchangeRatesCached().then(() => hydrateDualPrices());
@@ -2098,22 +2479,43 @@ document.addEventListener('click', async (e) => {
     const logoutTarget = e.target.closest('#btnLogout, #navLogout');
     if (logoutTarget) {
         e.preventDefault();
+        try {
+            sessionStorage.removeItem(ADMIN_SIDEBAR_CACHE_KEY);
+            sessionStorage.removeItem(ADMIN_SESSION_CACHE_KEY);
+            sessionStorage.removeItem(ADMIN_NOTIF_CACHE_KEY);
+            sessionStorage.removeItem('transalca_client_session_cache_v1');
+        } catch (err) { }
         await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
         window.location.href = '/auth/login';
     }
 }, true);
 
-async function loadNavSession() {
+function applyNavUserToDom(u) {
+    if (!u) return;
+    const nameEl = document.getElementById('navUserName');
+    if (nameEl) nameEl.textContent = `${u.nombre || ''} ${u.apellido || ''}`.trim();
+    const photoEl = document.getElementById('navUserPhoto');
+    if (photoEl) photoEl.src = `/public/assets/profile_pics/${u.foto || 'default.png'}`;
+    applyAdminDocumentTitle();
+}
+
+async function loadNavSession(force = false) {
+    if (adminSessionCache) {
+        applyNavUserToDom(adminSessionCache);
+        if (!force && adminSessionCache._ts && (Date.now() - adminSessionCache._ts < 120000)) {
+            return;
+        }
+    }
     try {
         const res = await fetch('/auth/session', { credentials: 'same-origin' });
         const data = await res.json();
-        if (data.status === 'success') {
-            const u = data.user;
-            const nameEl = document.getElementById('navUserName');
-            if (nameEl) nameEl.textContent = `${u.nombre} ${u.apellido}`;
-            const photoEl = document.getElementById('navUserPhoto');
-            if (photoEl) photoEl.src = `/public/assets/profile_pics/${u.foto || 'default.png'}`;
-            applyAdminDocumentTitle();
+        if (data.status === 'success' && data.user) {
+            const u = { ...data.user, _ts: Date.now() };
+            adminSessionCache = u;
+            try {
+                sessionStorage.setItem(ADMIN_SESSION_CACHE_KEY, JSON.stringify(u));
+            } catch (err) { }
+            applyNavUserToDom(u);
         }
     } catch (e) { }
 }
@@ -2129,64 +2531,80 @@ function initAdminNavbar() {
     loadNotifications();
     if (!adminNotificationsInterval) {
         adminNotificationsInterval = setInterval(() => {
-            if (document.getElementById('notifList')) loadNotifications();
+            if (document.getElementById('notifList')) loadNotifications(true);
         }, 30000);
     }
 }
 
 async function loadAdminRates() {
     try {
-        const res = await fetch('/api/rates/', { credentials: 'same-origin' });
-        const data = await res.json();
-        if (data.status === 'success' && data.data) {
-            const bcv = data.data.bcv?.usd || 0;
-            const bcvEl = document.getElementById('rateBcvAdmin');
-            if (bcvEl) bcvEl.textContent = bcv > 0 ? bcv.toFixed(2) : 'N/D';
-        }
+        const data = await loadExchangeRatesCached();
+        const bcv = parseFloat(data?.bcv || 0);
+        const bcvEl = document.getElementById('rateBcvAdmin');
+        if (bcvEl) bcvEl.textContent = bcv > 0 ? bcv.toFixed(2) : 'N/D';
     } catch (e) { }
 }
 
-async function loadNotifications() {
+function renderAdminNotificationsDom(list) {
+    const safeList = Array.isArray(list) ? list : [];
+    const unread = safeList.filter(n => !n.leida).length;
+    const badge = document.getElementById('notifBadge');
+    if (badge) {
+        badge.textContent = unread;
+        badge.style.display = unread > 0 ? '' : 'none';
+    }
+    const container = document.getElementById('notifList');
+    if (!container) return;
+    if (safeList.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-3" style="font-size:0.8rem;">Sin notificaciones</div>';
+        return;
+    }
+    container.innerHTML = safeList.slice(0, 8).map(n => {
+        const icons = { mantenimiento:'bi-wrench', aceite:'bi-droplet', ticket:'bi-ticket', promocion:'bi-gift', sistema:'bi-gear', combustible:'bi-fuel-pump', filtro:'bi-filter', refrigerante:'bi-snow', caucho:'bi-circle' };
+        const icon = icons[n.tipo] || 'bi-bell';
+        const bg = n.leida ? '' : 'background:rgba(var(--bs-primary-rgb),0.05);';
+        const title = escapeHtml(n.titulo || n.mensaje || 'Notificacion');
+        const message = escapeHtml(n.mensaje ? String(n.mensaje).substring(0, 60) : '');
+        const created = escapeHtml(n.created_at || '');
+        return `<div class="px-3 py-2 border-bottom" style="font-size:0.8rem;cursor:pointer;${bg}" data-admin-notification-id="${Number(n.id) || 0}"><div class="d-flex gap-2"><i class="bi ${icon}" style="color:var(--primary);font-size:0.95rem;margin-top:2px;"></i><div><div style="font-weight:${n.leida?'400':'600'};">${title}</div><div class="text-muted" style="font-size:0.7rem;">${message}</div><div class="text-muted" style="font-size:0.65rem;">${created}</div></div></div></div>`;
+    }).join('');
+}
+
+async function loadNotifications(force = false) {
+    if (!force) {
+        try {
+            const cached = JSON.parse(sessionStorage.getItem(ADMIN_NOTIF_CACHE_KEY) || 'null');
+            if (cached && Array.isArray(cached.list)) {
+                renderAdminNotificationsDom(cached.list);
+                if (cached.ts && (Date.now() - cached.ts < 30000)) {
+                    return;
+                }
+            }
+        } catch (e) { }
+    }
     try {
         const res = await fetch('/api/notifications/', { credentials: 'same-origin' });
         const data = await res.json();
         if (data.status !== 'success') return;
         const list = data.data || [];
-        const unread = list.filter(n => !n.leida).length;
-        const badge = document.getElementById('notifBadge');
-        if (badge) {
-            badge.textContent = unread;
-            badge.style.display = unread > 0 ? '' : 'none';
-        }
-        const container = document.getElementById('notifList');
-        if (!container) return;
-        if (list.length === 0) {
-            container.innerHTML = '<div class="text-center text-muted py-3" style="font-size:0.8rem;">Sin notificaciones</div>';
-            return;
-        }
-        container.innerHTML = list.slice(0, 8).map(n => {
-            const icons = { mantenimiento:'bi-wrench', aceite:'bi-droplet', ticket:'bi-ticket', promocion:'bi-gift', sistema:'bi-gear', combustible:'bi-fuel-pump', filtro:'bi-filter', refrigerante:'bi-snow', caucho:'bi-circle' };
-            const icon = icons[n.tipo] || 'bi-bell';
-            const bg = n.leida ? '' : 'background:rgba(var(--bs-primary-rgb),0.05);';
-            const title = escapeHtml(n.titulo || n.mensaje || 'Notificacion');
-            const message = escapeHtml(n.mensaje ? String(n.mensaje).substring(0, 60) : '');
-            const created = escapeHtml(n.created_at || '');
-            return `<div class="px-3 py-2 border-bottom" style="font-size:0.8rem;cursor:pointer;${bg}" data-admin-notification-id="${Number(n.id) || 0}"><div class="d-flex gap-2"><i class="bi ${icon}" style="color:var(--primary);font-size:0.95rem;margin-top:2px;"></i><div><div style="font-weight:${n.leida?'400':'600'};">${title}</div><div class="text-muted" style="font-size:0.7rem;">${message}</div><div class="text-muted" style="font-size:0.65rem;">${created}</div></div></div></div>`;
-        }).join('');
+        try {
+            sessionStorage.setItem(ADMIN_NOTIF_CACHE_KEY, JSON.stringify({ list, ts: Date.now() }));
+        } catch (e) { }
+        renderAdminNotificationsDom(list);
     } catch (e) { }
 }
 
 async function markRead(id) {
     try {
         await fetch(`/api/notifications/${id}/read`, { method: 'PUT', credentials: 'same-origin' });
-        loadNotifications();
+        loadNotifications(true);
     } catch (e) { }
 }
 
 async function markAllRead() {
     try {
         await fetch('/api/notifications/read-all', { method: 'PUT', credentials: 'same-origin' });
-        loadNotifications();
+        loadNotifications(true);
     } catch (e) { }
 }
 
@@ -2211,13 +2629,16 @@ function markValidationAlertSeen(id) {
 
 function startAdminValidationPolling() {
     if (typeof Swal === 'undefined') {
+        const nonce = getCspNonce();
         let link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = '/public/sweetalert2/sweetalert2.min.css';
+        if (nonce) link.nonce = nonce;
         document.head.appendChild(link);
 
         let script = document.createElement('script');
         script.src = '/public/sweetalert2/sweetalert2.all.min.js';
+        if (nonce) script.nonce = nonce;
         document.head.appendChild(script);
     }
 

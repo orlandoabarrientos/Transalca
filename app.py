@@ -197,7 +197,11 @@ def apply_response_headers(response):
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
 
     path = request.path or ''
-    if path.startswith('/public/') or path.startswith('/components/') or path.startswith('/admin/') or path.startswith('/client/') or path.startswith('/auth/') or path.startswith('/api/') or path.startswith('/componente_ia/'):
+    if path.startswith(('/public/fonts/', '/public/bootstrap/', '/public/jquery/', '/public/select2/', '/public/sweetalert2/', '/public/qrcode/', '/public/img/', '/public/assets/')):
+        response.headers['Cache-Control'] = 'private, max-age=3600'
+    elif path.startswith(('/public/css/', '/public/js/')):
+        response.headers['Cache-Control'] = 'private, max-age=300'
+    elif path.startswith('/public/') or path.startswith('/components/') or path.startswith('/admin/') or path.startswith('/client/') or path.startswith('/auth/') or path.startswith('/api/') or path.startswith('/componente_ia/'):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
